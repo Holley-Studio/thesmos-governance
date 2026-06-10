@@ -1,0 +1,87 @@
+{
+  "name": "prometheus-governance",
+  "version": "1.0.0",
+  "description": "AI-stack-agnostic repo governance: code review rules, CI gates, and adapter generation for Claude, Gemini, Cursor, Copilot, Codex, and AGENTS.md",
+  "license": "MIT",
+  "author": "Matt Holley",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mattholley/prometheus-helper.git",
+    "directory": "prometheus"
+  },
+  "keywords": [
+    "governance",
+    "code-review",
+    "ci",
+    "ai",
+    "cli",
+    "typescript",
+    "claude",
+    "gemini",
+    "cursor",
+    "copilot",
+    "adapters",
+    "security"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "bin": {
+    "prometheus": "./dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "catalog/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prometheus:init": "vite-node bin/cli.ts init",
+    "prometheus:scan": "vite-node bin/cli.ts scan",
+    "prometheus:review": "vite-node bin/cli.ts review",
+    "prometheus:validate": "vite-node bin/cli.ts validate",
+    "prometheus:audit": "vite-node bin/cli.ts audit",
+    "prometheus:doctor": "vite-node bin/cli.ts doctor",
+    "prometheus:adapters": "vite-node bin/cli.ts adapters",
+    "prometheus:ci-check": "vite-node bin/cli.ts ci-check",
+    "prometheus:drift": "vite-node bin/cli.ts drift",
+    "prometheus:catalog:list": "vite-node bin/cli.ts catalog:list",
+    "prometheus:catalog:validate": "vite-node bin/cli.ts catalog:validate",
+    "prometheus:catalog:profiles": "vite-node bin/cli.ts catalog:profiles",
+    "prometheus:catalog:enable": "vite-node bin/cli.ts catalog:enable",
+    "prometheus:catalog:disable": "vite-node bin/cli.ts catalog:disable",
+    "prometheus:agent:create": "vite-node bin/cli.ts agent:create",
+    "prometheus:skill:create": "vite-node bin/cli.ts skill:create",
+    "prometheus:baseline:create": "vite-node bin/cli.ts baseline:create",
+    "prometheus:baseline:update": "vite-node bin/cli.ts baseline:update",
+    "prometheus:baseline:report": "vite-node bin/cli.ts baseline:report",
+    "prometheus:explain": "vite-node bin/cli.ts explain",
+    "prometheus:suppressions:audit": "vite-node bin/cli.ts suppressions:audit",
+    "prometheus:metrics": "vite-node bin/cli.ts metrics",
+    "prometheus:pack:list": "vite-node bin/cli.ts pack:list",
+    "prometheus:pack:validate": "vite-node bin/cli.ts pack:validate",
+    "prometheus:health": "vite-node bin/cli.ts health",
+    "prometheus:ci": "vite-node bin/cli.ts ci",
+    "prometheus:fix": "vite-node bin/cli.ts fix",
+    "prometheus:update": "vite-node bin/cli.ts update"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}

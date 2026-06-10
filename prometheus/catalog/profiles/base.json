@@ -1,0 +1,27 @@
+{
+  "id": "base",
+  "name": "Base Profile",
+  "description": "Core governance for any software repository. Includes fundamental security, code quality, testing, and architecture agents with foundational review skills.",
+  "version": "1.0.0",
+  "owner": "prometheus",
+  "agents": [
+    "security-reviewer",
+    "architecture-reviewer",
+    "code-quality-reviewer",
+    "testing-reviewer",
+    "governance-reviewer"
+  ],
+  "skills": [
+    "pr-review",
+    "staged-change-review",
+    "repo-health-audit",
+    "add-tests",
+    "final-hardening-pass",
+    "security-scan",
+    "validate-rules",
+    "adapter-sync"
+  ],
+  "rulePacks": [
+    "@prometheus/core"
+  ]
+}

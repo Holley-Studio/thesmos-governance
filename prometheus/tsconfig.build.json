@@ -1,0 +1,41 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "noEmit": false
+  },
+  "include": [
+    "index.ts",
+    "types.ts",
+    "config.ts",
+    "adapters.ts",
+    "catalog.ts",
+    "drift.ts",
+    "baseline.ts",
+    "explain.ts",
+    "suppress.ts",
+    "metrics.ts",
+    "packs.ts",
+    "health.ts",
+    "init.ts",
+    "output.ts",
+    "registry.ts",
+    "report.ts",
+    "review.ts",
+    "severity.ts",
+    "secrets.ts",
+    "detector.ts",
+    "doctor.ts",
+    "ci-check.ts",
+    "rules/**/*.ts",
+    "scanner/**/*.ts",
+    "bin/**/*.ts"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "vitest.config.ts",
+    "tsup.config.ts",
+    "dist",
+    "node_modules"
+  ]
+}

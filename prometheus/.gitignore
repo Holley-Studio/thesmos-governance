@@ -1,0 +1,29 @@
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules/
+dist/
+*.js.map
+
+# ── Consumer artifacts ────────────────────────────────────────────────────────
+# Prometheus generates these files in CONSUMER repos, not in the library itself.
+# Running `prometheus:init` or `prometheus:adapters` during local development
+# writes these into the working directory. They must never be committed here.
+#
+# Rule: The prometheus/ directory is the PRODUCER. These files belong in repos
+# that depend on Prometheus, not in the Prometheus source tree.
+
+.prometheus/
+CLAUDE.md
+GEMINI.md
+AGENTS.md
+.cursor/rules/prometheus.mdc
+.codex/prometheus.md
+.github/copilot-instructions.md
+.github/workflows/prometheus-review.yml
+
+# ── Test temp artifacts ───────────────────────────────────────────────────────
+# Some tests write to tmp/ subdirs inside the repo as a fallback. Ignore them.
+tmp/
+*.tmp
+
+# ── TypeScript build output ───────────────────────────────────────────────────
+tsconfig.tsbuildinfo
