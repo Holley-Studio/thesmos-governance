@@ -28,6 +28,16 @@ import { AI_RULES } from './ai';
 import { PERFORMANCE_RULES } from './performance';
 import { DATABASE_RULES } from './database';
 import { QUALITY_RULES } from './quality';
+import { ZOD_RULES } from './zod';
+import { TRPC_RULES } from './trpc';
+import { PRISMA_RULES } from './prisma';
+import { NODE_RULES } from './node';
+import { ERROR_RULES } from './errors';
+import { IMPORT_RULES } from './imports';
+import { STATE_RULES } from './state';
+import { FORM_RULES } from './forms';
+import { LOG_RULES } from './logging';
+import { CSS_RULES } from './css';
 
 // ── Local helpers (used inside detect() methods) ──────────────────────────────
 
@@ -585,4 +595,14 @@ export const PROMETHEUS_RULES: PrometheusRule[] = [
   ...PERFORMANCE_RULES,
   ...DATABASE_RULES,
   ...QUALITY_RULES,
+  ...ZOD_RULES,
+  ...TRPC_RULES,
+  ...PRISMA_RULES,
+  ...NODE_RULES,
+  ...ERROR_RULES,
+  ...IMPORT_RULES,
+  ...STATE_RULES,
+  ...FORM_RULES,
+  ...LOG_RULES,
+  ...CSS_RULES,
 ];

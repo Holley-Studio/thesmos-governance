@@ -573,4 +573,503 @@ export const DATABASE_RULES: PrometheusRule[] = [
       return findings;
     },
   },
+
+  // ── Database expansions ───────────────────────────────────────────────────
+
+  {
+    id: 'DB_009',
+    category: 'n_plus_one_query',
+    description: "N+1 query pattern: fetching a list then querying each item individually inside a loop.",
+    severity: 'HIGH',
+    tags: ['database', 'performance', 'prisma'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Fetching 100 posts then running findUnique() for each post's author makes 101 queries instead of 1. Use include/join or DataLoader to batch. N+1 is the most common database performance killer in ORMs.",
+      commonViolations: ['const posts = await prisma.post.findMany()\nfor (const p of posts) { p.author = await prisma.user.findUnique({ where: { id: p.userId } }) }'],
+      goodExample: "const posts = await prisma.post.findMany({ include: { author: true } })  // 1 query with JOIN",
+      badExample: "const items = await db.select().from(orders)\nfor (const item of items) {\n  item.user = await db.select().from(users).where(eq(users.id, item.userId))\n}",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['database-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('n_plus_one_query', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/for\s*(?:const|let)\s+\w+\s+of\s+\w+/.test(line) || /\.forEach\s*\(/.test(line)) {
+            const block = lines.slice(i, Math.min(i + 8, lines.length)).join('\n');
+            if (/await\s+\w+\.(findUnique|findOne|findById|select|query)\s*\(/.test(block) && /prisma\.|db\.|repository\./.test(block)) {
+              findings.push({ severity, category: 'n_plus_one_query', file: path, line: i + 1, message: 'Database query inside a loop — N+1 query pattern detected.', suggestion: 'Use include/join (Prisma: include: { relation: true }) or DataLoader to batch queries.' });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_010',
+    category: 'prisma_missing_fk_index',
+    description: "Prisma schema with a foreign key field but no @@index causes full table scans on related-record lookups.",
+    severity: 'HIGH',
+    tags: ['database', 'performance', 'schema', 'prisma'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "A WHERE or ORDER BY on an un-indexed column scans every row. On a 1M-row table, that's hundreds of milliseconds vs microseconds with an index. Always index foreign keys and frequently-filtered columns.",
+      commonViolations: ['// schema.prisma: model Post { userId String } — no @@index([userId])'],
+      goodExample: "model Post {\n  userId  String\n  status  String\n  @@index([userId])\n  @@index([status, createdAt])\n}",
+      badExample: "// Prisma schema with foreign key userId but no @@index([userId])\n// All user.posts queries do full table scan",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['database-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('prisma_missing_fk_index', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!path.endsWith('.prisma')) continue;
+        const models = content.split(/^model\s+/m).slice(1);
+        for (const model of models) {
+          const modelName = model.match(/^(\w+)/)?.[1] ?? 'unknown';
+          const foreignKeys = [...model.matchAll(/(\w+)\s+String(?:\s+@\w+)*\s*\/\/.*(?:id|Id)|(\w+Id)\s+String/g)].map(m => m[1] || m[2]);
+          const indexes = content.match(/@@index\(\[([^\]]+)\]\)/g) ?? [];
+          for (const fk of foreignKeys) {
+            if (fk && !indexes.some(ix => ix.includes(fk))) {
+              findings.push({ severity, category: 'prisma_missing_fk_index', file: path, message: `Prisma model '${modelName}': foreign key field '${fk}' has no @@index — may cause full table scans.`, suggestion: `Add @@index([${fk}]) to the model's attributes.` });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_011',
+    category: 'select_star_prisma',
+    description: "Selecting all fields with findMany() when only a subset is needed sends excess data over the wire.",
+    severity: 'LOW',
+    tags: ['database', 'performance', 'prisma'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "prisma.user.findMany() returns all fields including large text blobs, timestamps, and internal columns. Use select to fetch only the fields the UI needs — reduces payload size and query time.",
+      commonViolations: ['const users = await prisma.user.findMany()  // fetches all 20 columns'],
+      goodExample: "const users = await prisma.user.findMany({ select: { id: true, name: true, email: true } })",
+      badExample: "const posts = await prisma.post.findMany({ where: { published: true } })  // includes content, metadata, internal fields",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('select_star_prisma', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/prisma\.\w+\.findMany\s*\(\s*\{/.test(line) && !line.includes('select:') && !line.includes('include:')) {
+            const block = lines.slice(i, Math.min(i + 5, lines.length)).join('\n');
+            if (!block.includes('select:') && !block.includes('include:')) {
+              findings.push({ severity, category: 'select_star_prisma', file: path, line: i + 1, message: 'prisma.model.findMany() without select — returns all fields including large/unused columns.', suggestion: "Add select: { id: true, name: true } to return only the fields your UI needs." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_012',
+    category: 'transaction_missing',
+    description: "Multiple related database writes not wrapped in a transaction risk partial failures leaving data inconsistent.",
+    severity: 'HIGH',
+    tags: ['database', 'transactions', 'data-integrity'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "If you create an order and then deduct inventory in separate queries, a crash between them leaves you with an order and no deducted inventory. Transactions guarantee atomicity: all succeed or all roll back.",
+      commonViolations: ['await prisma.order.create({ ... })\nawait prisma.inventory.update({ ... })  // no transaction'],
+      goodExample: "await prisma.$transaction([\n  prisma.order.create({ ... }),\n  prisma.inventory.update({ ... }),\n])",
+      badExample: "// Two separate writes — server crash between them = inconsistent state\nawait db.insert(orders).values(order)\nawait db.update(inventory).set({ qty: qty - 1 })",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['database-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('transaction_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        if (content.includes('$transaction') || content.includes('db.transaction')) return findings;
+        const writeLines: number[] = [];
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/await\s+(?:prisma|db)\.\w+\.(?:create|update|delete|upsert|deleteMany|updateMany)\s*\(/.test(line)) writeLines.push(i + 1);
+        }
+        if (writeLines.length >= 3) {
+          findings.push({ severity, category: 'transaction_missing', file: path, line: writeLines[0], message: `${writeLines.length} database writes without a transaction — partial failure can corrupt data.`, suggestion: "Wrap related writes in prisma.$transaction([...]) to ensure atomicity." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_013',
+    category: 'soft_delete_missing',
+    description: "Hard-deleting records permanently destroys data — implement soft delete with a deletedAt timestamp.",
+    severity: 'MEDIUM',
+    tags: ['database', 'data-safety', 'patterns'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Hard deletes are irreversible. Soft deletes (deletedAt: Date | null) allow data recovery, audit trails, and referential integrity. Any table that users \"own\" data in should support soft delete.",
+      commonViolations: ['await prisma.user.delete({ where: { id } })  // permanent'],
+      goodExample: "await prisma.user.update({ where: { id }, data: { deletedAt: new Date() } })\n// Then filter: { where: { deletedAt: null } }",
+      badExample: "await db.delete(users).where(eq(users.id, userId))  // cannot be undone",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['database-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('soft_delete_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/await\s+(?:prisma|db|repository)\.\w+\.delete(?:Many)?\s*\(\s*\{/.test(line) && !isCommentLine(line)) {
+            if (!content.includes('deletedAt') && !content.includes('deleted_at')) {
+              findings.push({ severity, category: 'soft_delete_missing', file: path, line: i + 1, message: 'Hard delete detected with no soft-delete pattern in this file.', suggestion: "Consider updating deletedAt instead of deleting: prisma.model.update({ where: { id }, data: { deletedAt: new Date() } })." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_014',
+    category: 'connection_pool_exhaust',
+    description: "Creating a new database connection per request instead of using a singleton connection pool will exhaust connections.",
+    severity: 'BLOCKER',
+    tags: ['database', 'connection-pool', 'nextjs'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "In serverless (Vercel, Lambda), modules re-execute in cold starts. A new PrismaClient() per module creates a new connection pool per invocation. With 100 concurrent lambdas, that's 100×20 = 2000 connections on a default Postgres pool of 100. Use a global singleton.",
+      commonViolations: ['export const prisma = new PrismaClient()  // in lib/prisma.ts — re-created on each lambda cold start'],
+      goodExample: "// lib/prisma.ts — singleton pattern\nconst globalForPrisma = globalThis as { prisma?: PrismaClient }\nexport const prisma = globalForPrisma.prisma ?? new PrismaClient()\nif (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma",
+      badExample: "// api/users/route.ts\nconst prisma = new PrismaClient()  // new pool per route module",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('connection_pool_exhaust', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (path.includes('lib/prisma') || path.includes('db/client') || path.includes('db/prisma')) return findings;
+        if (/new\s+PrismaClient\s*\(\s*\)/.test(content)) {
+          findings.push({ severity, category: 'connection_pool_exhaust', file: path, message: 'new PrismaClient() in a non-singleton file — creates a new connection pool per lambda invocation.', suggestion: "Import the singleton from lib/prisma.ts which uses the globalThis pattern to reuse connections." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_015',
+    category: 'migration_without_rollback',
+    description: "Migrations without a corresponding down/rollback script make production incidents harder to recover from.",
+    severity: 'MEDIUM',
+    tags: ['database', 'migrations', 'operations'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "A bad deploy with a schema migration that can't be rolled back can leave production broken for hours. Always pair up/down scripts so you can revert. Prisma uses a different model (generate rollback via squash), but raw SQL migrations need both.",
+      commonViolations: ['-- migration.sql: Only has up logic, no down migration'],
+      goodExample: "-- migration_up.sql: ALTER TABLE users ADD COLUMN avatar_url TEXT\n-- migration_down.sql: ALTER TABLE users DROP COLUMN avatar_url",
+      badExample: "-- 001_add_avatar.sql (only up migration)\nALTER TABLE users ADD COLUMN avatar_url TEXT NOT NULL DEFAULT ''",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['database-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('migration_without_rollback', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SQL_EXT.test(path) || !path.includes('migrat')) continue;
+        if (path.includes('_up') || path.includes('_down') || path.includes('.up.') || path.includes('.down.')) return findings;
+        if (/ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+COLUMN|ADD\s+COLUMN/i.test(content) && !content.toLowerCase().includes('-- down') && !content.toLowerCase().includes('-- rollback')) {
+          findings.push({ severity, category: 'migration_without_rollback', file: path, message: 'Schema migration without a rollback/down section — hard to recover from in production incidents.', suggestion: "Add a -- Down: section or companion _down.sql file with the reversal SQL." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_016',
+    category: 'query_timeout_missing',
+    description: "Database queries without a timeout can block indefinitely, exhausting the connection pool.",
+    severity: 'HIGH',
+    tags: ['database', 'resilience', 'timeouts'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "A slow or stuck query holds a connection from the pool. Without a timeout, 10 slow queries can exhaust a 10-connection pool and lock the entire application. Set query_timeout or use Prisma's timeout extension.",
+      commonViolations: ['const prisma = new PrismaClient()  // no timeout configuration'],
+      goodExample: "const prisma = new PrismaClient({ \n  datasources: { db: { url: process.env.DATABASE_URL } }\n})\n// Or use Prisma's @prisma/extension-accelerate with timeout",
+      badExample: "// No timeout set — one bad query can hang indefinitely and drain the pool",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('query_timeout_missing', config.severityRules);
+      const findings: Finding[] = [];
+      const prismaFile = changedFiles.find(f => f.path.includes('lib/prisma') || f.path.includes('db/client'));
+      if (!prismaFile) return findings;
+      if (/new\s+PrismaClient/.test(prismaFile.content) && !prismaFile.content.includes('timeout') && !prismaFile.content.includes('query_timeout')) {
+        findings.push({ severity, category: 'query_timeout_missing', file: prismaFile.path, message: 'PrismaClient created without query timeout — slow queries can exhaust the connection pool.', suggestion: "Set a timeout via DATABASE_URL parameter (e.g., ?connect_timeout=10&pool_timeout=10) or Prisma Accelerate." });
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_017',
+    category: 'pagination_missing',
+    description: "Fetching all records without LIMIT/take causes slow queries and huge memory usage as data grows.",
+    severity: 'HIGH',
+    tags: ['database', 'performance', 'pagination'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "findMany() without take returns ALL rows. A table with 100K rows transfers gigabytes over time. Always add take/limit and cursor or skip-based pagination for any user-facing list query.",
+      commonViolations: ['const allOrders = await prisma.order.findMany()  // returns every row'],
+      goodExample: "const orders = await prisma.order.findMany({\n  take: 20,\n  skip: page * 20,\n  orderBy: { createdAt: 'desc' },\n})",
+      badExample: "const products = await prisma.product.findMany({ where: { categoryId } })  // grows unbounded",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('pagination_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/prisma\.\w+\.findMany\s*\(\s*\{/.test(line)) {
+            const block = lines.slice(i, Math.min(i + 8, lines.length)).join('\n');
+            if (!block.includes('take:') && !block.includes('limit:') && !block.includes('cursor:')) {
+              findings.push({ severity, category: 'pagination_missing', file: path, line: i + 1, message: 'prisma.findMany() without take/limit — returns all rows, grows unbounded as data grows.', suggestion: "Add take: 20, skip: page * 20 for offset pagination or cursor-based pagination for large datasets." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_018',
+    category: 'optimistic_lock_missing',
+    description: "Concurrent updates to the same record without optimistic locking cause lost updates.",
+    severity: 'MEDIUM',
+    tags: ['database', 'concurrency', 'data-integrity'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Two users read version=1 of a record, both modify it, both write — the second write overwrites the first's changes silently. Add a version or updatedAt check to detect and reject stale writes.",
+      commonViolations: ['await prisma.order.update({ where: { id }, data: { status } })  // no version check'],
+      goodExample: "await prisma.order.update({\n  where: { id, version: currentVersion },  // fails if already updated\n  data: { status, version: { increment: 1 } },\n})",
+      badExample: "// Two concurrent requests both read order{version:1}, both update — second silently overwrites first",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['database-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('optimistic_lock_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        if (!content.includes('concurrentl') && !content.includes('version') && !content.includes('optimistic')) return findings;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/prisma\.\w+\.update\s*\(\s*\{/.test(line)) {
+            const block = lines.slice(i, Math.min(i + 6, lines.length)).join('\n');
+            if (!block.includes('version') && !block.includes('updatedAt') && block.includes('status')) {
+              findings.push({ severity, category: 'optimistic_lock_missing', file: path, line: i + 1, message: 'Status update without optimistic lock — concurrent updates may silently overwrite each other.', suggestion: "Add version field to where clause: { id, version: current } and increment version in data." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_019',
+    category: 'seed_data_in_migration',
+    description: "Inserting seed/test data in migrations couples environment-specific data with schema changes.",
+    severity: 'MEDIUM',
+    tags: ['database', 'migrations', 'patterns'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Migrations run in all environments (dev, staging, prod). Hard-coded INSERT statements with test users or sample data pollute production databases. Keep migrations schema-only; use db/seed.ts for data seeding.",
+      commonViolations: ["INSERT INTO users (email) VALUES ('admin@example.com')  -- inside a migration"],
+      goodExample: "// Keep in prisma/seed.ts — runs only in development:\n// await prisma.user.create({ data: { email: 'admin@example.com' } })",
+      badExample: "-- migration 023\nALTER TABLE users ADD COLUMN tier VARCHAR(20);\nINSERT INTO users (email, tier) VALUES ('test@example.com', 'admin');  -- seed data in migration",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['database-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('seed_data_in_migration', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SQL_EXT.test(path) || !path.includes('migrat')) continue;
+        if (/^\s*INSERT\s+INTO\b/im.test(content)) {
+          findings.push({ severity, category: 'seed_data_in_migration', file: path, message: 'INSERT statement inside a migration — seed data belongs in prisma/seed.ts, not migrations.', suggestion: "Remove INSERT statements from migrations. Place seed data in prisma/seed.ts and run with 'prisma db seed'." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_020',
+    category: 'raw_sql_prisma',
+    description: "prisma.$queryRaw with template literals bypasses type safety and may allow SQL injection.",
+    severity: 'HIGH',
+    tags: ['database', 'security', 'prisma', 'sql-injection'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "prisma.$queryRaw`...${userInput}` uses tagged template literals for parameterization — safe. But prisma.$queryRawUnsafe(string) or string concatenation bypasses this and allows SQL injection.",
+      commonViolations: ["prisma.$queryRawUnsafe(`SELECT * FROM users WHERE id = '${id}'`)"],
+      goodExample: "prisma.$queryRaw`SELECT * FROM users WHERE id = ${id}`  // parameterized",
+      badExample: "const q = `SELECT * FROM ${table} WHERE id = '${id}'`\nawait prisma.$queryRawUnsafe(q)  // SQL injection risk",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['database-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('raw_sql_prisma', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/\$queryRawUnsafe\s*\(/.test(line) || (/\$queryRaw\s*\(/.test(line) && line.includes('+'))) {
+            findings.push({ severity, category: 'raw_sql_prisma', file: path, line: i + 1, message: 'Unsafe raw SQL with string interpolation — SQL injection risk.', suggestion: "Use tagged template literals: prisma.$queryRaw`SELECT * FROM users WHERE id = ${id}`." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_021',
+    category: 'db_call_in_middleware',
+    description: "Database calls in Next.js middleware run on the Edge Runtime which doesn't support standard TCP connections.",
+    severity: 'BLOCKER',
+    tags: ['database', 'nextjs', 'edge-runtime'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Next.js middleware runs on the Edge Runtime (V8 isolates), which doesn't support Node.js TCP sockets. Prisma Client and most database drivers require TCP. Use HTTP-based APIs (Prisma Accelerate, Planetscale HTTP) for Edge-compatible DB access.",
+      commonViolations: ["// middleware.ts\nimport { prisma } from '@/lib/prisma'\nexport async function middleware() { const user = await prisma.user.findUnique(...) }"],
+      goodExample: "// middleware.ts — use JWT verification or HTTP-based lookups\n// DB calls: use Prisma Accelerate (HTTP) for Edge compatibility",
+      badExample: "// middleware.ts (Edge Runtime)\nexport async function middleware(req: NextRequest) {\n  const session = await prisma.session.findUnique({ where: { token } })\n}",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('db_call_in_middleware', config.severityRules);
+      const findings: Finding[] = [];
+      const mwFile = changedFiles.find(f => f.path.endsWith('middleware.ts') || f.path.endsWith('middleware.js'));
+      if (!mwFile) return findings;
+      if (/prisma\.|new\s+PrismaClient|drizzle\(|mongoose\.|sequelize\./.test(mwFile.content)) {
+        findings.push({ severity, category: 'db_call_in_middleware', file: mwFile.path, message: "Database client used in Next.js middleware — Edge Runtime doesn't support TCP connections.", suggestion: "Use Prisma Accelerate (HTTP-based) or check session via JWT/cookie without a DB call in middleware." });
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_022',
+    category: 'cascade_delete_risk',
+    description: "onDelete: Cascade on a parent relation can silently delete thousands of child records.",
+    severity: 'HIGH',
+    tags: ['database', 'schema', 'data-safety'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "A Cascade delete on a User → Posts relation means deleting one user instantly deletes all their posts, comments, likes, etc. This is often unintentional. Use Restrict to prevent accidental cascades and handle deletions explicitly.",
+      commonViolations: ['// schema.prisma: @relation(fields: [userId], references: [id], onDelete: Cascade)'],
+      goodExample: "// Use Restrict to prevent accidental parent deletion:\n@relation(fields: [userId], references: [id], onDelete: Restrict)",
+      badExample: "// Cascade on a table that owns user-generated content:\nuserId String\nuser   User @relation(..., onDelete: Cascade)  // deletes all user content when user is deleted",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['database-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('cascade_delete_risk', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!path.endsWith('.prisma')) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/onDelete:\s*Cascade/.test(line)) {
+            findings.push({ severity, category: 'cascade_delete_risk', file: path, line: i + 1, message: "onDelete: Cascade detected — may silently delete large numbers of child records if parent is deleted.", suggestion: "Consider onDelete: Restrict (block parent deletion while children exist) and handle deletion explicitly." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_023',
+    category: 'db_enum_vs_string',
+    description: "Using String instead of a database enum for finite-state fields loses type safety and allows invalid values.",
+    severity: 'LOW',
+    tags: ['database', 'schema', 'type-safety'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "A status column as String accepts 'aktive', 'ACTIVEE', 'deleted' — any typo becomes valid data. A Postgres enum or Prisma enum rejects invalid values at the database level, ensuring data integrity.",
+      commonViolations: ["// Prisma: status String  // accepts any string"],
+      goodExample: "// schema.prisma:\nenum OrderStatus { PENDING PAID SHIPPED DELIVERED CANCELLED }\nstatus OrderStatus @default(PENDING)",
+      badExample: "// Prisma schema:\nstatus String @default(\"pending\")  // 'Pending', 'PENDING', 'pendinh' all accepted",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('db_enum_vs_string', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!path.endsWith('.prisma')) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/\b(?:status|state|role|type|tier|plan)\s+String\b/.test(line)) {
+            findings.push({ severity, category: 'db_enum_vs_string', file: path, line: i + 1, message: `Finite-state field '${line.trim().split(' ')[0]}' typed as String — use a Prisma enum for type safety.`, suggestion: "Define an enum: enum Status { ACTIVE INACTIVE PENDING } and use it as the field type." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
 ];

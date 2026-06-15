@@ -21,6 +21,7 @@ import {
 } from '../../review.ts';
 import { exitCodeFor, shouldWarn } from '../../severity.ts';
 import { loadBaseline, partitionFindings } from '../../baseline.ts';
+import { getActiveRules } from '../../packs.ts';
 
 export async function cmdValidate(argv: string[]): Promise<void> {
   const { root, config } = createContext();
@@ -44,7 +45,8 @@ export async function cmdValidate(argv: string[]): Promise<void> {
     changedFiles = getChangedFiles(root, base);
   }
 
-  const allFindings = runReview({ scan, config, changedFiles });
+  const registry = await getActiveRules(root);
+  const allFindings = runReview({ scan, config, changedFiles }, registry);
 
   // Auto-load baseline if present (suppresses known debt from CI exit code)
   const baseline = noBaseline ? null : loadBaseline(root);

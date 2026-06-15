@@ -787,4 +787,615 @@ export const SECURITY_RULES: PrometheusRule[] = [
         }));
     },
   },
+
+  // ── Security expansions ───────────────────────────────────────────────────
+
+  {
+    id: 'SEC_020',
+    category: 'open_redirect',
+    description: "Redirecting to a URL from user input without validation allows attackers to redirect users to phishing sites.",
+    severity: 'HIGH',
+    tags: ['security', 'redirect', 'owasp'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "An open redirect lets attackers craft links like /login?redirect=https://evil.com that appear to point to your domain but land the user on an attacker site. Always validate that redirect URLs are relative or on an allowlisted domain.",
+      commonViolations: ["redirect(searchParams.get('redirect'))  // attacker-controlled URL"],
+      goodExample: "const url = new URL(redirectParam, 'https://myapp.com')\nif (url.hostname !== 'myapp.com') throw new Error('Invalid redirect')\nredirect(url.pathname + url.search)",
+      badExample: "const next = req.query.next\nres.redirect(next)  // open redirect — attacker sets next=https://evil.com",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('open_redirect', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/(?:redirect|res\.redirect)\s*\(\s*(?:req\.|body\.|params\.|query\.|searchParams\.)/.test(line)) {
+            findings.push({ severity, category: 'open_redirect', file: path, line: i + 1, message: 'Redirect target from request data without validation — open redirect vulnerability.', suggestion: 'Validate redirect URLs are relative paths or match an allowlisted hostname.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_021',
+    category: 'mass_assignment',
+    description: "Spreading user input directly into database operations allows attackers to set fields they shouldn't control.",
+    severity: 'BLOCKER',
+    tags: ['security', 'mass-assignment', 'database'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "await db.update(users, { where: eq(id, id), set: body }) lets an attacker include isAdmin: true in their request body and promote themselves. Always pick only allowed fields.",
+      commonViolations: ["prisma.user.update({ where: { id }, data: body })", "db.update(users, { set: req.body })"],
+      goodExample: "const { name, bio } = body  // destructure only allowed fields\nawait prisma.user.update({ where: { id }, data: { name, bio } })",
+      badExample: "await prisma.user.update({ where: { id }, data: req.body })  // attacker can set isAdmin: true",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('mass_assignment', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/(?:\.update|\.create|\.upsert)\s*\(\s*\{[^}]*(?:data|set)\s*:\s*(?:req\.body|body|input|data)\s*[,}]/.test(line)) {
+            findings.push({ severity, category: 'mass_assignment', file: path, line: i + 1, message: 'User-controlled object spread into database write — mass assignment vulnerability.', suggestion: 'Destructure only the allowed fields: const { name, bio } = body and pass them individually.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_022',
+    category: 'cors_wildcard_header',
+    description: "CORS Access-Control-Allow-Origin: * allows any website to make credentialed requests to your API.",
+    severity: 'BLOCKER',
+    tags: ['security', 'cors', 'api'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "CORS * with Allow-Credentials: true is invalid (browser blocks it). CORS * alone allows any origin to read your API responses — acceptable only for truly public APIs. Use an explicit allowlist for APIs that serve user data.",
+      commonViolations: ["res.setHeader('Access-Control-Allow-Origin', '*')", "cors({ origin: '*' })"],
+      goodExample: "cors({ origin: ['https://myapp.com', 'https://staging.myapp.com'] })",
+      badExample: "app.use(cors({ origin: '*' }))  // any website can read your API responses",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('cors_wildcard_header', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/(?:Allow-Origin|origin)\s*[:=,]+\s*['"]\s*\*\s*['"]/.test(line)) {
+            findings.push({ severity, category: 'cors_wildcard_header', file: path, line: i + 1, message: "CORS wildcard '*' allows any origin to read API responses.", suggestion: "Use an explicit allowlist: cors({ origin: ['https://yourapp.com'] })." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_023',
+    category: 'timing_attack_comparison',
+    description: "Comparing secrets with === is vulnerable to timing attacks — use crypto.timingSafeEqual instead.",
+    severity: 'HIGH',
+    tags: ['security', 'cryptography', 'timing-attack'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "String comparison (a === b) short-circuits on the first differing character. An attacker can measure response time differences to brute-force secrets one character at a time. crypto.timingSafeEqual runs in constant time regardless of where strings differ.",
+      commonViolations: ["if (token === storedToken) { ... }", "if (hmac === expected) { ... }"],
+      goodExample: "import { timingSafeEqual, createHmac } from 'node:crypto'\nconst safe = timingSafeEqual(Buffer.from(a), Buffer.from(b))",
+      badExample: "if (req.headers['x-webhook-signature'] === computedHmac) { ... }  // timing attack vulnerable",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('timing_attack_comparison', config.severityRules);
+      const findings: Finding[] = [];
+      const TOKEN_VARS = /(?:token|hmac|hash|signature|secret|key|password|digest)/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/===|!==/.test(line) && TOKEN_VARS.test(line) && !/timingSafeEqual/.test(line)) {
+            findings.push({ severity, category: 'timing_attack_comparison', file: path, line: i + 1, message: 'Secret/token compared with === — vulnerable to timing attacks.', suggestion: 'Use crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)) for constant-time comparison.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_024',
+    category: 'insecure_deserialization',
+    description: "Deserializing untrusted data with eval(), new Function(), or JSON.parse without schema validation is dangerous.",
+    severity: 'BLOCKER',
+    tags: ['security', 'deserialization', 'owasp'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "eval() and new Function() execute arbitrary code. JSON.parse on unvalidated data passes malicious types to consuming code. Always validate deserialized data with zod or JSON Schema before using it.",
+      commonViolations: ["eval(userInput)", "const data = JSON.parse(req.body)  // no schema validation"],
+      goodExample: "const raw = JSON.parse(req.body)\nconst data = mySchema.parse(raw)  // validates and types at runtime",
+      badExample: "const config = eval(req.body.config)  // arbitrary code execution",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('insecure_deserialization', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/\beval\s*\(/.test(line) || /new\s+Function\s*\(/.test(line)) {
+            findings.push({ severity, category: 'insecure_deserialization', file: path, line: i + 1, message: "eval() or new Function() executes arbitrary code — remote code execution risk.", suggestion: "Remove eval(). For dynamic dispatch, use a lookup table: const handlers = { add: fn1, remove: fn2 }." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_025',
+    category: 'file_upload_path_traversal',
+    description: "Using user-provided filenames for file uploads allows path traversal attacks (../../etc/passwd).",
+    severity: 'BLOCKER',
+    tags: ['security', 'path-traversal', 'file-upload'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "If you save uploaded files using their original name (filename from the request), an attacker can upload a file named ../../.env to overwrite sensitive config files. Always use a generated UUID as the filename.",
+      commonViolations: ["const dest = path.join(uploadDir, file.originalname)", "fs.writeFile(req.body.filename, data)"],
+      goodExample: "import { randomUUID } from 'node:crypto'\nconst safeName = `${randomUUID()}${path.extname(file.originalname)}`\nfs.writeFile(path.join(uploadDir, safeName), data)",
+      badExample: "const dest = path.join('./uploads', req.file.originalname)  // ../../etc/passwd attack",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('file_upload_path_traversal', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/path\.join\s*\([^)]*(?:originalname|filename|\.name)[^)]*\)/.test(line) || /writeFile\s*\([^,]*(?:req\.body|body\.)/.test(line)) {
+            findings.push({ severity, category: 'file_upload_path_traversal', file: path, line: i + 1, message: 'File saved with user-provided filename — path traversal attack risk.', suggestion: 'Generate a UUID filename: randomUUID() + path.extname(originalname) to prevent traversal.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_026',
+    category: 'rate_limit_missing_auth',
+    description: "Authentication endpoints (login, password reset) without rate limiting are vulnerable to brute force attacks.",
+    severity: 'HIGH',
+    tags: ['security', 'rate-limiting', 'brute-force'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Without rate limiting, an attacker can try millions of password combinations per minute. Login and password-reset endpoints must have request throttling (e.g., 5 attempts per minute per IP).",
+      commonViolations: ['// POST /api/auth/login with no rate limiting middleware'],
+      goodExample: "import { rateLimit } from 'express-rate-limit'\nconst loginLimiter = rateLimit({ windowMs: 60 * 1000, max: 5 })\napp.post('/api/auth/login', loginLimiter, loginHandler)",
+      badExample: "app.post('/api/auth/login', loginHandler)  // no rate limit — brute forceable",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('rate_limit_missing_auth', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const isAuthRoute = /(?:login|signin|sign-in|password.reset|forgot.password|register|signup)/i.test(path);
+        if (!isAuthRoute) return findings;
+        if (!content.includes('rateLimit') && !content.includes('rateLimiter') && !content.includes('rate_limit') && !content.includes('Bottleneck')) {
+          findings.push({ severity, category: 'rate_limit_missing_auth', file: path, message: 'Authentication endpoint without rate limiting — vulnerable to brute force attacks.', suggestion: "Add rate limiting: import { rateLimit } from 'express-rate-limit' with max: 5 per windowMs: 60000." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_027',
+    category: 'jwt_secret_weak',
+    description: "Using a short or predictable JWT secret allows attackers to forge tokens via offline brute force.",
+    severity: 'BLOCKER',
+    tags: ['security', 'jwt', 'authentication'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "JWT HS256 tokens can be brute-forced offline if the secret is short or predictable (e.g., 'secret', 'password'). Use a cryptographically random secret of at least 256 bits (32 bytes).",
+      commonViolations: ["jwt.sign(payload, 'secret')", "jwt.sign(payload, 'mysecretkey')"],
+      goodExample: "// .env: JWT_SECRET=<output of: node -e \"require('crypto').randomBytes(32).toString('hex')\">\njwt.sign(payload, process.env.JWT_SECRET!, { algorithm: 'HS256' })",
+      badExample: "jwt.sign(payload, 'secret')  // offline brute-forceable in seconds",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('jwt_secret_weak', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/jwt\.sign\s*\([^,]+,\s*['"][^'"]{1,20}['"]/.test(line)) {
+            findings.push({ severity, category: 'jwt_secret_weak', file: path, line: i + 1, message: 'JWT signed with short hardcoded secret — offline brute-forceable.', suggestion: 'Use a 256-bit random secret from env: jwt.sign(payload, process.env.JWT_SECRET!).' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_028',
+    category: 'session_fixation',
+    description: "Not regenerating the session ID after login allows session fixation attacks.",
+    severity: 'HIGH',
+    tags: ['security', 'session', 'authentication'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "If an attacker sets a known session ID before the user logs in, and the server doesn't regenerate it on login, the attacker can hijack the authenticated session. Always regenerate the session on privilege change.",
+      commonViolations: ['req.session.userId = user.id  // without req.session.regenerate()'],
+      goodExample: "req.session.regenerate((err) => {\n  req.session.userId = user.id\n  res.json({ success: true })\n})",
+      badExample: "// On login:\nreq.session.user = user  // session ID unchanged — fixation attack",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('session_fixation', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const isAuthFile = /(?:login|signin|auth)/i.test(path);
+        if (!isAuthFile) return findings;
+        if (/req\.session\.\w+\s*=/.test(content) && !content.includes('req.session.regenerate')) {
+          findings.push({ severity, category: 'session_fixation', file: path, message: 'Session values set without session.regenerate() after login — session fixation attack risk.', suggestion: 'Call req.session.regenerate() before setting user data on the session after successful login.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_029',
+    category: 'xxe_vulnerability',
+    description: "Parsing XML with external entity expansion enabled allows XXE attacks that can read local files.",
+    severity: 'BLOCKER',
+    tags: ['security', 'xxe', 'xml'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "XXE (XML External Entity) attacks exploit XML parsers that resolve ENTITY declarations like <!ENTITY xxe SYSTEM 'file:///etc/passwd'> to read local files, do SSRF, or cause denial of service. Disable external entity resolution in your XML parser.",
+      commonViolations: ["xml2js.parseString(userXml)  // external entities enabled by default"],
+      goodExample: "// Prefer JSON over XML. If XML is required, disable external entities\n// fast-xml-parser: new XMLParser({ processEntities: false })",
+      badExample: "const result = await parseXml(req.body)  // if parser resolves external entities — reads /etc/passwd",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('xxe_vulnerability', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (/from\s+['"](?:xml2js|fast-xml-parser|xmldom|sax)['"]|require\(['"](?:xml|xml2js)/.test(content)) {
+          const lines = content.split('\n');
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i]!;
+            if (/parseString|parseXml|XMLParser\s*\(/.test(line) && !/processEntities.*false|noEntityExpansion/.test(line)) {
+              findings.push({ severity, category: 'xxe_vulnerability', file: path, line: i + 1, message: 'XML parsed without disabling external entity resolution — XXE attack risk.', suggestion: "Disable external entities: new XMLParser({ processEntities: false }) or switch to JSON." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_030',
+    category: 'insecure_direct_object_ref',
+    description: "Using user-provided IDs to fetch resources without verifying ownership enables IDOR attacks.",
+    severity: 'HIGH',
+    tags: ['security', 'idor', 'authorization'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "GET /api/orders/12345 with no ownership check lets user A access user B's order by changing the ID. Always verify the fetched resource belongs to the authenticated user before returning it.",
+      commonViolations: ["const order = await prisma.order.findUnique({ where: { id: params.id } })"],
+      goodExample: "const order = await prisma.order.findUnique({ where: { id: params.id, userId: session.userId } })\nif (!order) throw new NotFoundError()",
+      badExample: "const invoice = await db.invoice.findById(req.params.id)  // no ownership check — IDOR",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('insecure_direct_object_ref', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/findUnique\s*\(\s*\{\s*where\s*:\s*\{\s*id\s*:\s*(?:params\.|req\.params\.|input\.)/.test(line)) {
+            const surrounding = lines.slice(i, i + 3).join('\n');
+            if (!/userId|user_id|ownerId|owner_id|session\.\w+/.test(surrounding)) {
+              findings.push({ severity, category: 'insecure_direct_object_ref', file: path, line: i + 1, message: 'findUnique by user-supplied ID without ownership check — IDOR vulnerability.', suggestion: 'Add userId filter: findUnique({ where: { id: params.id, userId: session.userId } }).' });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_031',
+    category: 'http_in_production',
+    description: "Hardcoded http:// URLs in production code transmit data unencrypted and break HSTS.",
+    severity: 'HIGH',
+    tags: ['security', 'tls', 'https'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "HTTP URLs transmit data in plaintext, vulnerable to MITM attacks. Modern browsers also block mixed content (HTTPS page loading HTTP resources). Use https:// in all production URLs.",
+      commonViolations: ["const API_URL = 'http://api.myapp.com'"],
+      goodExample: "const API_URL = 'https://api.myapp.com'",
+      badExample: "await fetch('http://internal-api.example.com/data')  // plaintext — MITM vulnerable",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('http_in_production', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/['"]http:\/\/(?!localhost|127\.|10\.|192\.168\.)[\w.-]+/.test(line)) {
+            findings.push({ severity, category: 'http_in_production', file: path, line: i + 1, message: 'Non-localhost http:// URL in production code — transmits data unencrypted.', suggestion: "Change to https://. Use http:// only for localhost development." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_032',
+    category: 'dependency_confusion',
+    description: "Private package names without a scope (@org/) are vulnerable to dependency confusion attacks.",
+    severity: 'MEDIUM',
+    tags: ['security', 'supply-chain', 'npm'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "If your private package is named 'myutil' (no @org scope), an attacker can publish a malicious package named 'myutil' on npm.org. npm may prefer the public registry version. Always scope private packages: @yourorg/myutil.",
+      commonViolations: ['// package.json: "dependencies": { "internal-auth": "1.0.0" }'],
+      goodExample: '"@myorg/internal-auth": "1.0.0"  // scoped — protected from dependency confusion',
+      badExample: '"internal-api": "1.0.0"  // unscoped — attackers can publish a malicious public package with same name',
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('dependency_confusion', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!path.includes('package.json')) continue;
+        try {
+          const pkg = JSON.parse(content);
+          const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+          for (const [name] of Object.entries(allDeps)) {
+            if (/(?:internal|private|local|corp|company)/i.test(name) && !name.startsWith('@')) {
+              findings.push({ severity, category: 'dependency_confusion', file: path, message: `Package "${name}" looks private but is unscoped — vulnerable to dependency confusion.`, suggestion: `Rename to "@yourorg/${name}" and configure npm to use your private registry for @yourorg.` });
+            }
+          }
+        } catch { /* not valid JSON */ }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_033',
+    category: 'xss_via_href',
+    description: "Using user-provided URLs in href attributes allows javascript: protocol XSS attacks.",
+    severity: 'BLOCKER',
+    tags: ['security', 'xss', 'react'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "<a href={userUrl}> where userUrl is 'javascript:alert(1)' executes JavaScript when clicked. Always validate that href URLs start with https:// or are relative paths.",
+      commonViolations: ["<a href={user.website}>Visit</a>", "<a href={link}>Link</a>"],
+      goodExample: "const safeUrl = user.website?.startsWith('https://') ? user.website : '#'\n<a href={safeUrl}>Visit</a>",
+      badExample: "<a href={post.externalUrl}>Read more</a>  // javascript: XSS if externalUrl is attacker-controlled",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('xss_via_href', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!/\.(tsx|jsx)$/.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/href\s*=\s*\{(?!['"`]\/|['"`]https:\/\/|['"`]#)/.test(line) && !/href\s*=\s*\{\s*['"`]/.test(line)) {
+            findings.push({ severity, category: 'xss_via_href', file: path, line: i + 1, message: 'Dynamic href from variable — may allow javascript: protocol XSS if unvalidated.', suggestion: "Validate href starts with 'https://' or is a relative path: const safe = url?.startsWith('https://') ? url : '#'." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_034',
+    category: 'clickjacking_missing',
+    description: "Pages without X-Frame-Options or CSP frame-ancestors are vulnerable to clickjacking.",
+    severity: 'MEDIUM',
+    tags: ['security', 'clickjacking', 'headers'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Clickjacking embeds your site in a hidden iframe on an attacker's page and tricks users into clicking your UI. X-Frame-Options: DENY or Content-Security-Policy: frame-ancestors 'none' prevents embedding.",
+      commonViolations: ["// next.config.js without X-Frame-Options header"],
+      goodExample: "// next.config.js headers:\n{ key: 'X-Frame-Options', value: 'DENY' }\n{ key: 'Content-Security-Policy', value: \"frame-ancestors 'none'\" }",
+      badExample: "// No frame-ancestors or X-Frame-Options set — page embeddable in iframes",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('clickjacking_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!path.includes('next.config') && !path.includes('helmet') && !path.includes('middleware.')) continue;
+        if (path.includes('next.config') && content.includes('headers') && !content.includes('X-Frame-Options') && !content.includes('frame-ancestors')) {
+          findings.push({ severity, category: 'clickjacking_missing', file: path, message: 'Next.js config defines headers but is missing X-Frame-Options or frame-ancestors CSP — clickjacking risk.', suggestion: "Add: { key: 'X-Frame-Options', value: 'DENY' } to your headers configuration." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_035',
+    category: 'password_not_hashed',
+    description: "Storing passwords without hashing exposes all user credentials if the database is breached.",
+    severity: 'BLOCKER',
+    tags: ['security', 'passwords', 'cryptography'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Storing plaintext or MD5/SHA1 passwords means a database breach exposes all credentials immediately. Use bcrypt, Argon2, or scrypt with a high work factor — these are slow by design, making offline brute force impractical.",
+      commonViolations: ["user.password = req.body.password  // stored as plaintext", "createHash('md5').update(password).digest('hex')"],
+      goodExample: "import bcrypt from 'bcrypt'\nconst hashed = await bcrypt.hash(password, 12)  // cost factor 12",
+      badExample: "user.password = password  // plaintext — full breach on DB dump",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('password_not_hashed', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/(?:user|account|profile)\.\s*password\s*=\s*(?:password|req\.body|body\.|input\.)/.test(line)) {
+            findings.push({ severity, category: 'password_not_hashed', file: path, line: i + 1, message: 'Password assigned directly without hashing — plaintext password storage.', suggestion: "Hash before storing: const hash = await bcrypt.hash(password, 12) and store hash." });
+          }
+          if (/createHash\s*\(\s*['"](?:md5|sha1)['"]\s*\)/.test(line)) {
+            findings.push({ severity, category: 'password_not_hashed', file: path, line: i + 1, message: 'Password hashed with MD5/SHA1 — these are broken for password storage (too fast).', suggestion: "Use bcrypt.hash(password, 12), argon2.hash(password), or scrypt for password hashing." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_036',
+    category: 'env_var_logged',
+    description: "Logging process.env values risks exposing secret keys in log aggregators.",
+    severity: 'HIGH',
+    tags: ['security', 'secrets', 'logging'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "console.log(process.env) dumps all environment variables — including DATABASE_URL, API_KEYs, and other secrets — into logs. Log aggregators index these and they become permanently accessible.",
+      commonViolations: ["console.log(process.env)", "logger.info({ env: process.env }, 'Config')"],
+      goodExample: "logger.info({ NODE_ENV: process.env.NODE_ENV, version: pkg.version }, 'App starting')  // only safe non-secrets",
+      badExample: "console.log(process.env)  // logs DATABASE_URL, SECRET_KEY, all other env vars",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('env_var_logged', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/(?:console|logger)\.\w+\s*\([^)]*process\.env(?!\.\w+['"])/.test(line)) {
+            findings.push({ severity, category: 'env_var_logged', file: path, line: i + 1, message: 'process.env logged — exposes all secret environment variables in log aggregators.', suggestion: "Log only specific safe values: logger.info({ NODE_ENV: process.env.NODE_ENV }, 'Starting')." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_037',
+    category: 'prototype_pollution_merge',
+    description: "Object.assign() or lodash.merge() with user-controlled keys can pollute Object.prototype.",
+    severity: 'BLOCKER',
+    tags: ['security', 'prototype-pollution', 'javascript'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Object.assign(target, userInput) where userInput contains __proto__ or constructor.prototype keys pollutes the prototype chain. This can change behavior for all objects in the process and is exploitable for privilege escalation.",
+      commonViolations: ["Object.assign(config, req.body)", "_.merge(defaults, userInput)"],
+      goodExample: "const safe = Object.create(null)  // null prototype — not pollutable\nfor (const [k, v] of Object.entries(userInput)) { if (k !== '__proto__') safe[k] = v }",
+      badExample: "Object.assign(options, req.body)  // req.body.__proto__ pollutes Object.prototype",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('prototype_pollution_merge', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (/Object\.assign\s*\([^,]+,\s*(?:req\.|body\.|input\.|params\.)/.test(line) || /(?:_\.merge|lodash\.merge|merge)\s*\([^,]+,\s*(?:req\.|body\.|input\.)/.test(line)) {
+            findings.push({ severity, category: 'prototype_pollution_merge', file: path, line: i + 1, message: 'Object.assign/merge with user-controlled input — prototype pollution vulnerability.', suggestion: "Sanitize user input: filter out '__proto__', 'constructor', 'prototype' keys before merging." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
 ];

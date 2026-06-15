@@ -584,4 +584,504 @@ export const PERFORMANCE_RULES: PrometheusRule[] = [
       return findings;
     },
   },
+
+  // ── Performance expansions ────────────────────────────────────────────────
+
+  {
+    id: 'PERF_009',
+    category: 'bundle_size_moment',
+    description: "moment.js adds 67KB to the bundle. Migrate to date-fns or dayjs.",
+    severity: 'MEDIUM',
+    tags: ['performance', 'bundle-size', 'dependencies'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "moment is 67KB minified and unmaintained since 2021. date-fns is tree-shakable (import { format } adds ~2KB). dayjs is 2KB total. The moment team officially recommends migrating.",
+      commonViolations: ["import moment from 'moment'"],
+      goodExample: "import { format, addDays, differenceInDays } from 'date-fns'",
+      badExample: "import moment from 'moment'  // 67KB for a formatting function",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('bundle_size_moment', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (/from\s+['"]moment['"]\s*$|require\(['"]moment['"]\)/.test(content)) {
+          findings.push({ severity, category: 'bundle_size_moment', file: path, message: "moment.js imported — 67KB bundle, maintenance mode. Migrate to date-fns or dayjs.", suggestion: "import { format } from 'date-fns' — tree-shakable and actively maintained." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_010',
+    category: 'web_vitals_lcp',
+    description: "Above-the-fold images without priority/preload delay Largest Contentful Paint (LCP) — a Core Web Vital.",
+    severity: 'MEDIUM',
+    tags: ['performance', 'core-web-vitals', 'lcp'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "LCP measures when the largest above-the-fold element is rendered. Hero images without loading='eager' or Next.js priority are lazy-loaded by default — delaying LCP and hurting SEO scores.",
+      commonViolations: ["<Image src='/hero.jpg' alt='Hero' />  // no priority"],
+      goodExample: "<Image src='/hero.jpg' alt='Hero' priority />  // preloads LCP image",
+      badExample: "<Image src={heroImage} alt='...' />  // lazy-loaded — delays LCP",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('web_vitals_lcp', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path)) continue;
+        if (!path.includes('page.') && !path.includes('layout.') && !path.includes('hero') && !path.includes('hero'.toLowerCase())) return findings;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/<Image\s/.test(line) && /src/.test(line) && !line.includes('priority') && !line.includes('loading="eager"')) {
+            if (i < 40) {
+              findings.push({ severity, category: 'web_vitals_lcp', file: path, line: i + 1, message: 'Above-the-fold <Image> without priority — delays LCP Core Web Vital.', suggestion: "Add priority to the hero/first-view image: <Image src={...} priority />." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_011',
+    category: 'virtualization_missing',
+    description: "Rendering large lists (100+ items) without virtualization causes DOM bloat and scroll jank.",
+    severity: 'HIGH',
+    tags: ['performance', 'rendering', 'lists'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Rendering 1000 DOM nodes for a list is expensive — initial paint takes seconds, scroll is janky. Virtualization (react-window, @tanstack/virtual) renders only visible items (~20), keeping the DOM small.",
+      commonViolations: ["{posts.map(post => <PostCard key={post.id} post={post} />)}  // 1000 cards in DOM"],
+      goodExample: "import { useVirtualizer } from '@tanstack/react-virtual'\n// renders only visible items",
+      badExample: "{items.map(item => <Item key={item.id} item={item} />)}  // 10K items in DOM — scroll jank",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('virtualization_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path)) continue;
+        if (content.includes('useVirtualizer') || content.includes('react-window') || content.includes('FixedSizeList')) return findings;
+        if (/\.map\s*\(/.test(content) && (/list|List|feed|Feed|table|Table|grid|Grid/i.test(path) || /(?:data|items|posts|products|users|results)\.map/.test(content))) {
+          if (content.includes('pagination') || content.includes('infiniteScroll') || content.includes('useInfiniteQuery')) return findings;
+          findings.push({ severity, category: 'virtualization_missing', file: path, message: 'Large list rendered without virtualization — may cause scroll jank with 100+ items.', suggestion: "Use @tanstack/react-virtual or react-window to render only visible items." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_012',
+    category: 'css_in_js_runtime',
+    description: "Runtime CSS-in-JS (styled-components, emotion) generates styles on every render — prefer Tailwind or CSS modules.",
+    severity: 'MEDIUM',
+    tags: ['performance', 'css', 'rendering'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Runtime CSS-in-JS serializes style strings, injects <style> tags, and uses React context on every render — adding 15-40ms of JS overhead per component. Tailwind (compile-time) and CSS Modules (static) have no runtime cost.",
+      commonViolations: ["import styled from 'styled-components'", "import { css } from '@emotion/react'"],
+      goodExample: "// Tailwind: className='flex items-center gap-4 bg-white rounded-lg'\n// CSS Modules: import styles from './Card.module.css'",
+      badExample: "const Card = styled.div`background: white; padding: 16px`  // style injection on every render",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('css_in_js_runtime', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (/from\s+['"](?:styled-components|@emotion\/react|@emotion\/styled|@stitches\/react)['"]/.test(content)) {
+          findings.push({ severity, category: 'css_in_js_runtime', file: path, message: "Runtime CSS-in-JS library detected — adds JavaScript overhead on every render.", suggestion: "Migrate to Tailwind CSS (utility classes) or CSS Modules for zero-runtime styling." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_013',
+    category: 'unoptimized_regex',
+    description: "Complex regex compiled inside a loop or function body wastes CPU recompiling on every call.",
+    severity: 'MEDIUM',
+    tags: ['performance', 'cpu', 'regex'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "new RegExp('pattern') inside a for loop or frequently-called function recompiles the regex on every iteration. Hoist regex to module scope or a const to compile once.",
+      commonViolations: ["for (const item of items) { if (new RegExp(pattern).test(item)) ... }"],
+      goodExample: "const EMAIL_RE = /^[^@]+@[^@]+\\.[^@]+$/  // compiled once at module scope",
+      badExample: "function validate(email: string) { return new RegExp('^[^@]+@[^@]+\\.[^@]+$').test(email) }  // compiled every call",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('unoptimized_regex', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/new\s+RegExp\s*\(/.test(line) && !/module|const\s+\w+\s*=/.test(line)) {
+            if (i > 0 && /function|=>|\bfor\b|\bwhile\b/.test(lines.slice(Math.max(0, i - 5), i).join('\n'))) {
+              findings.push({ severity, category: 'unoptimized_regex', file: path, line: i + 1, message: 'new RegExp() inside a function or loop — recompiled on every call.', suggestion: 'Hoist to module scope: const MY_RE = /pattern/ compiled once.' });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_014',
+    category: 'json_parse_large',
+    description: "JSON.parse() on large strings blocks the main thread — use streaming or a Web Worker for large payloads.",
+    severity: 'MEDIUM',
+    tags: ['performance', 'cpu', 'main-thread'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "JSON.parse is synchronous and blocks the main thread. A 1MB JSON response takes ~10ms to parse on a fast desktop — much longer on mobile. For large payloads, use streaming JSON parsers (oboe.js) or parse in a Web Worker.",
+      commonViolations: ["const data = JSON.parse(largeResponseText)  // 1MB+ JSON blocks main thread"],
+      goodExample: "// Option 1: Stream with oboe.js for large responses\n// Option 2: Parse in a Web Worker\n// Option 3: Paginate the API to avoid large payloads",
+      badExample: "const allUsers = JSON.parse(fs.readFileSync('users.json', 'utf8'))  // potentially huge file, blocks event loop",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('json_parse_large', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/JSON\.parse\s*\(\s*(?:fs\.|readFile|readFileSync|body|text|response)/.test(line)) {
+            findings.push({ severity, category: 'json_parse_large', file: path, line: i + 1, message: 'JSON.parse on a potentially large payload — blocks the main thread/event loop.', suggestion: 'Paginate the data, use streaming JSON, or parse in a Worker for large payloads (>100KB).' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_015',
+    category: 'event_listener_passive',
+    description: "Scroll and touch event listeners without { passive: true } block the browser's compositor thread, causing scroll jank.",
+    severity: 'MEDIUM',
+    tags: ['performance', 'scroll', 'browser'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "By default, scroll listeners may call preventDefault(), so the browser must wait for them to finish before scrolling. passive: true tells the browser the listener won't block scrolling — enabling 60fps smooth scroll.",
+      commonViolations: ["window.addEventListener('scroll', handler)", "el.addEventListener('touchmove', handler)"],
+      goodExample: "window.addEventListener('scroll', handler, { passive: true })\nel.addEventListener('touchmove', handler, { passive: true })",
+      badExample: "document.addEventListener('wheel', onWheel)  // browser waits for this to complete before scrolling",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('event_listener_passive', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/addEventListener\s*\(\s*['"](?:scroll|wheel|touchstart|touchmove|touchend)['"]/.test(line) && !line.includes('passive')) {
+            findings.push({ severity, category: 'event_listener_passive', file: path, line: i + 1, message: 'Scroll/touch event listener without { passive: true } — blocks compositor thread.', suggestion: "Add passive option: addEventListener('scroll', handler, { passive: true })." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_016',
+    category: 'intersection_observer_missing',
+    description: "Using scroll listeners to detect element visibility should use IntersectionObserver instead.",
+    severity: 'LOW',
+    tags: ['performance', 'scroll', 'browser-api'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "getBoundingClientRect() inside scroll handlers runs on the main thread and forces layout recalculation on every scroll event. IntersectionObserver is asynchronous and runs off the main thread — much more efficient.",
+      commonViolations: ["window.addEventListener('scroll', () => { const rect = el.getBoundingClientRect() })"],
+      goodExample: "const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) onVisible() })\nobserver.observe(el)",
+      badExample: "window.addEventListener('scroll', () => {\n  const rect = el.getBoundingClientRect()\n  if (rect.top < window.innerHeight) setVisible(true)\n})",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('intersection_observer_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (/addEventListener\s*\(\s*['"]scroll['"]/.test(content) && /getBoundingClientRect/.test(content)) {
+          findings.push({ severity, category: 'intersection_observer_missing', file: path, message: 'getBoundingClientRect() in scroll handler — use IntersectionObserver for off-main-thread detection.', suggestion: 'Replace scroll+getBoundingClientRect with new IntersectionObserver(callback).observe(el).' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_017',
+    category: 'object_spread_in_render',
+    description: "Creating new objects with spread ({ ...obj, key: val }) inside render/JSX props triggers unnecessary re-renders.",
+    severity: 'LOW',
+    tags: ['performance', 'react', 'rendering'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "<Component props={{ ...defaults, override: value }} /> creates a new object on every render. Since the reference changes, any memoized child re-renders even if the effective values are identical.",
+      commonViolations: ["<Chart config={{ ...baseConfig, color: theme.primary }} />"],
+      goodExample: "const chartConfig = useMemo(() => ({ ...baseConfig, color: theme.primary }), [baseConfig, theme.primary])\n<Chart config={chartConfig} />",
+      badExample: "<DataGrid columns={{ ...defaultColumns, actions: actionColumn }} />  // new object every render",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('object_spread_in_render', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/=\{\s*\{\s*\.\.\.\w+/.test(line) && !line.includes('useMemo') && !line.includes('//')) {
+            findings.push({ severity, category: 'object_spread_in_render', file: path, line: i + 1, message: 'Object spread in JSX prop creates new reference on every render — causes unnecessary child re-renders.', suggestion: 'Memoize with useMemo: const obj = useMemo(() => ({ ...base, extra }), [base, extra]).' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_018',
+    category: 'unused_dependency_in_package',
+    description: "Dependencies listed in package.json but not imported in any source file add install time and attack surface.",
+    severity: 'LOW',
+    tags: ['performance', 'dependencies', 'maintenance'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Unused dependencies slow npm install, add transitive security vulnerabilities, and increase cognitive load. Run npx depcheck or use knip to identify and remove them.",
+      commonViolations: ['// package.json lists lodash but codebase uses lodash-es'],
+      goodExample: "// Use npx depcheck or knip to find unused deps, then remove from package.json",
+      badExample: "// package.json: 'lodash', 'moment', 'axios' all installed but none imported in src/",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('unused_dependency_in_package', config.severityRules);
+      const findings: Finding[] = [];
+      const packageFile = changedFiles.find(f => f.path === 'package.json' || f.path.endsWith('/package.json'));
+      if (!packageFile) return findings;
+      try {
+        const pkg = JSON.parse(packageFile.content);
+        const deps = Object.keys(pkg.dependencies ?? {});
+        const allContent = changedFiles.filter(f => SOURCE_EXT.test(f.path)).map(f => f.content).join('\n');
+        for (const dep of deps) {
+          if (!/react|next|typescript|tailwind|postcss|autoprefixer|eslint|prettier|vitest|jest/.test(dep)) {
+            if (!allContent.includes(`'${dep}'`) && !allContent.includes(`"${dep}"`)) {
+              findings.push({ severity, category: 'unused_dependency_in_package', file: packageFile.path, message: `Package '${dep}' in package.json not imported in any changed source file.`, suggestion: "Run npx depcheck to identify all unused dependencies and remove them." });
+            }
+          }
+        }
+      } catch { /* not valid JSON */ }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_019',
+    category: 'waterfall_data_fetch',
+    description: "Sequential awaits for independent data sources create a waterfall — fetch them in parallel with Promise.all.",
+    severity: 'MEDIUM',
+    tags: ['performance', 'async', 'latency'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "const user = await getUser(); const posts = await getPosts() takes 200ms + 300ms = 500ms total. Promise.all([getUser(), getPosts()]) takes max(200ms, 300ms) = 300ms — 40% faster.",
+      commonViolations: ['const user = await getUser(id)\nconst posts = await getPosts(userId)\nconst stats = await getStats(userId)'],
+      goodExample: "const [user, posts, stats] = await Promise.all([getUser(id), getPosts(userId), getStats(userId)])",
+      badExample: "const profile = await fetchProfile(id)  // 200ms\nconst timeline = await fetchTimeline(id)  // 300ms — sequential = 500ms total",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('waterfall_data_fetch', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        let consecutiveAwaits = 0;
+        let firstLine = 0;
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/^\s*(?:const|let)\s+\w+\s*=\s*await\s+\w+/.test(line)) {
+            if (consecutiveAwaits === 0) firstLine = i;
+            consecutiveAwaits++;
+          } else {
+            if (consecutiveAwaits >= 3) {
+              findings.push({ severity, category: 'waterfall_data_fetch', file: path, line: firstLine + 1, message: `${consecutiveAwaits} sequential awaits — fetch independent operations in parallel with Promise.all().`, suggestion: "const [a, b, c] = await Promise.all([fetchA(), fetchB(), fetchC()]) — runs concurrently." });
+            }
+            consecutiveAwaits = 0;
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_020',
+    category: 'ssr_heavy_computation',
+    description: "CPU-intensive computations in Server Components block the response for all concurrent requests.",
+    severity: 'HIGH',
+    tags: ['performance', 'nextjs', 'server-components'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Next.js handles concurrent requests in a single Node.js process. A CPU-heavy synchronous operation in a Server Component blocks the event loop, delaying ALL concurrent requests until it completes.",
+      commonViolations: ['// Server Component that calls a complex sync algorithm on every request'],
+      goodExample: "// Cache the result: const result = unstable_cache(heavyCompute)\n// Or: move to a background job if not needed synchronously",
+      badExample: "// app/page.tsx (Server Component):\nconst result = computeExpensiveReport(rawData)  // blocks all concurrent requests",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ssr_heavy_computation', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || !path.includes('page.')) return findings;
+        if (content.includes("'use client'")) return findings;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/for\s*\(|while\s*\(|\.reduce\s*\(|\.sort\s*\(/.test(line) && !/async|await/.test(lines.slice(i - 2, i + 2).join(''))) {
+            findings.push({ severity, category: 'ssr_heavy_computation', file: path, line: i + 1, message: 'Synchronous computation in a Server Component page — blocks the event loop for all concurrent requests.', suggestion: "Cache with unstable_cache() or move heavy computation to a background job/route." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_021',
+    category: 'prefetch_on_hover',
+    description: "Preloading route data on route click instead of hover means the user waits during transition.",
+    severity: 'LOW',
+    tags: ['performance', 'ux', 'navigation'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Hover-to-prefetch starts prefetching 200-300ms before click (hover intent delay). At click time, the data may already be ready. Libraries like @tanstack/router and next/link support this automatically.",
+      commonViolations: ["// Only fetching data when navigation actually happens — missing hover preload"],
+      goodExample: "<Link href='/product/123' prefetch={true}>  // Next.js auto-prefetches on viewport",
+      badExample: "onClick={() => router.push('/product/123')}  // starts loading only after click",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('prefetch_on_hover', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/onClick\s*=\s*\{\s*\(\s*\)\s*=>\s*router\.(push|navigate)/.test(line) && !content.includes('onMouseEnter') && !content.includes('prefetch')) {
+            findings.push({ severity, category: 'prefetch_on_hover', file: path, line: i + 1, message: 'Navigation only triggered on click — consider prefetching on hover to reduce perceived navigation latency.', suggestion: "Use <Link href='...'> (auto-prefetch) or add onMouseEnter to start prefetch 200ms before click." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_022',
+    category: 'layout_thrashing',
+    description: "Interleaving reads (getBoundingClientRect) and writes (style.x = ...) in a loop causes layout thrashing.",
+    severity: 'HIGH',
+    tags: ['performance', 'browser', 'dom'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Reading layout properties (offsetWidth, getBoundingClientRect) after writing style properties forces the browser to recalculate layout synchronously. In a loop, this can cause hundreds of forced reflows per second — known as layout thrashing.",
+      commonViolations: ["for (const el of els) { el.style.width = el.offsetWidth + 10 + 'px' }  // read-write in loop"],
+      goodExample: "const widths = els.map(el => el.offsetWidth)  // batch reads\nels.forEach((el, i) => el.style.width = widths[i]! + 10 + 'px')  // batch writes",
+      badExample: "elements.forEach(el => {\n  const h = el.offsetHeight  // triggers reflow\n  el.style.height = h + 20 + 'px'  // write — next read forces reflow again\n})",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('layout_thrashing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/(?:offsetWidth|offsetHeight|getBoundingClientRect|clientWidth|scrollTop)/.test(line)) {
+            const nextLine = lines[i + 1] || '';
+            if (/\.style\.\w+\s*=/.test(nextLine)) {
+              findings.push({ severity, category: 'layout_thrashing', file: path, line: i + 1, message: 'Layout read immediately followed by style write — causes forced synchronous reflow.', suggestion: 'Batch all reads first, then all writes: const dims = els.map(el => el.offsetWidth); els.forEach((el, i) => el.style.width = dims[i] + "px").' });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'PERF_023',
+    category: 'service_worker_missing',
+    description: "Production web apps without a Service Worker miss offline support and asset caching benefits.",
+    severity: 'LOW',
+    tags: ['performance', 'pwa', 'caching'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "A Service Worker can cache static assets, API responses, and fonts — making repeat visits instant and the app usable offline. next-pwa or Workbox can add this with minimal configuration.",
+      commonViolations: ["// Production Next.js app with no service worker configuration"],
+      goodExample: "// next.config.js\nconst withPWA = require('next-pwa')({ dest: 'public' })\nmodule.exports = withPWA({ ... })",
+      badExample: "// No service worker — every visit re-downloads all assets",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('service_worker_missing', config.severityRules);
+      const findings: Finding[] = [];
+      const isNextConfig = changedFiles.some(f => f.path.includes('next.config'));
+      if (!isNextConfig) return findings;
+      const nextConfig = changedFiles.find(f => f.path.includes('next.config'));
+      if (nextConfig && !nextConfig.content.includes('pwa') && !nextConfig.content.includes('workbox') && !nextConfig.content.includes('service-worker')) {
+        findings.push({ severity, category: 'service_worker_missing', file: nextConfig.path, message: "Next.js config without PWA/Service Worker — missing offline support and asset caching.", suggestion: "Add next-pwa: const withPWA = require('next-pwa')({ dest: 'public' }) to enable service worker." });
+      }
+      return findings;
+    },
+  },
 ];

@@ -431,4 +431,690 @@ export const REACT_RULES: PrometheusRule[] = [
       return findings;
     },
   },
+
+  // ── React hooks, memo, and reconciliation expansions ─────────────────────
+
+  {
+    id: 'REACT_013',
+    category: 'react_missing_key',
+    description: "List items rendered without a stable key prop cause incorrect reconciliation and DOM mutations.",
+    severity: 'HIGH',
+    tags: ['react', 'performance', 'correctness'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "React uses keys to identify which items changed/moved in a list. Without keys (or with array index as key), React may re-render or re-mount items incorrectly when items reorder, causing lost state, focus jumps, and wrong animations.",
+      commonViolations: ["items.map(item => <Card>{item.name}</Card>)", "items.map((item, idx) => <Card key={idx}>{item.name}</Card>)"],
+      goodExample: "items.map(item => <Card key={item.id}>{item.name}</Card>)  // stable identity-based key",
+      badExample: "items.map((item, idx) => <li key={idx}>{item.title}</li>)  // index key breaks on reorder",
+      relatedPlaybooks: [],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('react_missing_key', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/\.(map|flatMap)\s*\(\s*(?:\([^)]*\)|[^=]+)\s*=>/.test(line)) {
+            const block = lines.slice(i, i + 5).join('\n');
+            if (/<[A-Z]\w+|<(?:li|div|td|tr|option)\b/.test(block) && !/key\s*=/.test(block)) {
+              findings.push({ severity, category: 'react_missing_key', file: path, line: i + 1, message: 'List rendered via .map() without key prop — React reconciliation may produce incorrect DOM updates.', suggestion: "Add key={item.id} using a stable unique identifier, never the array index." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_014',
+    category: 'react_index_key',
+    description: "Using array index as React key prop causes incorrect reconciliation when items are added, removed, or reordered.",
+    severity: 'MEDIUM',
+    tags: ['react', 'correctness', 'performance'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "When items reorder (sort, filter, delete), React matches them by index. Item at index 0 gets the state of the old index 0, not the item itself. This causes component state (focus, input value, animation) to transfer to the wrong item.",
+      commonViolations: ["list.map((item, index) => <Input key={index} value={item.value} />)"],
+      goodExample: "list.map(item => <Input key={item.id} value={item.value} />)",
+      badExample: "items.map((task, i) => <TaskItem key={i} task={task} />)  // state sticks to wrong task after reorder",
+      relatedPlaybooks: [],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('react_index_key', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/key\s*=\s*\{?\s*(?:index|idx|i)\s*\}?/.test(line)) {
+            findings.push({ severity, category: 'react_index_key', file: path, line: i + 1, message: 'Array index used as React key — causes incorrect reconciliation on sort/delete/insert.', suggestion: 'Use a stable unique identifier from the data: key={item.id} or key={item.slug}.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_015',
+    category: 'use_callback_missing_dep',
+    description: "useCallback with missing dependencies will use stale closure values instead of the latest state/props.",
+    severity: 'HIGH',
+    tags: ['react', 'hooks', 'correctness'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "useCallback(() => fn(value), []) with an empty array memoizes the function with the initial value of `value`. When value updates, the memoized function still sees the old value — a classic stale closure bug.",
+      commonViolations: ["const handler = useCallback(() => submitForm(formData), [])  // formData is stale"],
+      goodExample: "const handler = useCallback(() => submitForm(formData), [formData, submitForm])",
+      badExample: "const onClick = useCallback(() => doSomething(count), [])  // count is always 0",
+      relatedPlaybooks: [],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('use_callback_missing_dep', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/useCallback\s*\(/.test(line)) {
+            const block = lines.slice(i, i + 5).join('\n');
+            if (/,\s*\[\s*\]/.test(block) && /\([\w.]+\)/.test(block.replace(/useCallback\s*\(/, ''))) {
+              findings.push({ severity, category: 'use_callback_missing_dep', file: path, line: i + 1, message: 'useCallback with empty dependency array calls a function with arguments — those arguments are stale.', suggestion: 'Add the function arguments to the dependency array: useCallback(() => fn(x), [fn, x]).' });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_016',
+    category: 'react_memo_overuse',
+    description: "Wrapping every component in React.memo adds comparison overhead and complexity without benefit when props change often.",
+    severity: 'LOW',
+    tags: ['react', 'performance', 'optimization'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "React.memo runs a shallow equality check on every prop on every parent render. If props are objects or change frequently, the check itself costs more than just re-rendering. Only memo components when profiling shows unnecessary re-renders.",
+      commonViolations: ["export default memo(SimpleLabel)  // StaticLabel just renders a string — no optimization needed"],
+      goodExample: "// Profile first. memo is useful for:\n// - Components with many props that rarely change\n// - Computationally expensive renders\n// - Components at the bottom of a frequently re-rendered tree",
+      badExample: "export default memo(function Button({ onClick, children }) { return <button onClick={onClick}>{children}</button> })  // onClick is a new reference anyway",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('react_memo_overuse', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        const memoCount = (content.match(/\bReact\.memo\b|(?:^|\s)memo\s*\(/gm) || []).length;
+        if (memoCount > 5) {
+          findings.push({ severity, category: 'react_memo_overuse', file: path, message: `${memoCount} React.memo usages in one file — memo adds overhead. Profile first, memoize only where needed.`, suggestion: 'Use React DevTools Profiler to identify actual unnecessary renders before applying memo.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_017',
+    category: 'state_update_unmounted',
+    description: "Calling setState on an unmounted component causes memory leaks and 'Can\\'t perform state update on unmounted component' warnings.",
+    severity: 'HIGH',
+    tags: ['react', 'hooks', 'reliability', 'memory'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "An async operation (fetch, setTimeout) that completes after a component unmounts tries to call setState on a component that no longer exists. This leaks memory and causes errors. Cancel async work in useEffect cleanup.",
+      commonViolations: ['useEffect(() => { fetch(url).then(data => setData(data)) }, [url])  // no cleanup on unmount'],
+      goodExample: "useEffect(() => {\n  const controller = new AbortController()\n  fetch(url, { signal: controller.signal }).then(r => r.json()).then(setData).catch(() => {})\n  return () => controller.abort()  // cancel on unmount\n}, [url])",
+      badExample: "useEffect(() => { fetch(url).then(d => setData(d)) }, [url])  // setState after unmount",
+      relatedPlaybooks: [],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('state_update_unmounted', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/useEffect\s*\(/.test(line)) {
+            const block = lines.slice(i, i + 12).join('\n');
+            const hasFetch = /fetch\s*\(|axios\.|setTimeout|setInterval/.test(block);
+            const hasCleanup = /return\s*\(\s*\)|return\s*\(\)?\s*=>\s*\{|controller\.abort|clearTimeout|clearInterval/.test(block);
+            if (hasFetch && !hasCleanup) {
+              findings.push({ severity, category: 'state_update_unmounted', file: path, line: i + 1, message: 'useEffect with async operation but no cleanup — may setState after component unmounts.', suggestion: 'Return an AbortController cleanup: return () => controller.abort() to cancel on unmount.' });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_018',
+    category: 'react_children_prop_type',
+    description: "Using ReactNode instead of PropsWithChildren<T> or FC<T> for components that accept children is less idiomatic.",
+    severity: 'LOW',
+    tags: ['react', 'typescript', 'dx'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "React.FC was deprecated for implying children is always present. Use PropsWithChildren<Props> or explicitly type children: React.ReactNode. In React 18+, children is no longer implicit in React.FC.",
+      commonViolations: ["const MyComponent: React.FC<Props> = ({ children }) => ...  // FC adds implicit any in older React"],
+      goodExample: "interface Props { children: React.ReactNode; title: string }\nfunction MyComponent({ children, title }: Props) { ... }",
+      badExample: "const Card: React.FC<{ title: string }> = ({ children, title }) => ...  // React 18 removed implicit children from FC",
+      relatedPlaybooks: ['typescript-conventions.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('react_children_prop_type', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/:\s*React\.FC</.test(line) || /:\s*FC</.test(line)) {
+            findings.push({ severity, category: 'react_children_prop_type', file: path, line: i + 1, message: "React.FC implicitly typed children in React 17 but not React 18 — causes type errors on upgrade.", suggestion: "Declare children explicitly: interface Props { children?: React.ReactNode } in your Props type." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_019',
+    category: 'conditional_hook_call',
+    description: "Hooks called inside conditionals, loops, or early returns violate Rules of Hooks and cause crashes.",
+    severity: 'BLOCKER',
+    tags: ['react', 'hooks', 'correctness'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "React tracks hook call order per component render. If a hook is called conditionally, the order changes between renders and React loses track of which state belongs to which hook — resulting in crashes or corrupt state.",
+      commonViolations: ["if (isAdmin) { const data = useFetch('/admin') }  // conditional hook call"],
+      goodExample: "const data = useFetch(isAdmin ? '/admin' : null)  // call hook unconditionally, pass condition as arg",
+      badExample: "function Component({ isLoggedIn }) {\n  if (!isLoggedIn) return null  // early return before hook calls\n  const [state] = useState(0)  // violates Rules of Hooks\n}",
+      relatedPlaybooks: [],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('conditional_hook_call', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        let inIf = false;
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/^\s+if\s*\(/.test(line)) inIf = true;
+          if (inIf && /\buse[A-Z]\w+\s*\(/.test(line)) {
+            findings.push({ severity, category: 'conditional_hook_call', file: path, line: i + 1, message: 'Hook called inside a conditional — violates Rules of Hooks.', suggestion: 'Call hooks unconditionally at the top of the component and pass the condition as a parameter.' });
+          }
+          if (inIf && /\}/.test(line)) inIf = false;
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_020',
+    category: 'event_handler_async',
+    description: "Async event handlers without error handling cause unhandled promise rejections that silently swallow errors.",
+    severity: 'HIGH',
+    tags: ['react', 'error-handling', 'reliability'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "onClick={async () => { await submitForm() }} will silently swallow any thrown errors. React doesn't catch async errors in event handlers. Wrap with try/catch and display errors to the user.",
+      commonViolations: ["onClick={async () => { await api.delete(id) }}  // no error handling"],
+      goodExample: "onClick={async () => {\n  try {\n    await api.delete(id)\n    showToast('Deleted')\n  } catch(err) {\n    showToast('Failed to delete', 'error')\n  }\n}}",
+      badExample: "onSubmit={async (e) => { e.preventDefault(); await saveData(formData) }}  // throws silently",
+      relatedPlaybooks: ['error-handling.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('event_handler_async', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/on(?:Click|Submit|Change|Blur|Focus)\s*=\s*\{?\s*async\s*\(/.test(line)) {
+            const block = lines.slice(i, i + 10).join('\n');
+            if (!/try\s*\{/.test(block)) {
+              findings.push({ severity, category: 'event_handler_async', file: path, line: i + 1, message: 'Async event handler without try/catch — errors are silently swallowed.', suggestion: 'Wrap with try/catch and update component state to display the error to the user.' });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_021',
+    category: 'prop_drilling_deep',
+    description: "Passing props through 4+ levels of components (prop drilling) is a strong signal to use Context or a state manager.",
+    severity: 'LOW',
+    tags: ['react', 'architecture', 'maintainability'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Prop drilling (A→B→C→D→E for a single value) makes all intermediary components aware of data they don't use. Adding, removing, or changing the value requires touching every layer. Use Context or Zustand.",
+      commonViolations: ["<Layout user={user}><Dashboard user={user}><Sidebar user={user}><Avatar user={user} /></Sidebar></Dashboard></Layout>"],
+      goodExample: "const UserContext = createContext<User | null>(null)\n// In Avatar: const user = useContext(UserContext)",
+      badExample: "<A user={user}><B user={user}><C user={user}><D user={user} /></C></B></A>  // 4 levels of prop drilling",
+      relatedPlaybooks: ['architecture.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('prop_drilling_deep', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        const propMatches = content.match(/\b(\w+)=\{\1\}/g) || [];
+        const uniqueProps = new Set(propMatches.map(m => m.split('=')[0]!));
+        for (const prop of uniqueProps) {
+          const count = (content.match(new RegExp(`\\b${prop}=\\{${prop}\\}`, 'g')) || []).length;
+          if (count >= 3) {
+            findings.push({ severity, category: 'prop_drilling_deep', file: path, message: `Prop '${prop}' passed through ${count} component levels — use Context or a state manager.`, suggestion: `Create a Context for '${prop}' so consumers can access it directly without prop drilling.` });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_022',
+    category: 'large_component',
+    description: "Components over 200 lines mix too many concerns — break into smaller focused components.",
+    severity: 'LOW',
+    tags: ['react', 'maintainability', 'architecture'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "A 400-line component likely renders multiple distinct sections, manages several pieces of state, and handles multiple user interactions. Each of these is a candidate for a dedicated component with its own state and tests.",
+      commonViolations: ['// UserProfile.tsx that renders header, bio, posts list, settings, and friends'],
+      goodExample: "// UserProfile.tsx: orchestrates sub-components\n// UserHeader.tsx, UserBio.tsx, UserPostsList.tsx — each focused",
+      badExample: "// Dashboard.tsx: 600 lines handling nav, charts, tables, modals, and forms",
+      relatedPlaybooks: ['architecture.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('large_component', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        const lineCount = content.split('\n').length;
+        if (lineCount > 250) {
+          findings.push({ severity, category: 'large_component', file: path, message: `Component file is ${lineCount} lines — consider splitting into smaller focused components.`, suggestion: "Extract distinct sections (header, list, form) into separate components with their own files." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_023',
+    category: 'usememo_stable_primitive',
+    description: "Wrapping primitive values in useMemo provides no benefit — only memoize expensive computations or object references.",
+    severity: 'LOW',
+    tags: ['react', 'performance', 'hooks'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "useMemo(() => someString, []) memoizes a primitive — this is pointless overhead since primitives are already compared by value in React's reconciliation. useMemo is only useful for expensive calculations or creating stable object/array references.",
+      commonViolations: ['const label = useMemo(() => `Hello ${name}`, [name])  // string template — no object allocation'],
+      goodExample: "const label = `Hello ${name}`  // just compute inline\nconst expensiveValue = useMemo(() => heavyComputation(data), [data])  // actually useful",
+      badExample: "const isActive = useMemo(() => status === 'active', [status])  // boolean comparison — no memoization needed",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('usememo_stable_primitive', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/useMemo\s*\(\s*\(\s*\)\s*=>/.test(line)) {
+            const block = lines.slice(i, i + 3).join('\n');
+            if (/useMemo\s*\(\s*\(\s*\)\s*=>\s*(?:`[^`]*`|'[^']*'|"\w+|\w+\s*===|\w+\s*!==|true|false|\d+)/.test(block)) {
+              findings.push({ severity, category: 'usememo_stable_primitive', file: path, line: i + 1, message: 'useMemo on a primitive value provides no benefit — primitives are compared by value in React.', suggestion: 'Only use useMemo for expensive computations or to create stable object/array references.' });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_024',
+    category: 'fragment_wrapper_unnecessary',
+    description: "Returning a single element wrapped in <></> or <React.Fragment> is unnecessary boilerplate.",
+    severity: 'LOW',
+    tags: ['react', 'dx', 'quality'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Fragments exist to return multiple elements without a DOM wrapper. Wrapping a single element in a Fragment adds pointless noise to the JSX tree and slightly increases bundle size.",
+      commonViolations: ["return (<><div>content</div></>)  // Fragment wrapping a single div"],
+      goodExample: "return <div>content</div>",
+      badExample: "return <><Component /></>  // unnecessary Fragment wrapper",
+      relatedPlaybooks: [],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('fragment_wrapper_unnecessary', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/return\s*\(\s*<>$/.test(line)) {
+            const block = lines.slice(i + 1, i + 6).join('\n');
+            const tags = (block.match(/<\/?[A-Za-z]/g) || []).filter(t => !t.startsWith('</'));
+            if (tags.length === 1 && /^\s*<\/>/.test(lines[i + 2] || '')) {
+              findings.push({ severity, category: 'fragment_wrapper_unnecessary', file: path, line: i + 1, message: 'Fragment wrapping a single element — Fragment is only needed for multiple siblings.', suggestion: 'Return the element directly: return <Component /> without the wrapping <>...</>.' });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_025',
+    category: 'use_id_for_a11y',
+    description: "Generating DOM IDs with Math.random() or counters is unstable in SSR and should use React's useId() hook.",
+    severity: 'MEDIUM',
+    tags: ['react', 'accessibility', 'ssr'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "IDs generated with Math.random() or a module-level counter produce different values between SSR and client hydration, causing React hydration mismatches and mislinked label/input pairs (accessibility failure).",
+      commonViolations: ["const id = `field-${Math.random()}`", "const id = `input-${counter++}`"],
+      goodExample: "const id = useId()  // React 18+ — stable across SSR and client",
+      badExample: "const labelId = `label-${Math.floor(Math.random() * 9999)}`  // different on SSR vs client",
+      relatedPlaybooks: ['accessibility.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('use_id_for_a11y', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/id.*Math\.random|id.*Date\.now\(\)|htmlFor.*Math\.random/.test(line)) {
+            findings.push({ severity, category: 'use_id_for_a11y', file: path, line: i + 1, message: 'DOM ID generated with Math.random() — unstable during SSR/hydration, breaks accessible label associations.', suggestion: 'Use useId() from React 18+: const id = useId() for stable, unique IDs.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_026',
+    category: 'dangerouslysetmlhtml_usage',
+    description: "dangerouslySetInnerHTML with unescaped user content is a direct XSS vulnerability.",
+    severity: 'BLOCKER',
+    tags: ['react', 'security', 'xss'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "dangerouslySetInnerHTML bypasses React's XSS protection and injects raw HTML. If the content originates from user input or an external API, an attacker can inject <script> tags or event handlers to run arbitrary JavaScript.",
+      commonViolations: ["dangerouslySetInnerHTML={{ __html: userComment }}", "dangerouslySetInnerHTML={{ __html: content }}"],
+      goodExample: "// Option 1: Sanitize with DOMPurify first:\n<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />\n// Option 2: Parse Markdown to safe React elements with remark/rehype",
+      badExample: "<div dangerouslySetInnerHTML={{ __html: post.content }} />  // XSS if content has user input",
+      relatedPlaybooks: ['security.md'],
+      relatedAgents: ['security-reviewer'],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('dangerouslysetmlhtml_usage', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/dangerouslySetInnerHTML/.test(line)) {
+            const hasSanitize = content.includes('DOMPurify') || content.includes('sanitize') || content.includes('marked.parse') || content.includes('remark');
+            if (!hasSanitize) {
+              findings.push({ severity, category: 'dangerouslysetmlhtml_usage', file: path, line: i + 1, message: 'dangerouslySetInnerHTML without sanitization — XSS vulnerability if content contains user data.', suggestion: "Sanitize with DOMPurify.sanitize(content) before passing to dangerouslySetInnerHTML." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_027',
+    category: 'use_transition_missing',
+    description: "Expensive state updates that cause UI freezes should use startTransition to keep the UI responsive.",
+    severity: 'LOW',
+    tags: ['react', 'performance', 'concurrent'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "When filtering a 10K item list on every keystroke, the UI freezes. React 18's startTransition marks the update as non-urgent, letting React interrupt it to handle more important updates (keystrokes, scroll) first.",
+      commonViolations: ['onChange={e => setQuery(e.target.value)}  // expensive filter re-renders on every keystroke'],
+      goodExample: "onChange={e => {\n  setInputValue(e.target.value)\n  startTransition(() => setQuery(e.target.value))  // non-urgent — can be interrupted\n}}",
+      badExample: "onChange={e => setFilter(e.target.value)}  // expensive filter blocks UI on each keystroke",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('use_transition_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        if (content.includes('startTransition') || content.includes('useTransition')) return findings;
+        if (content.includes('.filter(') && content.includes('onChange') && (content.match(/setState|set[A-Z]/g) || []).length > 3) {
+          findings.push({ severity, category: 'use_transition_missing', file: path, message: 'Filtering large lists on input change without startTransition — may freeze UI on each keystroke.', suggestion: "Wrap the expensive state update in startTransition(() => setState(filtered)) to keep UI responsive." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_028',
+    category: 'ref_as_state',
+    description: "Using useRef to store values that should trigger re-renders misses the purpose of refs vs state.",
+    severity: 'MEDIUM',
+    tags: ['react', 'hooks', 'correctness'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "useRef values don't trigger re-renders when changed. If you update ref.current and expect the UI to update, it won't — use useState instead. useRef is for: DOM references, previous values, and mutable values where re-render is NOT desired.",
+      commonViolations: ['const count = useRef(0)\nsetInterval(() => { count.current++ }, 1000)  // display never updates'],
+      goodExample: "const [count, setCount] = useState(0)\n// For non-rendering mutable value:\nconst timerId = useRef<NodeJS.Timeout | null>(null)",
+      badExample: "const isOpen = useRef(false)\n<button onClick={() => { isOpen.current = !isOpen.current }}>Toggle</button>  // UI never reflects change",
+      relatedPlaybooks: [],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ref_as_state', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          const refMatch = line.match(/const\s+(\w+)\s*=\s*useRef\s*\(/);
+          if (refMatch) {
+            const refName = refMatch[1]!;
+            const restContent = content.slice(content.indexOf(line));
+            if (new RegExp(`${refName}\\.current\\s*=`).test(restContent)) {
+              if (new RegExp(`\\{${refName}\\.current\\}`).test(restContent) || new RegExp(`>${refName}\\.current<`).test(restContent)) {
+                findings.push({ severity, category: 'ref_as_state', file: path, line: i + 1, message: `useRef '${refName}' mutated and rendered — this won't trigger re-renders. Use useState instead.`, suggestion: `Replace with: const [${refName}, set${refName.charAt(0).toUpperCase() + refName.slice(1)}] = useState(...)` });
+              }
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_029',
+    category: 'portal_missing_container',
+    description: "ReactDOM.createPortal should render into a DOM container that exists before mount — not document.body directly.",
+    severity: 'MEDIUM',
+    tags: ['react', 'portals', 'ssr'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "createPortal(children, document.body) renders at the end of <body> without a semantic container. In SSR/SSG, document.body may not exist during server render. Use a dedicated #portal or #modals container element.",
+      commonViolations: ["createPortal(modalContent, document.body)  // no semantic container"],
+      goodExample: "// index.html: <div id='portal-root'></div>\ncreatePortal(modalContent, document.getElementById('portal-root')!)",
+      badExample: "return createPortal(<Modal />, document.body)  // appends to body, breaks SSR",
+      relatedPlaybooks: [],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('portal_missing_container', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/createPortal\s*\([^,]+,\s*document\.body\s*\)/.test(line)) {
+            findings.push({ severity, category: 'portal_missing_container', file: path, line: i + 1, message: "createPortal rendering into document.body — use a dedicated #portal-root container.", suggestion: "Create <div id='portal-root'></div> in index.html and use document.getElementById('portal-root')." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_030',
+    category: 'effect_on_initial_render',
+    description: "useEffect with an empty dependency array that sets visible state causes a flash of incorrect content (FOIC).",
+    severity: 'MEDIUM',
+    tags: ['react', 'ux', 'hydration'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "useEffect only runs client-side after mount. If you use it to detect dark mode or screen size, the component first renders with the wrong value (SSR default), then updates — causing a visible flash. Use useSyncExternalStore for subscription-based reads or CSS media queries for visual-only changes.",
+      commonViolations: ["const [isDark, setIsDark] = useState(false)\nuseEffect(() => { setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches) }, [])"],
+      goodExample: "// CSS-based: prefers-color-scheme media query (no FOIC)\n// OR: useSyncExternalStore for subscription-based reads",
+      badExample: "useEffect(() => { setTheme(localStorage.getItem('theme') ?? 'light') }, [])  // flash of light theme on dark-mode users",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('effect_on_initial_render', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/useEffect\s*\(/.test(line)) {
+            const block = lines.slice(i, i + 6).join('\n');
+            if (/,\s*\[\s*\]/.test(block) && /(?:localStorage|window\.|document\.|matchMedia)/.test(block) && /set[A-Z]/.test(block)) {
+              findings.push({ severity, category: 'effect_on_initial_render', file: path, line: i + 1, message: "useEffect reading browser APIs on mount causes a flash of incorrect content (FOIC) during SSR hydration.", suggestion: "Use CSS media queries for visual-only dark mode, or useSyncExternalStore for browser API subscriptions." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_031',
+    category: 'async_missing_error_boundary',
+    description: "Async data-fetching components without an error boundary crash the entire component tree on failure.",
+    severity: 'HIGH',
+    tags: ['react', 'error-handling', 'reliability'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "React doesn't catch errors thrown during render in the same component — they bubble up to the nearest error boundary. Without one, a single failed fetch crashes the entire page and shows React's generic error screen.",
+      commonViolations: ['// Component that fetches data with no error boundary ancestor'],
+      goodExample: "import { ErrorBoundary } from 'react-error-boundary'\n<ErrorBoundary fallback={<ErrorFallback />}>\n  <DataFetchingComponent />\n</ErrorBoundary>",
+      badExample: "// App renders <UserDashboard /> without error boundary — one API failure crashes everything",
+      relatedPlaybooks: ['error-handling.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('async_missing_error_boundary', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        const isPageFile = path.includes('page.') || path.includes('App.');
+        if (!isPageFile) return findings;
+        if (!content.includes('ErrorBoundary') && !content.includes('error-boundary') && content.includes('await ')) {
+          findings.push({ severity, category: 'async_missing_error_boundary', file: path, message: 'Page/App with async data components but no ErrorBoundary — failed fetch crashes entire page.', suggestion: "Wrap async components in <ErrorBoundary fallback={<ErrorFallback />}> from 'react-error-boundary'." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'REACT_032',
+    category: 'debounce_missing_on_search',
+    description: "Search/autocomplete inputs without debouncing fire an API request on every keystroke, overloading the server.",
+    severity: 'MEDIUM',
+    tags: ['react', 'performance', 'ux'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Calling fetch() on every onChange means 10 keystroke = 10 API requests, all racing. With debounce (300-500ms delay), only the final query fires. This reduces server load by ~90% on search inputs.",
+      commonViolations: ["onChange={e => fetchSuggestions(e.target.value)}  // fires on every keystroke"],
+      goodExample: "const debouncedSearch = useMemo(() => debounce(fetchSuggestions, 300), [])\nonChange={e => debouncedSearch(e.target.value)}",
+      badExample: "onChange={async (e) => { const results = await api.search(e.target.value); setResults(results) }}",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('debounce_missing_on_search', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        if (content.includes('debounce') || content.includes('useDebounce')) return findings;
+        if (/onChange.*fetch|onChange.*axios|onChange.*api\./i.test(content)) {
+          findings.push({ severity, category: 'debounce_missing_on_search', file: path, message: 'Search/autocomplete fires API calls on every onChange without debouncing — overloads server.', suggestion: "Add debounce: const debouncedFn = useMemo(() => debounce(fetchFn, 300), []) and call debouncedFn in onChange." });
+        }
+      }
+      return findings;
+    },
+  },
 ];

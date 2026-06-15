@@ -20,6 +20,7 @@ import {
   formatFindingsJson,
 } from '../../review.ts';
 import { shouldWarn } from '../../severity.ts';
+import { getActiveRules } from '../../packs.ts';
 
 export async function cmdReview(argv: string[]): Promise<void> {
   const { root, config } = createContext();
@@ -43,7 +44,8 @@ export async function cmdReview(argv: string[]): Promise<void> {
   }
   // undefined → scan-based checks only (no file content)
 
-  const findings = coreRunReview({ scan, config, changedFiles });
+  const registry = await getActiveRules(root);
+  const findings = coreRunReview({ scan, config, changedFiles }, registry);
 
   if (json) {
     process.stdout.write(formatFindingsJson(findings));

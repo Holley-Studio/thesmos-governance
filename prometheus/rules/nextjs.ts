@@ -535,4 +535,723 @@ export const NEXTJS_RULES: PrometheusRule[] = [
       return findings;
     },
   },
+
+  // ── App Router / Server Components expansions ─────────────────────────────
+
+  {
+    id: 'NEXT_016',
+    category: 'use_server_top_level_only',
+    description: "'use server' directive must appear at the top of a file or function body — not mid-file.",
+    severity: 'HIGH',
+    tags: ['nextjs', 'server-actions', 'correctness'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "'use server' placed after imports or in the middle of a file may be silently ignored or cause the entire module to behave unexpectedly. Always place it as the first statement.",
+      commonViolations: ["// imports here\nimport { db } from '@/lib/db'\n'use server'  // too late"],
+      goodExample: "'use server'\nimport { db } from '@/lib/db'\nexport async function createPost(data: FormData) { ... }",
+      badExample: "import { db } from '@/lib/db'\n'use server'  // directive after imports — may be ignored",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('use_server_top_level_only', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        let firstNonComment = -1;
+        for (let i = 0; i < lines.length; i++) {
+          const t = lines[i]!.trim();
+          if (t === '' || t.startsWith('//') || t.startsWith('/*') || t.startsWith('*')) continue;
+          firstNonComment = i;
+          break;
+        }
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if ((/['"]use server['"]/.test(line)) && i > firstNonComment + 2) {
+            if (lines.slice(0, i).some(l => /^import\s/.test(l))) {
+              findings.push({ severity, category: 'use_server_top_level_only', file: path, line: i + 1, message: "'use server' appears after import statements — directive may be ignored.", suggestion: "Move 'use server' to the very top of the file, before any imports." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_017',
+    category: 'streaming_suspense_missing',
+    description: 'Async Server Components that fetch data should be wrapped in Suspense to enable streaming.',
+    severity: 'MEDIUM',
+    tags: ['nextjs', 'performance', 'streaming', 'suspense'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Without Suspense, an async Server Component blocks the entire page render until data is ready. Suspense lets Next.js stream the HTML shell immediately and fill in the data when it arrives.",
+      commonViolations: ["// Page that renders <UserProfile /> (async component) without Suspense"],
+      goodExample: "<Suspense fallback={<UserProfileSkeleton />}>\n  <UserProfile userId={id} />\n</Suspense>",
+      badExample: "// page.tsx\nexport default async function Page({ params }) {\n  return <UserProfile userId={params.id} />  // blocks entire render until profile loads\n}",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('streaming_suspense_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || !path.includes('page.')) continue;
+        if (!content.includes('async function') && !content.includes('async (')) continue;
+        if (!content.includes('await ')) continue;
+        if (!content.includes('Suspense')) {
+          findings.push({ severity, category: 'streaming_suspense_missing', file: path, message: 'Page with async data fetching without Suspense — blocks entire render until all data is ready.', suggestion: 'Wrap async data components in <Suspense fallback={<Skeleton />}> to enable streaming.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_018',
+    category: 'metadata_static_missing',
+    description: "Pages without exported metadata or generateMetadata miss SEO — title, description, og:image are indexed by search engines.",
+    severity: 'LOW',
+    tags: ['nextjs', 'seo', 'metadata'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Google uses the <title> and <meta description> from your metadata export for search listings. Missing metadata = no SEO, poor click-through rate, and unfriendly link previews on Slack/Twitter.",
+      commonViolations: ["// page.tsx with no 'export const metadata' or 'export async function generateMetadata'"],
+      goodExample: "export const metadata: Metadata = { title: 'Dashboard | Acme', description: 'Manage your ...' }",
+      badExample: "// page.tsx — no metadata export — page appears as URL in search results",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('metadata_static_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || !path.includes('page.')) continue;
+        if (!content.includes('export default')) return findings;
+        if (!content.includes('metadata') && !content.includes('generateMetadata')) {
+          findings.push({ severity, category: 'metadata_static_missing', file: path, message: 'Page without metadata export — missing title/description for SEO and social previews.', suggestion: "Export metadata: Metadata = { title: '...', description: '...' } from this page." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_019',
+    category: 'client_component_at_root',
+    description: "Marking an entire page or layout 'use client' when only a small part needs interactivity defeats Server Component benefits.",
+    severity: 'MEDIUM',
+    tags: ['nextjs', 'performance', 'server-components'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "'use client' at the top of page.tsx turns the entire route into a Client Component and ships all its imports to the browser bundle. Instead, push interactivity down to leaf components — keep the page as a Server Component.",
+      commonViolations: ["'use client'\n// Entire 200-line page just because it has one useState"],
+      goodExample: "// page.tsx — Server Component\nimport { SearchInput } from './SearchInput'  // SearchInput has 'use client'\nexport default function Page() { return <SearchInput /> }",
+      badExample: "'use client'\n// page.tsx — entire page is a client component for one button onClick",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('client_component_at_root', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path)) continue;
+        if (!path.includes('page.') && !path.includes('layout.')) continue;
+        if (!content.includes("'use client'") && !content.includes('"use client"')) return findings;
+        const lineCount = content.split('\n').length;
+        if (lineCount > 60) {
+          findings.push({ severity, category: 'client_component_at_root', file: path, message: `Large page/layout (${lineCount} lines) marked 'use client' — ships entire module to browser bundle.`, suggestion: "Extract interactive parts into leaf 'use client' components. Keep page.tsx as a Server Component." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_020',
+    category: 'fetch_no_cache',
+    description: "fetch() in Server Components without a cache option opts into Next.js's default caching which may be stale.",
+    severity: 'LOW',
+    tags: ['nextjs', 'performance', 'caching'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Next.js extends fetch() with caching. By default, fetch results are cached indefinitely (static). On dynamic routes you may want { cache: 'no-store' } (always fresh) or { next: { revalidate: 60 } } (ISR). Not specifying = unpredictable behavior.",
+      commonViolations: ["const data = await fetch('https://api.example.com/posts')  // cache behavior unclear"],
+      goodExample: "const data = await fetch(url, { next: { revalidate: 60 } })  // ISR every 60s\nconst data = await fetch(url, { cache: 'no-store' })  // always fresh",
+      badExample: "const data = await fetch(apiUrl)  // default cache: 'force-cache' — may be months stale",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('fetch_no_cache', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (content.includes("'use client'") || content.includes('"use client"')) return findings;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/await\s+fetch\s*\(\s*['"`]/.test(line) && !line.includes('cache') && !line.includes('revalidate')) {
+            const next2 = lines.slice(i, i + 2).join('\n');
+            if (!next2.includes('cache') && !next2.includes('revalidate')) {
+              findings.push({ severity, category: 'fetch_no_cache', file: path, line: i + 1, message: "Server Component fetch() without cache option — Next.js caching behavior is implicit.", suggestion: "Specify: { cache: 'no-store' } for dynamic, or { next: { revalidate: 60 } } for ISR." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_021',
+    category: 'error_boundary_missing_page',
+    description: "Next.js App Router pages without an error.tsx sibling have no error boundary — unhandled errors crash the entire segment.",
+    severity: 'HIGH',
+    tags: ['nextjs', 'error-handling', 'reliability'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Without error.tsx in an App Router segment, any thrown error propagates to the nearest parent error boundary (or the global error.tsx at the root). This may crash large sections of the UI. Add error.tsx per route segment.",
+      commonViolations: ["// app/dashboard/page.tsx with no app/dashboard/error.tsx"],
+      goodExample: "// app/dashboard/error.tsx\n'use client'\nexport default function Error({ error, reset }) {\n  return <div><h2>Something went wrong</h2><button onClick={reset}>Retry</button></div>\n}",
+      badExample: "// app/dashboard/page.tsx — no error.tsx — any error crashes the whole dashboard",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('error_boundary_missing_page', config.severityRules);
+      const findings: Finding[] = [];
+      const changedPagePaths = changedFiles
+        .filter(f => /\/page\.(tsx|jsx|ts|js)$/.test(f.path))
+        .map(f => f.path);
+      const allPaths = new Set(changedFiles.map(f => f.path));
+      for (const pagePath of changedPagePaths) {
+        const dir = pagePath.replace(/\/page\.[^/]+$/, '');
+        const hasError = [...allPaths].some(p => p.startsWith(dir + '/error.'));
+        if (!hasError) {
+          findings.push({ severity, category: 'error_boundary_missing_page', file: pagePath, message: 'Page without a sibling error.tsx — unhandled errors will crash the route segment.', suggestion: "Add app/[route]/error.tsx with 'use client' and an Error component that receives { error, reset }." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_022',
+    category: 'parallel_routes_loading',
+    description: "Next.js parallel routes (@slot) should have loading.tsx to avoid blocking the entire layout.",
+    severity: 'LOW',
+    tags: ['nextjs', 'performance', 'parallel-routes'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Parallel routes (@feed, @sidebar) share a layout. If one slow slot has no loading.tsx, the layout blocks until all slots resolve. Add loading.tsx per slot for independent streaming.",
+      commonViolations: ["// app/@modal/page.tsx without app/@modal/loading.tsx"],
+      goodExample: "// app/@modal/loading.tsx\nexport default function Loading() { return <ModalSkeleton /> }",
+      badExample: "// app/@sidebar/page.tsx — no loading.tsx — sidebar blocks the entire layout render",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('parallel_routes_loading', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path } of changedFiles) {
+        if (!/@[\w-]+\/page\.(tsx|jsx)$/.test(path)) continue;
+        const slotDir = path.replace(/\/page\.[^/]+$/, '');
+        const hasLoading = changedFiles.some(f => f.path.startsWith(slotDir + '/loading.'));
+        if (!hasLoading) {
+          findings.push({ severity, category: 'parallel_routes_loading', file: path, message: 'Parallel route (@slot) without loading.tsx — blocks layout render while this slot fetches data.', suggestion: 'Add loading.tsx in the same @slot directory to enable independent streaming.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_023',
+    category: 'redirect_in_server_action',
+    description: "redirect() from 'next/navigation' called inside try/catch in a Server Action is swallowed — it throws internally.",
+    severity: 'HIGH',
+    tags: ['nextjs', 'server-actions', 'correctness'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Next.js implements redirect() by throwing a special error. If you call redirect() inside a try block, the catch handler swallows the redirect and the user is never redirected — a silent bug.",
+      commonViolations: ["try { ... redirect('/success') } catch(e) { ... }"],
+      goodExample: "// Success path\nawait processPayment(data)\n// Redirect outside the try/catch:\nredirect('/success')",
+      badExample: "try {\n  await processPayment(data)\n  redirect('/success')  // redirect() throws internally — caught by catch!\n} catch(e) { console.error(e) }",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('redirect_in_server_action', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (!content.includes("'use server'") && !content.includes('"use server"')) return findings;
+        const lines = content.split('\n');
+        let inTry = false;
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/\btry\s*\{/.test(line)) inTry = true;
+          if (inTry && /\bcatch\s*\(/.test(line)) inTry = false;
+          if (inTry && /\bredirect\s*\(/.test(line)) {
+            findings.push({ severity, category: 'redirect_in_server_action', file: path, line: i + 1, message: "redirect() called inside try block — it throws internally and will be caught, silently failing.", suggestion: "Move redirect() outside the try/catch block, after the operation succeeds." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_024',
+    category: 'cookies_in_server_component',
+    description: "cookies() from 'next/headers' makes a Server Component dynamic — use it only when you need per-request values.",
+    severity: 'LOW',
+    tags: ['nextjs', 'performance', 'caching'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Calling cookies() or headers() opts the entire route out of static rendering and into dynamic rendering (per-request). If you can derive the data statically, avoid these calls to keep the route cacheable.",
+      commonViolations: ["// Server Component that calls cookies() to get a language preference that never changes"],
+      goodExample: "// Only call cookies() when you genuinely need per-request data (auth, locale from cookie)",
+      badExample: "const cookieStore = cookies()  // in a component that only reads a config cookie — forces dynamic render",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('cookies_in_server_component', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        if (content.includes("'use client'") || content.includes('"use client"')) return findings;
+        if (/from\s+['"]next\/headers['"]/.test(content) && /\bcookies\s*\(\)/.test(content)) {
+          if (!content.includes('auth') && !content.includes('session') && !content.includes('token')) {
+            findings.push({ severity, category: 'cookies_in_server_component', file: path, message: "cookies() called in Server Component — opts out of static rendering. Ensure this is necessary.", suggestion: "Only call cookies() when you need request-specific per-user data (auth, dynamic locale, A/B flags)." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_025',
+    category: 'image_component_missing',
+    description: "Using <img> instead of Next.js <Image> skips automatic WebP conversion, lazy loading, and size optimization.",
+    severity: 'MEDIUM',
+    tags: ['nextjs', 'performance', 'images'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Next.js <Image> automatically serves WebP/AVIF, adds native lazy loading, prevents CLS with layout reservation, and resizes images to the requested display size. Raw <img> skips all of this — serving oversized PNGs and JPEGs.",
+      commonViolations: ["<img src='/hero.jpg' alt='Hero' />  // in a Next.js app"],
+      goodExample: "import Image from 'next/image'\n<Image src='/hero.jpg' alt='Hero' width={1200} height={630} priority />",
+      badExample: "<img src='/hero.jpg' />  // 2MB PNG served to mobile clients — use next/image",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('image_component_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/<img\s/.test(line) && !/isCommentLine/.test(line)) {
+            findings.push({ severity, category: 'image_component_missing', file: path, line: i + 1, message: 'Raw <img> element in Next.js — use <Image> from next/image for automatic optimization.', suggestion: "import Image from 'next/image' and replace <img> with <Image width={...} height={...} />." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_026',
+    category: 'link_prefetch_opt_out',
+    description: "Setting prefetch={false} on <Link> disables route prefetching — use sparingly and only for heavyweight routes.",
+    severity: 'LOW',
+    tags: ['nextjs', 'performance', 'navigation'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Next.js prefetches routes when <Link> enters the viewport, making navigation feel instant. prefetch={false} trades UX speed for bandwidth. Only use it if a route is extremely expensive (large JS bundle, huge DB query at prefetch time).",
+      commonViolations: ["<Link href='/dashboard' prefetch={false}>Dashboard</Link>"],
+      goodExample: "<Link href='/dashboard'>Dashboard</Link>  // let Next.js prefetch for instant navigation",
+      badExample: "<Link href='/home' prefetch={false}>Home</Link>  // slows navigation to one of the most-visited routes",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('link_prefetch_opt_out', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/prefetch\s*=\s*\{?\s*false\s*\}?/.test(line) && /Link/.test(content.slice(0, 500))) {
+            findings.push({ severity, category: 'link_prefetch_opt_out', file: path, line: i + 1, message: "Next.js <Link> with prefetch={false} — disables route prefetching and slows navigation.", suggestion: "Remove prefetch={false} unless this route is extremely expensive to prefetch." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_027',
+    category: 'server_action_no_revalidate',
+    description: 'Server Actions that mutate data should call revalidatePath or revalidateTag to clear stale cache.',
+    severity: 'HIGH',
+    tags: ['nextjs', 'server-actions', 'caching'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "After a mutation Server Action runs, Next.js continues serving old cached data to users until you explicitly revalidate. Always call revalidatePath('/affected-path') or revalidateTag('data-tag') after mutations.",
+      commonViolations: ["'use server'\nexport async function createPost(data) { await db.insert(posts, data) }  // no revalidation"],
+      goodExample: "'use server'\nexport async function createPost(data: FormData) {\n  await db.insert(posts, data)\n  revalidatePath('/posts')\n}",
+      badExample: "export async function deleteUser(id: string) { await prisma.user.delete({ where: { id } }) }  // stale cache",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('server_action_no_revalidate', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (!content.includes("'use server'") && !content.includes('"use server"')) return findings;
+        if (content.includes('revalidatePath') || content.includes('revalidateTag')) return findings;
+        const MUTATING = /(?:insert|create|update|delete|upsert|remove|patch|save)\w*\s*\(/i;
+        if (MUTATING.test(content)) {
+          findings.push({ severity, category: 'server_action_no_revalidate', file: path, message: 'Server Action with mutations but no revalidatePath/revalidateTag — users see stale data.', suggestion: "Add revalidatePath('/path') or revalidateTag('tag') after any data mutations." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_028',
+    category: 'generate_static_params_missing',
+    description: "Dynamic routes ([slug]) without generateStaticParams are always server-rendered — missing the SSG optimization.",
+    severity: 'LOW',
+    tags: ['nextjs', 'performance', 'ssg'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "For blog posts, product pages, and other content that changes infrequently, generateStaticParams pre-renders all pages at build time. Without it, each request hits the server — slower and more expensive.",
+      commonViolations: ["// app/blog/[slug]/page.tsx with no generateStaticParams export"],
+      goodExample: "export async function generateStaticParams() {\n  const posts = await db.post.findMany({ select: { slug: true } })\n  return posts.map(p => ({ slug: p.slug }))\n}",
+      badExample: "// app/products/[id]/page.tsx — no generateStaticParams — each visit hits the server",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('generate_static_params_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || !/\[[^\]]+\]\/page\./.test(path)) continue;
+        if (!content.includes('generateStaticParams')) {
+          findings.push({ severity, category: 'generate_static_params_missing', file: path, message: 'Dynamic route without generateStaticParams — always server-rendered per request.', suggestion: "Export generateStaticParams() to pre-render known paths at build time (SSG)." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_029',
+    category: 'middleware_response_clone',
+    description: "Cloning or consuming the request body in Next.js Middleware is not supported in Edge Runtime.",
+    severity: 'HIGH',
+    tags: ['nextjs', 'middleware', 'edge', 'reliability'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Next.js Middleware runs in the Edge Runtime where request.body is locked. Calling request.json() or request.text() throws 'Body unusable'. Middleware is for routing/redirects/headers — not request body parsing.",
+      commonViolations: ['const body = await request.json()  // in middleware.ts'],
+      goodExample: "// middleware.ts: only read headers, cookies, search params\nconst token = request.cookies.get('token')\n// Move body parsing to API routes or Server Actions",
+      badExample: "// middleware.ts\nconst { userId } = await request.json()  // throws: Body unusable in Edge Runtime",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('middleware_response_clone', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!path.includes('middleware.')) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/request\.(json|text|formData|arrayBuffer)\s*\(\)/.test(line) || /req\.(json|text|formData)\s*\(\)/.test(line)) {
+            findings.push({ severity, category: 'middleware_response_clone', file: path, line: i + 1, message: 'Request body parsed in Middleware — Edge Runtime does not support reading the request body.', suggestion: 'Move body parsing to an API Route or Server Action. Middleware should only read headers/cookies/params.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_030',
+    category: 'use_client_on_layout',
+    description: "Marking a layout.tsx as 'use client' prevents Server Component children from fetching data on the server.",
+    severity: 'HIGH',
+    tags: ['nextjs', 'performance', 'server-components'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "When a layout is a Client Component, its children can only be Client Components too. This breaks the ability to pass async Server Components as children, losing RSC data-fetching benefits for the entire subtree.",
+      commonViolations: ["'use client'\n// layout.tsx — forces all pages in this route to be client components"],
+      goodExample: "// layout.tsx — Server Component (no 'use client')\n// Import interactive parts as children: <InteractiveHeader />",
+      badExample: "'use client'\nexport default function Layout({ children }) { ... }  // all children forced to be client components",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('use_client_on_layout', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!path.includes('layout.')) continue;
+        if (content.includes("'use client'") || content.includes('"use client"')) {
+          findings.push({ severity, category: 'use_client_on_layout', file: path, message: "layout.tsx marked 'use client' — prevents Server Component children from using server-side data fetching.", suggestion: "Keep layout.tsx as a Server Component. Extract interactive parts (navbar, sidebar) into child 'use client' components." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_031',
+    category: 'searchparams_missing_type',
+    description: "Accessing searchParams without type-safe parsing allows injecting unexpected values through the URL.",
+    severity: 'MEDIUM',
+    tags: ['nextjs', 'security', 'validation'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "searchParams in App Router are untyped Record<string, string | string[] | undefined>. Accessing searchParams.page directly may be a string[] or undefined. Always parse and validate with zod or parseInt with a fallback.",
+      commonViolations: ['const page = searchParams.page  // may be undefined or string[]'],
+      goodExample: "const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page\nconst page = Math.max(1, parseInt(rawPage ?? '1', 10))",
+      badExample: "const page = parseInt(searchParams.page)  // NaN if undefined, no bounds check",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('searchparams_missing_type', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/parseInt\s*\(\s*searchParams\.\w+\s*\)/.test(line) || /searchParams\.\w+\s*as\s+string/.test(line)) {
+            findings.push({ severity, category: 'searchparams_missing_type', file: path, line: i + 1, message: 'Unsafe searchParams access — may be string[], undefined, or injection attempt.', suggestion: 'Validate with: const val = z.string().optional().parse(searchParams.key) or use Array.isArray guard.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_032',
+    category: 'not_found_trigger',
+    description: "Returning null or an empty component when an entity is not found should call notFound() instead.",
+    severity: 'MEDIUM',
+    tags: ['nextjs', 'correctness', 'ux'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Returning <div /> or null when a post/product doesn't exist returns HTTP 200, confusing crawlers and caching. next/navigation's notFound() returns HTTP 404 and renders the not-found.tsx boundary.",
+      commonViolations: ["if (!post) return null  // HTTP 200 with empty body"],
+      goodExample: "import { notFound } from 'next/navigation'\nif (!post) notFound()  // HTTP 404 + renders not-found.tsx",
+      badExample: "if (!product) return <div>Product not found</div>  // HTTP 200 — crawlers treat as found",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('not_found_trigger', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || !path.includes('page.')) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/if\s*\(!\w+\)\s*return\s*null/.test(line) || /if\s*\(!\w+\)\s*return\s*</.test(line)) {
+            if (!content.includes('notFound()')) {
+              findings.push({ severity, category: 'not_found_trigger', file: path, line: i + 1, message: "Returning null or empty JSX for missing entity — use notFound() for proper HTTP 404.", suggestion: "import { notFound } from 'next/navigation' and call notFound() when the entity doesn't exist." });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_033',
+    category: 'dynamic_config_missing',
+    description: "Pages that call dynamic functions (headers, cookies) without 'export const dynamic' may behave differently in production.",
+    severity: 'LOW',
+    tags: ['nextjs', 'performance', 'configuration'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Next.js auto-detects dynamic rendering when you use cookies() or headers(), but being explicit with export const dynamic = 'force-dynamic' or 'force-static' makes the intent clear and prevents surprises when the heuristic changes.",
+      commonViolations: ["// page.tsx that uses cookies() without setting dynamic config"],
+      goodExample: "export const dynamic = 'force-dynamic'\nexport default async function Page() { const store = cookies() ... }",
+      badExample: "// page.tsx implicitly dynamic due to cookies() — dynamic setting unclear",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('dynamic_config_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) || !path.includes('page.')) continue;
+        if (!content.includes('cookies()') && !content.includes('headers()')) return findings;
+        if (!content.includes("export const dynamic") && !content.includes("export const revalidate")) {
+          findings.push({ severity, category: 'dynamic_config_missing', file: path, message: "Page uses cookies()/headers() without explicit 'export const dynamic' config — rendering behavior is implicit.", suggestion: "Add: export const dynamic = 'force-dynamic' to make rendering intent explicit." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_034',
+    category: 'api_route_in_app_dir',
+    description: "Using pages/api/ routes alongside App Router is fine, but Route Handlers (app/api/) are preferred for new routes.",
+    severity: 'LOW',
+    tags: ['nextjs', 'architecture', 'migration'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "pages/api/ handlers don't support Streaming, Edge Runtime, Web APIs, or Server Actions calling patterns. App Router Route Handlers (route.ts) support all of these. Prefer route.ts for new routes.",
+      commonViolations: ['// Adding pages/api/new-feature.ts in an App Router project'],
+      goodExample: "// app/api/new-feature/route.ts\nexport async function POST(request: Request) { ... }",
+      badExample: "// pages/api/new-feature.ts — in a project using App Router",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('api_route_in_app_dir', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path } of changedFiles) {
+        if (/pages\/api\//.test(path) && SOURCE_EXT.test(path)) {
+          findings.push({ severity, category: 'api_route_in_app_dir', file: path, message: "New pages/api/ route in an App Router project — consider using Route Handlers in app/api/.", suggestion: "Create app/api/[name]/route.ts with export async function GET/POST(request: Request) instead." });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_035',
+    category: 'loading_ui_granularity',
+    description: "A single loading.tsx for an entire segment is less optimal than Suspense boundaries around individual data-fetching components.",
+    severity: 'LOW',
+    tags: ['nextjs', 'performance', 'ux'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "loading.tsx shows the entire segment skeleton until all data is ready. Wrapping individual async components in Suspense lets parts of the page render immediately while slower parts load independently.",
+      commonViolations: ['// loading.tsx that shows full page skeleton — blocks all sub-component content'],
+      goodExample: "<div>\n  <QuickStats />  {/* renders immediately — static */}\n  <Suspense fallback={<FeedSkeleton />}><Feed /></Suspense>  {/* streams when ready */}\n</div>",
+      badExample: "// loading.tsx: entire page shows skeleton until slowest component finishes",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('loading_ui_granularity', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!/loading\.(tsx|jsx)$/.test(path)) continue;
+        const lineCount = content.split('\n').length;
+        if (lineCount > 40) {
+          findings.push({ severity, category: 'loading_ui_granularity', file: path, message: 'Complex loading.tsx — consider using granular Suspense boundaries for individual components instead.', suggestion: 'Wrap specific async components in <Suspense fallback={<PartialSkeleton />}> for finer loading states.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_036',
+    category: 'form_action_vs_server_action',
+    description: 'HTML <form action="/api/..."> submits as a full page reload. Use Server Actions for progressive enhancement.',
+    severity: 'LOW',
+    tags: ['nextjs', 'server-actions', 'ux'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "Traditional <form action='/api/...'> causes a full page navigation on submit. Server Actions (action={serverActionFn}) work without JavaScript (progressive enhancement), enable optimistic updates, and integrate with React's transition API.",
+      commonViolations: ["<form method='post' action='/api/subscribe'>"],
+      goodExample: "<form action={subscribe}>  // Server Action — works without JS, no page reload",
+      badExample: "<form method='post' action='/api/newsletter'>  // full page reload on submit",
+      relatedPlaybooks: ['nextjs-patterns.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('form_action_vs_server_action', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/<form[^>]+action\s*=\s*['"]\/api\//.test(line)) {
+            findings.push({ severity, category: 'form_action_vs_server_action', file: path, line: i + 1, message: "form action='/api/...' causes full page reload — use a Server Action for progressive enhancement.", suggestion: "Create a Server Action function and pass it: <form action={serverActionFn}>." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_037',
+    category: 'font_optimization_missing',
+    description: "Importing fonts from Google Fonts CDN directly bypasses Next.js font optimization (no layout shift, self-hosting).",
+    severity: 'MEDIUM',
+    tags: ['nextjs', 'performance', 'fonts', 'privacy'],
+    sinceVersion: '3.0.0',
+    explain: {
+      why: "next/font downloads and self-hosts Google Fonts at build time — eliminating external CDN requests (GDPR-friendly), adding font-display: optional, and reserving space to prevent CLS. Loading from CDN skips all this.",
+      commonViolations: ["<link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Inter'>"],
+      goodExample: "import { Inter } from 'next/font/google'\nconst inter = Inter({ subsets: ['latin'] })\n// In layout: className={inter.className}",
+      badExample: "<link href='https://fonts.googleapis.com/...' />  // CDN request, no CLS prevention, not GDPR-friendly",
+      relatedPlaybooks: ['performance.md'],
+      relatedAgents: [],
+      relatedSkills: [],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('font_optimization_missing', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path) && !path.includes('layout.') && !path.endsWith('.html')) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (/fonts\.googleapis\.com|fonts\.gstatic\.com/.test(line)) {
+            findings.push({ severity, category: 'font_optimization_missing', file: path, line: i + 1, message: "Google Fonts loaded from CDN — bypasses Next.js font optimization and sends user IPs to Google.", suggestion: "Use next/font/google for self-hosted, CLS-free fonts: import { Inter } from 'next/font/google'." });
+          }
+        }
+      }
+      return findings;
+    },
+  },
 ];

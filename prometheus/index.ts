@@ -180,6 +180,9 @@ export {
   formatPackListJson,
   formatPackValidateConsole,
   formatPackValidateJson,
+  loadPackRulesFromEntry,
+  loadPackRules,
+  getActiveRules,
   LOCAL_PACKS_DIR,
   NPM_PACKS_SCOPE,
 } from './packs.js';
@@ -296,6 +299,77 @@ export type {
   HealthDeduction,
   HealthBonus,
 } from './health.js';
+
+// ── Report (load) ─────────────────────────────────────────────────────────────
+
+export { loadReport } from './report.js';
+
+// ── Hooks ─────────────────────────────────────────────────────────────────────
+
+export {
+  installHooks,
+  uninstallHooks,
+  getHookStatus,
+  generateHookBlock,
+  buildHookContent,
+  hookHasPrometheus,
+  hooksDir,
+  hookPath,
+} from './hooks.js';
+
+export type {
+  HookTarget,
+  HookName,
+  HookInstallOptions,
+  HookResult,
+  HookStatusResult,
+} from './hooks.js';
+
+// ── Interactive prompts ───────────────────────────────────────────────────────
+
+export {
+  isTTY,
+  prompt,
+  confirm,
+  select,
+  multiSelect,
+  formatQuestion,
+  formatSelectList,
+  formatCheckboxList,
+} from './interactive.js';
+
+export type { SelectOption, PromptOptions } from './interactive.js';
+
+// ── Watcher ───────────────────────────────────────────────────────────────────
+
+export {
+  startWatcher,
+  diffFindings,
+  shouldWatchFile,
+  fingerprintFinding as fingerprintWatchFinding,
+  formatWatchUpdate,
+} from './watcher.js';
+
+export type { WatchOptions, WatchFindingDiff } from './watcher.js';
+
+// ── Auto-fix engine ───────────────────────────────────────────────────────────
+
+export {
+  FIXERS,
+  AUTO_FIXABLE,
+  applyFixer,
+  runFix,
+  formatFixConsole,
+  formatFixJson,
+} from './fix.js';
+
+export type {
+  Fixer,
+  FixEntry,
+  FixSkipEntry,
+  FixResult,
+  FixOptions,
+} from './fix.js';
 
 // ── Catalog ───────────────────────────────────────────────────────────────────
 

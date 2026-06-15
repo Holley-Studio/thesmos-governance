@@ -23,7 +23,8 @@
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { join, basename, resolve } from 'node:path';
+import type { PrometheusRule } from './types';
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -354,4 +355,78 @@ export function formatPackValidateJson(
     null,
     2
   );
+}
+
+// ── Runtime rule loading ──────────────────────────────────────────────────────
+
+/**
+ * Attempt to load exported rules from a single pack directory.
+ *
+ * The pack must have `provides.rules: true` and a `rules/index.js` (or
+ * `rules/index.cjs`) file that default-exports or named-exports an array
+ * called `PACK_RULES` or the default export must be `PrometheusRule[]`.
+ *
+ * Returns an empty array if the file doesn't exist or the export is malformed —
+ * never throws, so one bad pack doesn't block the rest.
+ */
+export async function loadPackRulesFromEntry(entry: PackEntry): Promise<PrometheusRule[]> {
+  if (!entry.manifest.provides.rules) return [];
+
+  const candidates = [
+    join(entry.dir, 'rules', 'index.js'),
+    join(entry.dir, 'rules', 'index.cjs'),
+    join(entry.dir, 'rules', 'index.mjs'),
+  ];
+
+  for (const filePath of candidates) {
+    if (!existsSync(filePath)) continue;
+    try {
+      const mod = await import(resolve(filePath)) as Record<string, unknown>;
+      const rules =
+        (mod['PACK_RULES'] as PrometheusRule[] | undefined) ??
+        (mod['default'] as PrometheusRule[] | undefined);
+      if (Array.isArray(rules)) {
+        return rules.filter(
+          (r): r is PrometheusRule =>
+            typeof r === 'object' &&
+            r !== null &&
+            typeof (r as PrometheusRule).id === 'string' &&
+            typeof (r as PrometheusRule).detect === 'function'
+        );
+      }
+    } catch {
+      // malformed pack — skip silently
+    }
+  }
+  return [];
+}
+
+/**
+ * Load rules from all installed packs in the given project root.
+ * Silently skips packs with no rules or malformed rule files.
+ */
+export async function loadPackRules(root: string): Promise<PrometheusRule[]> {
+  const packs = discoverPacks(root);
+  const ruleSets = await Promise.all(packs.map((entry) => loadPackRulesFromEntry(entry)));
+  return ruleSets.flat();
+}
+
+/**
+ * Return the full active rule set: built-in rules + any pack rules.
+ * Pass this to runReview() as the second argument to include pack rules.
+ *
+ * @example
+ * import { getActiveRules } from 'prometheus-governance/packs';
+ * import { runReview } from 'prometheus-governance';
+ * const rules = await getActiveRules(process.cwd());
+ * const findings = runReview(input, rules);
+ */
+export async function getActiveRules(
+  root: string,
+  builtinRules?: PrometheusRule[]
+): Promise<PrometheusRule[]> {
+  const { PROMETHEUS_RULES } = await import('./rules/registry.js');
+  const base = builtinRules ?? PROMETHEUS_RULES;
+  const packRules = await loadPackRules(root);
+  return [...base, ...packRules];
 }
