@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./prometheus" },
+    { "path": "./actions/pr-review" },
+    { "path": "./extensions/vscode" }
+  ]
+}

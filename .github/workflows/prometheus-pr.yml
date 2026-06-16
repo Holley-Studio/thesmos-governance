@@ -55,7 +55,7 @@ jobs:
         continue-on-error: true  # Scan creates report.json; failures are non-fatal
 
       - name: Prometheus PR Review
-        uses: TenticleTim/prometheus-helper/actions/pr-review@3b3bcd255fcfac6d5279d57936b09a7255243fce
+        uses: TenticleTim/prometheus-helper/actions/pr-review@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-severity: BLOCKER  # Change to HIGH, MEDIUM, or "none" as needed
