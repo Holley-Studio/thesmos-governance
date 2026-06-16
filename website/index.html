@@ -8,31 +8,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;700&family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
   <style>
     :root {
-      --bg:         #080710;
-      --bg-raised:  #0D0C18;
-      --bg-card:    #100F1C;
-      --bg-card2:   #151328;
-
-      --fire-white: #FFF5D0;
-      --fire-gold:  #F5C842;
-      --fire-amber: #F08020;
-      --fire-red:   #C83808;
-
-      --gold:       #C49A3A;
-      --gold-dim:   #7A5A1A;
-
-      --text-1:     #EDE8DF;
-      --text-2:     #7A7268;
-      --text-3:     #3A352C;
-
-      --border:     #1A1828;
-      --border-2:   #24203A;
-
-      --radius:     10px;
-      --radius-lg:  16px;
+      --bg:        #050408;
+      --bg-s:      #09080F;
+      --card:      rgba(255,255,255,.032);
+      --card-h:    rgba(255,255,255,.058);
+      --fire-core: #FFF5D0;
+      --fire-gold: #F5C842;
+      --fire-amb:  #F08020;
+      --fire-red:  #C83808;
+      --gold:      #C49A3A;
+      --gold-dim:  rgba(196,154,58,.35);
+      --t1:        #F5F5F7;
+      --t2:        rgba(245,245,247,.52);
+      --t3:        rgba(245,245,247,.22);
+      --border:    rgba(255,255,255,.07);
+      --border-h:  rgba(196,154,58,.3);
+      --ease:      cubic-bezier(.22,1,.36,1);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,675 +33,595 @@
 
     body {
       background: var(--bg);
-      color: var(--text-1);
-      font-family: 'Inter', system-ui, sans-serif;
-      font-weight: 400;
+      color: var(--t1);
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-weight: 300;
       line-height: 1.6;
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
     }
 
-    a { color: inherit; text-decoration: none; }
-
-    /* Grain texture */
-    body::after {
+    /* Grain */
+    body::before {
       content: '';
       position: fixed; inset: 0; z-index: 9999;
-      pointer-events: none; opacity: .025;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+      pointer-events: none; opacity: .022;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
-    /* ── Reveal ──────────────────────────────────────────────────────── */
-    .reveal {
-      opacity: 0; transform: translateY(24px);
-      transition: opacity .65s ease, transform .65s ease;
+    /* Reveal */
+    [data-r] {
+      opacity: 0; transform: translateY(30px);
+      transition: opacity .75s var(--ease), transform .75s var(--ease);
     }
-    .reveal.visible { opacity: 1; transform: none; }
-    .d1 { transition-delay: .1s; }
-    .d2 { transition-delay: .2s; }
-    .d3 { transition-delay: .3s; }
-    .d4 { transition-delay: .4s; }
+    [data-r].on { opacity: 1; transform: none; }
+    [data-d="1"] { transition-delay: .1s; }
+    [data-d="2"] { transition-delay: .22s; }
+    [data-d="3"] { transition-delay: .34s; }
+    [data-d="4"] { transition-delay: .48s; }
 
-    /* ── Layout ──────────────────────────────────────────────────────── */
-    .wrap    { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
-    .wrap-sm { max-width: 660px;  margin: 0 auto; padding: 0 32px; }
+    .wrap    { max-width: 1080px; margin: 0 auto; padding: 0 40px; }
+    .wrap-sm { max-width: 620px;  margin: 0 auto; padding: 0 40px; }
+    .hr { width:100%; height:1px; background:linear-gradient(90deg,transparent,var(--border) 15%,var(--border) 85%,transparent); }
+    .eyebrow { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); display:block; margin-bottom:18px; }
 
-    /* ── Rule line ───────────────────────────────────────────────────── */
-    .rl {
-      width: 100%; height: 1px;
-      background: linear-gradient(90deg, transparent, var(--border-2) 20%, var(--border-2) 80%, transparent);
-    }
-
-    /* ── Label ───────────────────────────────────────────────────────── */
-    .label {
-      display: block;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px; letter-spacing: .15em; text-transform: uppercase;
-      color: var(--gold); margin-bottom: 18px;
-    }
-
-    /* ── Nav ──────────────────────────────────────────────────────────── */
+    /* ─── NAV ─────────────────────────────────────────────────────── */
     .nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-      height: 58px; display: flex; align-items: center; padding: 0 32px;
-      background: rgba(8,7,16,.75);
-      backdrop-filter: blur(20px) saturate(1.5);
-      border-bottom: 1px solid rgba(255,255,255,.045);
+      position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+      height: 52px; display: flex; align-items: center; padding: 0 40px;
     }
-
-    .nav-i {
-      width: 100%; max-width: 1100px; margin: 0 auto;
-      display: flex; align-items: center; justify-content: space-between;
+    .nav.pinned {
+      background: rgba(5,4,8,.82);
+      backdrop-filter: blur(28px) saturate(1.8);
+      border-bottom: 1px solid var(--border);
     }
+    .nav-i { width:100%; max-width:1080px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; }
+    .nav-logo { display:flex; align-items:center; gap:10px; font-family:'Cinzel',serif; font-size:13px; font-weight:700; letter-spacing:.12em; color:var(--fire-gold); }
+    .nav-logo svg { width:18px; height:18px; }
+    .nav-links { display:flex; align-items:center; gap:32px; }
+    .nav-links a { font-size:13px; color:var(--t2); letter-spacing:.01em; transition:color .2s; }
+    .nav-links a:hover { color:var(--t1); }
+    .nav-cta { padding:7px 18px; border-radius:20px; font-size:12.5px; font-weight:500; background:rgba(255,255,255,.08); border:1px solid var(--border); color:var(--t1); transition:background .2s, border-color .2s; }
+    .nav-cta:hover { background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.14); }
 
-    .nav-logo {
-      display: flex; align-items: center; gap: 9px;
-      font-family: 'Cinzel', serif; font-size: 14px; font-weight: 700;
-      letter-spacing: .1em; color: var(--fire-gold);
-    }
-
-    .nav-logo svg { width: 20px; height: 20px; }
-
-    .nav-links { display: flex; align-items: center; gap: 28px; }
-    .nav-links a {
-      font-size: 13px; color: var(--text-2);
-      transition: color .2s; letter-spacing: .01em;
-    }
-    .nav-links a:hover { color: var(--text-1); }
-
-    .nav-btn {
-      padding: 7px 18px; border-radius: 6px;
-      font-size: 13px; font-weight: 500; color: var(--text-1);
-      border: 1px solid var(--border-2);
-      transition: border-color .2s, background .2s;
-    }
-    .nav-btn:hover { border-color: var(--gold-dim); background: rgba(196,154,58,.05); }
-
-    /* ── Hero ─────────────────────────────────────────────────────────── */
+    /* ─── HERO ────────────────────────────────────────────────────── */
     .hero {
-      position: relative;
-      min-height: 100vh;
+      min-height: 100svh; position: relative;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      text-align: center;
-      overflow: hidden;
-      padding: 80px 32px 60px;
+      text-align: center; overflow: hidden; padding: 80px 40px 110px;
     }
 
     #fire-canvas {
+      position: absolute; bottom: -24px; left: 50%;
+      transform: translateX(-50%);
+      width: min(100%, 940px); height: min(100%, 680px);
+      pointer-events: none; z-index: 0;
+    }
+
+    .hero-bloom {
       position: absolute; bottom: 0; left: 50%;
       transform: translateX(-50%);
-      width: 760px; height: 580px;
+      width: 760px; height: 360px;
+      background: radial-gradient(ellipse at 50% 100%,
+        rgba(240,128,32,.15) 0%, rgba(200,56,8,.07) 42%, transparent 72%);
       pointer-events: none; z-index: 0;
     }
 
-    .hero-ambient {
-      position: absolute; bottom: -60px; left: 50%;
-      transform: translateX(-50%);
-      width: 640px; height: 360px;
-      background: radial-gradient(ellipse at 50% 85%,
-        rgba(240,128,32,.13) 0%, rgba(200,56,8,.06) 45%, transparent 70%);
-      pointer-events: none; z-index: 0;
+    .hero::before {
+      content: ''; position: absolute; inset: 0; z-index: 1;
+      background: linear-gradient(to bottom, rgba(5,4,8,.6) 0%, transparent 28%, transparent 72%, rgba(5,4,8,.55) 100%);
+      pointer-events: none;
     }
 
-    .hero-c { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
+    .hero-c { position: relative; z-index: 2; }
 
     .hero-shield {
-      width: 60px; height: 60px; margin-bottom: 32px;
-      animation: spulse 3.5s ease-in-out infinite;
+      width: 70px; height: 70px; margin: 0 auto 34px;
+      animation: sfloat 4.2s ease-in-out infinite, sglow 3.5s ease-in-out infinite;
+      opacity: 0; animation-fill-mode: forwards;
+      animation-delay: 0s, 0s;
     }
 
-    @keyframes spulse {
-      0%,100% { filter: drop-shadow(0 0 18px rgba(245,200,66,.38)); }
-      50%      { filter: drop-shadow(0 0 38px rgba(245,200,66,.65)) drop-shadow(0 0 70px rgba(240,128,32,.2)); }
+    @keyframes sfloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    @keyframes sglow {
+      0%,100%{filter:drop-shadow(0 0 20px rgba(245,200,66,.4)) drop-shadow(0 0 40px rgba(245,200,66,.12));}
+      50%{filter:drop-shadow(0 0 36px rgba(245,200,66,.72)) drop-shadow(0 0 80px rgba(240,128,32,.22));}
     }
 
-    .hero-eyebrow {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px; letter-spacing: .2em; text-transform: uppercase;
-      color: var(--gold); opacity: .75; margin-bottom: 22px;
+    /* separate fade-in for shield */
+    .hero-shield { animation: sfloat 4.2s ease-in-out infinite, sglow 3.5s ease-in-out infinite, fadein .6s var(--ease) .1s forwards; opacity: 0; }
+    @keyframes fadein { to { opacity: 1; } }
+
+    .hero-sup {
+      font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+      letter-spacing: .22em; text-transform: uppercase; color: var(--gold);
+      opacity: 0; display: block; margin-bottom: 22px;
+      animation: slideup .7s var(--ease) .4s forwards;
     }
 
     .hero h1 {
       font-family: 'Cinzel', serif;
-      font-size: clamp(62px, 10.5vw, 120px);
-      font-weight: 500; line-height: .9;
-      letter-spacing: -.02em; color: var(--text-1);
-      text-shadow: 0 0 80px rgba(245,200,66,.18), 0 0 160px rgba(240,128,32,.07);
-      margin-bottom: 26px;
+      font-size: clamp(68px, 12.5vw, 152px);
+      font-weight: 700; letter-spacing: -.025em; line-height: .9;
+      color: var(--t1); margin-bottom: 30px;
+      text-shadow: 0 0 140px rgba(245,200,66,.1);
+    }
+
+    .hero h1 .lc {
+      display: inline-block;
+      opacity: 0; transform: translateY(64px);
+      animation: letterup .85s var(--ease) forwards;
+      animation-delay: calc(var(--i) * 52ms + 500ms);
+    }
+
+    @keyframes letterup { to { opacity:1; transform:none; } }
+
+    @keyframes slideup {
+      from { opacity:0; transform:translateY(20px); }
+      to   { opacity:1; transform:none; }
     }
 
     .hero-sub {
-      font-size: clamp(15px, 1.8vw, 19px);
-      color: var(--text-2); font-weight: 300; font-style: italic;
-      max-width: 460px; line-height: 1.7; margin-bottom: 40px;
+      font-size: clamp(16px, 2vw, 20px); color: var(--t2); font-weight: 300;
+      max-width: 460px; margin: 0 auto 50px; line-height: 1.68;
+      opacity: 0; animation: slideup .8s var(--ease) 1.05s forwards;
     }
 
-    .hero-cmd {
-      display: flex; align-items: stretch;
-      border: 1px solid var(--border-2); border-radius: 8px;
-      overflow: hidden; background: var(--bg-raised);
-      margin-bottom: 52px;
+    .hero-install {
+      display: inline-flex; align-items: stretch;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; margin-bottom: 58px;
+      backdrop-filter: blur(20px);
+      opacity: 0; animation: slideup .8s var(--ease) 1.28s forwards;
     }
 
-    .hero-cmd-text {
-      padding: 11px 20px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 14px; color: var(--fire-gold);
+    .hi-t { padding:12px 22px; font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--fire-gold); }
+    .hi-b { padding:12px 16px; border:none; border-left:1px solid var(--border); background:transparent; cursor:pointer; color:var(--t3); font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; transition:color .2s, background .2s; }
+    .hi-b:hover { color:var(--t1); background:rgba(255,255,255,.06); }
+
+    .hero-stats {
+      display: flex; align-items: center; justify-content: center; gap: 42px;
+      opacity: 0; animation: slideup .8s var(--ease) 1.5s forwards;
     }
 
-    .hero-cmd-btn {
-      padding: 11px 15px; border: none;
-      border-left: 1px solid var(--border-2);
-      background: rgba(196,154,58,.07);
-      color: var(--text-2);
-      font-family: 'JetBrains Mono', monospace; font-size: 11px;
-      cursor: pointer; transition: all .2s; letter-spacing: .06em;
+    .hs-n { font-family:'Cinzel',serif; font-size:30px; font-weight:500; color:var(--fire-gold); line-height:1; text-shadow:0 0 28px rgba(245,200,66,.28); }
+    .hs-l { margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.15em; text-transform:uppercase; color:var(--t3); }
+    .hs-div { width:1px; height:30px; background:linear-gradient(to bottom, transparent, var(--border), transparent); }
+
+    .scroll-hint {
+      position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%);
+      z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px;
+      opacity: 0; animation: fadeinhint .6s ease 2.2s forwards;
     }
-    .hero-cmd-btn:hover { color: var(--text-1); background: rgba(196,154,58,.14); }
+    @keyframes fadeinhint { to { opacity: 1; } }
+    .scroll-hint span { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:var(--t3); }
+    .scroll-line { width:1px; height:30px; background:linear-gradient(to bottom, var(--t3), transparent); animation:scrollpulse 2.4s ease-in-out infinite 2.5s; }
+    @keyframes scrollpulse { 0%,100%{opacity:0;transform:scaleY(0);transform-origin:top} 40%,65%{opacity:1;transform:scaleY(1)} 100%{opacity:0;transform:scaleY(0);transform-origin:bottom} }
 
-    .hero-stats { display: flex; align-items: center; gap: 32px; }
+    /* ─── STATEMENT ───────────────────────────────────────────────── */
+    .statement { padding: 104px 0; }
+    .stmt-inner { display:grid; grid-template-columns:1fr 2.8fr; gap:64px; align-items:start; }
+    .stmt-label { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.15em; text-transform:uppercase; color:var(--gold); line-height:2.2; padding-top:6px; }
+    .stmt-q { font-family:'Cinzel',serif; font-size:clamp(22px, 3.2vw, 40px); font-weight:400; line-height:1.48; color:var(--t2); }
+    .stmt-q em { font-style:normal; color:var(--t1); }
 
-    .hero-stat-n {
-      font-family: 'Cinzel', serif; font-size: 28px; font-weight: 500;
-      color: var(--fire-gold); line-height: 1;
-      text-shadow: 0 0 20px rgba(245,200,66,.3);
-    }
+    /* ─── STATS ───────────────────────────────────────────────────── */
+    .stats { padding: 72px 0; }
+    .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:18px; overflow:hidden; }
+    .stat-c { background:var(--bg-s); padding:48px 32px; text-align:center; transition:background .3s; }
+    .stat-c:hover { background:rgba(255,255,255,.022); }
+    .stat-n { font-family:'Cinzel',serif; font-size:clamp(40px, 5.5vw, 76px); font-weight:700; line-height:1; color:var(--fire-gold); text-shadow:0 0 48px rgba(245,200,66,.22); }
+    .stat-u { color:var(--t2); font-size:.5em; }
+    .stat-l { margin-top:14px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--t3); }
 
-    .hero-stat-l {
-      font-size: 10px; color: var(--text-3); letter-spacing: .1em;
-      text-transform: uppercase; margin-top: 5px;
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .sdiv {
-      width: 1px; height: 28px;
-      background: linear-gradient(to bottom, transparent, var(--border-2), transparent);
-    }
-
-    /* ── Statement ───────────────────────────────────────────────────── */
-    .statement {
-      padding: 88px 0;
-      background: linear-gradient(180deg, transparent, rgba(13,12,24,.55), transparent);
-    }
-
-    .statement p {
-      font-family: 'Cinzel', serif;
-      font-size: clamp(20px, 3.2vw, 36px);
-      font-weight: 400; line-height: 1.55;
-      color: var(--text-2); letter-spacing: -.005em;
-      max-width: 800px; margin: 0 auto;
-    }
-
-    .statement p em { font-style: normal; color: var(--text-1); }
-
-    /* ── Tools ───────────────────────────────────────────────────────── */
-    .tools-grid {
-      display: grid; grid-template-columns: repeat(3,1fr);
-      gap: 1px; background: var(--border);
-      border: 1px solid var(--border); border-radius: var(--radius-lg);
-      overflow: hidden; margin-top: 40px;
-    }
+    /* ─── TOOLS ───────────────────────────────────────────────────── */
+    .tools { padding: 104px 0; }
+    .tools-hd { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:48px; }
+    .tools-hd h2 { font-family:'Cinzel',serif; font-size:clamp(28px, 4vw, 50px); font-weight:500; letter-spacing:-.01em; line-height:1.18; }
+    .tools-hd p { font-size:15px; color:var(--t2); font-weight:300; max-width:270px; text-align:right; line-height:1.65; }
+    .tools-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
 
     .tool-card {
-      background: var(--bg-card); padding: 40px 34px;
-      position: relative; overflow: hidden; transition: background .25s;
+      position: relative; overflow: hidden;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 38px 32px 44px;
+      cursor: default;
+      transition: transform .45s var(--ease), border-color .3s, background .3s;
     }
-    .tool-card:hover { background: var(--bg-card2); }
+    .tool-card:hover { transform:translateY(-5px); background:var(--card-h); border-color:var(--border-h); }
 
+    /* shimmer sweep on hover */
+    .tool-card::before {
+      content: ''; position: absolute; top:0; left:-100%; width:55%; height:100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.04), transparent);
+      transition: left .65s var(--ease);
+    }
+    .tool-card:hover::before { left: 165%; }
+
+    /* mouse-tracking spotlight */
     .tool-card::after {
-      content: ''; position: absolute;
-      top: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
-      opacity: 0; transition: opacity .3s;
+      content: ''; position: absolute; inset: 0; border-radius: 20px;
+      background: radial-gradient(130px at var(--mx,50%) var(--my,0%), rgba(196,154,58,.07), transparent);
+      opacity: 0; transition: opacity .3s; pointer-events: none;
     }
     .tool-card:hover::after { opacity: 1; }
 
-    .tool-ic {
-      width: 36px; height: 36px; color: var(--gold); margin-bottom: 22px;
+    .tool-ic { width:42px; height:42px; color:var(--gold); margin-bottom:28px; display:block; transition:transform .35s var(--ease), color .3s; }
+    .tool-card:hover .tool-ic { color:var(--fire-gold); transform:scale(1.1) rotate(-2deg); }
+    .tool-name { font-family:'Cinzel',serif; font-size:20px; font-weight:500; letter-spacing:.01em; margin-bottom:14px; }
+    .tool-desc { font-size:14.5px; line-height:1.72; color:var(--t2); font-weight:300; }
+    .tool-desc code { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--fire-gold); background:rgba(245,200,66,.08); padding:1px 6px; border-radius:4px; }
+    .tool-tag { display:inline-block; margin-top:24px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); opacity:.55; }
+
+    /* ─── TERMINAL ────────────────────────────────────────────────── */
+    .term-s { padding: 104px 0; }
+    .term-hd { margin-bottom: 44px; }
+    .term-hd h2 { font-family:'Cinzel',serif; font-size:clamp(28px,4vw,50px); font-weight:500; letter-spacing:-.01em; line-height:1.18; }
+
+    .terminal {
+      background: #030208;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 18px; overflow: hidden;
+      font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 1.9;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.025), 0 48px 110px rgba(0,0,0,.65), 0 0 100px rgba(240,128,32,.035);
     }
 
-    .tool-title {
-      font-family: 'Cinzel', serif; font-size: 18px; font-weight: 500;
-      margin-bottom: 10px; letter-spacing: .01em;
-    }
+    .term-bar { display:flex; align-items:center; gap:8px; padding:14px 18px; background:rgba(255,255,255,.02); border-bottom:1px solid rgba(255,255,255,.055); }
+    .tc { width:12px; height:12px; border-radius:50%; }
+    .tc-r{background:#FF5F56} .tc-y{background:#FFBD2E} .tc-g{background:#27C93F}
+    .t-path { margin-left:10px; font-size:11px; color:rgba(255,255,255,.18); }
 
-    .tool-desc { font-size: 14px; line-height: 1.7; color: var(--text-2); font-weight: 300; }
+    .term-body { padding:30px 34px 38px; min-height:340px; }
 
-    .tool-sub {
-      display: block; margin-top: 18px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
-      color: var(--gold); opacity: .6;
-    }
+    .tp  { color:rgba(196,154,58,.55); }
+    .tc2 { color:var(--t1); }
+    .tok { color:#4ADE80; }
+    .tw  { color:var(--fire-amb); }
+    .te  { color:#F87171; }
+    .td2 { color:rgba(255,255,255,.22); }
+    .tf  { color:var(--fire-gold); }
+    .tpu { color:#A78BFA; }
+    .tln { display:block; height:5px; }
 
-    /* ── Rules ───────────────────────────────────────────────────────── */
-    .rules-pills { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 36px; }
+    .cursor { display:inline-block; width:8px; height:16px; background:var(--t2); vertical-align:middle; animation:blink 1.1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ─── RULES ───────────────────────────────────────────────────── */
+    .rules-s { padding: 104px 0; }
+    .rules-hd { display:grid; grid-template-columns:1fr 1fr; gap:48px; margin-bottom:52px; align-items:end; }
+    .rules-hd h2 { font-family:'Cinzel',serif; font-size:clamp(28px,4vw,50px); font-weight:500; letter-spacing:-.01em; line-height:1.18; }
+    .rules-hd p { font-size:15px; color:var(--t2); font-weight:300; line-height:1.68; }
+    .rules-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(196px,1fr)); gap:10px; }
 
     .pill {
-      display: flex; align-items: center; gap: 9px;
-      padding: 9px 15px;
-      border: 1px solid var(--border-2); border-radius: 100px;
-      background: var(--bg-raised);
-      transition: border-color .2s, background .2s, transform .2s;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 11px 16px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 100px; transition: border-color .25s, background .25s, transform .35s var(--ease);
     }
-    .pill:hover {
-      border-color: var(--gold-dim);
-      background: rgba(196,154,58,.04);
-      transform: translateY(-1px);
-    }
+    .pill:hover { border-color:var(--border-h); background:rgba(196,154,58,.04); transform:translateY(-2px); }
+    .pill-n { font-size:13.5px; font-weight:500; white-space:nowrap; }
+    .pill-c { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--fire-gold); background:rgba(245,200,66,.09); padding:2px 8px; border-radius:100px; }
 
-    .pill-name { font-size: 13px; font-weight: 500; white-space: nowrap; }
+    /* ─── HOW ─────────────────────────────────────────────────────── */
+    .how-s { padding: 104px 0; }
+    .how-grid { display:grid; grid-template-columns:1fr 1.2fr; gap:80px; align-items:start; }
+    .how-sticky { position:sticky; top:80px; }
+    .how-sticky h2 { font-family:'Cinzel',serif; font-size:clamp(26px,3.5vw,46px); font-weight:500; letter-spacing:-.01em; line-height:1.25; margin-top:16px; margin-bottom:22px; }
+    .how-sticky p { font-size:15px; color:var(--t2); font-weight:300; line-height:1.68; max-width:340px; }
+    .steps { display:flex; flex-direction:column; }
+    .step { display:flex; gap:24px; padding:32px 0; border-bottom:1px solid var(--border); }
+    .step:first-child { padding-top:0; }
+    .step:last-child  { border-bottom:none; padding-bottom:0; }
+    .step-n { font-family:'Cinzel',serif; font-size:11px; font-weight:700; letter-spacing:.15em; color:var(--gold); width:26px; flex-shrink:0; padding-top:3px; }
+    .step h3 { font-size:15px; font-weight:600; margin-bottom:8px; }
+    .step p  { font-size:14.5px; color:var(--t2); line-height:1.65; font-weight:300; }
+    .step code { font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--fire-gold); background:rgba(245,200,66,.08); padding:1px 6px; border-radius:4px; }
 
-    .pill-n {
-      font-family: 'JetBrains Mono', monospace; font-size: 11px;
-      color: var(--gold); background: rgba(196,154,58,.1);
-      padding: 1px 7px; border-radius: 100px;
-    }
-
-    /* ── Terminal ────────────────────────────────────────────────────── */
-    .terminal {
-      background: #05040E;
-      border: 1px solid var(--border-2);
-      border-radius: var(--radius-lg); overflow: hidden;
-      font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8;
-      box-shadow: 0 0 0 1px rgba(255,255,255,.025), 0 28px 72px rgba(0,0,0,.5), 0 0 56px rgba(240,128,32,.035);
-    }
-
-    .term-bar {
-      display: flex; align-items: center; gap: 7px;
-      padding: 12px 16px;
-      background: rgba(255,255,255,.022);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .td { width: 11px; height: 11px; border-radius: 50%; }
-    .t-path { margin-left: 8px; font-size: 11px; color: var(--text-3); }
-
-    .term-body { padding: 26px 28px 30px; }
-
-    .p  { color: var(--gold-dim); }
-    .c  { color: var(--text-1); }
-    .ok { color: #4ADE80; }
-    .w  { color: var(--fire-amber); }
-    .e  { color: #F87171; }
-    .d  { color: var(--text-3); }
-    .f  { color: var(--fire-gold); }
-    .pu { color: #A78BFA; }
-    .nl { display: block; height: 6px; }
-
-    /* ── How ─────────────────────────────────────────────────────────── */
-    .how-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 72px; align-items: start;
-    }
-
-    .step {
-      display: flex; gap: 22px;
-      padding: 28px 0; border-bottom: 1px solid var(--border);
-    }
-    .step:first-child { padding-top: 0; }
-    .step:last-child  { border-bottom: none; }
-
-    .step-n {
-      font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700;
-      letter-spacing: .12em; color: var(--gold);
-      width: 24px; flex-shrink: 0; padding-top: 3px;
-    }
-
-    .step h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-    .step p  { font-size: 14px; color: var(--text-2); line-height: 1.65; font-weight: 300; }
-    .step code {
-      background: rgba(196,154,58,.08); color: var(--fire-gold);
-      padding: 1px 6px; border-radius: 4px;
-      font-family: 'JetBrains Mono', monospace; font-size: 12px;
-    }
-
-    /* ── CTA ──────────────────────────────────────────────────────────── */
-    .cta {
-      padding: 120px 0; text-align: center; position: relative; overflow: hidden;
-    }
-
-    .cta-glow {
-      position: absolute; inset: 0; z-index: 0;
-      background: radial-gradient(ellipse 65% 55% at 50% 50%,
-        rgba(200,56,8,.07) 0%, rgba(240,128,32,.04) 35%, transparent 70%);
-    }
-
-    .cta > * { position: relative; z-index: 1; }
-
+    /* ─── CTA ─────────────────────────────────────────────────────── */
+    .cta { padding: 148px 0; text-align: center; position: relative; overflow: hidden; }
+    .cta-bg { position:absolute; inset:0; z-index:0; background:radial-gradient(ellipse 72% 64% at 50% 50%, rgba(200,56,8,.09) 0%, rgba(240,128,32,.045) 38%, transparent 68%); }
+    .cta > * { position:relative; z-index:1; }
     .cta h2 {
       font-family: 'Cinzel', serif;
-      font-size: clamp(34px, 5vw, 60px);
-      font-weight: 500; letter-spacing: -.01em;
-      line-height: 1.1; margin-bottom: 20px;
+      font-size: clamp(42px, 7vw, 96px);
+      font-weight: 700; letter-spacing: -.025em; line-height: 1.0;
+      margin-bottom: 24px;
+      background: linear-gradient(180deg, var(--t1) 0%, rgba(245,245,247,.48) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
+    .cta p { font-size:18px; color:var(--t2); font-weight:300; max-width:400px; margin:0 auto 56px; line-height:1.65; }
+    .cta-btns { display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; }
 
-    .cta p {
-      font-size: 17px; font-weight: 300;
-      color: var(--text-2); max-width: 440px;
-      margin: 0 auto 44px; line-height: 1.65;
-    }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:14px 32px; border-radius:100px; font-size:15px; font-weight:500; cursor:pointer; transition:all .35s var(--ease); border:1px solid transparent; letter-spacing:.01em; }
+    .btn-fire { background:linear-gradient(135deg, var(--fire-amb) 0%, var(--fire-red) 100%); color:#fff; box-shadow:0 0 0 1px rgba(240,128,32,.38), 0 8px 36px rgba(200,56,8,.32); }
+    .btn-fire:hover { transform:scale(1.04) translateY(-2px); box-shadow:0 0 0 1px rgba(240,128,32,.6), 0 16px 56px rgba(200,56,8,.48), 0 0 90px rgba(245,200,66,.1); }
+    .btn-ghost { background:transparent; color:var(--t2); border-color:var(--border); }
+    .btn-ghost:hover { color:var(--t1); border-color:rgba(255,255,255,.16); background:rgba(255,255,255,.04); }
 
-    .cta-btns { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .cta-note { margin-top:30px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--t3); letter-spacing:.1em; }
 
-    .btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 12px 26px; border-radius: 8px;
-      font-size: 14px; font-weight: 500; cursor: pointer;
-      transition: all .2s; border: 1px solid transparent; letter-spacing: .01em;
-    }
+    /* ─── FOOTER ──────────────────────────────────────────────────── */
+    .footer { border-top:1px solid var(--border); padding:44px 0; }
+    .footer-i { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:24px; }
+    .f-brand { font-family:'Cinzel',serif; font-size:13px; color:var(--gold); letter-spacing:.08em; }
+    .f-by { font-size:12px; color:var(--t3); margin-top:4px; }
+    .f-links { display:flex; gap:24px; }
+    .f-links a { font-size:12.5px; color:var(--t3); transition:color .2s; }
+    .f-links a:hover { color:var(--t2); }
 
-    .btn-p {
-      background: var(--fire-amber); color: #000; border-color: var(--fire-amber);
-    }
-    .btn-p:hover {
-      background: var(--fire-gold); border-color: var(--fire-gold);
-      box-shadow: 0 0 36px rgba(240,128,32,.38), 0 4px 18px rgba(0,0,0,.3);
-      transform: translateY(-1px);
-    }
-
-    .btn-s {
-      background: transparent; color: var(--text-2); border-color: var(--border-2);
-    }
-    .btn-s:hover {
-      color: var(--text-1); border-color: rgba(255,255,255,.14);
-      background: rgba(255,255,255,.025);
-    }
-
-    .cta-note {
-      margin-top: 22px; font-family: 'JetBrains Mono', monospace;
-      font-size: 11px; color: var(--text-3); letter-spacing: .08em;
-    }
-
-    /* ── Footer ──────────────────────────────────────────────────────── */
-    .footer { border-top: 1px solid var(--border); padding: 36px 0; }
-
-    .footer-i {
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 20px;
-    }
-
-    .footer-brand {
-      font-family: 'Cinzel', serif; font-size: 13px;
-      color: var(--gold); letter-spacing: .08em;
-    }
-
-    .footer-by { font-size: 12px; color: var(--text-3); margin-top: 3px; }
-
-    .footer-links { display: flex; gap: 22px; }
-    .footer-links a { font-size: 12px; color: var(--text-3); transition: color .2s; }
-    .footer-links a:hover { color: var(--text-2); }
-
-    /* ── Section spacing ─────────────────────────────────────────────── */
-    .s96 { padding: 96px 0; }
-    .s64 { padding: 64px 0; }
-
-    /* ── Responsive ──────────────────────────────────────────────────── */
-    @media (max-width: 820px) {
-      .nav-links { display: none; }
-      .tools-grid { grid-template-columns: 1fr; }
-      .how-grid { grid-template-columns: 1fr; gap: 40px; }
-      .hero h1 { font-size: 52px; }
-      #fire-canvas { width: 100%; }
-      .hero-stats { gap: 24px; }
+    /* ─── RESPONSIVE ──────────────────────────────────────────────── */
+    @media (max-width: 860px) {
+      .nav-links { display:none; }
+      .stmt-inner { grid-template-columns:1fr; gap:20px; }
+      .stmt-label { display:none; }
+      .stats-grid { grid-template-columns:repeat(2,1fr); }
+      .tools-grid { grid-template-columns:1fr; }
+      .tools-hd { flex-direction:column; align-items:flex-start; gap:14px; }
+      .tools-hd p { text-align:left; max-width:100%; }
+      .rules-hd { grid-template-columns:1fr; gap:20px; }
+      .how-grid { grid-template-columns:1fr; gap:44px; }
+      .how-sticky { position:relative; top:0; }
+      .hero h1 { font-size:clamp(52px,14vw,86px); }
     }
   </style>
 </head>
 <body>
 
-<!-- ── Nav ─────────────────────────────────────────────────────────────── -->
-<nav class="nav">
+<!-- ─── NAV ──────────────────────────────────────────────────────────── -->
+<nav class="nav" id="nav">
   <div class="nav-i">
     <a href="#" class="nav-logo">
       <svg viewBox="0 0 22 26" fill="none">
-        <path d="M11 1.5L20.5 5.5V14C20.5 19.5 16.5 23.5 11 25.5C5.5 23.5 1.5 19.5 1.5 14V5.5L11 1.5Z"
-          stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
-        <path d="M11 7.5V15.5M8 10.5H14M8 13.5H14"
-          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M11 1.5L20.5 5.5V14C20.5 19.5 16.5 23.5 11 25.5C5.5 23.5 1.5 19.5 1.5 14V5.5L11 1.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M11 7.5V15.5M8 10.5H14M8 13.5H14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
       </svg>
       PROMETHEUS
     </a>
     <div class="nav-links">
       <a href="#tools">Tools</a>
-      <a href="#rules">505 Rules</a>
+      <a href="#rules">Rules</a>
       <a href="#how">How It Works</a>
       <a href="https://github.com/TenticleTim/prometheus-fire" target="_blank" rel="noopener">GitHub ↗</a>
     </div>
-    <a href="https://github.com/TenticleTim/prometheus-fire" target="_blank" rel="noopener" class="nav-btn">Download free</a>
+    <a href="https://github.com/TenticleTim/prometheus-fire" target="_blank" rel="noopener" class="nav-cta">Get Prometheus</a>
   </div>
 </nav>
 
-<!-- ── Hero ────────────────────────────────────────────────────────────── -->
+<!-- ─── HERO ─────────────────────────────────────────────────────────── -->
 <section class="hero">
   <canvas id="fire-canvas" aria-hidden="true"></canvas>
-  <div class="hero-ambient"></div>
+  <div class="hero-bloom"></div>
 
   <div class="hero-c">
-    <!-- Shield SVG -->
-    <svg class="hero-shield" viewBox="0 0 64 74" fill="none">
-      <path d="M32 2L62 13V36C62 53 48 66 32 72C16 66 2 53 2 36V13L32 2Z"
-        fill="url(#shf)" stroke="url(#shs)" stroke-width="1.5"/>
-      <path d="M32 20V42M25 26H39M25 34H39"
-        stroke="#FFF5D0" stroke-width="2.2" stroke-linecap="round"/>
+    <svg class="hero-shield" width="70" height="70" viewBox="0 0 64 74" fill="none">
+      <path d="M32 2L62 13V36C62 53 48 66 32 72C16 66 2 53 2 36V13L32 2Z" fill="url(#shfill)" stroke="url(#shstroke)" stroke-width="1.5"/>
+      <path d="M32 20V42M25 26H39M25 34H39" stroke="#FFF5D0" stroke-width="2.2" stroke-linecap="round"/>
       <defs>
-        <linearGradient id="shf" x1="32" y1="2" x2="32" y2="72" gradientUnits="userSpaceOnUse">
+        <linearGradient id="shfill" x1="32" y1="2" x2="32" y2="72" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stop-color="#C49A3A" stop-opacity=".2"/>
-          <stop offset="100%" stop-color="#780A00" stop-opacity=".08"/>
+          <stop offset="100%" stop-color="#780A00" stop-opacity=".07"/>
         </linearGradient>
-        <linearGradient id="shs" x1="32" y1="2" x2="32" y2="72" gradientUnits="userSpaceOnUse">
+        <linearGradient id="shstroke" x1="32" y1="2" x2="32" y2="72" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stop-color="#F5C842"/>
           <stop offset="100%" stop-color="#C83808"/>
         </linearGradient>
       </defs>
     </svg>
 
-    <p class="hero-eyebrow">Open Source · Holley Studios · Zero Config</p>
-    <h1>PROMETHEUS</h1>
-    <p class="hero-sub">505 governance rules watching every pull request,<br>every commit, every AI-generated line of code.</p>
+    <span class="hero-sup">Open Source · Holley Studios · Zero Config</span>
+    <h1 id="htitle">PROMETHEUS</h1>
+    <p class="hero-sub">Code governance for the age of AI.<br>505 rules. Every line watched. Nothing slips.</p>
 
-    <div class="hero-cmd">
-      <span class="hero-cmd-text">npm install prometheus-governance</span>
-      <button class="hero-cmd-btn" onclick="
-        navigator.clipboard.writeText('npm install prometheus-governance');
-        this.textContent='✓ copied';
-        setTimeout(()=>this.textContent='copy',1500)
-      ">copy</button>
+    <div class="hero-install">
+      <span class="hi-t">npm install prometheus-governance</span>
+      <button class="hi-b" onclick="navigator.clipboard.writeText('npm install prometheus-governance');this.textContent='✓ copied';setTimeout(()=>this.textContent='copy',1600)">copy</button>
     </div>
 
     <div class="hero-stats">
-      <div style="text-align:center">
-        <div class="hero-stat-n">505</div>
-        <div class="hero-stat-l">Rules</div>
+      <div><div class="hs-n">505</div><div class="hs-l">Rules</div></div>
+      <div class="hs-div"></div>
+      <div><div class="hs-n">17</div><div class="hs-l">Categories</div></div>
+      <div class="hs-div"></div>
+      <div><div class="hs-n">3</div><div class="hs-l">Tools</div></div>
+      <div class="hs-div"></div>
+      <div><div class="hs-n">0</div><div class="hs-l">Config</div></div>
+    </div>
+  </div>
+
+  <div class="scroll-hint">
+    <span>scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<div class="hr"></div>
+
+<!-- ─── STATEMENT ────────────────────────────────────────────────────── -->
+<section class="statement">
+  <div class="wrap">
+    <div class="stmt-inner">
+      <div class="stmt-label" data-r>The problem<br>with AI code</div>
+      <blockquote class="stmt-q" data-r data-d="1">
+        AI tools write code <em>faster than humans can review it.</em>
+        Without governance, every pull request is a gamble —
+        security holes, broken patterns, hallucinated logic
+        <em>shipping to production.</em>
+        Prometheus closes that gap.
+      </blockquote>
+    </div>
+  </div>
+</section>
+
+<div class="hr"></div>
+
+<!-- ─── STATS ────────────────────────────────────────────────────────── -->
+<section class="stats">
+  <div class="wrap">
+    <div class="stats-grid">
+      <div class="stat-c" data-r>
+        <div class="stat-n" data-count="505">505</div>
+        <div class="stat-l">Governance Rules</div>
       </div>
-      <div class="sdiv"></div>
-      <div style="text-align:center">
-        <div class="hero-stat-n">17</div>
-        <div class="hero-stat-l">Categories</div>
+      <div class="stat-c" data-r data-d="1">
+        <div class="stat-n" data-count="17">17</div>
+        <div class="stat-l">Rule Categories</div>
       </div>
-      <div class="sdiv"></div>
-      <div style="text-align:center">
-        <div class="hero-stat-n">3</div>
-        <div class="hero-stat-l">Tools</div>
+      <div class="stat-c" data-r data-d="2">
+        <div class="stat-n" data-count="3">3</div>
+        <div class="stat-l">Integrated Tools</div>
       </div>
-      <div class="sdiv"></div>
-      <div style="text-align:center">
-        <div class="hero-stat-n">0</div>
-        <div class="hero-stat-l">Config</div>
+      <div class="stat-c" data-r data-d="3">
+        <div class="stat-n">0<span class="stat-u"> config</span></div>
+        <div class="stat-l">Setup Required</div>
       </div>
     </div>
   </div>
 </section>
 
-<div class="rl"></div>
+<div class="hr"></div>
 
-<!-- ── Statement ──────────────────────────────────────────────────────── -->
-<section class="statement">
-  <div class="wrap-sm">
-    <p class="reveal">
-      AI tools write code faster than humans can review it.
-      Without governance, every PR is a gamble — security holes, broken patterns,
-      hallucinated logic shipping to production.
-      <em>Prometheus closes that gap.</em>
-    </p>
-  </div>
-</section>
-
-<div class="rl"></div>
-
-<!-- ── Tools ───────────────────────────────────────────────────────────── -->
-<section class="s96" id="tools">
+<!-- ─── TOOLS ────────────────────────────────────────────────────────── -->
+<section class="tools" id="tools">
   <div class="wrap">
-    <span class="label reveal">The Three Fires</span>
-    <h2 class="reveal d1" style="font-family:'Cinzel',serif;font-size:clamp(26px,3.8vw,44px);font-weight:500;letter-spacing:-.01em;line-height:1.2">One package. Three layers of protection.</h2>
+    <div class="tools-hd">
+      <div>
+        <span class="eyebrow" data-r>Three instruments</span>
+        <h2 data-r data-d="1">One package.<br>Every layer protected.</h2>
+      </div>
+      <p data-r data-d="2">CLI for local dev. Action for CI. Extension for real-time guidance while you write.</p>
+    </div>
 
     <div class="tools-grid">
-      <div class="tool-card reveal d1">
-        <svg class="tool-ic" viewBox="0 0 36 36" fill="none">
-          <rect x="3" y="6" width="30" height="24" rx="3" stroke="currentColor" stroke-width="1.4"/>
-          <path d="M10 18L15 23L26 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <div class="tool-card" data-r data-d="1">
+        <svg class="tool-ic" viewBox="0 0 40 40" fill="none">
+          <rect x="3" y="7" width="34" height="26" rx="3.5" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M11 20L17 26L29 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <div class="tool-title">CLI</div>
-        <p class="tool-desc"><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--fire-gold);background:rgba(196,154,58,.08);padding:1px 5px;border-radius:3px">prometheus scan</code> deep-scans your entire repo and generates a health grade A+ through F. <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--fire-gold);background:rgba(196,154,58,.08);padding:1px 5px;border-radius:3px">prometheus review</code> checks only staged changes — fast enough to run before every commit.</p>
-        <span class="tool-sub">The Oracle</span>
+        <div class="tool-name">CLI</div>
+        <p class="tool-desc"><code>prometheus scan</code> grades your entire codebase A+ through F. <code>prometheus review</code> checks only staged changes — fast enough for pre-commit hooks.</p>
+        <span class="tool-tag">The Oracle</span>
       </div>
 
-      <div class="tool-card reveal d2">
-        <svg class="tool-ic" viewBox="0 0 36 36" fill="none">
-          <circle cx="18" cy="18" r="13" stroke="currentColor" stroke-width="1.4"/>
-          <path d="M12 18L16 22L24 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M18 5V9M18 27V31M5 18H9M27 18H31" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      <div class="tool-card" data-r data-d="2">
+        <svg class="tool-ic" viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="20" r="14" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M13 20L17.5 24.5L27 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 6V10M20 30V34M6 20H10M30 20H34" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
         </svg>
-        <div class="tool-title">GitHub Action</div>
-        <p class="tool-desc">One YAML file in your repo. Every pull request gets governance review — inline comments on the exact line, BLOCKER findings block the merge. Fully self-contained. No tokens, no secrets, no setup beyond copy-paste.</p>
-        <span class="tool-sub">The Guardian</span>
+        <div class="tool-name">GitHub Action</div>
+        <p class="tool-desc">One YAML file, fully self-contained. Every pull request gets a governance review. Inline comments on the exact offending line. BLOCKERs stop the merge automatically.</p>
+        <span class="tool-tag">The Guardian</span>
       </div>
 
-      <div class="tool-card reveal d3">
-        <svg class="tool-ic" viewBox="0 0 36 36" fill="none">
-          <rect x="4" y="4" width="28" height="28" rx="4" stroke="currentColor" stroke-width="1.4"/>
-          <path d="M12 14L18 20L12 26" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M20 26H24" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      <div class="tool-card" data-r data-d="3">
+        <svg class="tool-ic" viewBox="0 0 40 40" fill="none">
+          <rect x="4" y="4" width="32" height="32" rx="5" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M13 16L20 23L13 30" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M22 30H28" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
-        <div class="tool-title">VS Code Extension</div>
-        <p class="tool-desc">Real-time findings as you write. Health score in the status bar. The AI adapters panel keeps Claude, Cursor, Copilot, and Gemini aware of your governance rules — so they write governed code from line one.</p>
-        <span class="tool-sub">The Watcher</span>
+        <div class="tool-name">VS Code Extension</div>
+        <p class="tool-desc">Real-time findings as you type. Health score in the status bar. The AI adapters panel keeps Claude, Cursor, and Copilot aware of your rules — governed code from line one.</p>
+        <span class="tool-tag">The Watcher</span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Rules ────────────────────────────────────────────────────────────── -->
-<div class="rl"></div>
+<div class="hr"></div>
 
-<section class="s96" id="rules">
+<!-- ─── TERMINAL ──────────────────────────────────────────────────────── -->
+<section class="term-s">
   <div class="wrap">
-    <span class="label reveal">505 Rules · 17 Categories</span>
-    <h2 class="reveal d1" style="font-family:'Cinzel',serif;font-size:clamp(26px,3.8vw,44px);font-weight:500;letter-spacing:-.01em;line-height:1.2">Every layer of your AI stack,<br>governed.</h2>
-    <p class="reveal d2" style="margin-top:16px;font-size:16px;color:var(--text-2);font-weight:300;max-width:540px;line-height:1.65">From prompt injection to N+1 queries to missing Zod schemas. All 505 rules active the moment you install — zero configuration.</p>
-
-    <div class="rules-pills">
-      <div class="pill reveal"><span class="pill-name">AI / LLM</span><span class="pill-n">27</span></div>
-      <div class="pill reveal d1"><span class="pill-name">Security</span><span class="pill-n">22</span></div>
-      <div class="pill reveal d2"><span class="pill-name">Prisma</span><span class="pill-n">30</span></div>
-      <div class="pill reveal d3"><span class="pill-name">Zod</span><span class="pill-n">30</span></div>
-      <div class="pill reveal"><span class="pill-name">tRPC</span><span class="pill-n">25</span></div>
-      <div class="pill reveal d1"><span class="pill-name">React</span><span class="pill-n">30</span></div>
-      <div class="pill reveal d2"><span class="pill-name">Next.js</span><span class="pill-n">22</span></div>
-      <div class="pill reveal d3"><span class="pill-name">Performance</span><span class="pill-n">23</span></div>
-      <div class="pill reveal"><span class="pill-name">TypeScript</span><span class="pill-n">18</span></div>
-      <div class="pill reveal d1"><span class="pill-name">Node.js</span><span class="pill-n">30</span></div>
-      <div class="pill reveal d2"><span class="pill-name">Error Handling</span><span class="pill-n">25</span></div>
-      <div class="pill reveal d3"><span class="pill-name">State</span><span class="pill-n">20</span></div>
-      <div class="pill reveal"><span class="pill-name">Forms</span><span class="pill-n">20</span></div>
-      <div class="pill reveal d1"><span class="pill-name">Logging</span><span class="pill-n">20</span></div>
-      <div class="pill reveal d2"><span class="pill-name">CSS</span><span class="pill-n">20</span></div>
-      <div class="pill reveal d3"><span class="pill-name">Imports</span><span class="pill-n">20</span></div>
-      <div class="pill reveal"><span class="pill-name">Database</span><span class="pill-n">23</span></div>
+    <div class="term-hd">
+      <span class="eyebrow" data-r>See it work</span>
+      <h2 data-r data-d="1">505 rules. One command.</h2>
     </div>
-  </div>
-</section>
-
-<!-- ── Terminal ─────────────────────────────────────────────────────────── -->
-<section class="s64" style="padding-top:0">
-  <div class="wrap">
-    <div class="rl" style="margin-bottom:56px"></div>
-    <div class="terminal reveal">
+    <div class="terminal" data-r data-d="2">
       <div class="term-bar">
-        <div class="td" style="background:#FF5F56"></div>
-        <div class="td" style="background:#FFBD2E"></div>
-        <div class="td" style="background:#27C93F"></div>
-        <span class="t-path">prometheus scan</span>
+        <div class="tc tc-r"></div>
+        <div class="tc tc-y"></div>
+        <div class="tc tc-g"></div>
+        <span class="t-path">prometheus scan — ~/projects/my-app</span>
       </div>
-      <div class="term-body">
-        <div><span class="p">$ </span><span class="c">prometheus scan</span></div>
-        <div class="nl"></div>
-        <div><span class="f">🔱 Prometheus Governance  v1.0.0</span></div>
-        <div><span class="d">   Scanning 847 files  ·  505 rules  ·  17 categories</span></div>
-        <div class="nl"></div>
-        <div><span class="e">  BLOCKER  src/api/ai/generate.ts:47</span></div>
-        <div><span class="e">           prompt_injection_user_input — User input concatenated directly into</span></div>
-        <div><span class="e">           LLM prompt without sanitization.  (AI_013)</span></div>
-        <div class="nl"></div>
-        <div><span class="e">  BLOCKER  src/lib/db/client.ts:12</span></div>
-        <div><span class="e">           connection_pool_exhaust — Prisma client instantiated outside module</span></div>
-        <div><span class="e">           scope. Will exhaust DB connections in production.  (DB_014)</span></div>
-        <div class="nl"></div>
-        <div><span class="w">  HIGH     src/hooks/useData.ts:23</span></div>
-        <div><span class="w">           waterfall_data_fetch — Sequential awaits in component.</span></div>
-        <div><span class="w">           Use Promise.all() to parallelise.  (PERF_018)</span></div>
-        <div class="nl"></div>
-        <div><span class="d">           + 14 MEDIUM  ·  38 LOW  ·  22 TECH_DEBT</span></div>
-        <div class="nl"></div>
-        <div><span class="pu">  ──────────────────────────────────────────────────</span></div>
-        <div><span class="d">  Files scanned      847   ·   Rules evaluated   505</span></div>
-        <div class="nl"></div>
-        <div><span class="e">  Health Grade   C   ·   Resolve BLOCKERs before deploy</span></div>
-        <div><span class="d">  Report saved   .prometheus/report.json</span></div>
-      </div>
+      <div class="term-body" id="tbody"><span class="cursor"></span></div>
     </div>
   </div>
 </section>
 
-<!-- ── How ──────────────────────────────────────────────────────────────── -->
-<div class="rl"></div>
+<div class="hr"></div>
 
-<section class="s96" id="how">
+<!-- ─── RULES ────────────────────────────────────────────────────────── -->
+<section class="rules-s" id="rules">
+  <div class="wrap">
+    <div class="rules-hd">
+      <div>
+        <span class="eyebrow" data-r>505 Rules</span>
+        <h2 data-r data-d="1">Every layer of your<br>AI stack, governed.</h2>
+      </div>
+      <p data-r data-d="2">From prompt injection to N+1 queries to missing Zod schemas. All 505 active the moment you install. No configuration required.</p>
+    </div>
+    <div class="rules-grid">
+      <div class="pill" data-r><span class="pill-n">AI / LLM</span><span class="pill-c">27</span></div>
+      <div class="pill" data-r data-d="1"><span class="pill-n">Security</span><span class="pill-c">22</span></div>
+      <div class="pill" data-r data-d="2"><span class="pill-n">Prisma</span><span class="pill-c">30</span></div>
+      <div class="pill" data-r data-d="3"><span class="pill-n">Zod</span><span class="pill-c">30</span></div>
+      <div class="pill" data-r><span class="pill-n">tRPC</span><span class="pill-c">25</span></div>
+      <div class="pill" data-r data-d="1"><span class="pill-n">React</span><span class="pill-c">30</span></div>
+      <div class="pill" data-r data-d="2"><span class="pill-n">Next.js</span><span class="pill-c">22</span></div>
+      <div class="pill" data-r data-d="3"><span class="pill-n">Performance</span><span class="pill-c">23</span></div>
+      <div class="pill" data-r><span class="pill-n">TypeScript</span><span class="pill-c">18</span></div>
+      <div class="pill" data-r data-d="1"><span class="pill-n">Node.js</span><span class="pill-c">30</span></div>
+      <div class="pill" data-r data-d="2"><span class="pill-n">Error Handling</span><span class="pill-c">25</span></div>
+      <div class="pill" data-r data-d="3"><span class="pill-n">State</span><span class="pill-c">20</span></div>
+      <div class="pill" data-r><span class="pill-n">Forms</span><span class="pill-c">20</span></div>
+      <div class="pill" data-r data-d="1"><span class="pill-n">Logging</span><span class="pill-c">20</span></div>
+      <div class="pill" data-r data-d="2"><span class="pill-n">CSS</span><span class="pill-c">20</span></div>
+      <div class="pill" data-r data-d="3"><span class="pill-n">Imports</span><span class="pill-c">20</span></div>
+      <div class="pill" data-r><span class="pill-n">Database</span><span class="pill-c">23</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="hr"></div>
+
+<!-- ─── HOW ───────────────────────────────────────────────────────────── -->
+<section class="how-s" id="how">
   <div class="wrap">
     <div class="how-grid">
-      <div>
-        <span class="label reveal">Setup</span>
-        <h2 class="reveal d1" style="font-family:'Cinzel',serif;font-size:clamp(24px,3.5vw,42px);font-weight:500;letter-spacing:-.01em;line-height:1.2">Governed in minutes.<br>Protected forever.</h2>
-        <p class="reveal d2" style="margin-top:20px;font-size:15px;color:var(--text-2);font-weight:300;line-height:1.7">No onboarding wizard. No cloud account. Prometheus works locally, in CI, and in your editor at the same time.</p>
+      <div class="how-sticky">
+        <span class="eyebrow" data-r>Setup</span>
+        <h2 data-r data-d="1">Governed in minutes.<br>Protected forever.</h2>
+        <p data-r data-d="2">No account. No cloud. Prometheus runs locally, in CI, and in your editor — simultaneously.</p>
       </div>
-
-      <div>
-        <div class="step reveal">
+      <div class="steps">
+        <div class="step" data-r>
           <span class="step-n">I</span>
           <div>
             <h3>Install</h3>
-            <p>Run <code>npm install prometheus-governance</code>. All 505 rules are active immediately — no configuration file needed.</p>
+            <p>Run <code>npm install prometheus-governance</code>. All 505 rules activate immediately — no config file needed.</p>
           </div>
         </div>
-        <div class="step reveal d1">
+        <div class="step" data-r data-d="1">
           <span class="step-n">II</span>
           <div>
             <h3>Scan</h3>
-            <p>Run <code>prometheus scan</code> to see every finding in your codebase and get your first health grade.</p>
+            <p>Run <code>prometheus scan</code> to get your first health grade and see every finding in your codebase, categorized by severity.</p>
           </div>
         </div>
-        <div class="step reveal d2">
+        <div class="step" data-r data-d="2">
           <span class="step-n">III</span>
           <div>
             <h3>Protect CI</h3>
-            <p>Copy one YAML file to <code>.github/workflows/</code>. Every PR from this point is governed — BLOCKER findings block the merge automatically.</p>
+            <p>Copy one YAML file to <code>.github/workflows/</code>. Every PR from this point is governed — BLOCKERs block the merge automatically.</p>
           </div>
         </div>
-        <div class="step reveal d3">
+        <div class="step" data-r data-d="3">
           <span class="step-n">IV</span>
           <div>
             <h3>Extend</h3>
-            <p>Install community packs or write your own. Drop into <code>.prometheus/packs/</code> — they load at runtime, no rebuild needed.</p>
+            <p>Write custom rules or drop community packs into <code>.prometheus/packs/</code>. They load at runtime, no rebuild needed.</p>
           </div>
         </div>
       </div>
@@ -716,30 +629,30 @@
   </div>
 </section>
 
-<div class="rl"></div>
+<div class="hr"></div>
 
-<!-- ── CTA ──────────────────────────────────────────────────────────────── -->
+<!-- ─── CTA ───────────────────────────────────────────────────────────── -->
 <section class="cta">
-  <div class="cta-glow"></div>
+  <div class="cta-bg"></div>
   <div class="wrap-sm">
-    <h2 class="reveal">The fire is yours.<br>Take it.</h2>
-    <p class="reveal d1">Open source. MIT licensed. No telemetry,<br>no lock-in. Just governance.</p>
-    <div class="cta-btns reveal d2">
-      <a href="https://github.com/TenticleTim/prometheus-fire" target="_blank" rel="noopener" class="btn btn-p">Download from GitHub</a>
-      <a href="https://github.com/TenticleTim/prometheus-fire" target="_blank" rel="noopener" class="btn btn-s">★ &nbsp;Star on GitHub</a>
+    <h2 data-r>The fire is yours.<br>Take it.</h2>
+    <p data-r data-d="1">Open source. MIT licensed.<br>No telemetry, no lock-in, no account. Just governance.</p>
+    <div class="cta-btns" data-r data-d="2">
+      <a href="https://github.com/TenticleTim/prometheus-fire" target="_blank" rel="noopener" class="btn btn-fire">Download from GitHub</a>
+      <a href="https://github.com/TenticleTim/prometheus-fire" target="_blank" rel="noopener" class="btn btn-ghost">★ &nbsp;Star on GitHub</a>
     </div>
-    <p class="cta-note reveal d3">Node.js 18+  ·  MIT License  ·  Holley Studios</p>
+    <p class="cta-note" data-r data-d="3">Node.js 18+  ·  MIT License  ·  Built by Holley Studios</p>
   </div>
 </section>
 
-<!-- ── Footer ───────────────────────────────────────────────────────────── -->
+<!-- ─── FOOTER ────────────────────────────────────────────────────────── -->
 <footer class="footer">
   <div class="wrap footer-i">
     <div>
-      <div class="footer-brand">PROMETHEUS GOVERNANCE</div>
-      <div class="footer-by">Built by Holley Studios</div>
+      <div class="f-brand">PROMETHEUS GOVERNANCE</div>
+      <div class="f-by">Built by Holley Studios</div>
     </div>
-    <div class="footer-links">
+    <div class="f-links">
       <a href="https://github.com/TenticleTim/prometheus-fire" target="_blank" rel="noopener">GitHub</a>
       <a href="https://github.com/TenticleTim/prometheus-fire/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a>
       <a href="https://github.com/TenticleTim/prometheus-fire/blob/main/SECURITY.md" target="_blank" rel="noopener">Security</a>
@@ -747,125 +660,183 @@
   </div>
 </footer>
 
-<!-- ── Scripts ──────────────────────────────────────────────────────────── -->
 <script>
-/* ── Canvas fire ──────────────────────────────────────────────────────── */
-(function () {
-  const canvas = document.getElementById('fire-canvas');
-  const ctx    = canvas.getContext('2d');
-  const dpr    = Math.min(window.devicePixelRatio || 1, 2);
+/* ── Fire canvas ────────────────────────────────────────────────────── */
+(function(){
+  const cv = document.getElementById('fire-canvas');
+  const cx = cv.getContext('2d');
+  const dpr = Math.min(devicePixelRatio||1, 2);
+  let W, H, ox, oy;
 
-  let W, H, cx, cy;
-
-  function resize() {
-    const r  = canvas.getBoundingClientRect();
-    W = canvas.width  = r.width  * dpr;
-    H = canvas.height = r.height * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cx = r.width / 2;
-    cy = r.height * 0.70;
+  function resize(){
+    const r = cv.getBoundingClientRect();
+    W = cv.width  = r.width  * dpr;
+    H = cv.height = r.height * dpr;
+    cx.setTransform(dpr,0,0,dpr,0,0);
+    ox = r.width / 2;
+    oy = r.height * 0.72;
   }
 
-  /* Fire particle */
-  function FP() { this.reset(); }
-
-  FP.prototype.reset = function () {
-    const spread = 52;
-    this.x  = cx + (Math.random() - .5) * spread;
-    this.y  = cy + (Math.random() - .5) * 8;
-    this.vx = (Math.random() - .5) * .85;
-    this.vy = -(Math.random() * 2.7 + 0.9);
+  function FP(){ this.reset(); }
+  FP.prototype.reset = function(){
+    this.x    = ox + (Math.random()-.5)*68;
+    this.y    = oy + (Math.random()-.5)*10;
+    this.vx   = (Math.random()-.5)*.95;
+    this.vy   = -(Math.random()*3.2+1.0);
     this.life = 1;
-    this.decay = 1 / (Math.random() * 50 + 32);
-    this.size  = Math.random() * 24 + 7;
-    this.phase = Math.random() * Math.PI * 2;
-    this.spd   = Math.random() * .1 + .04;
-    this.born  = 0;
+    this.dec  = 1/(Math.random()*56+38);
+    this.sz   = Math.random()*30+8;
+    this.ph   = Math.random()*Math.PI*2;
+    this.sp   = Math.random()*.09+.035;
+    this.born = 0;
+  };
+  FP.prototype.tick = function(){
+    this.ph += this.sp;
+    this.x  += this.vx + Math.sin(this.ph)*.46;
+    this.y  += this.vy;
+    this.vy *= .9975; this.sz *= .983; this.life -= this.dec; this.born += this.dec;
+  };
+  FP.prototype.draw = function(){
+    let r,g,b,a; const t=this.born;
+    if      (t<.10){r=255;g=248;b=200;a=this.life*.88;}
+    else if (t<.26){r=255;g=196;b=56; a=this.life*.82;}
+    else if (t<.48){r=255;g=110;b=18; a=this.life*.68;}
+    else if (t<.68){r=218;g=48; b=8;  a=this.life*.50;}
+    else           {r=120;g=14; b=0;  a=this.life*.24;}
+    const grd = cx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.sz);
+    grd.addColorStop(0,`rgba(${r},${g},${b},${a.toFixed(3)})`);
+    grd.addColorStop(1,`rgba(${r},${g},${b},0)`);
+    cx.globalCompositeOperation='lighter';
+    cx.fillStyle=grd;
+    cx.beginPath(); cx.arc(this.x,this.y,this.sz,0,Math.PI*2); cx.fill();
   };
 
-  FP.prototype.tick = function () {
-    this.phase += this.spd;
-    this.x     += this.vx + Math.sin(this.phase) * .4;
-    this.y     += this.vy;
-    this.vy    *= .997;
-    this.size  *= .986;
-    this.life  -= this.decay;
-    this.born  += this.decay;
+  function EM(){ this.reset(); }
+  EM.prototype.reset = function(){
+    this.x=ox+(Math.random()-.5)*52; this.y=oy-Math.random()*22;
+    this.vx=(Math.random()-.5)*2.2; this.vy=-(Math.random()*5.5+1.5);
+    this.life=1; this.dec=1/(Math.random()*90+60); this.sz=Math.random()*2.8+.7;
+  };
+  EM.prototype.tick = function(){
+    this.vx+=(Math.random()-.5)*.08; this.vy+=.025;
+    this.x+=this.vx; this.y+=this.vy; this.life-=this.dec;
+  };
+  EM.prototype.draw = function(){
+    cx.globalCompositeOperation='lighter';
+    cx.fillStyle=`rgba(255,212,68,${(this.life*.9).toFixed(3)})`;
+    cx.beginPath(); cx.arc(this.x,this.y,this.sz,0,Math.PI*2); cx.fill();
   };
 
-  FP.prototype.draw = function () {
-    const t = this.born;
-    let r, g, b, a;
-    if      (t < .10) { r=255; g=245; b=190; a=this.life*.88; }
-    else if (t < .25) { r=255; g=195; b=55;  a=this.life*.82; }
-    else if (t < .48) { r=255; g=110; b=18;  a=this.life*.70; }
-    else if (t < .70) { r=215; g=48;  b=6;   a=this.life*.50; }
-    else              { r=115; g=12;  b=0;   a=this.life*.24; }
+  const fps = Array.from({length:165},()=>{const p=new FP();p.life=Math.random();p.born=Math.random();return p;});
+  const ems = Array.from({length:34}, ()=>{const e=new EM();e.life=Math.random();return e;});
 
-    const grd = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
-    grd.addColorStop(0, `rgba(${r},${g},${b},${+a.toFixed(3)})`);
-    grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = grd;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.fill();
-  };
-
-  /* Ember */
-  function EM() { this.reset(); }
-
-  EM.prototype.reset = function () {
-    this.x    = cx + (Math.random() - .5) * 40;
-    this.y    = cy - Math.random() * 16;
-    this.vx   = (Math.random() - .5) * 1.9;
-    this.vy   = -(Math.random() * 4.8 + 1.2);
-    this.life = 1;
-    this.decay = 1 / (Math.random() * 85 + 55);
-    this.sz    = Math.random() * 2.4 + .7;
-  };
-
-  EM.prototype.tick = function () {
-    this.vx += (Math.random() - .5) * .07;
-    this.vy += .022;
-    this.x  += this.vx; this.y += this.vy;
-    this.life -= this.decay;
-  };
-
-  EM.prototype.draw = function () {
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = `rgba(255,212,68,${+(this.life * .88).toFixed(3)})`;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.sz, 0, Math.PI * 2);
-    ctx.fill();
-  };
-
-  /* Pool */
-  const fps = Array.from({length: 130}, () => { const p = new FP(); p.life = Math.random(); p.born = Math.random(); return p; });
-  const ems = Array.from({length: 26},  () => { const e = new EM(); e.life = Math.random(); return e; });
-
-  function frame() {
-    ctx.clearRect(0, 0, W, H);
-    fps.forEach(p => { p.tick(); if (p.life <= 0) p.reset(); else p.draw(); });
-    ems.forEach(e => { e.tick(); if (e.life <= 0) e.reset(); else e.draw(); });
-    ctx.globalCompositeOperation = 'source-over';
+  function frame(){
+    cx.clearRect(0,0,W,H);
+    fps.forEach(p=>{p.tick();p.life<=0?p.reset():p.draw();});
+    ems.forEach(e=>{e.tick();e.life<=0?e.reset():e.draw();});
+    cx.globalCompositeOperation='source-over';
     requestAnimationFrame(frame);
   }
 
   resize();
-  window.addEventListener('resize', () => { ctx.setTransform(1,0,0,1,0,0); resize(); });
+  window.addEventListener('resize',()=>{cx.setTransform(1,0,0,1,0,0);resize();});
   requestAnimationFrame(frame);
 }());
 
-/* ── Scroll reveal ────────────────────────────────────────────────────── */
-(function () {
-  const io = new IntersectionObserver(entries =>
-    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } }),
-    { threshold: .1 }
-  );
-  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+/* ── Hero title — letter split ──────────────────────────────────────── */
+(function(){
+  const h1 = document.getElementById('htitle');
+  h1.innerHTML = 'PROMETHEUS'.split('').map((l,i)=>`<span class="lc" style="--i:${i}">${l}</span>`).join('');
 }());
-</script>
 
+/* ── Nav scroll class ───────────────────────────────────────────────── */
+(function(){
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll',()=>nav.classList.toggle('pinned',scrollY>48),{passive:true});
+}());
+
+/* ── Scroll reveal ──────────────────────────────────────────────────── */
+(function(){
+  const io = new IntersectionObserver(entries=>
+    entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target);}})
+  ,{threshold:.12});
+  document.querySelectorAll('[data-r]').forEach(el=>io.observe(el));
+}());
+
+/* ── Count-up ───────────────────────────────────────────────────────── */
+(function(){
+  const io = new IntersectionObserver(entries=>entries.forEach(e=>{
+    if(!e.isIntersecting) return;
+    const el=e.target, tgt=+el.dataset.count, dur=tgt>100?1400:900;
+    const t0=performance.now();
+    (function tick(now){
+      const p=Math.min((now-t0)/dur,1), ease=1-Math.pow(1-p,4);
+      el.textContent=Math.round(ease*tgt);
+      if(p<1) requestAnimationFrame(tick);
+    }(t0));
+    io.unobserve(el);
+  }),{threshold:.5});
+  document.querySelectorAll('[data-count]').forEach(el=>io.observe(el));
+}());
+
+/* ── Typewriter terminal ────────────────────────────────────────────── */
+(function(){
+  const body  = document.getElementById('tbody');
+  const cur   = body.querySelector('.cursor');
+  const lines = [
+    {h:'<span class="tp">$ </span><span class="tc2">prometheus scan</span>', p:200},
+    {h:'<span class="tln"></span>', p:280},
+    {h:'<span class="tf">🔱 Prometheus Governance  v1.0.0</span>', p:80},
+    {h:'<span class="td2">   Scanning 847 files  ·  505 rules  ·  17 categories</span>', p:520},
+    {h:'<span class="tln"></span>', p:40},
+    {h:'<span class="te">  BLOCKER  src/api/ai/generate.ts:47</span>', p:55},
+    {h:'<span class="te">           prompt_injection_user_input — User input concatenated</span>', p:45},
+    {h:'<span class="te">           directly into prompt without sanitization.  (AI_013)</span>', p:200},
+    {h:'<span class="tln"></span>', p:30},
+    {h:'<span class="te">  BLOCKER  src/lib/db/client.ts:12</span>', p:55},
+    {h:'<span class="te">           connection_pool_exhaust — Prisma client outside module</span>', p:45},
+    {h:'<span class="te">           scope. Will exhaust DB connections in production.  (DB_014)</span>', p:220},
+    {h:'<span class="tln"></span>', p:30},
+    {h:'<span class="tw">  HIGH     src/hooks/useData.ts:23</span>', p:55},
+    {h:'<span class="tw">           waterfall_data_fetch — Sequential awaits in component.</span>', p:45},
+    {h:'<span class="tw">           Use Promise.all() to parallelise.  (PERF_018)</span>', p:260},
+    {h:'<span class="tln"></span>', p:30},
+    {h:'<span class="td2">           + 14 MEDIUM  ·  38 LOW  ·  22 TECH_DEBT</span>', p:180},
+    {h:'<span class="tln"></span>', p:30},
+    {h:'<span class="tpu">  ──────────────────────────────────────────────</span>', p:60},
+    {h:'<span class="td2">  Files scanned    847   ·   Rules evaluated  505</span>', p:70},
+    {h:'<span class="tln"></span>', p:30},
+    {h:'<span class="te">  Health Grade   C   ·   Resolve BLOCKERs before deploy</span>', p:70},
+    {h:'<span class="td2">  Report saved   .prometheus/report.json</span>', p:0},
+  ];
+
+  let started=false;
+  function run(){
+    if(started) return; started=true;
+    let i=0;
+    (function next(){
+      if(i>=lines.length) return;
+      const l=lines[i++];
+      const d=document.createElement('div'); d.innerHTML=l.h;
+      body.insertBefore(d,cur);
+      setTimeout(next, l.p + 15 + Math.random()*25);
+    }());
+  }
+
+  const io=new IntersectionObserver(entries=>entries.forEach(e=>{
+    if(e.isIntersecting){run();io.disconnect();}
+  }),{threshold:.3});
+  io.observe(body);
+}());
+
+/* ── Tool card spotlight ────────────────────────────────────────────── */
+document.querySelectorAll('.tool-card').forEach(c=>{
+  c.addEventListener('mousemove',e=>{
+    const r=c.getBoundingClientRect();
+    c.style.setProperty('--mx',((e.clientX-r.left)/r.width*100)+'%');
+    c.style.setProperty('--my',((e.clientY-r.top)/r.height*100)+'%');
+  });
+});
+</script>
 </body>
 </html>
