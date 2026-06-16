@@ -14,12 +14,10 @@
       --bg-s:      #09080F;
       --card:      rgba(255,255,255,.032);
       --card-h:    rgba(255,255,255,.058);
-      --fire-core: #FFF5D0;
       --fire-gold: #F5C842;
       --fire-amb:  #F08020;
       --fire-red:  #C83808;
       --gold:      #C49A3A;
-      --gold-dim:  rgba(196,154,58,.35);
       --t1:        #F5F5F7;
       --t2:        rgba(245,245,247,.52);
       --t3:        rgba(245,245,247,.22);
@@ -32,280 +30,222 @@
     html { scroll-behavior: smooth; }
 
     body {
-      background: var(--bg);
-      color: var(--t1);
+      background: var(--bg); color: var(--t1);
       font-family: 'Inter', -apple-system, sans-serif;
-      font-weight: 300;
-      line-height: 1.6;
-      overflow-x: hidden;
-      -webkit-font-smoothing: antialiased;
+      font-weight: 300; line-height: 1.6;
+      overflow-x: hidden; -webkit-font-smoothing: antialiased;
     }
 
     /* Grain */
     body::before {
-      content: '';
-      position: fixed; inset: 0; z-index: 9999;
+      content: ''; position: fixed; inset: 0; z-index: 9999;
       pointer-events: none; opacity: .022;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
-    /* Reveal */
-    [data-r] {
-      opacity: 0; transform: translateY(30px);
-      transition: opacity .75s var(--ease), transform .75s var(--ease);
+    /* ── Background ambient fire canvas ───────────────────────────── */
+    #bg-canvas {
+      position: fixed; bottom: 0; left: 0; width: 100%; height: 65vh;
+      pointer-events: none; z-index: 1;
+      mix-blend-mode: screen; opacity: .28;
     }
-    [data-r].on { opacity: 1; transform: none; }
-    [data-d="1"] { transition-delay: .1s; }
-    [data-d="2"] { transition-delay: .22s; }
-    [data-d="3"] { transition-delay: .34s; }
-    [data-d="4"] { transition-delay: .48s; }
 
-    .wrap    { max-width: 1080px; margin: 0 auto; padding: 0 40px; }
-    .wrap-sm { max-width: 620px;  margin: 0 auto; padding: 0 40px; }
+    /* ── Reveal ───────────────────────────────────────────────────── */
+    [data-r] { opacity:0; transform:translateY(30px); transition:opacity .75s var(--ease), transform .75s var(--ease); }
+    [data-r].on { opacity:1; transform:none; }
+    [data-d="1"]{transition-delay:.1s} [data-d="2"]{transition-delay:.22s}
+    [data-d="3"]{transition-delay:.34s} [data-d="4"]{transition-delay:.48s}
+
+    .wrap    { max-width:1080px; margin:0 auto; padding:0 40px; }
+    .wrap-sm { max-width:620px;  margin:0 auto; padding:0 40px; }
     .hr { width:100%; height:1px; background:linear-gradient(90deg,transparent,var(--border) 15%,var(--border) 85%,transparent); }
     .eyebrow { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); display:block; margin-bottom:18px; }
 
-    /* ─── NAV ─────────────────────────────────────────────────────── */
+    /* ── NAV ──────────────────────────────────────────────────────── */
     .nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 300;
-      height: 52px; display: flex; align-items: center; padding: 0 40px;
+      position: fixed; top:0; left:0; right:0; z-index:300;
+      height:52px; display:flex; align-items:center; padding:0 40px;
     }
-    .nav.pinned {
-      background: rgba(5,4,8,.82);
-      backdrop-filter: blur(28px) saturate(1.8);
-      border-bottom: 1px solid var(--border);
-    }
+    .nav.pinned { background:rgba(5,4,8,.84); backdrop-filter:blur(28px) saturate(1.8); border-bottom:1px solid var(--border); }
     .nav-i { width:100%; max-width:1080px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; }
     .nav-logo { display:flex; align-items:center; gap:10px; font-family:'Cinzel',serif; font-size:13px; font-weight:700; letter-spacing:.12em; color:var(--fire-gold); }
-    .nav-logo svg { width:18px; height:18px; }
+    .nav-logo svg { width:20px; height:22px; }
     .nav-links { display:flex; align-items:center; gap:32px; }
     .nav-links a { font-size:13px; color:var(--t2); letter-spacing:.01em; transition:color .2s; }
     .nav-links a:hover { color:var(--t1); }
     .nav-cta { padding:7px 18px; border-radius:20px; font-size:12.5px; font-weight:500; background:rgba(255,255,255,.08); border:1px solid var(--border); color:var(--t1); transition:background .2s, border-color .2s; }
     .nav-cta:hover { background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.14); }
 
-    /* ─── HERO ────────────────────────────────────────────────────── */
+    /* ── HERO ─────────────────────────────────────────────────────── */
     .hero {
-      min-height: 100svh; position: relative;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      text-align: center; overflow: hidden; padding: 80px 40px 110px;
+      min-height:100svh; position:relative;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; overflow:hidden; padding:80px 40px 110px;
     }
-
     #fire-canvas {
-      position: absolute; bottom: -24px; left: 50%;
-      transform: translateX(-50%);
-      width: min(100%, 940px); height: min(100%, 680px);
-      pointer-events: none; z-index: 0;
+      position:absolute; bottom:-24px; left:50%; transform:translateX(-50%);
+      width:min(100%,960px); height:min(100%,700px);
+      pointer-events:none; z-index:0;
     }
-
     .hero-bloom {
-      position: absolute; bottom: 0; left: 50%;
-      transform: translateX(-50%);
-      width: 760px; height: 360px;
-      background: radial-gradient(ellipse at 50% 100%,
-        rgba(240,128,32,.15) 0%, rgba(200,56,8,.07) 42%, transparent 72%);
-      pointer-events: none; z-index: 0;
+      position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+      width:800px; height:380px;
+      background:radial-gradient(ellipse at 50% 100%, rgba(240,128,32,.15) 0%, rgba(200,56,8,.07) 42%, transparent 72%);
+      pointer-events:none; z-index:0;
     }
-
     .hero::before {
-      content: ''; position: absolute; inset: 0; z-index: 1;
-      background: linear-gradient(to bottom, rgba(5,4,8,.6) 0%, transparent 28%, transparent 72%, rgba(5,4,8,.55) 100%);
-      pointer-events: none;
+      content:''; position:absolute; inset:0; z-index:1;
+      background:linear-gradient(to bottom, rgba(5,4,8,.62) 0%, transparent 28%, transparent 72%, rgba(5,4,8,.55) 100%);
+      pointer-events:none;
     }
+    .hero-c { position:relative; z-index:2; }
 
-    .hero-c { position: relative; z-index: 2; }
-
-    .hero-shield {
-      width: 70px; height: 70px; margin: 0 auto 34px;
-      animation: sfloat 4.2s ease-in-out infinite, sglow 3.5s ease-in-out infinite;
-      opacity: 0; animation-fill-mode: forwards;
-      animation-delay: 0s, 0s;
+    /* ── Hero crest ───────────────────────────────────────────────── */
+    .hero-crest {
+      width:80px; height:88px; margin:0 auto 34px;
+      animation: cf 4.2s ease-in-out infinite, cg 3.5s ease-in-out infinite, ci .7s var(--ease) .1s forwards;
+      opacity:0;
     }
-
-    @keyframes sfloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-    @keyframes sglow {
-      0%,100%{filter:drop-shadow(0 0 20px rgba(245,200,66,.4)) drop-shadow(0 0 40px rgba(245,200,66,.12));}
-      50%{filter:drop-shadow(0 0 36px rgba(245,200,66,.72)) drop-shadow(0 0 80px rgba(240,128,32,.22));}
+    @keyframes ci  { to { opacity:1; } }
+    @keyframes cf  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    @keyframes cg  {
+      0%,100%{filter:drop-shadow(0 0 22px rgba(245,200,66,.45)) drop-shadow(0 0 44px rgba(245,200,66,.15));}
+      50%    {filter:drop-shadow(0 0 40px rgba(245,200,66,.75)) drop-shadow(0 0 90px rgba(240,128,32,.25));}
     }
-
-    /* separate fade-in for shield */
-    .hero-shield { animation: sfloat 4.2s ease-in-out infinite, sglow 3.5s ease-in-out infinite, fadein .6s var(--ease) .1s forwards; opacity: 0; }
-    @keyframes fadein { to { opacity: 1; } }
 
     .hero-sup {
-      font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
-      letter-spacing: .22em; text-transform: uppercase; color: var(--gold);
-      opacity: 0; display: block; margin-bottom: 22px;
-      animation: slideup .7s var(--ease) .4s forwards;
+      font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.22em; text-transform:uppercase;
+      color:var(--gold); opacity:0; display:block; margin-bottom:22px;
+      animation:su .7s var(--ease) .4s forwards;
     }
+    @keyframes su { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:none} }
 
     .hero h1 {
-      font-family: 'Cinzel', serif;
-      font-size: clamp(68px, 12.5vw, 152px);
-      font-weight: 700; letter-spacing: -.025em; line-height: .9;
-      color: var(--t1); margin-bottom: 30px;
-      text-shadow: 0 0 140px rgba(245,200,66,.1);
+      font-family:'Cinzel',serif; font-size:clamp(68px,12.5vw,152px);
+      font-weight:700; letter-spacing:-.025em; line-height:.9;
+      color:var(--t1); margin-bottom:30px;
+      text-shadow:0 0 150px rgba(245,200,66,.1);
     }
-
     .hero h1 .lc {
-      display: inline-block;
-      opacity: 0; transform: translateY(64px);
-      animation: letterup .85s var(--ease) forwards;
-      animation-delay: calc(var(--i) * 52ms + 500ms);
+      display:inline-block; opacity:0; transform:translateY(64px);
+      animation:lu .85s var(--ease) forwards;
+      animation-delay:calc(var(--i)*52ms + 500ms);
     }
-
-    @keyframes letterup { to { opacity:1; transform:none; } }
-
-    @keyframes slideup {
-      from { opacity:0; transform:translateY(20px); }
-      to   { opacity:1; transform:none; }
-    }
+    @keyframes lu { to{opacity:1;transform:none} }
 
     .hero-sub {
-      font-size: clamp(16px, 2vw, 20px); color: var(--t2); font-weight: 300;
-      max-width: 460px; margin: 0 auto 50px; line-height: 1.68;
-      opacity: 0; animation: slideup .8s var(--ease) 1.05s forwards;
+      font-size:clamp(16px,2vw,20px); color:var(--t2); font-weight:300;
+      max-width:460px; margin:0 auto 50px; line-height:1.68;
+      opacity:0; animation:su .8s var(--ease) 1.05s forwards;
     }
-
     .hero-install {
-      display: inline-flex; align-items: stretch;
-      background: rgba(255,255,255,.05);
-      border: 1px solid var(--border);
-      border-radius: 10px; overflow: hidden; margin-bottom: 58px;
-      backdrop-filter: blur(20px);
-      opacity: 0; animation: slideup .8s var(--ease) 1.28s forwards;
+      display:inline-flex; align-items:stretch;
+      background:rgba(255,255,255,.05); border:1px solid var(--border);
+      border-radius:10px; overflow:hidden; margin-bottom:58px;
+      backdrop-filter:blur(20px);
+      opacity:0; animation:su .8s var(--ease) 1.28s forwards;
     }
-
     .hi-t { padding:12px 22px; font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--fire-gold); }
-    .hi-b { padding:12px 16px; border:none; border-left:1px solid var(--border); background:transparent; cursor:pointer; color:var(--t3); font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; transition:color .2s, background .2s; }
+    .hi-b { padding:12px 16px; border:none; border-left:1px solid var(--border); background:transparent; cursor:pointer; color:var(--t3); font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; transition:color .2s,background .2s; }
     .hi-b:hover { color:var(--t1); background:rgba(255,255,255,.06); }
-
     .hero-stats {
-      display: flex; align-items: center; justify-content: center; gap: 42px;
-      opacity: 0; animation: slideup .8s var(--ease) 1.5s forwards;
+      display:flex; align-items:center; justify-content:center; gap:42px;
+      opacity:0; animation:su .8s var(--ease) 1.5s forwards;
     }
-
     .hs-n { font-family:'Cinzel',serif; font-size:30px; font-weight:500; color:var(--fire-gold); line-height:1; text-shadow:0 0 28px rgba(245,200,66,.28); }
     .hs-l { margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.15em; text-transform:uppercase; color:var(--t3); }
-    .hs-div { width:1px; height:30px; background:linear-gradient(to bottom, transparent, var(--border), transparent); }
-
+    .hs-div { width:1px; height:30px; background:linear-gradient(to bottom,transparent,var(--border),transparent); }
     .scroll-hint {
-      position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%);
-      z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px;
-      opacity: 0; animation: fadeinhint .6s ease 2.2s forwards;
+      position:absolute; bottom:36px; left:50%; transform:translateX(-50%);
+      z-index:2; display:flex; flex-direction:column; align-items:center; gap:10px;
+      opacity:0; animation:shi .6s ease 2.2s forwards;
     }
-    @keyframes fadeinhint { to { opacity: 1; } }
+    @keyframes shi { to{opacity:1} }
     .scroll-hint span { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:var(--t3); }
-    .scroll-line { width:1px; height:30px; background:linear-gradient(to bottom, var(--t3), transparent); animation:scrollpulse 2.4s ease-in-out infinite 2.5s; }
-    @keyframes scrollpulse { 0%,100%{opacity:0;transform:scaleY(0);transform-origin:top} 40%,65%{opacity:1;transform:scaleY(1)} 100%{opacity:0;transform:scaleY(0);transform-origin:bottom} }
+    .scroll-line { width:1px; height:30px; background:linear-gradient(to bottom,var(--t3),transparent); animation:sp 2.4s ease-in-out 2.5s infinite; }
+    @keyframes sp { 0%,100%{opacity:0;transform:scaleY(0);transform-origin:top} 40%,65%{opacity:1;transform:scaleY(1)} 100%{opacity:0;transform:scaleY(0);transform-origin:bottom} }
 
-    /* ─── STATEMENT ───────────────────────────────────────────────── */
-    .statement { padding: 104px 0; }
+    /* ── STATEMENT ────────────────────────────────────────────────── */
+    .statement { padding:104px 0; }
     .stmt-inner { display:grid; grid-template-columns:1fr 2.8fr; gap:64px; align-items:start; }
     .stmt-label { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.15em; text-transform:uppercase; color:var(--gold); line-height:2.2; padding-top:6px; }
-    .stmt-q { font-family:'Cinzel',serif; font-size:clamp(22px, 3.2vw, 40px); font-weight:400; line-height:1.48; color:var(--t2); }
+    .stmt-q { font-family:'Cinzel',serif; font-size:clamp(22px,3.2vw,40px); font-weight:400; line-height:1.48; color:var(--t2); }
     .stmt-q em { font-style:normal; color:var(--t1); }
 
-    /* ─── STATS ───────────────────────────────────────────────────── */
-    .stats { padding: 72px 0; }
+    /* ── STATS ────────────────────────────────────────────────────── */
+    .stats { padding:72px 0; }
     .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:18px; overflow:hidden; }
     .stat-c { background:var(--bg-s); padding:48px 32px; text-align:center; transition:background .3s; }
     .stat-c:hover { background:rgba(255,255,255,.022); }
-    .stat-n { font-family:'Cinzel',serif; font-size:clamp(40px, 5.5vw, 76px); font-weight:700; line-height:1; color:var(--fire-gold); text-shadow:0 0 48px rgba(245,200,66,.22); }
+    .stat-n { font-family:'Cinzel',serif; font-size:clamp(40px,5.5vw,76px); font-weight:700; line-height:1; color:var(--fire-gold); text-shadow:0 0 48px rgba(245,200,66,.22); }
     .stat-u { color:var(--t2); font-size:.5em; }
     .stat-l { margin-top:14px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--t3); }
 
-    /* ─── TOOLS ───────────────────────────────────────────────────── */
-    .tools { padding: 104px 0; }
+    /* ── TOOLS ────────────────────────────────────────────────────── */
+    .tools { padding:104px 0; }
     .tools-hd { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:48px; }
-    .tools-hd h2 { font-family:'Cinzel',serif; font-size:clamp(28px, 4vw, 50px); font-weight:500; letter-spacing:-.01em; line-height:1.18; }
+    .tools-hd h2 { font-family:'Cinzel',serif; font-size:clamp(28px,4vw,50px); font-weight:500; letter-spacing:-.01em; line-height:1.18; }
     .tools-hd p { font-size:15px; color:var(--t2); font-weight:300; max-width:270px; text-align:right; line-height:1.65; }
     .tools-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
-
     .tool-card {
-      position: relative; overflow: hidden;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 20px; padding: 38px 32px 44px;
-      cursor: default;
-      transition: transform .45s var(--ease), border-color .3s, background .3s;
+      position:relative; overflow:hidden;
+      background:var(--card); border:1px solid var(--border);
+      border-radius:20px; padding:38px 32px 44px;
+      cursor:default; transition:transform .45s var(--ease),border-color .3s,background .3s;
     }
     .tool-card:hover { transform:translateY(-5px); background:var(--card-h); border-color:var(--border-h); }
-
-    /* shimmer sweep on hover */
     .tool-card::before {
-      content: ''; position: absolute; top:0; left:-100%; width:55%; height:100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.04), transparent);
-      transition: left .65s var(--ease);
+      content:''; position:absolute; top:0; left:-100%; width:55%; height:100%;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,.04),transparent);
+      transition:left .65s var(--ease);
     }
-    .tool-card:hover::before { left: 165%; }
-
-    /* mouse-tracking spotlight */
+    .tool-card:hover::before { left:165%; }
     .tool-card::after {
-      content: ''; position: absolute; inset: 0; border-radius: 20px;
-      background: radial-gradient(130px at var(--mx,50%) var(--my,0%), rgba(196,154,58,.07), transparent);
-      opacity: 0; transition: opacity .3s; pointer-events: none;
+      content:''; position:absolute; inset:0; border-radius:20px;
+      background:radial-gradient(130px at var(--mx,50%) var(--my,0%),rgba(196,154,58,.07),transparent);
+      opacity:0; transition:opacity .3s; pointer-events:none;
     }
-    .tool-card:hover::after { opacity: 1; }
-
-    .tool-ic { width:42px; height:42px; color:var(--gold); margin-bottom:28px; display:block; transition:transform .35s var(--ease), color .3s; }
+    .tool-card:hover::after { opacity:1; }
+    .tool-ic { width:42px; height:42px; color:var(--gold); margin-bottom:28px; display:block; transition:transform .35s var(--ease),color .3s; }
     .tool-card:hover .tool-ic { color:var(--fire-gold); transform:scale(1.1) rotate(-2deg); }
     .tool-name { font-family:'Cinzel',serif; font-size:20px; font-weight:500; letter-spacing:.01em; margin-bottom:14px; }
     .tool-desc { font-size:14.5px; line-height:1.72; color:var(--t2); font-weight:300; }
     .tool-desc code { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--fire-gold); background:rgba(245,200,66,.08); padding:1px 6px; border-radius:4px; }
     .tool-tag { display:inline-block; margin-top:24px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); opacity:.55; }
 
-    /* ─── TERMINAL ────────────────────────────────────────────────── */
-    .term-s { padding: 104px 0; }
-    .term-hd { margin-bottom: 44px; }
+    /* ── TERMINAL ─────────────────────────────────────────────────── */
+    .term-s { padding:104px 0; }
+    .term-hd { margin-bottom:44px; }
     .term-hd h2 { font-family:'Cinzel',serif; font-size:clamp(28px,4vw,50px); font-weight:500; letter-spacing:-.01em; line-height:1.18; }
-
     .terminal {
-      background: #030208;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 18px; overflow: hidden;
-      font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 1.9;
-      box-shadow: 0 0 0 1px rgba(255,255,255,.025), 0 48px 110px rgba(0,0,0,.65), 0 0 100px rgba(240,128,32,.035);
+      background:#030208; border:1px solid rgba(255,255,255,.08);
+      border-radius:18px; overflow:hidden;
+      font-family:'JetBrains Mono',monospace; font-size:13.5px; line-height:1.9;
+      box-shadow:0 0 0 1px rgba(255,255,255,.025),0 48px 110px rgba(0,0,0,.65),0 0 100px rgba(240,128,32,.04);
     }
-
     .term-bar { display:flex; align-items:center; gap:8px; padding:14px 18px; background:rgba(255,255,255,.02); border-bottom:1px solid rgba(255,255,255,.055); }
     .tc { width:12px; height:12px; border-radius:50%; }
-    .tc-r{background:#FF5F56} .tc-y{background:#FFBD2E} .tc-g{background:#27C93F}
+    .tc-r{background:#FF5F56}.tc-y{background:#FFBD2E}.tc-g{background:#27C93F}
     .t-path { margin-left:10px; font-size:11px; color:rgba(255,255,255,.18); }
-
     .term-body { padding:30px 34px 38px; min-height:340px; }
+    .tp{color:rgba(196,154,58,.55)}.tc2{color:var(--t1)}.tok{color:#4ADE80}.tw{color:var(--fire-amb)}
+    .te{color:#F87171}.td2{color:rgba(255,255,255,.22)}.tf{color:var(--fire-gold)}.tpu{color:#A78BFA}.tln{display:block;height:5px}
+    .cursor { display:inline-block; width:8px; height:16px; background:var(--t2); vertical-align:middle; animation:bl 1.1s step-end infinite; }
+    @keyframes bl { 0%,100%{opacity:1} 50%{opacity:0} }
 
-    .tp  { color:rgba(196,154,58,.55); }
-    .tc2 { color:var(--t1); }
-    .tok { color:#4ADE80; }
-    .tw  { color:var(--fire-amb); }
-    .te  { color:#F87171; }
-    .td2 { color:rgba(255,255,255,.22); }
-    .tf  { color:var(--fire-gold); }
-    .tpu { color:#A78BFA; }
-    .tln { display:block; height:5px; }
-
-    .cursor { display:inline-block; width:8px; height:16px; background:var(--t2); vertical-align:middle; animation:blink 1.1s step-end infinite; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-
-    /* ─── RULES ───────────────────────────────────────────────────── */
-    .rules-s { padding: 104px 0; }
+    /* ── RULES ────────────────────────────────────────────────────── */
+    .rules-s { padding:104px 0; }
     .rules-hd { display:grid; grid-template-columns:1fr 1fr; gap:48px; margin-bottom:52px; align-items:end; }
     .rules-hd h2 { font-family:'Cinzel',serif; font-size:clamp(28px,4vw,50px); font-weight:500; letter-spacing:-.01em; line-height:1.18; }
     .rules-hd p { font-size:15px; color:var(--t2); font-weight:300; line-height:1.68; }
-    .rules-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(196px,1fr)); gap:10px; }
-
-    .pill {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      padding: 11px 16px; background: var(--card); border: 1px solid var(--border);
-      border-radius: 100px; transition: border-color .25s, background .25s, transform .35s var(--ease);
-    }
+    .rules-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(196px,1fr)); gap:10px; }
+    .pill { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 16px; background:var(--card); border:1px solid var(--border); border-radius:100px; transition:border-color .25s,background .25s,transform .35s var(--ease); }
     .pill:hover { border-color:var(--border-h); background:rgba(196,154,58,.04); transform:translateY(-2px); }
     .pill-n { font-size:13.5px; font-weight:500; white-space:nowrap; }
     .pill-c { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--fire-gold); background:rgba(245,200,66,.09); padding:2px 8px; border-radius:100px; }
 
-    /* ─── HOW ─────────────────────────────────────────────────────── */
-    .how-s { padding: 104px 0; }
+    /* ── HOW ──────────────────────────────────────────────────────── */
+    .how-s { padding:104px 0; }
     .how-grid { display:grid; grid-template-columns:1fr 1.2fr; gap:80px; align-items:start; }
     .how-sticky { position:sticky; top:80px; }
     .how-sticky h2 { font-family:'Cinzel',serif; font-size:clamp(26px,3.5vw,46px); font-weight:500; letter-spacing:-.01em; line-height:1.25; margin-top:16px; margin-bottom:22px; }
@@ -319,30 +259,29 @@
     .step p  { font-size:14.5px; color:var(--t2); line-height:1.65; font-weight:300; }
     .step code { font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--fire-gold); background:rgba(245,200,66,.08); padding:1px 6px; border-radius:4px; }
 
-    /* ─── CTA ─────────────────────────────────────────────────────── */
-    .cta { padding: 148px 0; text-align: center; position: relative; overflow: hidden; }
-    .cta-bg { position:absolute; inset:0; z-index:0; background:radial-gradient(ellipse 72% 64% at 50% 50%, rgba(200,56,8,.09) 0%, rgba(240,128,32,.045) 38%, transparent 68%); }
-    .cta > * { position:relative; z-index:1; }
+    /* ── CTA ──────────────────────────────────────────────────────── */
+    .cta { padding:148px 0; text-align:center; position:relative; overflow:hidden; }
+    #cta-fire {
+      position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+      width:700px; height:520px; pointer-events:none; z-index:0;
+    }
+    .cta-inner { position:relative; z-index:1; }
     .cta h2 {
-      font-family: 'Cinzel', serif;
-      font-size: clamp(42px, 7vw, 96px);
-      font-weight: 700; letter-spacing: -.025em; line-height: 1.0;
-      margin-bottom: 24px;
-      background: linear-gradient(180deg, var(--t1) 0%, rgba(245,245,247,.48) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      font-family:'Cinzel',serif; font-size:clamp(42px,7vw,96px);
+      font-weight:700; letter-spacing:-.025em; line-height:1.0; margin-bottom:24px;
+      background:linear-gradient(180deg,var(--t1) 0%,rgba(245,245,247,.48) 100%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
     }
     .cta p { font-size:18px; color:var(--t2); font-weight:300; max-width:400px; margin:0 auto 56px; line-height:1.65; }
     .cta-btns { display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; }
-
     .btn { display:inline-flex; align-items:center; gap:8px; padding:14px 32px; border-radius:100px; font-size:15px; font-weight:500; cursor:pointer; transition:all .35s var(--ease); border:1px solid transparent; letter-spacing:.01em; }
-    .btn-fire { background:linear-gradient(135deg, var(--fire-amb) 0%, var(--fire-red) 100%); color:#fff; box-shadow:0 0 0 1px rgba(240,128,32,.38), 0 8px 36px rgba(200,56,8,.32); }
-    .btn-fire:hover { transform:scale(1.04) translateY(-2px); box-shadow:0 0 0 1px rgba(240,128,32,.6), 0 16px 56px rgba(200,56,8,.48), 0 0 90px rgba(245,200,66,.1); }
+    .btn-fire { background:linear-gradient(135deg,var(--fire-amb) 0%,var(--fire-red) 100%); color:#fff; box-shadow:0 0 0 1px rgba(240,128,32,.38),0 8px 36px rgba(200,56,8,.32); }
+    .btn-fire:hover { transform:scale(1.04) translateY(-2px); box-shadow:0 0 0 1px rgba(240,128,32,.6),0 16px 56px rgba(200,56,8,.48),0 0 90px rgba(245,200,66,.1); }
     .btn-ghost { background:transparent; color:var(--t2); border-color:var(--border); }
     .btn-ghost:hover { color:var(--t1); border-color:rgba(255,255,255,.16); background:rgba(255,255,255,.04); }
-
     .cta-note { margin-top:30px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--t3); letter-spacing:.1em; }
 
-    /* ─── FOOTER ──────────────────────────────────────────────────── */
+    /* ── FOOTER ───────────────────────────────────────────────────── */
     .footer { border-top:1px solid var(--border); padding:44px 0; }
     .footer-i { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:24px; }
     .f-brand { font-family:'Cinzel',serif; font-size:13px; color:var(--gold); letter-spacing:.08em; }
@@ -351,31 +290,45 @@
     .f-links a { font-size:12.5px; color:var(--t3); transition:color .2s; }
     .f-links a:hover { color:var(--t2); }
 
-    /* ─── RESPONSIVE ──────────────────────────────────────────────── */
-    @media (max-width: 860px) {
-      .nav-links { display:none; }
-      .stmt-inner { grid-template-columns:1fr; gap:20px; }
-      .stmt-label { display:none; }
-      .stats-grid { grid-template-columns:repeat(2,1fr); }
-      .tools-grid { grid-template-columns:1fr; }
-      .tools-hd { flex-direction:column; align-items:flex-start; gap:14px; }
-      .tools-hd p { text-align:left; max-width:100%; }
-      .rules-hd { grid-template-columns:1fr; gap:20px; }
-      .how-grid { grid-template-columns:1fr; gap:44px; }
-      .how-sticky { position:relative; top:0; }
-      .hero h1 { font-size:clamp(52px,14vw,86px); }
+    /* ── RESPONSIVE ───────────────────────────────────────────────── */
+    @media(max-width:860px){
+      .nav-links{display:none}
+      .stmt-inner{grid-template-columns:1fr;gap:20px}
+      .stmt-label{display:none}
+      .stats-grid{grid-template-columns:repeat(2,1fr)}
+      .tools-grid{grid-template-columns:1fr}
+      .tools-hd{flex-direction:column;align-items:flex-start;gap:14px}
+      .tools-hd p{text-align:left;max-width:100%}
+      .rules-hd{grid-template-columns:1fr;gap:20px}
+      .how-grid{grid-template-columns:1fr;gap:44px}
+      .how-sticky{position:relative;top:0}
+      .hero h1{font-size:clamp(52px,14vw,86px)}
+      #cta-fire{width:100%}
     }
   </style>
 </head>
 <body>
 
-<!-- ─── NAV ──────────────────────────────────────────────────────────── -->
+<!-- ── Global background fire canvas (mix-blend-mode: screen) ───────── -->
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+<!-- ── NAV ───────────────────────────────────────────────────────────── -->
 <nav class="nav" id="nav">
   <div class="nav-i">
     <a href="#" class="nav-logo">
-      <svg viewBox="0 0 22 26" fill="none">
-        <path d="M11 1.5L20.5 5.5V14C20.5 19.5 16.5 23.5 11 25.5C5.5 23.5 1.5 19.5 1.5 14V5.5L11 1.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
-        <path d="M11 7.5V15.5M8 10.5H14M8 13.5H14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      <!-- Torch-on-crest nav icon (simplified, currentColor) -->
+      <svg viewBox="0 0 80 90" fill="none" aria-hidden="true">
+        <!-- Shield / crest -->
+        <path d="M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z"
+          stroke="currentColor" stroke-width="2.8" fill="none" stroke-linejoin="round"/>
+        <!-- Torch handle -->
+        <rect x="36.5" y="52" width="7" height="20" rx="3.5" fill="currentColor" opacity=".55"/>
+        <!-- Torch cup -->
+        <path d="M29 50 Q29 42 40 40 Q51 42 51 50 L49 54 L31 54 Z" fill="currentColor" opacity=".75"/>
+        <!-- Flame -->
+        <path d="M40 40 C36 33 31 26 34 16 C36 11 39 9 37 6
+                 C45 10 47 22 42 31 C46 24 48 16 45 11
+                 C52 21 50 33 43 40 Z" fill="currentColor"/>
       </svg>
       PROMETHEUS
     </a>
@@ -389,25 +342,86 @@
   </div>
 </nav>
 
-<!-- ─── HERO ─────────────────────────────────────────────────────────── -->
+<!-- ── HERO ──────────────────────────────────────────────────────────── -->
 <section class="hero">
   <canvas id="fire-canvas" aria-hidden="true"></canvas>
   <div class="hero-bloom"></div>
 
   <div class="hero-c">
-    <svg class="hero-shield" width="70" height="70" viewBox="0 0 64 74" fill="none">
-      <path d="M32 2L62 13V36C62 53 48 66 32 72C16 66 2 53 2 36V13L32 2Z" fill="url(#shfill)" stroke="url(#shstroke)" stroke-width="1.5"/>
-      <path d="M32 20V42M25 26H39M25 34H39" stroke="#FFF5D0" stroke-width="2.2" stroke-linecap="round"/>
+    <!-- Premium torch-on-crest hero mark -->
+    <svg class="hero-crest" viewBox="0 0 80 90" fill="none" aria-hidden="true">
       <defs>
-        <linearGradient id="shfill" x1="32" y1="2" x2="32" y2="72" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#C49A3A" stop-opacity=".2"/>
-          <stop offset="100%" stop-color="#780A00" stop-opacity=".07"/>
-        </linearGradient>
-        <linearGradient id="shstroke" x1="32" y1="2" x2="32" y2="72" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#F5C842"/>
+        <linearGradient id="cs" x1="40" y1="4" x2="40" y2="86" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stop-color="#F5C842"/>
+          <stop offset="55%"  stop-color="#F08020"/>
           <stop offset="100%" stop-color="#C83808"/>
         </linearGradient>
+        <linearGradient id="cf" x1="40" y1="4" x2="40" y2="86" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stop-color="#C49A3A" stop-opacity=".22"/>
+          <stop offset="100%" stop-color="#780A00" stop-opacity=".07"/>
+        </linearGradient>
+        <linearGradient id="ci2" x1="40" y1="4" x2="40" y2="86" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stop-color="#C49A3A" stop-opacity=".3"/>
+          <stop offset="100%" stop-color="#780A00" stop-opacity=".12"/>
+        </linearGradient>
+        <linearGradient id="hg" x1="40" y1="52" x2="40" y2="75" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stop-color="#D4AA4A"/>
+          <stop offset="100%" stop-color="#6A4A12"/>
+        </linearGradient>
+        <linearGradient id="cg" x1="40" y1="40" x2="40" y2="54" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stop-color="#E0BC60"/>
+          <stop offset="100%" stop-color="#8A6A22"/>
+        </linearGradient>
+        <linearGradient id="fl1" x1="40" y1="5" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stop-color="#FFF5D0" stop-opacity=".55"/>
+          <stop offset="45%"  stop-color="#F08020" stop-opacity=".7"/>
+          <stop offset="100%" stop-color="#C83808" stop-opacity=".75"/>
+        </linearGradient>
+        <linearGradient id="fl2" x1="40" y1="6" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stop-color="#FFF0A0"/>
+          <stop offset="38%"  stop-color="#F5C842"/>
+          <stop offset="72%"  stop-color="#F08020"/>
+          <stop offset="100%" stop-color="#D03808"/>
+        </linearGradient>
+        <linearGradient id="fl3" x1="40" y1="10" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stop-color="#FFFBE0"/>
+          <stop offset="55%"  stop-color="#FFF080"/>
+          <stop offset="100%" stop-color="#F5C842"/>
+        </linearGradient>
       </defs>
+
+      <!-- Outer shield fill -->
+      <path d="M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z"
+        fill="url(#cf)"/>
+      <!-- Outer shield stroke (gradient border) -->
+      <path d="M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z"
+        stroke="url(#cs)" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+      <!-- Inner shield ring (decorative depth) -->
+      <path d="M40 9 C59 9 67 17 67 26 L67 47 Q67 67 40 81 Q13 67 13 47 L13 26 C13 17 21 9 40 9 Z"
+        stroke="url(#ci2)" stroke-width=".8" fill="none" stroke-linejoin="round"/>
+
+      <!-- Torch handle -->
+      <path d="M36.5 52 L35.5 72 Q35.5 75 40 75 Q44.5 75 44.5 72 L43.5 52 Z" fill="url(#hg)"/>
+      <!-- Grip rings -->
+      <rect x="35.5" y="58" width="9" height="2"   rx="1" fill="rgba(255,224,100,.28)"/>
+      <rect x="35.5" y="66" width="9" height="1.5" rx=".75" fill="rgba(255,224,100,.18)"/>
+      <!-- Torch cup / bowl -->
+      <path d="M28 50 Q28 41 40 39 Q52 41 52 50 L50 54 L30 54 Z" fill="url(#cg)"/>
+
+      <!-- Flame — outer/back (widest, warmest base) -->
+      <path d="M40 39 C34 31 27 23 31 13 C33 8 36 6 34 4
+               C43 8 46 20 41 30 C45 22 47 13 44 8
+               C52 18 50 31 44 39 Z"
+        fill="url(#fl1)" opacity=".58"/>
+      <!-- Flame — main (mid-width, gold core) -->
+      <path d="M40 39 C36 32 31 25 34 15 C36 10 39 8 37 5
+               C45 10 47 22 42 31 C47 23 48 14 45 9
+               C52 20 50 32 44 39 Z"
+        fill="url(#fl2)"/>
+      <!-- Flame — bright core (narrowest, near-white tip) -->
+      <path d="M40 39 C37.5 33 35 27 37 20 C38 15 41 13 40 10
+               C44.5 16 45 26 42 34 Z"
+        fill="url(#fl3)"/>
     </svg>
 
     <span class="hero-sup">Open Source · Holley Studios · Zero Config</span>
@@ -438,7 +452,7 @@
 
 <div class="hr"></div>
 
-<!-- ─── STATEMENT ────────────────────────────────────────────────────── -->
+<!-- ── STATEMENT ─────────────────────────────────────────────────────── -->
 <section class="statement">
   <div class="wrap">
     <div class="stmt-inner">
@@ -453,36 +467,22 @@
     </div>
   </div>
 </section>
-
 <div class="hr"></div>
 
-<!-- ─── STATS ────────────────────────────────────────────────────────── -->
+<!-- ── STATS ─────────────────────────────────────────────────────────── -->
 <section class="stats">
   <div class="wrap">
     <div class="stats-grid">
-      <div class="stat-c" data-r>
-        <div class="stat-n" data-count="505">505</div>
-        <div class="stat-l">Governance Rules</div>
-      </div>
-      <div class="stat-c" data-r data-d="1">
-        <div class="stat-n" data-count="17">17</div>
-        <div class="stat-l">Rule Categories</div>
-      </div>
-      <div class="stat-c" data-r data-d="2">
-        <div class="stat-n" data-count="3">3</div>
-        <div class="stat-l">Integrated Tools</div>
-      </div>
-      <div class="stat-c" data-r data-d="3">
-        <div class="stat-n">0<span class="stat-u"> config</span></div>
-        <div class="stat-l">Setup Required</div>
-      </div>
+      <div class="stat-c" data-r><div class="stat-n" data-count="505">505</div><div class="stat-l">Governance Rules</div></div>
+      <div class="stat-c" data-r data-d="1"><div class="stat-n" data-count="17">17</div><div class="stat-l">Rule Categories</div></div>
+      <div class="stat-c" data-r data-d="2"><div class="stat-n" data-count="3">3</div><div class="stat-l">Integrated Tools</div></div>
+      <div class="stat-c" data-r data-d="3"><div class="stat-n">0<span class="stat-u"> config</span></div><div class="stat-l">Setup Required</div></div>
     </div>
   </div>
 </section>
-
 <div class="hr"></div>
 
-<!-- ─── TOOLS ────────────────────────────────────────────────────────── -->
+<!-- ── TOOLS ─────────────────────────────────────────────────────────── -->
 <section class="tools" id="tools">
   <div class="wrap">
     <div class="tools-hd">
@@ -492,7 +492,6 @@
       </div>
       <p data-r data-d="2">CLI for local dev. Action for CI. Extension for real-time guidance while you write.</p>
     </div>
-
     <div class="tools-grid">
       <div class="tool-card" data-r data-d="1">
         <svg class="tool-ic" viewBox="0 0 40 40" fill="none">
@@ -503,7 +502,6 @@
         <p class="tool-desc"><code>prometheus scan</code> grades your entire codebase A+ through F. <code>prometheus review</code> checks only staged changes — fast enough for pre-commit hooks.</p>
         <span class="tool-tag">The Oracle</span>
       </div>
-
       <div class="tool-card" data-r data-d="2">
         <svg class="tool-ic" viewBox="0 0 40 40" fill="none">
           <circle cx="20" cy="20" r="14" stroke="currentColor" stroke-width="1.4"/>
@@ -511,10 +509,9 @@
           <path d="M20 6V10M20 30V34M6 20H10M30 20H34" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
         </svg>
         <div class="tool-name">GitHub Action</div>
-        <p class="tool-desc">One YAML file, fully self-contained. Every pull request gets a governance review. Inline comments on the exact offending line. BLOCKERs stop the merge automatically.</p>
+        <p class="tool-desc">One YAML file, self-contained. Every pull request gets a full governance review. Inline comments on the exact offending line. BLOCKERs stop the merge automatically.</p>
         <span class="tool-tag">The Guardian</span>
       </div>
-
       <div class="tool-card" data-r data-d="3">
         <svg class="tool-ic" viewBox="0 0 40 40" fill="none">
           <rect x="4" y="4" width="32" height="32" rx="5" stroke="currentColor" stroke-width="1.4"/>
@@ -528,10 +525,9 @@
     </div>
   </div>
 </section>
-
 <div class="hr"></div>
 
-<!-- ─── TERMINAL ──────────────────────────────────────────────────────── -->
+<!-- ── TERMINAL ───────────────────────────────────────────────────────── -->
 <section class="term-s">
   <div class="wrap">
     <div class="term-hd">
@@ -540,19 +536,16 @@
     </div>
     <div class="terminal" data-r data-d="2">
       <div class="term-bar">
-        <div class="tc tc-r"></div>
-        <div class="tc tc-y"></div>
-        <div class="tc tc-g"></div>
+        <div class="tc tc-r"></div><div class="tc tc-y"></div><div class="tc tc-g"></div>
         <span class="t-path">prometheus scan — ~/projects/my-app</span>
       </div>
       <div class="term-body" id="tbody"><span class="cursor"></span></div>
     </div>
   </div>
 </section>
-
 <div class="hr"></div>
 
-<!-- ─── RULES ────────────────────────────────────────────────────────── -->
+<!-- ── RULES ──────────────────────────────────────────────────────────── -->
 <section class="rules-s" id="rules">
   <div class="wrap">
     <div class="rules-hd">
@@ -583,10 +576,9 @@
     </div>
   </div>
 </section>
-
 <div class="hr"></div>
 
-<!-- ─── HOW ───────────────────────────────────────────────────────────── -->
+<!-- ── HOW ────────────────────────────────────────────────────────────── -->
 <section class="how-s" id="how">
   <div class="wrap">
     <div class="how-grid">
@@ -598,43 +590,32 @@
       <div class="steps">
         <div class="step" data-r>
           <span class="step-n">I</span>
-          <div>
-            <h3>Install</h3>
-            <p>Run <code>npm install prometheus-governance</code>. All 505 rules activate immediately — no config file needed.</p>
-          </div>
+          <div><h3>Install</h3><p>Run <code>npm install prometheus-governance</code>. All 505 rules activate immediately — no config file needed.</p></div>
         </div>
         <div class="step" data-r data-d="1">
           <span class="step-n">II</span>
-          <div>
-            <h3>Scan</h3>
-            <p>Run <code>prometheus scan</code> to get your first health grade and see every finding in your codebase, categorized by severity.</p>
-          </div>
+          <div><h3>Scan</h3><p>Run <code>prometheus scan</code> to get your first health grade and see every finding in your codebase, categorized by severity.</p></div>
         </div>
         <div class="step" data-r data-d="2">
           <span class="step-n">III</span>
-          <div>
-            <h3>Protect CI</h3>
-            <p>Copy one YAML file to <code>.github/workflows/</code>. Every PR from this point is governed — BLOCKERs block the merge automatically.</p>
-          </div>
+          <div><h3>Protect CI</h3><p>Copy one YAML file to <code>.github/workflows/</code>. Every PR from this point is governed — BLOCKERs block the merge automatically.</p></div>
         </div>
         <div class="step" data-r data-d="3">
           <span class="step-n">IV</span>
-          <div>
-            <h3>Extend</h3>
-            <p>Write custom rules or drop community packs into <code>.prometheus/packs/</code>. They load at runtime, no rebuild needed.</p>
-          </div>
+          <div><h3>Extend</h3><p>Write custom rules or drop community packs into <code>.prometheus/packs/</code>. They load at runtime, no rebuild needed.</p></div>
         </div>
       </div>
     </div>
   </div>
 </section>
-
 <div class="hr"></div>
 
-<!-- ─── CTA ───────────────────────────────────────────────────────────── -->
+<!-- ── CTA ────────────────────────────────────────────────────────────── -->
 <section class="cta">
-  <div class="cta-bg"></div>
-  <div class="wrap-sm">
+  <!-- Dedicated CTA fire canvas -->
+  <canvas id="cta-fire" aria-hidden="true"></canvas>
+
+  <div class="cta-inner wrap-sm">
     <h2 data-r>The fire is yours.<br>Take it.</h2>
     <p data-r data-d="1">Open source. MIT licensed.<br>No telemetry, no lock-in, no account. Just governance.</p>
     <div class="cta-btns" data-r data-d="2">
@@ -645,7 +626,7 @@
   </div>
 </section>
 
-<!-- ─── FOOTER ────────────────────────────────────────────────────────── -->
+<!-- ── FOOTER ─────────────────────────────────────────────────────────── -->
 <footer class="footer">
   <div class="wrap footer-i">
     <div>
@@ -661,180 +642,260 @@
 </footer>
 
 <script>
-/* ── Fire canvas ────────────────────────────────────────────────────── */
-(function(){
-  const cv = document.getElementById('fire-canvas');
-  const cx = cv.getContext('2d');
-  const dpr = Math.min(devicePixelRatio||1, 2);
+/* ─── Shared fire utilities ─────────────────────────────────────────── */
+function makeFire(canvas, opts) {
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(devicePixelRatio || 1, 2);
   let W, H, ox, oy;
 
-  function resize(){
-    const r = cv.getBoundingClientRect();
-    W = cv.width  = r.width  * dpr;
-    H = cv.height = r.height * dpr;
-    cx.setTransform(dpr,0,0,dpr,0,0);
-    ox = r.width / 2;
-    oy = r.height * 0.72;
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    W = canvas.width  = r.width  * dpr;
+    H = canvas.height = r.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ox = r.width  * (opts.cx || .5);
+    oy = r.height * (opts.cy || .72);
   }
 
-  function FP(){ this.reset(); }
-  FP.prototype.reset = function(){
-    this.x    = ox + (Math.random()-.5)*68;
-    this.y    = oy + (Math.random()-.5)*10;
-    this.vx   = (Math.random()-.5)*.95;
-    this.vy   = -(Math.random()*3.2+1.0);
+  function FP() { this.reset(); }
+  FP.prototype.reset = function () {
+    const sp = opts.spread || 68;
+    this.x    = ox + (Math.random() - .5) * sp;
+    this.y    = oy + (Math.random() - .5) * 10;
+    this.vx   = (Math.random() - .5) * (opts.vx || .95);
+    this.vy   = -(Math.random() * (opts.vyMax || 3.2) + (opts.vyMin || 1.0));
     this.life = 1;
-    this.dec  = 1/(Math.random()*56+38);
-    this.sz   = Math.random()*30+8;
-    this.ph   = Math.random()*Math.PI*2;
-    this.sp   = Math.random()*.09+.035;
+    this.dec  = 1 / (Math.random() * 56 + (opts.life || 38));
+    this.sz   = Math.random() * (opts.szMax || 30) + (opts.szMin || 8);
+    this.ph   = Math.random() * Math.PI * 2;
+    this.sp2  = Math.random() * .09 + .035;
     this.born = 0;
   };
-  FP.prototype.tick = function(){
-    this.ph += this.sp;
-    this.x  += this.vx + Math.sin(this.ph)*.46;
-    this.y  += this.vy;
-    this.vy *= .9975; this.sz *= .983; this.life -= this.dec; this.born += this.dec;
+  FP.prototype.tick = function () {
+    this.ph  += this.sp2;
+    this.x   += this.vx + Math.sin(this.ph) * .46;
+    this.y   += this.vy;
+    this.vy  *= .9975; this.sz *= .983;
+    this.life -= this.dec; this.born += this.dec;
   };
-  FP.prototype.draw = function(){
-    let r,g,b,a; const t=this.born;
-    if      (t<.10){r=255;g=248;b=200;a=this.life*.88;}
-    else if (t<.26){r=255;g=196;b=56; a=this.life*.82;}
-    else if (t<.48){r=255;g=110;b=18; a=this.life*.68;}
-    else if (t<.68){r=218;g=48; b=8;  a=this.life*.50;}
-    else           {r=120;g=14; b=0;  a=this.life*.24;}
-    const grd = cx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.sz);
-    grd.addColorStop(0,`rgba(${r},${g},${b},${a.toFixed(3)})`);
-    grd.addColorStop(1,`rgba(${r},${g},${b},0)`);
-    cx.globalCompositeOperation='lighter';
-    cx.fillStyle=grd;
-    cx.beginPath(); cx.arc(this.x,this.y,this.sz,0,Math.PI*2); cx.fill();
-  };
-
-  function EM(){ this.reset(); }
-  EM.prototype.reset = function(){
-    this.x=ox+(Math.random()-.5)*52; this.y=oy-Math.random()*22;
-    this.vx=(Math.random()-.5)*2.2; this.vy=-(Math.random()*5.5+1.5);
-    this.life=1; this.dec=1/(Math.random()*90+60); this.sz=Math.random()*2.8+.7;
-  };
-  EM.prototype.tick = function(){
-    this.vx+=(Math.random()-.5)*.08; this.vy+=.025;
-    this.x+=this.vx; this.y+=this.vy; this.life-=this.dec;
-  };
-  EM.prototype.draw = function(){
-    cx.globalCompositeOperation='lighter';
-    cx.fillStyle=`rgba(255,212,68,${(this.life*.9).toFixed(3)})`;
-    cx.beginPath(); cx.arc(this.x,this.y,this.sz,0,Math.PI*2); cx.fill();
+  FP.prototype.draw = function () {
+    let r, g, b, a; const t = this.born;
+    if      (t < .10) { r=255;g=248;b=200;a=this.life*.88; }
+    else if (t < .26) { r=255;g=196;b=56; a=this.life*.82; }
+    else if (t < .48) { r=255;g=110;b=18; a=this.life*.68; }
+    else if (t < .68) { r=218;g=48; b=8;  a=this.life*.50; }
+    else              { r=120;g=14; b=0;  a=this.life*.24; }
+    const grd = ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.sz);
+    grd.addColorStop(0, `rgba(${r},${g},${b},${a.toFixed(3)})`);
+    grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.sz, 0, Math.PI * 2); ctx.fill();
   };
 
-  const fps = Array.from({length:165},()=>{const p=new FP();p.life=Math.random();p.born=Math.random();return p;});
-  const ems = Array.from({length:34}, ()=>{const e=new EM();e.life=Math.random();return e;});
+  function EM() { this.reset(); }
+  EM.prototype.reset = function () {
+    const sp = opts.spread || 68;
+    this.x  = ox + (Math.random() - .5) * sp;
+    this.y  = oy - Math.random() * 22;
+    this.vx = (Math.random() - .5) * (opts.evx || 2.2);
+    this.vy = -(Math.random() * 5.5 + 1.5);
+    this.life = 1; this.dec = 1 / (Math.random() * 90 + 60);
+    this.sz = Math.random() * 2.8 + .7;
+  };
+  EM.prototype.tick = function () {
+    this.vx += (Math.random() - .5) * .08; this.vy += .025;
+    this.x += this.vx; this.y += this.vy; this.life -= this.dec;
+  };
+  EM.prototype.draw = function () {
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = `rgba(255,212,68,${(this.life * .9).toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.sz, 0, Math.PI * 2); ctx.fill();
+  };
 
-  function frame(){
-    cx.clearRect(0,0,W,H);
-    fps.forEach(p=>{p.tick();p.life<=0?p.reset():p.draw();});
-    ems.forEach(e=>{e.tick();e.life<=0?e.reset():e.draw();});
-    cx.globalCompositeOperation='source-over';
+  const fps = Array.from({length: opts.np || 165}, () => {
+    const p = new FP(); p.life = Math.random(); p.born = Math.random(); return p;
+  });
+  const ems = Array.from({length: opts.ne || 34}, () => {
+    const e = new EM(); e.life = Math.random(); return e;
+  });
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    fps.forEach(p => { p.tick(); p.life <= 0 ? p.reset() : p.draw(); });
+    ems.forEach(e => { e.tick(); e.life <= 0 ? e.reset() : e.draw(); });
+    ctx.globalCompositeOperation = 'source-over';
     requestAnimationFrame(frame);
   }
 
   resize();
-  window.addEventListener('resize',()=>{cx.setTransform(1,0,0,1,0,0);resize();});
+  window.addEventListener('resize', () => { ctx.setTransform(1,0,0,1,0,0); resize(); });
+  requestAnimationFrame(frame);
+}
+
+/* ─── Global background embers ──────────────────────────────────────── */
+/* mix-blend-mode: screen means dark canvas pixels are invisible;        */
+/* only the amber/gold embers show through as floating ambient light.    */
+(function () {
+  const cv = document.getElementById('bg-canvas');
+  const ctx = cv.getContext('2d');
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  let W, H;
+
+  function resize() {
+    W = cv.width  = window.innerWidth  * dpr;
+    H = cv.height = window.innerHeight * 0.65 * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  /* Sparse embers distributed across the full width, rising slowly */
+  function BG() { this.reset(true); }
+  BG.prototype.reset = function (init) {
+    this.x  = Math.random() * window.innerWidth;
+    this.y  = init ? Math.random() * window.innerHeight * .65 : window.innerHeight * .65 + 10;
+    this.vx = (Math.random() - .5) * .6;
+    this.vy = -(Math.random() * 1.4 + .5);
+    this.life = 1;
+    this.dec  = 1 / (Math.random() * 180 + 100);
+    this.sz   = Math.random() * 3.5 + 1;
+    this.ph   = Math.random() * Math.PI * 2;
+  };
+  BG.prototype.tick = function () {
+    this.ph += .018;
+    this.x  += this.vx + Math.sin(this.ph) * .35;
+    this.y  += this.vy;
+    this.life -= this.dec;
+  };
+  BG.prototype.draw = function () {
+    const a = this.life * .65;
+    /* pick warm colour based on age */
+    const t = 1 - this.life;
+    let r = 255, g = t < .4 ? 200 : 140, b = t < .3 ? 80 : 20;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.shadowBlur  = this.sz * 4;
+    ctx.shadowColor = `rgba(${r},${g>>0},${b>>0},${(a*.6).toFixed(3)})`;
+    ctx.fillStyle   = `rgba(${r},${g>>0},${b>>0},${a.toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.sz, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+  };
+
+  const embers = Array.from({length: 55}, () => new BG());
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    embers.forEach(e => { e.tick(); if (e.life <= 0) e.reset(false); else e.draw(); });
+    requestAnimationFrame(frame);
+  }
+
+  resize();
+  window.addEventListener('resize', () => { ctx.setTransform(1,0,0,1,0,0); resize(); });
   requestAnimationFrame(frame);
 }());
 
-/* ── Hero title — letter split ──────────────────────────────────────── */
-(function(){
+/* ─── Hero fire ─────────────────────────────────────────────────────── */
+makeFire(document.getElementById('fire-canvas'), {
+  np:165, ne:34, spread:68, vyMax:3.2, vyMin:1.0,
+  szMax:30, szMin:8, life:38, cy:.72
+});
+
+/* ─── CTA fire ───────────────────────────────────────────────────────── */
+makeFire(document.getElementById('cta-fire'), {
+  np:100, ne:28, spread:90, vyMax:3.8, vyMin:1.2,
+  szMax:34, szMin:10, life:42, cy:.88, evx:2.8
+});
+
+/* ─── Hero title letter split ────────────────────────────────────────── */
+(function () {
   const h1 = document.getElementById('htitle');
-  h1.innerHTML = 'PROMETHEUS'.split('').map((l,i)=>`<span class="lc" style="--i:${i}">${l}</span>`).join('');
+  h1.innerHTML = 'PROMETHEUS'.split('').map((l, i) =>
+    `<span class="lc" style="--i:${i}">${l}</span>`
+  ).join('');
 }());
 
-/* ── Nav scroll class ───────────────────────────────────────────────── */
-(function(){
+/* ─── Nav scroll ─────────────────────────────────────────────────────── */
+(function () {
   const nav = document.getElementById('nav');
-  window.addEventListener('scroll',()=>nav.classList.toggle('pinned',scrollY>48),{passive:true});
+  window.addEventListener('scroll', () => nav.classList.toggle('pinned', scrollY > 48), {passive:true});
 }());
 
-/* ── Scroll reveal ──────────────────────────────────────────────────── */
-(function(){
-  const io = new IntersectionObserver(entries=>
-    entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target);}})
-  ,{threshold:.12});
-  document.querySelectorAll('[data-r]').forEach(el=>io.observe(el));
+/* ─── Scroll reveal ──────────────────────────────────────────────────── */
+(function () {
+  const io = new IntersectionObserver(entries =>
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } })
+  , {threshold:.12});
+  document.querySelectorAll('[data-r]').forEach(el => io.observe(el));
 }());
 
-/* ── Count-up ───────────────────────────────────────────────────────── */
-(function(){
-  const io = new IntersectionObserver(entries=>entries.forEach(e=>{
-    if(!e.isIntersecting) return;
-    const el=e.target, tgt=+el.dataset.count, dur=tgt>100?1400:900;
-    const t0=performance.now();
-    (function tick(now){
-      const p=Math.min((now-t0)/dur,1), ease=1-Math.pow(1-p,4);
-      el.textContent=Math.round(ease*tgt);
-      if(p<1) requestAnimationFrame(tick);
+/* ─── Count-up ───────────────────────────────────────────────────────── */
+(function () {
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    const el = e.target, tgt = +el.dataset.count, dur = tgt > 100 ? 1400 : 900;
+    const t0 = performance.now();
+    (function tick(now) {
+      const p = Math.min((now - t0) / dur, 1), ease = 1 - Math.pow(1 - p, 4);
+      el.textContent = Math.round(ease * tgt);
+      if (p < 1) requestAnimationFrame(tick);
     }(t0));
     io.unobserve(el);
-  }),{threshold:.5});
-  document.querySelectorAll('[data-count]').forEach(el=>io.observe(el));
+  }), {threshold:.5});
+  document.querySelectorAll('[data-count]').forEach(el => io.observe(el));
 }());
 
-/* ── Typewriter terminal ────────────────────────────────────────────── */
-(function(){
-  const body  = document.getElementById('tbody');
-  const cur   = body.querySelector('.cursor');
+/* ─── Typewriter terminal ────────────────────────────────────────────── */
+(function () {
+  const body = document.getElementById('tbody');
+  const cur  = body.querySelector('.cursor');
   const lines = [
-    {h:'<span class="tp">$ </span><span class="tc2">prometheus scan</span>', p:200},
-    {h:'<span class="tln"></span>', p:280},
-    {h:'<span class="tf">🔱 Prometheus Governance  v1.0.0</span>', p:80},
-    {h:'<span class="td2">   Scanning 847 files  ·  505 rules  ·  17 categories</span>', p:520},
-    {h:'<span class="tln"></span>', p:40},
-    {h:'<span class="te">  BLOCKER  src/api/ai/generate.ts:47</span>', p:55},
-    {h:'<span class="te">           prompt_injection_user_input — User input concatenated</span>', p:45},
-    {h:'<span class="te">           directly into prompt without sanitization.  (AI_013)</span>', p:200},
-    {h:'<span class="tln"></span>', p:30},
-    {h:'<span class="te">  BLOCKER  src/lib/db/client.ts:12</span>', p:55},
-    {h:'<span class="te">           connection_pool_exhaust — Prisma client outside module</span>', p:45},
-    {h:'<span class="te">           scope. Will exhaust DB connections in production.  (DB_014)</span>', p:220},
-    {h:'<span class="tln"></span>', p:30},
-    {h:'<span class="tw">  HIGH     src/hooks/useData.ts:23</span>', p:55},
-    {h:'<span class="tw">           waterfall_data_fetch — Sequential awaits in component.</span>', p:45},
-    {h:'<span class="tw">           Use Promise.all() to parallelise.  (PERF_018)</span>', p:260},
-    {h:'<span class="tln"></span>', p:30},
-    {h:'<span class="td2">           + 14 MEDIUM  ·  38 LOW  ·  22 TECH_DEBT</span>', p:180},
-    {h:'<span class="tln"></span>', p:30},
-    {h:'<span class="tpu">  ──────────────────────────────────────────────</span>', p:60},
-    {h:'<span class="td2">  Files scanned    847   ·   Rules evaluated  505</span>', p:70},
-    {h:'<span class="tln"></span>', p:30},
-    {h:'<span class="te">  Health Grade   C   ·   Resolve BLOCKERs before deploy</span>', p:70},
-    {h:'<span class="td2">  Report saved   .prometheus/report.json</span>', p:0},
+    {h:'<span class="tp">$ </span><span class="tc2">prometheus scan</span>',p:200},
+    {h:'<span class="tln"></span>',p:280},
+    {h:'<span class="tf">🔱 Prometheus Governance  v1.0.0</span>',p:80},
+    {h:'<span class="td2">   Scanning 847 files  ·  505 rules  ·  17 categories</span>',p:520},
+    {h:'<span class="tln"></span>',p:40},
+    {h:'<span class="te">  BLOCKER  src/api/ai/generate.ts:47</span>',p:55},
+    {h:'<span class="te">           prompt_injection_user_input — User input concatenated</span>',p:45},
+    {h:'<span class="te">           directly into prompt without sanitization.  (AI_013)</span>',p:200},
+    {h:'<span class="tln"></span>',p:30},
+    {h:'<span class="te">  BLOCKER  src/lib/db/client.ts:12</span>',p:55},
+    {h:'<span class="te">           connection_pool_exhaust — Prisma client outside module</span>',p:45},
+    {h:'<span class="te">           scope. Will exhaust DB connections in production.  (DB_014)</span>',p:220},
+    {h:'<span class="tln"></span>',p:30},
+    {h:'<span class="tw">  HIGH     src/hooks/useData.ts:23</span>',p:55},
+    {h:'<span class="tw">           waterfall_data_fetch — Sequential awaits in component.</span>',p:45},
+    {h:'<span class="tw">           Use Promise.all() to parallelise.  (PERF_018)</span>',p:260},
+    {h:'<span class="tln"></span>',p:30},
+    {h:'<span class="td2">           + 14 MEDIUM  ·  38 LOW  ·  22 TECH_DEBT</span>',p:180},
+    {h:'<span class="tln"></span>',p:30},
+    {h:'<span class="tpu">  ──────────────────────────────────────────────</span>',p:60},
+    {h:'<span class="td2">  Files scanned    847   ·   Rules evaluated  505</span>',p:70},
+    {h:'<span class="tln"></span>',p:30},
+    {h:'<span class="te">  Health Grade   C   ·   Resolve BLOCKERs before deploy</span>',p:70},
+    {h:'<span class="td2">  Report saved   .prometheus/report.json</span>',p:0},
   ];
-
-  let started=false;
-  function run(){
-    if(started) return; started=true;
-    let i=0;
-    (function next(){
-      if(i>=lines.length) return;
-      const l=lines[i++];
-      const d=document.createElement('div'); d.innerHTML=l.h;
-      body.insertBefore(d,cur);
-      setTimeout(next, l.p + 15 + Math.random()*25);
+  let started = false;
+  function run() {
+    if (started) return; started = true;
+    let i = 0;
+    (function next() {
+      if (i >= lines.length) return;
+      const l = lines[i++];
+      const d = document.createElement('div'); d.innerHTML = l.h;
+      body.insertBefore(d, cur);
+      setTimeout(next, l.p + 15 + Math.random() * 25);
     }());
   }
-
-  const io=new IntersectionObserver(entries=>entries.forEach(e=>{
-    if(e.isIntersecting){run();io.disconnect();}
-  }),{threshold:.3});
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (e.isIntersecting) { run(); io.disconnect(); }
+  }), {threshold:.3});
   io.observe(body);
 }());
 
-/* ── Tool card spotlight ────────────────────────────────────────────── */
-document.querySelectorAll('.tool-card').forEach(c=>{
-  c.addEventListener('mousemove',e=>{
-    const r=c.getBoundingClientRect();
-    c.style.setProperty('--mx',((e.clientX-r.left)/r.width*100)+'%');
-    c.style.setProperty('--my',((e.clientY-r.top)/r.height*100)+'%');
+/* ─── Tool card spotlight ────────────────────────────────────────────── */
+document.querySelectorAll('.tool-card').forEach(c => {
+  c.addEventListener('mousemove', e => {
+    const r = c.getBoundingClientRect();
+    c.style.setProperty('--mx', ((e.clientX - r.left) / r.width  * 100) + '%');
+    c.style.setProperty('--my', ((e.clientY - r.top)  / r.height * 100) + '%');
   });
 });
 </script>
