@@ -34,3 +34,4 @@ coverage/
 # NOTE: actions/pr-review/dist/ and extensions/vscode/dist/ ARE committed.
 # GitHub Actions requires dist/index.js to be present in the repo at run time.
 # VS Code extension dist is committed so no build step is required for development.
+.vercel
