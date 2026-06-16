@@ -13,10 +13,9 @@ inputs:
   github-token:
     description: >
       GitHub token used to post review comments and read PR files.
-      The default ${{ github.token }} works in most cases.
+      Pass secrets.GITHUB_TOKEN from your workflow.
       Requires pull-requests: write and contents: read.
-    required: false
-    default: ${{ github.token }}
+    required: true
 
   fail-on-severity:
     description: >
