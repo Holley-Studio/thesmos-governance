@@ -205,7 +205,7 @@ export function installHooks(root: string, options: HookInstallOptions = {}): Ho
     }
 
     const content = buildHookContent(hook, base, existing);
-    const status  = !existing ? 'created' : hookHasPrometheus(existing) ? 'updated' : 'updated';
+    const status  = !existing ? 'created' : 'updated';
 
     if (!dryRun) {
       writeFileSync(path, content, 'utf8');

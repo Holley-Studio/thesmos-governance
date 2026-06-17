@@ -34,13 +34,16 @@ jobs:
         run: npm ci
 
       - name: Typecheck
-        run: npm run typecheck -w prometheus-governance
+        working-directory: prometheus
+        run: npm run typecheck
 
       - name: Test
-        run: npm test -w prometheus-governance
+        working-directory: prometheus
+        run: npm test
 
       - name: Build
-        run: npm run build -w prometheus-governance
+        working-directory: prometheus
+        run: npm run build
 
       - name: Extract version from tag
         id: version

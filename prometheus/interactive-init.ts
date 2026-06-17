@@ -211,7 +211,7 @@ export async function runInteractiveInit(
   // Install git hooks
   if (installHooksChoice && !dryRun) {
     console.log('\n Installing git hooks...');
-    const { installHooks } = await import('./hooks.ts');
+    const { installHooks } = await import('./hooks.js');
     try {
       const hookResults = installHooks(root, { target: 'git', base: 'origin/main' });
       for (const r of hookResults) {

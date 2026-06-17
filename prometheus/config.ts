@@ -111,7 +111,7 @@ export function loadConfig(
       try {
         raw = JSON.parse(readFileSync(configPath, 'utf8'));
       } catch {
-        console.error('[prometheus] Warning: could not parse .prometheus/config.json — using defaults');
+        console.warn('[prometheus] Warning: could not parse .prometheus/config.json — using defaults');
       }
     }
   }

@@ -331,6 +331,7 @@ export type {
 
 export {
   isTTY,
+  ynHint,
   prompt,
   confirm,
   select,
@@ -348,6 +349,7 @@ export {
   startWatcher,
   diffFindings,
   shouldWatchFile,
+  sortFindingsByWorst,
   fingerprintFinding as fingerprintWatchFinding,
   formatWatchUpdate,
 } from './watcher.js';
@@ -372,6 +374,11 @@ export type {
   FixResult,
   FixOptions,
 } from './fix.js';
+
+// ── Interactive init wizard ───────────────────────────────────────────────────
+
+export { runInteractiveInit } from './interactive-init.js';
+export type { InteractiveInitOptions } from './interactive-init.js';
 
 // ── Catalog ───────────────────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/prometheus-governance)](https://www.npmjs.com/package/prometheus-governance)
 [![npm downloads](https://img.shields.io/npm/dm/prometheus-governance)](https://www.npmjs.com/package/prometheus-governance)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node >=18](https://img.shields.io/node/v/prometheus-governance)](https://nodejs.org)
+[![Node >=20](https://img.shields.io/node/v/prometheus-governance)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org)
 [![Zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](https://www.npmjs.com/package/prometheus-governance?activeTab=dependencies)
 
@@ -115,7 +115,7 @@ Add scripts to your `package.json` (optional — you can also use `npx prometheu
 }
 ```
 
-**Node.js 18 or later is required.**
+**Node.js 20 or later is required.**
 
 ---
 
