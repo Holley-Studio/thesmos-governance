@@ -13,8 +13,8 @@
     "prometheus-governance": "file:../../prometheus"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^25.9.3",
     "esbuild": "^0.20.2",
-    "typescript": "^5.4.5"
+    "typescript": "^6.0.3"
   }
 }

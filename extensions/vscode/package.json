@@ -251,10 +251,10 @@
     "package": "vsce package --no-dependencies"
   },
   "devDependencies": {
-    "@types/node": "^18.19.0",
+    "@types/node": "^25.9.3",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^2.24.0",
     "esbuild": "^0.20.2",
-    "typescript": "^5.4.5"
+    "typescript": "^6.0.3"
   }
 }
