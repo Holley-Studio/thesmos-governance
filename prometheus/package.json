@@ -50,6 +50,9 @@
     "CHANGELOG.md",
     "config.schema.json"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },

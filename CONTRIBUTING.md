@@ -22,23 +22,25 @@ Thank you for helping make this better. This guide covers everything you need to
 
 ```bash
 git clone https://github.com/TenticleTim/prometheus-helper.git
-cd prometheus-helper/prometheus
+cd prometheus-helper
 npm install
 ```
 
-All source code lives in `prometheus/`. The root of the repository is a monorepo shell — the publishable package is entirely self-contained inside `prometheus/`.
+This is an npm workspaces monorepo. **Always run `npm install` from the repo root** — this populates the root `package-lock.json` and hoists shared dependencies. All source code lives in `prometheus/`; the publishable package is entirely self-contained there.
 
 ### Available scripts
 
-| Command | What it does |
-|---------|-------------|
-| `npm test` | Run all tests once |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run test:coverage` | Run tests with V8 coverage report |
-| `npm run typecheck` | TypeScript type-check (no emit) |
-| `npm run build` | Build `dist/` via tsup |
-| `npm run prometheus:scan` | Run the CLI scan command against this repo |
-| `npm run prometheus:doctor` | Run the CLI doctor command against this repo |
+Run these from the **repo root** using the `-w prometheus-governance` workspace flag, or `cd prometheus` and run them directly.
+
+| Command (from root) | What it does |
+| ------------------- | ------------ |
+| `npm test -w prometheus-governance` | Run all tests once |
+| `npm run test:watch -w prometheus-governance` | Run tests in watch mode |
+| `npm run test:coverage -w prometheus-governance` | Run tests with V8 coverage report |
+| `npm run typecheck -w prometheus-governance` | TypeScript type-check (no emit) |
+| `npm run build -w prometheus-governance` | Build `dist/` via tsup |
+| `npm run prometheus:scan -w prometheus-governance` | Run the CLI scan command against this repo |
+| `npm run prometheus:doctor -w prometheus-governance` | Run the CLI doctor command against this repo |
 
 ---
 
