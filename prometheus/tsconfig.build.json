@@ -8,6 +8,10 @@
   "include": [
     "index.ts",
     "types.ts",
+    "context-capsule.ts",
+    "import-scan.ts",
+    "scope.ts",
+    "token-budget.ts",
     "config.ts",
     "adapters.ts",
     "catalog.ts",

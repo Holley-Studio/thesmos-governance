@@ -94,9 +94,15 @@ export async function checkPypi(name: string): Promise<RegistryResult> {
     }
     const data = await res.json() as {
       info?: { home_page?: string; description?: string; summary?: string };
-      urls?: Array<{ upload_time?: string }>;
+      releases?: Record<string, Array<{ upload_time?: string }> | null>;
     };
-    const firstUpload = data.urls?.[0]?.upload_time;
+    // Find the earliest upload time across ALL releases to get package creation date
+    const allUploadTimes = Object.values(data.releases ?? {})
+      .flatMap((files) => files ?? [])
+      .map((f) => f.upload_time)
+      .filter((t): t is string => typeof t === 'string');
+    allUploadTimes.sort();
+    const firstUpload = allUploadTimes[0];
     const ageInDays = firstUpload
       ? Math.floor((Date.now() - new Date(firstUpload).getTime()) / 86_400_000)
       : null;

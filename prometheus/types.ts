@@ -144,6 +144,18 @@ export interface PrometheusConfig {
   // Autopilot autonomous build mode
   autopilot?: AutopilotConfig;
 
+  // Token budget governance (see token-budget.ts for full TokenBudgetConfig type)
+  tokenBudget?: {
+    enabled?: boolean;
+    sessionMaxTokens?: number;
+    sessionMaxCostUSD?: number;
+    dailyMaxCostUSD?: number;
+    projectMaxCostUSD?: number;
+    alertAt?: number;
+    hardStopAt?: number;
+    modelCostTable?: Record<string, { inputPer1M: number; outputPer1M: number }>;
+  };
+
   // Legacy nested compat
   review?: { defaultBase?: string };
   validate?: { gates?: string[]; outputPath?: string };

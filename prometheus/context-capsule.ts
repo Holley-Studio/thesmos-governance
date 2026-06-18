@@ -16,30 +16,9 @@
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import type { ContextCapsule, ContextHealth } from './types.js';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface ContextCapsule {
-  project: string;
-  snapshotAt: string;
-  stack: string[];
-  patterns: string[];
-  constraints: string[];
-  governance: {
-    ruleCount: number;
-    lastCleanScan: string | null;
-    preset: string | null;
-  };
-  health: ContextHealth;
-}
-
-export interface ContextHealth {
-  score: number;
-  grade: 'A' | 'B' | 'C' | 'D' | 'F';
-  issues: string[];
-  contextAgeHours: number | null;
-  adaptersFresh: boolean;
-}
+export type { ContextCapsule, ContextHealth };
 
 const CONTEXT_FILE     = '.prometheus/context.md';
 const CONTEXT_META_FILE = '.prometheus/context-meta.json';
@@ -400,19 +379,5 @@ export function loadContextCapsule(root: string): ContextCapsule | null {
     return generateContextCapsule(root);
   } catch {
     return null;
-  }
-}
-
-/** Returns a compact preamble (< 600 chars) suitable for embedding in CLAUDE.md. */
-export function getContextPreamble(root: string): string {
-  const metaPath = join(root, CONTEXT_META_FILE);
-  if (!existsSync(metaPath)) return '';
-  try {
-    const meta = JSON.parse(readFileSync(metaPath, 'utf8')) as { snapshotAt: string; stack: string[] };
-    const age = Math.floor((Date.now() - new Date(meta.snapshotAt).getTime()) / 3_600_000);
-    const ageStr = age < 1 ? 'just now' : age < 24 ? `${age}h ago` : `${Math.floor(age / 24)}d ago`;
-    return `<!-- Context snapshot: ${meta.stack.slice(0, 3).join(', ')} — ${ageStr} -->`;
-  } catch {
-    return '';
   }
 }

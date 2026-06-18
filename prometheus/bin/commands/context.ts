@@ -3,8 +3,7 @@
  * prometheus context:health    — check freshness of context and adapter files
  */
 
-import { join } from 'node:path';
-import { generateContextCapsule, saveContextCapsule, renderContextMd } from '../../context-capsule.js';
+import { generateContextCapsule, saveContextCapsule } from '../../context-capsule.js';
 
 export async function cmdContext(argv: string[]): Promise<void> {
   const sub = argv[0];

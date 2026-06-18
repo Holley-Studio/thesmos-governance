@@ -14,7 +14,7 @@
  */
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 import { scanImports, type RegistryFinding } from '../../import-scan.js';
 
 const SEVERITY_ORDER: Record<string, number> = { BLOCKER: 0, HIGH: 1, MEDIUM: 2, OK: 3, OFFLINE: 4 };

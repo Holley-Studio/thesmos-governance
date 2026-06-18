@@ -443,31 +443,42 @@ export const DEBT_RULES: PrometheusRule[] = [
         const lines = content.split('\n');
         let commentRunStart = -1;
         let commentRunLen = 0;
+        let isJsDocBlock = false;
+
+        const emitCommentBlock = (startLine: number, len: number) => {
+          if (len < 5) return;
+          // Skip JSDoc blocks (/** ... */) — they legitimately contain @example code snippets
+          if (isJsDocBlock) return;
+          const block = lines.slice(startLine, startLine + len).join('\n');
+          if (/(?:const|let|var|function|return|await|if\s*\(|for\s*\()/.test(block)) {
+            findings.push({
+              severity: sev,
+              category: 'debt_commented_out_block',
+              file: path, line: startLine + 1,
+              message: `${len}-line commented-out code block — likely an AI leftover or dead code.`,
+              suggestion: 'Remove commented-out code blocks. Use git history or branches to preserve old implementations.',
+            });
+          }
+        };
 
         for (let i = 0; i < lines.length; i++) {
           const trimmed = (lines[i] ?? '').trim();
           const isCommentLine = trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*');
           if (isCommentLine) {
-            if (commentRunStart === -1) commentRunStart = i;
+            if (commentRunStart === -1) {
+              commentRunStart = i;
+              isJsDocBlock = trimmed.startsWith('/**');
+            }
             commentRunLen++;
           } else {
-            if (commentRunLen >= 5 && commentRunStart !== -1) {
-              // Check if the comment block contains code-like content
-              const block = lines.slice(commentRunStart, commentRunStart + commentRunLen).join('\n');
-              if (/(?:const|let|var|function|return|await|if\s*\(|for\s*\()/.test(block)) {
-                findings.push({
-                  severity: sev,
-                  category: 'debt_commented_out_block',
-                  file: path, line: commentRunStart + 1,
-                  message: `${commentRunLen}-line commented-out code block — likely an AI leftover or dead code.`,
-                  suggestion: 'Remove commented-out code blocks. Use git history or branches to preserve old implementations.',
-                });
-              }
-            }
+            emitCommentBlock(commentRunStart, commentRunLen);
             commentRunStart = -1;
             commentRunLen = 0;
+            isJsDocBlock = false;
           }
         }
+        // Catch blocks that run to end of file
+        emitCommentBlock(commentRunStart, commentRunLen);
       }
       return findings;
     },
@@ -651,6 +662,8 @@ export const DEBT_RULES: PrometheusRule[] = [
           const lineNum = content.slice(0, m.index).split('\n').length;
           const line = content.split('\n')[lineNum - 1] ?? '';
           if (line.trim().startsWith('//') || line.trim().startsWith('*')) continue;
+          // Skip UPPER_SNAKE_CASE constant definitions — naming the constant IS the fix
+          if (/\bconst\s+[A-Z][A-Z0-9_]+\s*=/.test(line)) continue;
           findings.push({
             severity: sev,
             category: 'debt_magic_number',
@@ -892,7 +905,6 @@ export const DEBT_RULES: PrometheusRule[] = [
       const sev = classifySeverity('debt_exponential_loop', config.severityRules);
       const findings: Finding[] = [];
       const FOR_OF_RE = /\bfor\s*\((?:const|let|var)\s+\w+\s+of\s+(\w+)\)/g;
-      const FOR_I_RE  = /\bfor\s*\(\s*(?:let|var)\s+(\w+)\s*=/g;
 
       for (const { path, content } of changedFiles) {
         if (!isSourceFile(path) || isTestFile(path)) continue;

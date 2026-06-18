@@ -291,7 +291,7 @@ export function getScopeStatus(root: string): ScopeStatus {
     config,
     allowedPaths: config?.workspace.allowedPaths ?? [],
     blockedPaths: config?.workspace.blockedPaths ?? [],
-    allowDelete: config?.operations.allowDelete ?? true,
-    allowGitPush: config?.operations.allowGitPush ?? true,
+    allowDelete: config?.operations.allowDelete ?? false,
+    allowGitPush: config?.operations.allowGitPush ?? false,
   };
 }

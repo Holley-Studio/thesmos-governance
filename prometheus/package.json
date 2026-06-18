@@ -110,7 +110,16 @@
     "prometheus:claude:govern:install":   "tsx bin/cli.ts claude:govern install",
     "prometheus:claude:govern:uninstall": "tsx bin/cli.ts claude:govern uninstall",
     "prometheus:claude:govern:status":    "tsx bin/cli.ts claude:govern status",
-    "prometheus:import:scan":             "tsx bin/cli.ts import:scan"
+    "prometheus:import:scan":             "tsx bin/cli.ts import:scan",
+    "prometheus:scope:init":              "tsx bin/cli.ts scope:init",
+    "prometheus:scope:status":            "tsx bin/cli.ts scope:status",
+    "prometheus:scope:check":             "tsx bin/cli.ts scope:check",
+    "prometheus:tokens:report":           "tsx bin/cli.ts tokens:report",
+    "prometheus:tokens:reset":            "tsx bin/cli.ts tokens:reset",
+    "prometheus:tokens:budget":           "tsx bin/cli.ts tokens:budget",
+    "prometheus:debt:scan":               "tsx bin/cli.ts debt:scan",
+    "prometheus:context:snapshot":        "tsx bin/cli.ts context:snapshot",
+    "prometheus:context:health":          "tsx bin/cli.ts context:health"
   },
   "optionalDependencies": {
     "lightningcss-linux-x64-gnu": "1.32.0",

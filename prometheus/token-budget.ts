@@ -47,11 +47,20 @@ export const TOKEN_BUDGET_DEFAULTS: TokenBudgetConfig = {
   alertAt: 0.80,
   hardStopAt: 1.00,
   modelCostTable: {
-    'claude-sonnet-4-6':        { inputPer1M: 3.00,  outputPer1M: 15.00 },
-    'claude-opus-4-8':          { inputPer1M: 15.00, outputPer1M: 75.00 },
-    'claude-haiku-4-5-20251001':{ inputPer1M: 0.25,  outputPer1M: 1.25  },
-    'claude-opus-4-5':          { inputPer1M: 15.00, outputPer1M: 75.00 },
-    'claude-sonnet-4-5':        { inputPer1M: 3.00,  outputPer1M: 15.00 },
+    // Canonical SDK model IDs (claude-<family>-<version>)
+    'claude-sonnet-4-6':              { inputPer1M: 3.00,  outputPer1M: 15.00 },
+    'claude-opus-4-8':                { inputPer1M: 15.00, outputPer1M: 75.00 },
+    'claude-haiku-4-5-20251001':      { inputPer1M: 0.25,  outputPer1M: 1.25  },
+    'claude-opus-4-5':                { inputPer1M: 15.00, outputPer1M: 75.00 },
+    'claude-sonnet-4-5':              { inputPer1M: 3.00,  outputPer1M: 15.00 },
+    // Legacy API date-suffixed model IDs reported by some Claude Code versions
+    'claude-3-5-sonnet-20241022':     { inputPer1M: 3.00,  outputPer1M: 15.00 },
+    'claude-3-5-sonnet-20240620':     { inputPer1M: 3.00,  outputPer1M: 15.00 },
+    'claude-3-opus-20240229':         { inputPer1M: 15.00, outputPer1M: 75.00 },
+    'claude-3-5-haiku-20241022':      { inputPer1M: 0.80,  outputPer1M: 4.00  },
+    'claude-3-haiku-20240307':        { inputPer1M: 0.25,  outputPer1M: 1.25  },
+    'claude-opus-4-5-20251101':       { inputPer1M: 15.00, outputPer1M: 75.00 },
+    'claude-sonnet-4-5-20251101':     { inputPer1M: 3.00,  outputPer1M: 15.00 },
   },
 };
 
@@ -218,9 +227,10 @@ export async function runPostToolBudgetCheck(root: string, config: TokenBudgetCo
 
   let hookData: {
     tool_name?: string;
-    tool_response?: { usage?: { input_tokens?: number; output_tokens?: number } };
     session_id?: string;
     model?: string;
+    // Claude Code PostToolUse hook exposes cumulative usage at the top level
+    usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number };
   };
   try {
     hookData = JSON.parse(raw) as typeof hookData;
@@ -228,8 +238,8 @@ export async function runPostToolBudgetCheck(root: string, config: TokenBudgetCo
     process.exit(0);
   }
 
-  const inputTokens  = hookData.tool_response?.usage?.input_tokens  ?? 0;
-  const outputTokens = hookData.tool_response?.usage?.output_tokens ?? 0;
+  const inputTokens  = hookData.usage?.input_tokens  ?? 0;
+  const outputTokens = hookData.usage?.output_tokens ?? 0;
   const model        = hookData.model ?? 'claude-sonnet-4-6';
   const toolName     = hookData.tool_name ?? 'unknown';
   const sessionId    = hookData.session_id ?? getCurrentSessionId(root);

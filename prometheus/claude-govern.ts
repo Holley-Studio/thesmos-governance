@@ -430,11 +430,8 @@ export async function runPostToolBudgetHook(root: string): Promise<void> {
   let config = TOKEN_BUDGET_DEFAULTS;
   try {
     const projectConfig = loadConfig(root);
-    if ((projectConfig as unknown as { tokenBudget?: unknown }).tokenBudget) {
-      config = {
-        ...TOKEN_BUDGET_DEFAULTS,
-        ...((projectConfig as unknown as { tokenBudget: typeof TOKEN_BUDGET_DEFAULTS }).tokenBudget),
-      };
+    if (projectConfig.tokenBudget) {
+      config = { ...TOKEN_BUDGET_DEFAULTS, ...projectConfig.tokenBudget };
     }
   } catch { /* use defaults */ }
 
