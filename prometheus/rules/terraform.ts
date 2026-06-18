@@ -502,4 +502,499 @@ export const TERRAFORM_RULES: PrometheusRule[] = [
       return findings;
     },
   },
+
+  // ── TF_013: IAM policy with wildcard resource on sensitive actions ─────────
+  {
+    id: 'TF_013',
+    category: 'tf_iam_sensitive_wildcard_resource',
+    description: 'IAM policy grants sensitive actions with `"Resource": "*"` — overly permissive.',
+    severity: 'BLOCKER',
+    tags: ['security', 'terraform', 'aws', 'iam', 'iac'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Granting actions like s3:DeleteObject, ec2:TerminateInstances, iam:AttachRolePolicy, or secretsmanager:GetSecretValue on Resource: "*" means the principal can act on every resource in the account, not just the intended one. This enables privilege escalation and data exfiltration if the principal is compromised.',
+      commonViolations: ['actions = ["s3:*", "ec2:*"]\nresources = ["*"]', 'actions = ["iam:*"]\nresources = ["*"]'],
+      goodExample: 'actions   = ["s3:GetObject", "s3:PutObject"]\nresources = ["arn:aws:s3:::my-bucket/*"]',
+      badExample: 'actions   = ["s3:*"]\nresources = ["*"]  # ❌ wildcard resource on admin actions',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_iam_sensitive_wildcard_resource', config.severityRules);
+      const findings: Finding[] = [];
+      const SENSITIVE_ACTIONS = /(?:iam:|s3:Delete|ec2:Terminate|secretsmanager:|kms:Decrypt|sts:AssumeRole)/;
+      const WILDCARD_RESOURCE = /resources\s*=\s*\[\s*"\*"\s*\]/;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!WILDCARD_RESOURCE.test(lines[i]!)) continue;
+          const surrounding = lines.slice(Math.max(0, i - 8), i + 3).join('\n');
+          if (SENSITIVE_ACTIONS.test(surrounding)) {
+            findings.push({
+              severity: sev, category: 'tf_iam_sensitive_wildcard_resource', file: path, line: i + 1,
+              message: 'IAM policy grants sensitive actions on Resource: "*" — scope to specific ARNs.',
+              suggestion: 'Replace "*" with specific ARNs: resources = ["arn:aws:s3:::my-bucket/*"]',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_014: Security group with 0.0.0.0/0 on non-HTTP ports ──────────────
+  {
+    id: 'TF_014',
+    category: 'tf_sg_open_ingress',
+    description: 'Security group allows ingress from `0.0.0.0/0` on a non-HTTP/HTTPS port.',
+    severity: 'BLOCKER',
+    tags: ['security', 'terraform', 'aws', 'network', 'iac'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Inbound rules allowing traffic from 0.0.0.0/0 (the entire internet) on ports other than 80/443 expose services like SSH (22), RDP (3389), databases (3306, 5432, 6379), and admin panels to the public internet. These are primary entry points for automated attacks and brute force.',
+      commonViolations: ['from_port = 22  cidr_blocks = ["0.0.0.0/0"]', 'from_port = 3306  cidr_blocks = ["0.0.0.0/0"]'],
+      goodExample: 'cidr_blocks = ["10.0.0.0/8"]  # private CIDR only',
+      badExample: 'from_port   = 22\ncidr_blocks = ["0.0.0.0/0"]  # ❌ SSH open to internet',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_sg_open_ingress', config.severityRules);
+      const findings: Finding[] = [];
+      const OPEN_CIDR = /cidr_blocks\s*=\s*\[?\s*["']0\.0\.0\.0\/0["']/;
+      const HTTP_PORT = /from_port\s*=\s*(?:80|443|0)\b/;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!OPEN_CIDR.test(lines[i]!)) continue;
+          const surrounding = lines.slice(Math.max(0, i - 5), i + 3).join('\n');
+          if (!HTTP_PORT.test(surrounding) && /ingress|from_port/.test(surrounding)) {
+            findings.push({
+              severity: sev, category: 'tf_sg_open_ingress', file: path, line: i + 1,
+              message: 'Security group allows ingress from 0.0.0.0/0 on non-HTTP port — exposes service to the internet.',
+              suggestion: 'Restrict cidr_blocks to known IP ranges or VPC CIDR: cidr_blocks = [aws_vpc.main.cidr_block]',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_015: Missing Terraform backend configuration ───────────────────────
+  {
+    id: 'TF_015',
+    category: 'tf_no_backend',
+    description: 'No `terraform { backend }` block — state is stored locally and not shared with the team.',
+    severity: 'HIGH',
+    tags: ['terraform', 'iac', 'collaboration'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Without a remote backend (S3, Terraform Cloud, GCS), state is stored in a local terraform.tfstate file. Local state cannot be shared with teammates, has no locking (concurrent applies corrupt state), and is lost if the machine is destroyed.',
+      commonViolations: ['terraform { required_providers { ... } } — no backend block'],
+      goodExample: 'terraform {\n  backend "s3" {\n    bucket         = "my-tf-state"\n    key            = "prod/terraform.tfstate"\n    region         = "us-east-1"\n    dynamodb_table = "terraform-locks"\n    encrypt        = true\n  }\n}',
+      badExample: 'terraform {\n  required_version = ">= 1.0"\n  # ❌ no backend — local state only\n}',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_no_backend', config.severityRules);
+      const findings: Finding[] = [];
+      const TF_BLOCK = /^\s*terraform\s*\{/;
+      const HAS_BACKEND = /\bbackend\s+["']\w+["']\s*\{/;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path) || path.includes('module')) continue;
+        if (!TF_BLOCK.test(content)) continue;
+        if (HAS_BACKEND.test(content)) continue;
+        const line = content.split('\n').findIndex((l) => TF_BLOCK.test(l));
+        findings.push({
+          severity: sev, category: 'tf_no_backend', file: path, line: line >= 0 ? line + 1 : undefined,
+          message: 'No remote backend configured — Terraform state is local only, preventing team collaboration and state locking.',
+          suggestion: 'Add a backend block: backend "s3" { bucket = "..." key = "..." region = "..." dynamodb_table = "..." encrypt = true }',
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_016: Sensitive variable without sensitive = true ───────────────────
+  {
+    id: 'TF_016',
+    category: 'tf_sensitive_var_not_marked',
+    description: 'Variable with a sensitive name (password, secret, token, key) not marked `sensitive = true`.',
+    severity: 'HIGH',
+    tags: ['security', 'terraform', 'secrets', 'iac'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Terraform logs variable values in plan output and state files. Variables containing credentials must be marked sensitive = true to redact them from logs, plan output, and the state JSON. Without this, secrets appear in plain text in CI logs and terraform.tfstate.',
+      commonViolations: ['variable "db_password" {}', 'variable "api_secret_key" { type = string }'],
+      goodExample: 'variable "db_password" {\n  type      = string\n  sensitive = true\n}',
+      badExample: 'variable "db_password" {\n  type = string\n  # ❌ missing sensitive = true\n}',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_sensitive_var_not_marked', config.severityRules);
+      const findings: Finding[] = [];
+      const SENSITIVE_VAR = /^\s*variable\s+["'](?:[^"']*(?:password|secret|token|key|credential|private)[^"']*)["']/i;
+      const HAS_SENSITIVE = /sensitive\s*=\s*true/;
+      const SCAN_LINES = 10;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformOrVars(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!SENSITIVE_VAR.test(lines[i]!)) continue;
+          const block = lines.slice(i, Math.min(lines.length, i + SCAN_LINES)).join('\n');
+          if (!HAS_SENSITIVE.test(block)) {
+            findings.push({
+              severity: sev, category: 'tf_sensitive_var_not_marked', file: path, line: i + 1,
+              message: 'Variable with sensitive name lacks `sensitive = true` — value will appear in plan output and state files.',
+              suggestion: 'Add sensitive = true to the variable block.',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_017: Missing provider version constraint ────────────────────────────
+  {
+    id: 'TF_017',
+    category: 'tf_unpinned_provider',
+    description: '`required_providers` missing version constraint — provider may update with breaking changes.',
+    severity: 'MEDIUM',
+    tags: ['terraform', 'iac', 'reproducibility'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Without a version constraint, terraform init installs the latest provider version each run. Provider major versions often contain breaking changes. Pinning ensures reproducible infrastructure across environments and prevents surprise breakage in CI.',
+      commonViolations: ['required_providers { aws = { source = "hashicorp/aws" } }'],
+      goodExample: 'required_providers {\n  aws = {\n    source  = "hashicorp/aws"\n    version = "~> 5.0"\n  }\n}',
+      badExample: 'required_providers {\n  aws = {\n    source = "hashicorp/aws"\n    # ❌ no version constraint\n  }\n}',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_unpinned_provider', config.severityRules);
+      const findings: Finding[] = [];
+      const PROVIDER_SOURCE = /source\s*=\s*["']\w+\/\w+["']/;
+      const HAS_VERSION = /version\s*=/;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path)) continue;
+        if (!/required_providers/.test(content)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!PROVIDER_SOURCE.test(lines[i]!)) continue;
+          const surrounding = lines.slice(Math.max(0, i - 1), i + 4).join('\n');
+          if (!HAS_VERSION.test(surrounding)) {
+            findings.push({
+              severity: sev, category: 'tf_unpinned_provider', file: path, line: i + 1,
+              message: 'Provider has no version constraint — add a version pin to prevent unexpected breaking changes.',
+              suggestion: 'Add version = "~> 5.0" to the provider block.',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_018: RDS instance without deletion protection ─────────────────────
+  {
+    id: 'TF_018',
+    category: 'tf_rds_no_deletion_protection',
+    description: 'RDS instance missing `deletion_protection = true` — can be permanently deleted by terraform destroy.',
+    severity: 'HIGH',
+    tags: ['security', 'terraform', 'aws', 'rds', 'iac'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Without deletion protection, a mistaken terraform destroy or automated pipeline can permanently delete a production database in seconds. deletion_protection = true requires the protection to be explicitly disabled before the resource can be deleted, adding a safety gate.',
+      commonViolations: ['resource "aws_db_instance" "main" { engine = "postgres" }'],
+      goodExample: 'resource "aws_db_instance" "main" {\n  deletion_protection = true\n  skip_final_snapshot = false\n}',
+      badExample: 'resource "aws_db_instance" "main" {\n  engine = "postgres"\n  # ❌ no deletion_protection\n}',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_rds_no_deletion_protection', config.severityRules);
+      const findings: Finding[] = [];
+      const RDS_RESOURCE = /resource\s+["']aws_db_instance["']/;
+      const DELETION_PROTECTION = /deletion_protection\s*=\s*true/;
+      const SCAN_LINES = 40;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!RDS_RESOURCE.test(lines[i]!)) continue;
+          const block = lines.slice(i, Math.min(lines.length, i + SCAN_LINES)).join('\n');
+          if (!DELETION_PROTECTION.test(block)) {
+            findings.push({
+              severity: sev, category: 'tf_rds_no_deletion_protection', file: path, line: i + 1,
+              message: 'RDS instance missing deletion_protection — can be destroyed accidentally or by CI pipelines.',
+              suggestion: 'Add deletion_protection = true and skip_final_snapshot = false to the aws_db_instance resource.',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_019: Lambda without reserved concurrency ───────────────────────────
+  {
+    id: 'TF_019',
+    category: 'tf_lambda_no_reserved_concurrency',
+    description: 'Lambda function without `reserved_concurrent_executions` — can consume all account concurrency.',
+    severity: 'MEDIUM',
+    tags: ['terraform', 'aws', 'lambda', 'iac', 'reliability'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'By default, a single Lambda function can scale to the account-level concurrency limit (1,000 by default), starving all other functions. Setting reserved_concurrent_executions caps the function and ensures other critical functions retain capacity during traffic spikes.',
+      commonViolations: ['resource "aws_lambda_function" "api" { ... }'],
+      goodExample: 'resource "aws_lambda_function" "api" {\n  reserved_concurrent_executions = 100\n}',
+      badExample: 'resource "aws_lambda_function" "api" {\n  # ❌ no reserved_concurrent_executions\n}',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_lambda_no_reserved_concurrency', config.severityRules);
+      const findings: Finding[] = [];
+      const LAMBDA_RESOURCE = /resource\s+["']aws_lambda_function["']/;
+      const CONCURRENCY = /reserved_concurrent_executions\s*=/;
+      const SCAN_LINES = 30;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!LAMBDA_RESOURCE.test(lines[i]!)) continue;
+          const block = lines.slice(i, Math.min(lines.length, i + SCAN_LINES)).join('\n');
+          if (!CONCURRENCY.test(block)) {
+            findings.push({
+              severity: sev, category: 'tf_lambda_no_reserved_concurrency', file: path, line: i + 1,
+              message: 'Lambda function has no reserved concurrency — can consume the entire account concurrency limit.',
+              suggestion: 'Add reserved_concurrent_executions = 100 (adjust to your traffic needs).',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_020: DynamoDB without point-in-time recovery ──────────────────────
+  {
+    id: 'TF_020',
+    category: 'tf_dynamodb_no_pitr',
+    description: 'DynamoDB table missing Point-In-Time Recovery (PITR) — data loss risk.',
+    severity: 'HIGH',
+    tags: ['terraform', 'aws', 'dynamodb', 'backup', 'iac'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Without PITR, accidental bulk deletes or application bugs that corrupt data cannot be recovered beyond the last manual backup. PITR provides continuous backups for the last 35 days with second-level granularity at minimal additional cost.',
+      commonViolations: ['resource "aws_dynamodb_table" "main" { ... }'],
+      goodExample: 'point_in_time_recovery {\n  enabled = true\n}',
+      badExample: 'resource "aws_dynamodb_table" "main" {\n  name = "users"\n  # ❌ no point_in_time_recovery block\n}',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_dynamodb_no_pitr', config.severityRules);
+      const findings: Finding[] = [];
+      const DYNAMO_RESOURCE = /resource\s+["']aws_dynamodb_table["']/;
+      const HAS_PITR = /point_in_time_recovery/;
+      const SCAN_LINES = 35;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!DYNAMO_RESOURCE.test(lines[i]!)) continue;
+          const block = lines.slice(i, Math.min(lines.length, i + SCAN_LINES)).join('\n');
+          if (!HAS_PITR.test(block)) {
+            findings.push({
+              severity: sev, category: 'tf_dynamodb_no_pitr', file: path, line: i + 1,
+              message: 'DynamoDB table missing Point-In-Time Recovery — enable PITR to recover from accidental data loss.',
+              suggestion: 'Add: point_in_time_recovery { enabled = true }',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_021: KMS key without key rotation ──────────────────────────────────
+  {
+    id: 'TF_021',
+    category: 'tf_kms_no_rotation',
+    description: 'KMS key missing `enable_key_rotation = true` — cryptographic key is never rotated.',
+    severity: 'MEDIUM',
+    tags: ['security', 'terraform', 'aws', 'kms', 'iac'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Long-lived KMS keys increase the blast radius of a key compromise. Automatic annual rotation reduces this risk at no operational cost. AWS rotates the backing key material while keeping the key ID stable — no re-encryption of existing data is required.',
+      commonViolations: ['resource "aws_kms_key" "main" { description = "My key" }'],
+      goodExample: 'resource "aws_kms_key" "main" {\n  description             = "My key"\n  enable_key_rotation     = true\n}',
+      badExample: 'resource "aws_kms_key" "main" {\n  description = "My key"\n  # ❌ no key rotation\n}',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_kms_no_rotation', config.severityRules);
+      const findings: Finding[] = [];
+      const KMS_RESOURCE = /resource\s+["']aws_kms_key["']/;
+      const HAS_ROTATION = /enable_key_rotation\s*=\s*true/;
+      const SCAN_LINES = 20;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!KMS_RESOURCE.test(lines[i]!)) continue;
+          const block = lines.slice(i, Math.min(lines.length, i + SCAN_LINES)).join('\n');
+          if (!HAS_ROTATION.test(block)) {
+            findings.push({
+              severity: sev, category: 'tf_kms_no_rotation', file: path, line: i + 1,
+              message: 'KMS key missing automatic rotation — add enable_key_rotation = true.',
+              suggestion: 'Add enable_key_rotation = true to the aws_kms_key resource.',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_022: Secret in user_data / cloud-init ──────────────────────────────
+  {
+    id: 'TF_022',
+    category: 'tf_secret_in_user_data',
+    description: 'Hardcoded secret or token in EC2 `user_data` — visible in AWS console and instance metadata.',
+    severity: 'BLOCKER',
+    tags: ['security', 'terraform', 'aws', 'secrets', 'iac'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'user_data content is visible to anyone with ec2:DescribeInstanceAttribute permissions and is accessible from within the instance via the metadata service (http://169.254.169.254). Secrets embedded here are stored unencrypted in AWS and in your Terraform state.',
+      commonViolations: ['user_data = "#!/bin/bash\\nexport API_KEY=sk-abc123\\n"'],
+      goodExample: 'user_data = templatefile("init.sh.tpl", {})\n# Inject secrets via AWS Secrets Manager or SSM Parameter Store at runtime',
+      badExample: 'user_data = "#!/bin/bash\\nexport SECRET_KEY=abc123"  # ❌ secret in user_data',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_secret_in_user_data', config.severityRules);
+      const findings: Finding[] = [];
+      const USER_DATA_SECRET = /user_data\s*=\s*["'](?:[^"']*(?:password|secret|token|api[_-]?key|AWS_SECRET)[^"']*)["']/i;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (USER_DATA_SECRET.test(line)) {
+            findings.push({
+              severity: sev, category: 'tf_secret_in_user_data', file: path, line: i + 1,
+              message: 'Secret or credential found in user_data — visible in AWS console and instance metadata service.',
+              suggestion: 'Use AWS Secrets Manager or SSM Parameter Store and retrieve secrets at runtime inside the instance.',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_023: Missing lifecycle prevent_destroy on stateful resources ────────
+  {
+    id: 'TF_023',
+    category: 'tf_no_prevent_destroy',
+    description: 'Stateful resource (RDS, S3, DynamoDB) missing `lifecycle { prevent_destroy = true }`.',
+    severity: 'HIGH',
+    tags: ['terraform', 'aws', 'iac', 'reliability'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Stateful resources like databases and S3 buckets contain irreplaceable data. Adding lifecycle { prevent_destroy = true } makes terraform plan error if the resource would be destroyed, preventing accidental data loss from refactoring, resource renaming, or CI pipelines.',
+      commonViolations: ['resource "aws_s3_bucket" "main" { bucket = "prod-data" }'],
+      goodExample: 'resource "aws_rds_cluster" "main" {\n  lifecycle {\n    prevent_destroy = true\n  }\n}',
+      badExample: 'resource "aws_rds_cluster" "main" {\n  # ❌ no prevent_destroy\n}',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_no_prevent_destroy', config.severityRules);
+      const findings: Finding[] = [];
+      const STATEFUL_RESOURCE = /resource\s+["'](?:aws_db_instance|aws_rds_cluster|aws_s3_bucket|aws_dynamodb_table|aws_elasticsearch_domain|aws_opensearch_domain)["']/;
+      const PREVENT_DESTROY = /prevent_destroy\s*=\s*true/;
+      const SCAN_LINES = 50;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!STATEFUL_RESOURCE.test(lines[i]!)) continue;
+          const block = lines.slice(i, Math.min(lines.length, i + SCAN_LINES)).join('\n');
+          if (!PREVENT_DESTROY.test(block)) {
+            findings.push({
+              severity: sev, category: 'tf_no_prevent_destroy', file: path, line: i + 1,
+              message: 'Stateful resource missing lifecycle prevent_destroy — can be accidentally destroyed by terraform.',
+              suggestion: 'Add: lifecycle { prevent_destroy = true }',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_024: EC2 instance with public IP enabled ───────────────────────────
+  {
+    id: 'TF_024',
+    category: 'tf_ec2_public_ip',
+    description: 'EC2 instance with `associate_public_ip_address = true` — instance directly reachable from internet.',
+    severity: 'HIGH',
+    tags: ['security', 'terraform', 'aws', 'ec2', 'network', 'iac'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Directly assigning a public IP to an EC2 instance bypasses the recommended architecture of private subnets + load balancer + NAT gateway. Instances with public IPs are directly reachable and must rely entirely on security groups and host firewalls for protection.',
+      commonViolations: ['associate_public_ip_address = true'],
+      goodExample: 'associate_public_ip_address = false\n# Use a load balancer or NAT gateway for outbound access',
+      badExample: 'associate_public_ip_address = true  # ❌ instance directly on internet',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_ec2_public_ip', config.severityRules);
+      const findings: Finding[] = [];
+      const PUBLIC_IP = /associate_public_ip_address\s*=\s*true/;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (PUBLIC_IP.test(line) && !/^\s*#/.test(line)) {
+            findings.push({
+              severity: sev, category: 'tf_ec2_public_ip', file: path, line: i + 1,
+              message: 'EC2 instance assigned a public IP — place in a private subnet behind a load balancer instead.',
+              suggestion: 'Set associate_public_ip_address = false and use a load balancer or NAT gateway.',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── TF_025: S3 bucket without versioning ─────────────────────────────────
+  {
+    id: 'TF_025',
+    category: 'tf_s3_no_versioning',
+    description: 'S3 bucket missing versioning configuration — deleted or overwritten objects cannot be recovered.',
+    severity: 'MEDIUM',
+    tags: ['terraform', 'aws', 's3', 'backup', 'iac'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Without S3 versioning, an accidental `aws s3 rm`, an overwrite, or a bug in your application permanently deletes object data. Versioning retains all versions of every object and supports MFA Delete for additional protection against accidental deletion.',
+      commonViolations: ['resource "aws_s3_bucket" "main" { bucket = "app-data" }'],
+      goodExample: 'resource "aws_s3_bucket_versioning" "main" {\n  bucket = aws_s3_bucket.main.id\n  versioning_configuration { status = "Enabled" }\n}',
+      badExample: 'resource "aws_s3_bucket" "main" {\n  bucket = "app-data"\n  # ❌ no versioning\n}',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('tf_s3_no_versioning', config.severityRules);
+      const findings: Finding[] = [];
+      const S3_RESOURCE = /resource\s+["']aws_s3_bucket["']\s+["'](\w+)["']/;
+      for (const { path, content } of changedFiles) {
+        if (!isTerraformFile(path)) continue;
+        const bucketNames: string[] = [];
+        const lines = content.split('\n');
+        lines.forEach((line) => {
+          const m = S3_RESOURCE.exec(line);
+          if (m) bucketNames.push(m[1]!);
+        });
+        for (const name of bucketNames) {
+          const VERSIONING_BLOCK = new RegExp(`aws_s3_bucket_versioning[\\s\\S]*?${name}`);
+          if (!VERSIONING_BLOCK.test(content) && !/versioning_configuration/.test(content)) {
+            const line = lines.findIndex((l) => l.includes(`"${name}"`));
+            findings.push({
+              severity: sev, category: 'tf_s3_no_versioning', file: path, line: line >= 0 ? line + 1 : undefined,
+              message: `S3 bucket "${name}" has no versioning — deleted or overwritten objects cannot be recovered.`,
+              suggestion: 'Add aws_s3_bucket_versioning resource with status = "Enabled".',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
 ];

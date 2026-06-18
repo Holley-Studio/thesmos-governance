@@ -321,12 +321,12 @@ Body content.
 describe('loadBuiltInCatalog', () => {
   it('loads exactly 51 built-in agents', () => {
     const { agents } = loadBuiltInCatalog();
-    expect(agents).toHaveLength(51);
+    expect(agents).toHaveLength(54);
   });
 
   it('loads exactly 50 built-in skills', () => {
     const { skills } = loadBuiltInCatalog();
-    expect(skills).toHaveLength(50);
+    expect(skills).toHaveLength(53);
   });
 
   it('all built-in agents have valid frontmatter', () => {

@@ -51,6 +51,7 @@ import { CSHARP_RULES } from './csharp';
 import { DOCKERFILE_RULES } from './dockerfile';
 import { GITHUB_ACTIONS_RULES } from './github-actions';
 import { TERRAFORM_RULES } from './terraform';
+import { GRAPHQL_RULES } from './graphql';
 import { DESIGN_RULES } from './design';
 
 // ── Local helpers (used inside detect() methods) ──────────────────────────────
@@ -634,5 +635,6 @@ export const PROMETHEUS_RULES: PrometheusRule[] = [
   ...DOCKERFILE_RULES,
   ...GITHUB_ACTIONS_RULES,
   ...TERRAFORM_RULES,
+  ...GRAPHQL_RULES,
   ...DESIGN_RULES,
 ];

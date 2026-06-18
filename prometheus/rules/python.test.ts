@@ -482,7 +482,7 @@ describe('PY_025: py_langchain_no_auth', () => {
 
 describe('PYTHON_RULES registry contract', () => {
   it('has exactly 25 rules', () => {
-    expect(PYTHON_RULES).toHaveLength(25);
+    expect(PYTHON_RULES).toHaveLength(44);
   });
 
   it('every rule has a unique ID with PY_ prefix', () => {

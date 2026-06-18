@@ -971,6 +971,724 @@ export const PYTHON_RULES: PrometheusRule[] = [
     },
   },
 
+  // ── PY_026: Mutable default argument ─────────────────────────────────────
+  {
+    id: 'PY_026',
+    category: 'py_mutable_default_arg',
+    description: 'Function uses mutable default argument (list or dict) — shared across all calls.',
+    severity: 'HIGH',
+    tags: ['python', 'bugs', 'vibe-coding'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'In Python, default argument values are evaluated once when the function is defined, not each time it is called. A mutable default (list, dict, set) is shared across every call that does not pass that argument — mutations in one call leak into subsequent calls, causing subtle data corruption bugs that are extremely hard to trace.',
+      commonViolations: ['def add_item(item, items=[]):', 'def merge(data, result={}):', 'async def process(tasks=[]):'],
+      goodExample: 'def add_item(item, items=None):\n    if items is None:\n        items = []\n    items.append(item)\n    return items',
+      badExample: 'def add_item(item, items=[]):  # ❌ list shared across all calls\n    items.append(item)\n    return items',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_mutable_default_arg', config.severityRules);
+      const findings: Finding[] = [];
+      const MUTABLE_DEFAULT = /^\s*(?:async\s+)?def\s+\w+\s*\([^)]*=\s*(?:\[\s*\]|\{\s*\}|\[\s*[^\]]+\]|\{\s*[^}]+\})/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (/^\s*#/.test(line)) return;
+          if (MUTABLE_DEFAULT.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_mutable_default_arg', file: path, line: i + 1,
+              message: 'Mutable default argument — the list or dict is shared across all calls, causing cross-call state leakage.',
+              suggestion: 'Use None as default and initialise inside the function: def fn(items=None): if items is None: items = []',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_028: time.sleep inside async function ──────────────────────────────
+  {
+    id: 'PY_028',
+    category: 'py_blocking_sleep_in_async',
+    description: '`time.sleep()` inside an `async def` blocks the entire event loop.',
+    severity: 'HIGH',
+    tags: ['python', 'async', 'performance', 'vibe-coding'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'time.sleep() is a blocking call. Inside an async function it freezes the entire event loop for the sleep duration, preventing any other coroutines from running. This defeats the purpose of async and causes hard-to-diagnose latency spikes under concurrent load.',
+      commonViolations: ['async def handler(): time.sleep(1)', 'async def retry(): time.sleep(delay)'],
+      goodExample: 'async def handler():\n    await asyncio.sleep(1)',
+      badExample: 'async def handler():\n    time.sleep(1)  # ❌ blocks the event loop',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_blocking_sleep_in_async', config.severityRules);
+      const findings: Finding[] = [];
+      const ASYNC_DEF = /^\s*async\s+def\s+/;
+      const BLOCKING_SLEEP = /\btime\.sleep\s*\(/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        let insideAsync = false;
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (ASYNC_DEF.test(line)) { insideAsync = true; continue; }
+          if (insideAsync && /^\s*(?:def |class )\b/.test(line)) insideAsync = false;
+          if (insideAsync && BLOCKING_SLEEP.test(line) && !/^\s*#/.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_blocking_sleep_in_async', file: path, line: i + 1,
+              message: 'time.sleep() inside async function blocks the event loop — use `await asyncio.sleep()` instead.',
+              suggestion: 'Replace time.sleep(n) with await asyncio.sleep(n)',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_029: Missing await on coroutine ────────────────────────────────────
+  {
+    id: 'PY_029',
+    category: 'py_unawaited_coroutine',
+    description: 'Coroutine called without `await` — silently no-ops and returns a coroutine object.',
+    severity: 'BLOCKER',
+    tags: ['python', 'async', 'bugs', 'vibe-coding'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Calling an async function without await does not execute it — it returns a coroutine object that is immediately discarded. The function body never runs. This is one of the most common AI-generated Python bugs because the code looks correct but does nothing.',
+      commonViolations: ['db.save(record)  # forgot await', 'send_email(user)  # forgot await'],
+      goodExample: 'await db.save(record)\nresult = await send_email(user)',
+      badExample: 'db.save(record)  # ❌ coroutine object created and discarded',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_unawaited_coroutine', config.severityRules);
+      const findings: Finding[] = [];
+      // Common async DB/IO patterns assigned without await
+      const UNAWAITED = /^\s+(?!await\s|return\s|yield\s|#)(?:db|session|conn|cursor|client|repo|service|cache|redis|mongo)\.\w+\s*\(/;
+      const ASYNC_CONTEXT = /^\s*async\s+def\s+/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        let insideAsync = false;
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (ASYNC_CONTEXT.test(line)) { insideAsync = true; continue; }
+          if (insideAsync && /^(?:def |class )\b/.test(line.trimStart())) insideAsync = false;
+          if (insideAsync && UNAWAITED.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_unawaited_coroutine', file: path, line: i + 1,
+              message: 'Possible unawaited coroutine — async DB/IO call without `await` silently no-ops.',
+              suggestion: 'Add `await` before the call: `await db.save(record)`',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_030: pickle.loads on untrusted data ────────────────────────────────
+  {
+    id: 'PY_030',
+    category: 'py_pickle_rce',
+    description: '`pickle.loads()` on externally-sourced data — remote code execution vector.',
+    severity: 'BLOCKER',
+    tags: ['security', 'python', 'rce', 'deserialization'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Python pickle can execute arbitrary code during deserialization via __reduce__. Loading pickled data from user input, network sockets, or external files allows attackers to run any system command with your process privileges. This is a critical, well-known RCE vector.',
+      commonViolations: ['pickle.loads(request.data)', 'pickle.load(open(user_file, "rb"))'],
+      goodExample: 'import json\ndata = json.loads(request.data)  # safe structured format',
+      badExample: 'data = pickle.loads(request.body)  # ❌ RCE if attacker controls input',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_pickle_rce', config.severityRules);
+      const findings: Finding[] = [];
+      const PICKLE_RE = /\bpickle\.loads?\s*\(/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (/^\s*#/.test(line)) return;
+          if (PICKLE_RE.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_pickle_rce', file: path, line: i + 1,
+              message: 'pickle.loads/load() is an RCE vector — never deserialize untrusted pickle data.',
+              suggestion: 'Use JSON, MessagePack, or a schema-validated format instead. If pickle is unavoidable, sign the payload and verify the signature before loading.',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_031: marshal.loads on external data ────────────────────────────────
+  {
+    id: 'PY_031',
+    category: 'py_marshal_rce',
+    description: '`marshal.loads()` on external data — same RCE class as pickle.',
+    severity: 'BLOCKER',
+    tags: ['security', 'python', 'rce', 'deserialization'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'marshal is intended only for internal CPython use (e.g., .pyc files). Like pickle, it can execute code during deserialization. Loading marshal data from external sources is a critical RCE vulnerability.',
+      commonViolations: ['marshal.loads(data)', 'code = marshal.load(f)'],
+      goodExample: 'Use json.loads() or msgpack.unpackb() for external data exchange.',
+      badExample: 'code = marshal.loads(socket.recv(1024))  # ❌ RCE',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_marshal_rce', config.severityRules);
+      const findings: Finding[] = [];
+      const MARSHAL_RE = /\bmarshal\.loads?\s*\(/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (/^\s*#/.test(line)) return;
+          if (MARSHAL_RE.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_marshal_rce', file: path, line: i + 1,
+              message: 'marshal.loads() is an RCE vector — do not use with externally-sourced data.',
+              suggestion: 'Use JSON or another safe serialization format for data interchange.',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_032: unpinned requirements.txt ────────────────────────────────────
+  {
+    id: 'PY_032',
+    category: 'py_unpinned_requirements',
+    description: 'requirements.txt has unpinned dependencies — supply chain and reproducibility risk.',
+    severity: 'MEDIUM',
+    tags: ['python', 'security', 'supply-chain', 'vibe-coding'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'AI agents routinely generate requirements.txt with bare package names like `requests` or `flask` and no version pins. Unpinned dependencies allow pip to install the latest version at build time, which can break your app with breaking changes or, worse, install a maliciously updated package in a supply chain attack.',
+      commonViolations: ['requests', 'flask', 'sqlalchemy  # no version'],
+      goodExample: 'requests==2.32.3\nflask==3.0.3\nsqlalchemy==2.0.30',
+      badExample: 'requests\nflask\nsqlalchemy  # ❌ unpinned',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_unpinned_requirements', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!path.endsWith('requirements.txt') && !path.match(/requirements[\w-]*\.txt$/)) continue;
+        const lines = content.split('\n');
+        const unpinned: number[] = [];
+        lines.forEach((line, i) => {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('-')) return;
+          // Unpinned: package name with no ==, >=, <=, ~=, !=
+          if (/^[a-zA-Z0-9_-]+(\[[\w,]+\])?$/.test(trimmed)) unpinned.push(i + 1);
+        });
+        if (unpinned.length > 0) {
+          findings.push({
+            severity: sev, category: 'py_unpinned_requirements', file: path, line: unpinned[0],
+            message: `${unpinned.length} unpinned package(s) in requirements.txt — pin versions for reproducible builds and supply chain safety.`,
+            suggestion: 'Run `pip freeze > requirements.txt` to pin all current versions, or use `pip-tools` / `poetry` for managed pinning.',
+          });
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_033: os.system with string interpolation ───────────────────────────
+  {
+    id: 'PY_033',
+    category: 'py_os_system_injection',
+    description: '`os.system()` with f-string or % formatting — shell injection vector.',
+    severity: 'BLOCKER',
+    tags: ['security', 'python', 'injection', 'shell'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'os.system() passes its argument directly to the shell. When the argument is built with f-strings or % formatting using external data, an attacker can inject shell metacharacters (`;`, `&&`, `|`, `$(...)`) to run arbitrary commands.',
+      commonViolations: ['os.system(f"convert {filename} output.png")', 'os.system("ping %s" % host)'],
+      goodExample: 'subprocess.run(["convert", filename, "output.png"], check=True)',
+      badExample: 'os.system(f"convert {filename} output.png")  # ❌ shell injection if filename contains ;',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_os_system_injection', config.severityRules);
+      const findings: Finding[] = [];
+      const OS_SYSTEM_INTERP = /\bos\.system\s*\(\s*(?:f['""]|['""][^'"]*%\s)/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (/^\s*#/.test(line)) return;
+          if (OS_SYSTEM_INTERP.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_os_system_injection', file: path, line: i + 1,
+              message: 'os.system() with string interpolation — shell injection if any variable contains metacharacters.',
+              suggestion: 'Use subprocess.run(["cmd", arg1, arg2], check=True) with a list of arguments — no shell, no injection.',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_034: subprocess with shell=True and variable ──────────────────────
+  {
+    id: 'PY_034',
+    category: 'py_subprocess_shell_injection',
+    description: '`subprocess` with `shell=True` and a non-literal command — shell injection risk.',
+    severity: 'BLOCKER',
+    tags: ['security', 'python', 'injection', 'shell'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'subprocess.run/call/Popen with shell=True passes the command to /bin/sh. Combined with variable interpolation, this is identical to os.system() injection. The safe alternative is to pass a list of arguments without shell=True.',
+      commonViolations: ['subprocess.run(f"grep {pattern} {file}", shell=True)', 'subprocess.call(cmd, shell=True)'],
+      goodExample: 'subprocess.run(["grep", pattern, file], check=True)',
+      badExample: 'subprocess.run(f"grep {pattern} {file}", shell=True)  # ❌ injection',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_subprocess_shell_injection', config.severityRules);
+      const findings: Finding[] = [];
+      const SHELL_TRUE = /\bsubprocess\.(?:run|call|check_call|check_output|Popen)\s*\([^)]*shell\s*=\s*True/;
+      const HAS_INTERP = /f['""]|%\s*(?:s|d)|\.format\s*\(/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (/^\s*#/.test(line)) return;
+          if (SHELL_TRUE.test(line) && HAS_INTERP.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_subprocess_shell_injection', file: path, line: i + 1,
+              message: 'subprocess with shell=True and string interpolation — shell injection if variables contain metacharacters.',
+              suggestion: 'Pass a list of arguments without shell=True: subprocess.run(["cmd", arg1, arg2])',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_035: FastAPI route missing response_model ──────────────────────────
+  {
+    id: 'PY_035',
+    category: 'py_fastapi_no_response_model',
+    description: 'FastAPI route decorator missing `response_model` — internal fields may be leaked.',
+    severity: 'MEDIUM',
+    tags: ['security', 'python', 'fastapi', 'data-exposure'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Without response_model, FastAPI serializes the entire return value — including internal fields like password_hash, secret_key, or is_admin. A response_model explicitly allow-lists the fields returned to clients, preventing accidental data exposure.',
+      commonViolations: ['@app.get("/users/{id}")', '@router.post("/profile")'],
+      goodExample: '@router.get("/users/{id}", response_model=UserPublic)\nasync def get_user(id: int): ...',
+      badExample: '@app.get("/users/{id}")  # ❌ no response_model — may leak internal fields\nasync def get_user(id: int): return await db.get(User, id)',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_fastapi_no_response_model', config.severityRules);
+      const findings: Finding[] = [];
+      const ROUTE_RE = /^\s*@(?:app|router)\s*\.\s*(?:get|post|put|patch|delete)\s*\(/;
+      const HAS_RESPONSE_MODEL = /response_model\s*=/;
+      const RETURNS_MODEL = /JSONResponse|Response\s*\(|FileResponse|StreamingResponse/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path) || isPyTest(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (!ROUTE_RE.test(line)) continue;
+          // Collect the full decorator (may span multiple lines)
+          const window = lines.slice(i, i + 5).join('\n');
+          if (!HAS_RESPONSE_MODEL.test(window) && !RETURNS_MODEL.test(window)) {
+            findings.push({
+              severity: sev, category: 'py_fastapi_no_response_model', file: path, line: i + 1,
+              message: 'FastAPI route without response_model — internal model fields may be serialized and leaked to clients.',
+              suggestion: 'Add response_model=YourResponseSchema to the route decorator to explicitly control which fields are returned.',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_036: global keyword in function ───────────────────────────────────
+  {
+    id: 'PY_036',
+    category: 'py_global_keyword',
+    description: '`global` keyword mutates module-level state — implicit shared mutable state.',
+    severity: 'MEDIUM',
+    tags: ['python', 'quality', 'vibe-coding'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'The `global` keyword creates implicit shared mutable state between function calls, making code hard to reason about, test, and use concurrently. AI agents frequently use global counters, caches, or config dicts as a shortcut instead of proper dependency injection or class encapsulation.',
+      commonViolations: ['def increment(): global count; count += 1', 'def set_config(cfg): global CONFIG; CONFIG = cfg'],
+      goodExample: 'class Counter:\n    def __init__(self): self.count = 0\n    def increment(self): self.count += 1',
+      badExample: 'count = 0\ndef increment():\n    global count  # ❌ implicit shared mutable state\n    count += 1',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_global_keyword', config.severityRules);
+      const findings: Finding[] = [];
+      const GLOBAL_RE = /^\s+global\s+\w/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path) || isPyTest(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (GLOBAL_RE.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_global_keyword', file: path, line: i + 1,
+              message: '`global` keyword introduces implicit shared mutable state — use a class, dataclass, or pass state explicitly.',
+              suggestion: 'Encapsulate state in a class or pass as a parameter. For read-only config, use module-level constants or dependency injection.',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_037: assert used for runtime validation ────────────────────────────
+  {
+    id: 'PY_037',
+    category: 'py_assert_for_validation',
+    description: '`assert` used for runtime input validation — stripped by Python `-O` flag.',
+    severity: 'HIGH',
+    tags: ['python', 'security', 'bugs', 'vibe-coding'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Python\'s assert statement is removed entirely when the interpreter runs with the -O (optimize) flag, which is common in production deployments. Using assert for input validation means your security checks are silently disabled in optimized builds.',
+      commonViolations: ['assert user_id > 0, "Invalid user"', 'assert token is not None, "Auth required"'],
+      goodExample: 'if user_id <= 0:\n    raise ValueError("Invalid user ID")',
+      badExample: 'assert user_id > 0  # ❌ removed at runtime with -O flag',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_assert_for_validation', config.severityRules);
+      const findings: Finding[] = [];
+      // assert with user/auth/id/token/request signals — not pure logic assertions
+      const ASSERT_VALIDATION = /^\s+assert\s+.+(?:user|token|auth|id|request|input|param|key|secret|password|role|perm)/i;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (/^\s*#/.test(line)) return;
+          if (ASSERT_VALIDATION.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_assert_for_validation', file: path, line: i + 1,
+              message: '`assert` used for runtime validation — silently disabled when Python runs with -O flag.',
+              suggestion: 'Use explicit if/raise: `if not condition: raise ValueError("message")`',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_038: Pydantic v1 .dict()/.json() on v2 model ──────────────────────
+  {
+    id: 'PY_038',
+    category: 'py_pydantic_v1_api',
+    description: 'Pydantic v1 `.dict()` or `.json()` method called — these are removed in Pydantic v2.',
+    severity: 'HIGH',
+    tags: ['python', 'pydantic', 'bugs', 'vibe-coding'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Pydantic v2 (released 2023) replaced .dict() with .model_dump() and .json() with .model_dump_json(). AI agents trained on pre-v2 examples regularly generate the old API. These calls raise AttributeError at runtime if the installed Pydantic version is v2.',
+      commonViolations: ['user.dict()', 'response.json()', 'model.dict(exclude={"password"})'],
+      goodExample: 'user.model_dump()\nuser.model_dump_json()\nuser.model_dump(exclude={"password"})',
+      badExample: 'user.dict()  # ❌ removed in Pydantic v2\nuser.json()  # ❌ removed in Pydantic v2',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_pydantic_v1_api', config.severityRules);
+      const findings: Finding[] = [];
+      const V1_API = /\b\w+\.(?:dict|json)\s*\(\s*(?:exclude|include|by_alias|exclude_unset|exclude_none)?/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        // Only flag if pydantic is imported
+        if (!/\bpydantic\b/.test(content) && !/BaseModel/.test(content)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (/^\s*#/.test(line)) return;
+          if (V1_API.test(line) && !/(?:response|res|resp|request|req)\.json\s*\(\s*\)/.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_pydantic_v1_api', file: path, line: i + 1,
+              message: 'Pydantic v1 `.dict()` / `.json()` API — use `.model_dump()` / `.model_dump_json()` for Pydantic v2 compatibility.',
+              suggestion: 'Replace .dict() → .model_dump() and .json() → .model_dump_json()',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_039: open() without explicit encoding ──────────────────────────────
+  {
+    id: 'PY_039',
+    category: 'py_open_without_encoding',
+    description: '`open()` in text mode without `encoding=` — platform-dependent behaviour.',
+    severity: 'LOW',
+    tags: ['python', 'quality', 'portability'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Without an explicit encoding argument, Python uses the platform\'s default encoding (UTF-8 on Linux/macOS, but often cp1252 on Windows). Files written on one platform may fail to read on another. Explicitly specifying encoding="utf-8" ensures consistent behaviour across environments.',
+      commonViolations: ['open("file.txt", "r")', 'open(path, "w")'],
+      goodExample: 'open("file.txt", "r", encoding="utf-8")',
+      badExample: 'open("file.txt", "r")  # ❌ uses platform default encoding',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_open_without_encoding', config.severityRules);
+      const findings: Finding[] = [];
+      // open() in text mode (r, w, a, r+) without encoding=
+      const OPEN_NO_ENC = /\bopen\s*\([^)]+['"]\s*(?:r|w|a|r\+|w\+|a\+)['"]\s*(?:,(?![^)]*encoding\s*=))?[^)]*\)/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (/^\s*#/.test(line)) return;
+          if (/\bopen\s*\(/.test(line) && !/encoding\s*=/.test(line) && /['"]\s*[rwa]/.test(line) && !/['"]\s*[rwa]b/.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_open_without_encoding', file: path, line: i + 1,
+              message: 'open() without explicit encoding — defaults to platform encoding which differs between macOS/Linux and Windows.',
+              suggestion: 'Add encoding="utf-8": open(path, "r", encoding="utf-8")',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_040: Django QuerySet.raw() with user input ─────────────────────────
+  {
+    id: 'PY_040',
+    category: 'py_django_raw_sql',
+    description: 'Django `QuerySet.raw()` or `cursor.execute()` with user-supplied data — SQL injection.',
+    severity: 'BLOCKER',
+    tags: ['security', 'python', 'django', 'sql-injection'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Django\'s ORM is safe, but raw() and cursor.execute() bypass it. When user-supplied values are interpolated into the SQL string (via f-strings or %), attackers can manipulate the query to extract, modify, or delete data.',
+      commonViolations: ['Model.objects.raw(f"SELECT * FROM table WHERE id={user_id}")', 'cursor.execute("SELECT * FROM users WHERE name=\'%s\'" % name)'],
+      goodExample: 'Model.objects.raw("SELECT * FROM table WHERE id=%s", [user_id])\ncursor.execute("SELECT * FROM users WHERE name=%s", [name])',
+      badExample: 'Model.objects.raw(f"SELECT * FROM users WHERE id={id}")  # ❌ SQL injection',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_django_raw_sql', config.severityRules);
+      const findings: Finding[] = [];
+      const RAW_INTERP = /\.raw\s*\(\s*f['""]|\.raw\s*\([^)]*%|cursor\.execute\s*\(\s*f['""]|cursor\.execute\s*\([^)]*%\s+/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (/^\s*#/.test(line)) return;
+          if (RAW_INTERP.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_django_raw_sql', file: path, line: i + 1,
+              message: 'Django raw SQL with string interpolation — SQL injection vulnerability.',
+              suggestion: 'Use parameterized queries: Model.objects.raw("SELECT ... WHERE id=%s", [user_id])',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_041: Django mark_safe on user input ────────────────────────────────
+  {
+    id: 'PY_041',
+    category: 'py_django_mark_safe_xss',
+    description: 'Django `mark_safe()` called on user-controlled string — XSS vulnerability.',
+    severity: 'BLOCKER',
+    tags: ['security', 'python', 'django', 'xss'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'mark_safe() tells Django\'s template engine to bypass HTML escaping for the given string. When called on user-supplied content, it allows attackers to inject arbitrary HTML and JavaScript into the page, leading to stored or reflected XSS.',
+      commonViolations: ['mark_safe(user.bio)', 'mark_safe(request.POST["comment"])', 'format_html("<b>{}</b>".format(user_input))'],
+      goodExample: 'from django.utils.html import escape\nmark_safe("<b>" + escape(user.bio) + "</b>")',
+      badExample: 'mark_safe(user.bio)  # ❌ XSS if bio contains <script>',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_django_mark_safe_xss', config.severityRules);
+      const findings: Finding[] = [];
+      const MARK_SAFE_VAR = /\bmark_safe\s*\(\s*(?!["']|escape\s*\(|format_html\s*\()/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (/^\s*#/.test(line)) return;
+          if (MARK_SAFE_VAR.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_django_mark_safe_xss', file: path, line: i + 1,
+              message: 'mark_safe() on a variable — XSS if the value contains user-controlled HTML.',
+              suggestion: 'Escape first: mark_safe("<b>" + escape(user_value) + "</b>") or use format_html("<b>{}</b>", user_value)',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_042: wildcard import ────────────────────────────────────────────────
+  {
+    id: 'PY_042',
+    category: 'py_wildcard_import',
+    description: '`from module import *` pollutes namespace and hides dependency origins.',
+    severity: 'MEDIUM',
+    tags: ['python', 'quality', 'vibe-coding'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Wildcard imports make it impossible to determine where a name comes from without checking every imported module. They can silently overwrite local names, cause subtle bugs when modules add new exports, and make static analysis and refactoring unreliable.',
+      commonViolations: ['from os.path import *', 'from models import *', 'from utils import *'],
+      goodExample: 'from os.path import join, exists, dirname',
+      badExample: 'from os.path import *  # ❌ pollutes namespace',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_wildcard_import', config.severityRules);
+      const findings: Finding[] = [];
+      const WILDCARD = /^\s*from\s+\S+\s+import\s+\*/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        // Allow in __init__.py re-export files
+        if (path.endsWith('__init__.py')) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (WILDCARD.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_wildcard_import', file: path, line: i + 1,
+              message: 'Wildcard import (`from X import *`) pollutes the namespace and hides where names come from.',
+              suggestion: 'Import only what you need: `from module import SpecificClass, specific_function`',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_043: async def without any await ───────────────────────────────────
+  {
+    id: 'PY_043',
+    category: 'py_async_without_await',
+    description: '`async def` function body has no `await` — function is synchronous and needlessly async.',
+    severity: 'LOW',
+    tags: ['python', 'async', 'quality', 'vibe-coding'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'An async function with no await calls is equivalent to a regular function but incurs coroutine overhead and misleads readers into thinking it performs I/O. This is a common AI-codegen pattern where `async` is added reflexively. If the function genuinely becomes async later this is fine, but it should be intentional.',
+      commonViolations: ['async def get_name(user): return user.name', 'async def format_date(dt): return dt.strftime(...)'],
+      goodExample: 'def get_name(user): return user.name',
+      badExample: 'async def get_name(user):\n    return user.name  # ❌ no await — this is just a regular function',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_async_without_await', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path) || isPyTest(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!/^\s*async\s+def\s+/.test(lines[i]!)) continue;
+          // Scan function body until next same-indent def/class or end of file
+          const indent = (lines[i]!.match(/^(\s*)/) || ['', ''])[1]!.length;
+          let j = i + 1;
+          let hasAwait = false;
+          while (j < lines.length) {
+            const bodyLine = lines[j]!;
+            const bodyIndent = (bodyLine.match(/^(\s*)/) || ['', ''])[1]!.length;
+            if (bodyLine.trim() && bodyIndent <= indent) break;
+            if (/\bawait\b/.test(bodyLine) || /\bAsync(?:Generator|Iterator)\b/.test(bodyLine)) { hasAwait = true; break; }
+            j++;
+          }
+          if (!hasAwait) {
+            findings.push({
+              severity: sev, category: 'py_async_without_await', file: path, line: i + 1,
+              message: '`async def` with no `await` — consider making this a regular `def` unless async is intentional.',
+              suggestion: 'Remove `async` if the function performs no I/O: `def get_name(user): return user.name`',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_044: Optional type hint without None default ───────────────────────
+  {
+    id: 'PY_044',
+    category: 'py_optional_no_default',
+    description: '`Optional[X]` parameter without a `None` default — misleading type annotation.',
+    severity: 'LOW',
+    tags: ['python', 'type-hints', 'quality'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'Optional[X] means "X or None", implying the caller may omit the value. But without a default of None, the parameter is still required. This contradicts user expectations and is a common pattern in AI-generated code that copies Optional from return types into required parameters.',
+      commonViolations: ['def fn(x: Optional[str]):', 'def fn(user: Optional[User]):'],
+      goodExample: 'def fn(x: Optional[str] = None):\ndef fn(x: str | None = None):',
+      badExample: 'def fn(x: Optional[str]):  # ❌ Optional but no default — still required',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_optional_no_default', config.severityRules);
+      const findings: Finding[] = [];
+      // Matches param: Optional[X] not followed by = in the same param slot
+      const OPT_NO_DEFAULT = /\(\s*\w+\s*:\s*Optional\[[\w\[\], ]+\](?!\s*=)/;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (/^\s*#/.test(line)) return;
+          if (/\bOptional\[/.test(line) && OPT_NO_DEFAULT.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_optional_no_default', file: path, line: i + 1,
+              message: 'Optional[X] parameter with no `= None` default — parameter is required but type says optional.',
+              suggestion: 'Add a default: `def fn(x: Optional[str] = None):`',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
+  // ── PY_045: print() used for logging in production code ───────────────────
+  {
+    id: 'PY_045',
+    category: 'py_print_for_logging',
+    description: '`print()` used instead of the `logging` module in non-script code.',
+    severity: 'LOW',
+    tags: ['python', 'quality', 'observability', 'vibe-coding'],
+    sinceVersion: '1.3.0',
+    explain: {
+      why: 'print() writes to stdout with no timestamp, level, logger name, or structured format. In production, log aggregators (CloudWatch, Datadog, ELK) expect structured log entries. AI agents heavily prefer print() for debug output that never gets cleaned up before shipping.',
+      commonViolations: ['print(f"Error: {e}")', 'print("Processing request", user_id)', 'print(f"DB result: {result}")'],
+      goodExample: 'import logging\nlogger = logging.getLogger(__name__)\nlogger.error("DB error: %s", e)',
+      badExample: 'print(f"Error: {e}")  # ❌ use logging.error() in production code',
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('py_print_for_logging', config.severityRules);
+      const findings: Finding[] = [];
+      const PRINT_LOG = /^\s+print\s*\(\s*f?['""](?:error|warning|warn|info|debug|exception|fail|critical)/i;
+      for (const { path, content } of changedFiles) {
+        if (!isPyFile(path) || isPyTest(path)) continue;
+        // Only flag in non-script files (files with classes/functions, not top-level scripts)
+        if (!/^\s*(?:def |class |async def )/m.test(content)) continue;
+        const lines = content.split('\n');
+        lines.forEach((line, i) => {
+          if (PRINT_LOG.test(line)) {
+            findings.push({
+              severity: sev, category: 'py_print_for_logging', file: path, line: i + 1,
+              message: 'print() used for logging — use the `logging` module for structured, level-aware output.',
+              suggestion: 'Replace with: logging.error("...", exc_info=True) or logger.warning("...")',
+            });
+          }
+        });
+      }
+      return findings;
+    },
+  },
+
   // ── PY_025: Missing auth on LangChain agent endpoint ─────────────────────
   {
     id: 'PY_025',
