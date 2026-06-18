@@ -2,7 +2,7 @@
   "name": "prometheus-governance-vscode",
   "displayName": "Prometheus Governance",
   "description": "Real-time AI repo governance — inline findings, health scores, and adapter sync for Claude, Gemini, Cursor, Copilot, and Codex.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "holley-studios",
   "author": {
     "name": "Holley Studios"
@@ -108,6 +108,66 @@
         "title": "Revert Session (Delete Branch)",
         "category": "Prometheus Autopilot",
         "icon": "$(discard)"
+      },
+      {
+        "command": "prometheus.importScan",
+        "title": "Scan Imports (Supply Chain Check)",
+        "category": "Prometheus",
+        "icon": "$(package)"
+      },
+      {
+        "command": "prometheus.debtScan",
+        "title": "Scan AI Debt",
+        "category": "Prometheus",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "prometheus.contextSnapshot",
+        "title": "Snapshot Project Context",
+        "category": "Prometheus",
+        "icon": "$(bookmark)"
+      },
+      {
+        "command": "prometheus.contextHealth",
+        "title": "Show Context Health",
+        "category": "Prometheus",
+        "icon": "$(history)"
+      },
+      {
+        "command": "prometheus.scopeInit",
+        "title": "Initialize Agent Scope",
+        "category": "Prometheus",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "prometheus.scopeStatus",
+        "title": "Show Agent Scope",
+        "category": "Prometheus",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "prometheus.scopeCheck",
+        "title": "Check Path or Command Against Scope",
+        "category": "Prometheus",
+        "icon": "$(question)"
+      },
+      {
+        "command": "prometheus.tokensReport",
+        "title": "Show Token Usage Report",
+        "category": "Prometheus",
+        "icon": "$(symbol-number)"
+      },
+      {
+        "command": "prometheus.tokensReset",
+        "title": "Reset Session Token Budget",
+        "category": "Prometheus",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "prometheus.tokensBudget",
+        "title": "Show Token Budget Config",
+        "category": "Prometheus",
+        "icon": "$(credit-card)"
       }
     ],
     "views": {
@@ -137,6 +197,16 @@
         },
         {
           "command": "prometheus.health",
+          "when": "view == prometheus.findingsView",
+          "group": "navigation"
+        },
+        {
+          "command": "prometheus.debtScan",
+          "when": "view == prometheus.findingsView",
+          "group": "navigation"
+        },
+        {
+          "command": "prometheus.importScan",
           "when": "view == prometheus.findingsView",
           "group": "navigation"
         },

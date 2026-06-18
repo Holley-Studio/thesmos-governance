@@ -373,5 +373,205 @@ export function registerCommands(
     }),
   );
 
+  // ── prometheus.importScan ──────────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('prometheus.importScan', () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const terminal = vscode.window.createTerminal({
+        name: 'Prometheus: Import Scan',
+        cwd: workspaceRoot,
+      });
+      terminal.sendText('prometheus import:scan');
+      terminal.show();
+    }),
+  );
+
+  // ── prometheus.debtScan ────────────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('prometheus.debtScan', () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const terminal = vscode.window.createTerminal({
+        name: 'Prometheus: Debt Scan',
+        cwd: workspaceRoot,
+      });
+      terminal.sendText('prometheus debt:scan');
+      terminal.show();
+    }),
+  );
+
+  // ── prometheus.contextSnapshot ─────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('prometheus.contextSnapshot', async () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: 'Prometheus: Snapshotting project context…',
+          cancellable: false,
+        },
+        async () => {
+          try {
+            await runPrometheus(workspaceRoot, ['context:snapshot'], cfg.binaryPath || undefined);
+            void vscode.window.showInformationMessage(
+              'Prometheus: Context snapshot written to .prometheus/context.md',
+            );
+          } catch (err) {
+            handleError(err);
+          }
+        },
+      );
+    }),
+  );
+
+  // ── prometheus.contextHealth ───────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('prometheus.contextHealth', async () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: 'Prometheus: Checking context health…',
+          cancellable: false,
+        },
+        async () => {
+          try {
+            const out = await runPrometheus(
+              workspaceRoot,
+              ['context:health'],
+              cfg.binaryPath || undefined,
+            );
+            // First non-empty line contains the score summary
+            const summary = out.split('\n').find((l) => l.trim().startsWith('Context Health:')) ?? out.trim();
+            void vscode.window.showInformationMessage(`Prometheus: ${summary.trim()}`);
+          } catch (err) {
+            handleError(err);
+          }
+        },
+      );
+    }),
+  );
+
+  // ── prometheus.scopeInit ───────────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('prometheus.scopeInit', () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const terminal = vscode.window.createTerminal({
+        name: 'Prometheus: Scope Init',
+        cwd: workspaceRoot,
+      });
+      terminal.sendText('prometheus scope:init');
+      terminal.show();
+    }),
+  );
+
+  // ── prometheus.scopeStatus ─────────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('prometheus.scopeStatus', () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const terminal = vscode.window.createTerminal({
+        name: 'Prometheus: Scope Status',
+        cwd: workspaceRoot,
+      });
+      terminal.sendText('prometheus scope:status');
+      terminal.show();
+    }),
+  );
+
+  // ── prometheus.scopeCheck ──────────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('prometheus.scopeCheck', async () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const target = await vscode.window.showInputBox({
+        prompt: 'Enter a file path or shell command to check against scope',
+        placeHolder: 'e.g.  src/api/users.ts  or  rm -rf ./dist',
+        ignoreFocusOut: true,
+      });
+      if (!target) return;
+
+      const terminal = vscode.window.createTerminal({
+        name: 'Prometheus: Scope Check',
+        cwd: workspaceRoot,
+      });
+      terminal.sendText(`prometheus scope:check "${target.replace(/"/g, '\\"')}"`);
+      terminal.show();
+    }),
+  );
+
+  // ── prometheus.tokensReport ────────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('prometheus.tokensReport', () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const terminal = vscode.window.createTerminal({
+        name: 'Prometheus: Token Report',
+        cwd: workspaceRoot,
+      });
+      terminal.sendText('prometheus tokens:report');
+      terminal.show();
+    }),
+  );
+
+  // ── prometheus.tokensReset ─────────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('prometheus.tokensReset', async () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const confirm = await vscode.window.showWarningMessage(
+        'Reset the current session token budget counter?',
+        { modal: true },
+        'Reset Session',
+      );
+      if (confirm !== 'Reset Session') return;
+
+      try {
+        await runPrometheus(workspaceRoot, ['tokens:reset', '--session'], cfg.binaryPath || undefined);
+        void vscode.window.showInformationMessage('Prometheus: Session token budget reset.');
+      } catch (err) {
+        handleError(err);
+      }
+    }),
+  );
+
+  // ── prometheus.tokensBudget ────────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('prometheus.tokensBudget', () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const terminal = vscode.window.createTerminal({
+        name: 'Prometheus: Token Budget',
+        cwd: workspaceRoot,
+      });
+      terminal.sendText('prometheus tokens:budget');
+      terminal.show();
+    }),
+  );
+
   return vscode.Disposable.from(...disposables);
 }
