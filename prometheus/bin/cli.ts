@@ -49,6 +49,7 @@ import { cmdAgentAudit } from './commands/agent-audit.ts';
 import { cmdDeps } from './commands/deps.ts';
 import { cmdCompliance } from './commands/compliance.ts';
 import { cmdAiFingerprint } from './commands/ai-fingerprint.ts';
+import { cmdPantheon } from './commands/pantheon.ts';
 
 const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   init: cmdInit,
@@ -87,6 +88,14 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'agent:audit:rotate': (argv) => cmdAgentAudit(['rotate', ...argv]),
   'compliance:report': (argv) => cmdCompliance(['report', ...argv]),
   'ai:fingerprint': cmdAiFingerprint,
+  'pantheon:list':        (argv) => cmdPantheon(['list', ...argv]),
+  'pantheon:install':     (argv) => cmdPantheon(['install', ...argv]),
+  'pantheon:status':      (argv) => cmdPantheon(['status', ...argv]),
+  'pantheon:export':      (argv) => cmdPantheon(['export', ...argv]),
+  'pantheon:orchestrate': (argv) => cmdPantheon(['orchestrate', ...argv]),
+  'pantheon:memory':      (argv) => cmdPantheon(['memory', ...argv]),
+  'pantheon:upgrade':     (argv) => cmdPantheon(['upgrade', ...argv]),
+  'pantheon:remove':      (argv) => cmdPantheon(['remove', ...argv]),
   fix: cmdFix,
   report: cmdReport,
   'ai-lint': cmdAiLint,
@@ -277,6 +286,31 @@ GDPR COMPLIANCE
   compliance:report --standard gdpr   Generate audit-ready GDPR evidence report
     --write                              Write to .prometheus/compliance-gdpr.md
     --output=<path>                      Write to custom path
+
+PROMETHEUS PANTHEON  (governed AI business team — 21 agents, 6 platforms)
+  pantheon:list                       List all 21 agents with roles and mythology
+  pantheon:install --all              Add all agents to .prometheus/registry.json
+  pantheon:install <id> [id...]       Install specific agents
+  pantheon:status                     Show active Pantheon agents in this project
+  pantheon:export --target <platform> Export agents to platform-specific format
+    --target claude-code                .claude/agents/*.md (native sub-agents)
+    --target claude-project             Paste-ready text for Claude Projects
+    --target chatgpt                    Paste-ready text for ChatGPT Custom GPT
+    --target openai-assistant          JSON for OpenAI Assistants API
+    --target cursor                     .cursor/rules/*.mdc
+    --target copilot                    .github/instructions/*.instructions.md
+    --target gemini                     Paste-ready text for Gemini Gems
+    --target all                        All formats → pantheon/exports/
+    --agent <id>                        Export a single agent only
+    --out <dir>                         Custom output directory
+  pantheon:orchestrate "<task>"       Zeus routes your task to the right agents
+    --out <file>                        Write brief to file
+  pantheon:memory save --agent <id> "<note>"   Save persistent context for an agent
+  pantheon:memory show --agent <id>            View agent's memory file
+  pantheon:memory clear --agent <id>           Clear agent's memory
+  pantheon:upgrade                    Check for newer agent versions
+  pantheon:remove --all               Remove all agents from registry
+  pantheon:remove <id> [id...]        Remove specific agents
 
 AI CODE FINGERPRINTING
   ai:fingerprint           Detect AI-generated files using git co-author markers and

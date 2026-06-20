@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#D4A853" stroke-width="4"/>
+  <!-- Balance beam -->
+  <line x1="50" y1="85" x2="150" y2="85" stroke="#D4A853" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Center post -->
+  <line x1="100" y1="50" x2="100" y2="165" stroke="#D4A853" stroke-width="3" stroke-linecap="round"/>
+  <!-- Top ornament -->
+  <circle cx="100" cy="52" r="8" stroke="#D4A853" stroke-width="2.5" fill="#D4A853" fill-opacity="0.2"/>
+  <!-- Left chains -->
+  <line x1="62" y1="85" x2="58" y2="105" stroke="#D4A853" stroke-width="2" stroke-linecap="round"/>
+  <line x1="62" y1="85" x2="66" y2="105" stroke="#D4A853" stroke-width="2" stroke-linecap="round"/>
+  <!-- Left pan -->
+  <path d="M44 105 Q62 105 80 105 Q74 122 62 122 Q50 122 44 105 Z" stroke="#D4A853" stroke-width="2.5" fill="#D4A853" fill-opacity="0.1"/>
+  <!-- Right chains -->
+  <line x1="138" y1="85" x2="134" y2="105" stroke="#D4A853" stroke-width="2" stroke-linecap="round"/>
+  <line x1="138" y1="85" x2="142" y2="105" stroke="#D4A853" stroke-width="2" stroke-linecap="round"/>
+  <!-- Right pan -->
+  <path d="M120 105 Q138 105 156 105 Q150 122 138 122 Q126 122 120 105 Z" stroke="#D4A853" stroke-width="2.5" fill="#D4A853" fill-opacity="0.1"/>
+  <!-- Base -->
+  <line x1="80" y1="165" x2="120" y2="165" stroke="#D4A853" stroke-width="3" stroke-linecap="round"/>
+</svg>

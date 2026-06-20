@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#2980B9" stroke-width="4"/>
+  <!-- Open book left page -->
+  <path d="M45 68 Q45 60 55 58 L98 62 L98 148 L55 144 Q45 142 45 134 Z" stroke="#2980B9" stroke-width="2.5" fill="#2980B9" fill-opacity="0.08"/>
+  <!-- Open book right page -->
+  <path d="M155 68 Q155 60 145 58 L102 62 L102 148 L145 144 Q155 142 155 134 Z" stroke="#2980B9" stroke-width="2.5" fill="#2980B9" fill-opacity="0.08"/>
+  <!-- Book spine -->
+  <line x1="100" y1="62" x2="100" y2="148" stroke="#2980B9" stroke-width="3" stroke-linecap="round"/>
+  <!-- Text lines left page -->
+  <line x1="58" y1="82" x2="92" y2="80" stroke="#2980B9" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <line x1="58" y1="92" x2="92" y2="90" stroke="#2980B9" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <line x1="58" y1="102" x2="92" y2="100" stroke="#2980B9" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <!-- Spiral on right page -->
+  <path d="M130 95 Q130 82 120 82 Q110 82 110 95 Q110 108 122 108 Q134 108 134 93 Q134 78 118 78" stroke="#2980B9" stroke-width="2" stroke-linecap="round" fill="none"/>
+</svg>

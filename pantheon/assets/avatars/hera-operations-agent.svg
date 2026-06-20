@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#7D3C98" stroke-width="4"/>
+  <!-- Crown base band -->
+  <path d="M52 115 Q52 125 100 125 Q148 125 148 115 L148 105 Q148 98 100 98 Q52 98 52 105 Z" stroke="#7D3C98" stroke-width="2.5" fill="#7D3C98" fill-opacity="0.1"/>
+  <!-- Crown points -->
+  <path d="M52 105 L65 70 L78 95 L90 55 L100 90 L110 55 L122 95 L135 70 L148 105" stroke="#7D3C98" stroke-width="3" stroke-linejoin="round" fill="none"/>
+  <!-- Gems on crown -->
+  <circle cx="65" cy="72" r="5" fill="#7D3C98" fill-opacity="0.6"/>
+  <circle cx="100" cy="58" r="6" fill="#7D3C98" fill-opacity="0.8"/>
+  <circle cx="135" cy="72" r="5" fill="#7D3C98" fill-opacity="0.6"/>
+  <!-- Peacock feather -->
+  <line x1="100" y1="125" x2="100" y2="168" stroke="#7D3C98" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="100" cy="145" rx="5" ry="10" stroke="#7D3C98" stroke-width="2" fill="#7D3C98" fill-opacity="0.15"/>
+  <circle cx="100" cy="145" r="4" stroke="#7D3C98" stroke-width="1.5"/>
+</svg>

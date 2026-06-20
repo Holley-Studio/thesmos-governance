@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#00BCD4" stroke-width="4"/>
+  <!-- Wheel outer ring -->
+  <circle cx="100" cy="100" r="58" stroke="#00BCD4" stroke-width="3"/>
+  <!-- Wheel inner hub -->
+  <circle cx="100" cy="100" r="14" stroke="#00BCD4" stroke-width="2.5" fill="#00BCD4" fill-opacity="0.2"/>
+  <!-- Spokes (8) -->
+  <line x1="100" y1="42" x2="100" y2="86" stroke="#00BCD4" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="100" y1="114" x2="100" y2="158" stroke="#00BCD4" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="42" y1="100" x2="86" y2="100" stroke="#00BCD4" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="114" y1="100" x2="158" y2="100" stroke="#00BCD4" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="59" y1="59" x2="90" y2="90" stroke="#00BCD4" stroke-width="2" stroke-linecap="round"/>
+  <line x1="110" y1="110" x2="141" y2="141" stroke="#00BCD4" stroke-width="2" stroke-linecap="round"/>
+  <line x1="141" y1="59" x2="110" y2="90" stroke="#00BCD4" stroke-width="2" stroke-linecap="round"/>
+  <line x1="90" y1="110" x2="59" y2="141" stroke="#00BCD4" stroke-width="2" stroke-linecap="round"/>
+  <!-- Notches on rim -->
+  <circle cx="100" cy="45" r="5" fill="#00BCD4" fill-opacity="0.7"/>
+  <circle cx="155" cy="100" r="5" fill="#00BCD4" fill-opacity="0.7"/>
+  <circle cx="100" cy="155" r="5" fill="#00BCD4" fill-opacity="0.7"/>
+  <circle cx="45" cy="100" r="5" fill="#00BCD4" fill-opacity="0.7"/>
+</svg>

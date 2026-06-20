@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#C0392B" stroke-width="4"/>
+  <!-- Shield -->
+  <path d="M100 50 L140 70 L140 110 Q140 145 100 160 Q60 145 60 110 L60 70 Z" stroke="#C0392B" stroke-width="3" stroke-linejoin="round" fill="#C0392B" fill-opacity="0.1"/>
+  <!-- Shield emblem - cross -->
+  <line x1="100" y1="75" x2="100" y2="140" stroke="#C0392B" stroke-width="2.5"/>
+  <line x1="78" y1="105" x2="122" y2="105" stroke="#C0392B" stroke-width="2.5"/>
+</svg>

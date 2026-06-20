@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#E67E22" stroke-width="4"/>
+  <!-- Outer flame -->
+  <path d="M100 45 Q118 62 120 82 Q132 68 128 50 Q148 70 145 95 Q155 82 152 65 Q168 88 162 115 Q168 108 170 95 Q172 120 160 138 Q148 158 100 162 Q52 158 40 138 Q28 120 30 95 Q32 108 38 115 Q32 88 48 65 Q45 82 55 95 Q52 70 72 50 Q68 68 80 82 Q82 62 100 45 Z" stroke="#E67E22" stroke-width="2.5" stroke-linejoin="round" fill="#E67E22" fill-opacity="0.1"/>
+  <!-- Inner flame -->
+  <path d="M100 78 Q110 90 112 105 Q118 98 116 86 Q126 100 120 118 Q116 132 100 140 Q84 132 80 118 Q74 100 84 86 Q82 98 88 105 Q90 90 100 78 Z" stroke="#E67E22" stroke-width="2" fill="#E67E22" fill-opacity="0.25"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#9B59B6" stroke-width="4"/>
+  <!-- Left wing -->
+  <path d="M100 100 Q60 70 40 50 Q55 75 65 90 Q45 80 35 90 Q55 95 70 100 Q50 100 42 115 Q65 108 80 110 Z" stroke="#9B59B6" stroke-width="2.5" stroke-linejoin="round" fill="#9B59B6" fill-opacity="0.15"/>
+  <!-- Right wing -->
+  <path d="M100 100 Q140 70 160 50 Q145 75 135 90 Q155 80 165 90 Q145 95 130 100 Q150 100 158 115 Q135 108 120 110 Z" stroke="#9B59B6" stroke-width="2.5" stroke-linejoin="round" fill="#9B59B6" fill-opacity="0.15"/>
+  <!-- Center body -->
+  <circle cx="100" cy="100" r="8" stroke="#9B59B6" stroke-width="2.5"/>
+</svg>

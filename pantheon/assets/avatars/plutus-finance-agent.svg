@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#2ECC71" stroke-width="4"/>
+  <!-- Cornucopia horn -->
+  <path d="M50 130 Q48 100 65 80 Q80 62 100 58 Q80 72 78 92 Q90 75 110 70 Q88 86 90 105 Q100 90 118 88 Q100 102 105 118 Q115 105 130 105 Q115 120 122 135 Q108 130 118 148 Q100 138 105 155 Q85 140 90 160 Q75 145 80 162 Q60 145 65 162 Q50 148 50 130 Z" stroke="#2ECC71" stroke-width="2.5" stroke-linejoin="round" fill="#2ECC71" fill-opacity="0.1"/>
+  <!-- Coins spilling out -->
+  <circle cx="136" cy="110" r="12" stroke="#2ECC71" stroke-width="2.5" fill="#2ECC71" fill-opacity="0.15"/>
+  <circle cx="155" cy="105" r="10" stroke="#2ECC71" stroke-width="2" fill="#2ECC71" fill-opacity="0.15"/>
+  <circle cx="148" cy="128" r="10" stroke="#2ECC71" stroke-width="2" fill="#2ECC71" fill-opacity="0.15"/>
+  <!-- Dollar/currency symbol in first coin -->
+  <text x="133" y="115" font-family="sans-serif" font-size="14" fill="#2ECC71" fill-opacity="0.8" text-anchor="middle">$</text>
+</svg>

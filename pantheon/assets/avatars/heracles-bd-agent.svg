@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#E67E22" stroke-width="4"/>
+  <!-- Club/strength icon -->
+  <line x1="75" y1="155" x2="130" y2="55" stroke="#E67E22" stroke-width="5" stroke-linecap="round"/>
+  <!-- Club head (bulged end) -->
+  <ellipse cx="127" cy="60" rx="18" ry="22" transform="rotate(-60 127 60)" stroke="#E67E22" stroke-width="3" fill="#E67E22" fill-opacity="0.15"/>
+  <!-- 12 stars in ring (12 labours) -->
+  <circle cx="100" cy="45" r="4" fill="#E67E22" fill-opacity="0.7"/>
+  <circle cx="123" cy="51" r="3.5" fill="#E67E22" fill-opacity="0.7"/>
+  <circle cx="140" cy="68" r="3.5" fill="#E67E22" fill-opacity="0.7"/>
+  <circle cx="147" cy="90" r="3.5" fill="#E67E22" fill-opacity="0.7"/>
+  <circle cx="143" cy="113" r="3.5" fill="#E67E22" fill-opacity="0.7"/>
+  <circle cx="128" cy="131" r="3.5" fill="#E67E22" fill-opacity="0.7"/>
+  <circle cx="107" cy="140" r="4" fill="#E67E22" fill-opacity="0.7"/>
+  <circle cx="84" cy="136" r="3.5" fill="#E67E22" fill-opacity="0.7"/>
+  <circle cx="66" cy="121" r="3.5" fill="#E67E22" fill-opacity="0.7"/>
+  <circle cx="56" cy="100" r="3.5" fill="#E67E22" fill-opacity="0.7"/>
+  <circle cx="60" cy="77" r="3.5" fill="#E67E22" fill-opacity="0.7"/>
+  <circle cx="76" cy="58" r="3.5" fill="#E67E22" fill-opacity="0.7"/>
+</svg>

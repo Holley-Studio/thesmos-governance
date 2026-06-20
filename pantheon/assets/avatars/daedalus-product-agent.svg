@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#E74C3C" stroke-width="4"/>
+  <!-- Labyrinth squares (nested rectangles) -->
+  <rect x="62" y="62" width="76" height="76" rx="4" stroke="#E74C3C" stroke-width="2.5"/>
+  <rect x="74" y="74" width="52" height="52" rx="3" stroke="#E74C3C" stroke-width="2"/>
+  <rect x="86" y="86" width="28" height="28" rx="2" stroke="#E74C3C" stroke-width="1.5"/>
+  <!-- Center square (the product) -->
+  <rect x="93" y="93" width="14" height="14" rx="2" fill="#E74C3C" fill-opacity="0.4" stroke="#E74C3C" stroke-width="1.5"/>
+  <!-- Labyrinth gaps/paths -->
+  <!-- Gap on outer right -->
+  <line x1="138" y1="90" x2="138" y2="110" stroke="#0D0D0D" stroke-width="3"/>
+  <!-- Gap on middle bottom -->
+  <line x1="88" y1="126" x2="112" y2="126" stroke="#0D0D0D" stroke-width="3"/>
+  <!-- Wings at top (Daedalus's invention) -->
+  <path d="M85 62 Q75 45 60 48 Q70 58 80 62 Z" stroke="#E74C3C" stroke-width="2" fill="#E74C3C" fill-opacity="0.2"/>
+  <path d="M115 62 Q125 45 140 48 Q130 58 120 62 Z" stroke="#E74C3C" stroke-width="2" fill="#E74C3C" fill-opacity="0.2"/>
+</svg>

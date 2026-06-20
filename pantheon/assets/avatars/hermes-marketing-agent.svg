@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#A8D8EA" stroke-width="4"/>
+  <!-- Staff -->
+  <line x1="100" y1="40" x2="100" y2="165" stroke="#A8D8EA" stroke-width="4" stroke-linecap="round"/>
+  <!-- Wings at top -->
+  <path d="M100 52 Q80 40 68 50 Q80 60 100 55 Z" fill="#A8D8EA" fill-opacity="0.8"/>
+  <path d="M100 52 Q120 40 132 50 Q120 60 100 55 Z" fill="#A8D8EA" fill-opacity="0.8"/>
+  <!-- Snake 1 -->
+  <path d="M100 80 Q86 90 100 100 Q114 110 100 120 Q86 130 100 140" stroke="#A8D8EA" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Snake 2 -->
+  <path d="M100 80 Q114 90 100 100 Q86 110 100 120 Q114 130 100 140" stroke="#A8D8EA" stroke-width="3" stroke-linecap="round" fill="none"/>
+</svg>

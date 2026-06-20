@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#8E44AD" stroke-width="4"/>
+  <!-- Vine stem -->
+  <path d="M100 45 Q90 80 100 120 Q110 155 100 165" stroke="#8E44AD" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Grapes cluster -->
+  <circle cx="100" cy="80" r="10" stroke="#8E44AD" stroke-width="2.5" fill="#8E44AD" fill-opacity="0.15"/>
+  <circle cx="86" cy="94" r="10" stroke="#8E44AD" stroke-width="2.5" fill="#8E44AD" fill-opacity="0.15"/>
+  <circle cx="114" cy="94" r="10" stroke="#8E44AD" stroke-width="2.5" fill="#8E44AD" fill-opacity="0.15"/>
+  <circle cx="78" cy="110" r="10" stroke="#8E44AD" stroke-width="2.5" fill="#8E44AD" fill-opacity="0.15"/>
+  <circle cx="100" cy="110" r="10" stroke="#8E44AD" stroke-width="2.5" fill="#8E44AD" fill-opacity="0.15"/>
+  <circle cx="122" cy="110" r="10" stroke="#8E44AD" stroke-width="2.5" fill="#8E44AD" fill-opacity="0.15"/>
+  <circle cx="88" cy="126" r="10" stroke="#8E44AD" stroke-width="2.5" fill="#8E44AD" fill-opacity="0.15"/>
+  <circle cx="112" cy="126" r="10" stroke="#8E44AD" stroke-width="2.5" fill="#8E44AD" fill-opacity="0.15"/>
+  <circle cx="100" cy="142" r="10" stroke="#8E44AD" stroke-width="2.5" fill="#8E44AD" fill-opacity="0.15"/>
+  <!-- Leaf -->
+  <path d="M100 45 Q120 38 125 55 Q110 60 100 45 Z" stroke="#8E44AD" stroke-width="2" fill="#8E44AD" fill-opacity="0.2"/>
+</svg>

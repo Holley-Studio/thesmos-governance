@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#6C3483" stroke-width="4"/>
+  <!-- Crescent moon -->
+  <path d="M120 50 Q88 50 70 78 Q55 102 68 130 Q82 155 110 158 Q80 148 72 122 Q62 96 78 72 Q90 52 120 50 Z" stroke="#6C3483" stroke-width="3" fill="#6C3483" fill-opacity="0.15"/>
+  <!-- Stars -->
+  <circle cx="140" cy="65" r="4" fill="#6C3483"/>
+  <circle cx="155" cy="90" r="3" fill="#6C3483"/>
+  <circle cx="145" cy="115" r="4" fill="#6C3483"/>
+  <circle cx="130" cy="50" r="2.5" fill="#6C3483"/>
+  <!-- Poppy flower -->
+  <circle cx="133" cy="140" r="12" stroke="#6C3483" stroke-width="2.5"/>
+  <circle cx="133" cy="140" r="5" fill="#6C3483" fill-opacity="0.5"/>
+  <line x1="133" y1="152" x2="133" y2="170" stroke="#6C3483" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

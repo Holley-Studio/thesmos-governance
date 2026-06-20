@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="96" stroke="#3498DB" stroke-width="4"/>
+  <!-- Trumpet bell -->
+  <path d="M140 95 Q158 85 165 100 Q158 115 140 105 Z" stroke="#3498DB" stroke-width="2.5" fill="#3498DB" fill-opacity="0.15"/>
+  <!-- Trumpet body -->
+  <path d="M70 95 L70 105 L140 105 L140 95 Z" stroke="#3498DB" stroke-width="2.5" fill="#3498DB" fill-opacity="0.08"/>
+  <!-- Trumpet mouthpiece -->
+  <path d="M55 92 Q65 92 70 95 L70 105 Q65 108 55 108 Z" stroke="#3498DB" stroke-width="2.5" fill="#3498DB" fill-opacity="0.15"/>
+  <!-- Valves -->
+  <rect x="90" y="88" width="10" height="24" rx="4" stroke="#3498DB" stroke-width="2" fill="#3498DB" fill-opacity="0.1"/>
+  <rect x="108" y="88" width="10" height="24" rx="4" stroke="#3498DB" stroke-width="2" fill="#3498DB" fill-opacity="0.1"/>
+  <!-- Wings above trumpet -->
+  <path d="M95 95 Q80 80 65 85 Q75 95 90 95 Z" stroke="#3498DB" stroke-width="2" fill="#3498DB" fill-opacity="0.2"/>
+  <path d="M105 95 Q120 80 135 85 Q125 95 110 95 Z" stroke="#3498DB" stroke-width="2" fill="#3498DB" fill-opacity="0.2"/>
+  <!-- Sound waves -->
+  <path d="M165 95 Q172 100 165 105" stroke="#3498DB" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M170 88 Q180 100 170 112" stroke="#3498DB" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.7"/>
+</svg>
