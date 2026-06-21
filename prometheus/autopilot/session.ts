@@ -7,6 +7,7 @@ import {
   existsSync,
   readFileSync,
   writeFileSync,
+  renameSync,
   mkdirSync,
   unlinkSync,
   copyFileSync,
@@ -68,7 +69,10 @@ function ensureAutopilotDir(root: string): void {
 
 export function saveSession(root: string, session: AutopilotSession): void {
   ensureAutopilotDir(root);
-  writeFileSync(getSessionFilePath(root), JSON.stringify(session, null, 2) + '\n', 'utf8');
+  const target = getSessionFilePath(root);
+  const tmp = target + '.tmp';
+  writeFileSync(tmp, JSON.stringify(session, null, 2) + '\n', 'utf8');
+  renameSync(tmp, target);
 }
 
 export function loadSession(root: string): AutopilotSession | null {
@@ -76,7 +80,8 @@ export function loadSession(root: string): AutopilotSession | null {
   if (!existsSync(path)) return null;
   try {
     return JSON.parse(readFileSync(path, 'utf8')) as AutopilotSession;
-  } catch {
+  } catch (e) {
+    console.warn('[prometheus] autopilot session file is corrupt, ignoring:', e);
     return null;
   }
 }

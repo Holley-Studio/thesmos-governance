@@ -62,6 +62,7 @@ export class AutopilotWatcher implements vscode.Disposable {
   private currentSession: AutopilotSessionState | null = null;
   private sessionPath: string;
   private cancelPath: string;
+  private debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly workspaceRoot: string) {
     this.sessionPath = join(workspaceRoot, '.prometheus', 'autopilot', '.session.json');
@@ -74,14 +75,22 @@ export class AutopilotWatcher implements vscode.Disposable {
     );
 
     const watcher = vscode.workspace.createFileSystemWatcher(pattern);
-    watcher.onDidChange(() => this.reload());
-    watcher.onDidCreate(() => this.reload());
-    watcher.onDidDelete(() => this.reload());
+    watcher.onDidChange(() => this.scheduleReload());
+    watcher.onDidCreate(() => this.scheduleReload());
+    watcher.onDidDelete(() => this.scheduleReload());
 
     this.disposables.push(watcher, this._onDidChange);
 
     // Initial load
     this.reload();
+  }
+
+  private scheduleReload(): void {
+    if (this.debounceTimer !== undefined) clearTimeout(this.debounceTimer);
+    this.debounceTimer = setTimeout(() => {
+      this.debounceTimer = undefined;
+      this.reload();
+    }, 250);
   }
 
   private reload(): void {
@@ -151,6 +160,7 @@ export class AutopilotWatcher implements vscode.Disposable {
   }
 
   dispose(): void {
+    if (this.debounceTimer !== undefined) clearTimeout(this.debounceTimer);
     for (const d of this.disposables) d.dispose();
   }
 }

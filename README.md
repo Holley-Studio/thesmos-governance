@@ -1,6 +1,6 @@
 # Prometheus Governance
 
-**757 rules. Zero config. Built for the AI-assisted engineering era.**
+**911 rules. Zero config. Built for the AI-assisted engineering era.**
 
 Prometheus is an open-source code governance toolkit that watches AI-generated code for security holes, broken patterns, and architectural mistakes — before they reach production.
 
@@ -10,7 +10,7 @@ Prometheus is an open-source code governance toolkit that watches AI-generated c
 
 AI tools write code faster than humans can review it. Copilot, Cursor, and Claude can ship working features in minutes — but they also hallucinate Prisma clients outside module scope, concatenate user input directly into LLM prompts, and create N+1 query waterfalls without a second thought.
 
-Prometheus closes that gap. 757 hand-written rules covering AI safety, security, performance, and correctness — active the moment you install.
+Prometheus closes that gap. 911 governance rules covering AI safety, security, performance, and correctness — active the moment you install.
 
 ---
 

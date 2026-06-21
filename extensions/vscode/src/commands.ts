@@ -38,17 +38,17 @@ export type GetAutopilotWatcher = () => AutopilotWatcher;
 // ── Shell sanitizers ──────────────────────────────────────────────────────────
 
 /** Strips characters that expand inside double-quoted bash strings ($, backtick, newlines). */
-function sanitizeShellArg(input: string): string {
+export function sanitizeShellArg(input: string): string {
   return input.replace(/[`$\n\r]/g, '').replace(/"/g, '\\"');
 }
 
 /** Keeps only characters valid in git branch names. */
-function sanitizeBranchName(input: string): string {
+export function sanitizeBranchName(input: string): string {
   return input.replace(/[^a-zA-Z0-9/_.-]/g, '');
 }
 
 /** Keeps only alphanumeric, hyphens, and underscores (session ID format). */
-function sanitizeId(input: string): string {
+export function sanitizeId(input: string): string {
   return input.replace(/[^a-zA-Z0-9_-]/g, '');
 }
 

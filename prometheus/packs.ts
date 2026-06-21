@@ -258,14 +258,13 @@ export function formatPackListConsole(packs: PackEntry[], projectName = 'Repo'):
 
   for (const p of packs) {
     const { manifest } = p;
-    const provides = Object.entries(manifest.provides)
-      .filter(([, v]) => v)
-      .map(([k]) => k)
-      .join(', ');
+    const provides = manifest.provides
+      ? Object.entries(manifest.provides).filter(([, v]) => v).map(([k]) => k).join(', ')
+      : '(unknown)';
     lines.push(`  ${manifest.id}  v${manifest.version}`);
     lines.push(`     ${manifest.description}`);
     lines.push(`     Provides: ${provides || '(none)'}  |  Source: ${p.source}  |  ${p.relDir}`);
-    if (manifest.tags.length > 0) {
+    if (manifest.tags?.length > 0) {
       lines.push(`     Tags: ${manifest.tags.join(', ')}`);
     }
     lines.push('');

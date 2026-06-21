@@ -49,6 +49,10 @@ jobs:
         working-directory: prometheus
         run: npm test
 
+      - name: Test (pr-review action)
+        working-directory: actions/pr-review
+        run: npm test
+
       - name: Build
         working-directory: prometheus
         run: npm run build

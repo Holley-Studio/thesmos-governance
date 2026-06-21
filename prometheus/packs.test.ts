@@ -188,6 +188,12 @@ describe('formatPackListConsole', () => {
     const packs = [makeEntry()];
     expect(formatPackListConsole(packs)).toBe(formatPackListConsole(packs));
   });
+
+  it('does not throw when manifest is missing provides or tags', () => {
+    const badManifest = { id: '@x/y', version: '1.0.0', description: 'test' } as unknown as PackManifest;
+    const entry: PackEntry = { dir: '/tmp', relDir: '.prometheus/packs/x', manifest: badManifest, source: 'local' };
+    expect(() => formatPackListConsole([entry])).not.toThrow();
+  });
 });
 
 // ── formatPackListJson ────────────────────────────────────────────────────────
