@@ -6,6 +6,48 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+## [2.2.0] — 2026-06-21
+
+### Added
+
+**5 Innovation Features:**
+
+- **F1 — `debug_finding` MCP Tool** — New MCP tool on the existing `prometheus mcp:serve` server. Call `debug_finding(rule_id, file_content, line?)` to get a `true_positive` / `likely_false_positive` verdict, the full rule explanation, exact fix suggestion, and suppression command. Closes the "why did this fire?" loop without leaving the AI assistant session.
+
+- **F2 — Post-Fix Verification (`prometheus fix --verify`)** — After applying a fixer, Prometheus immediately re-runs `detect()` on the patched content to confirm the finding is resolved. New exports: `verifyFix(filePath, beforeContent, afterContent, finding, config): VerifyResult` and `VerifyResult` interface. Reports: ✅ verified / ❌ unresolved / ⚠️ regression introduced. Zero external dependencies — uses Prometheus's own rules engine.
+
+- **F3 — GitHub PR Comment Bot (`prometheus github:comment`)** — Posts or updates a single governance summary comment on a GitHub PR. Uses `GITHUB_TOKEN` + native Node 18 `fetch()` — no `@octokit/rest` dependency. Idempotent via an HTML marker (`<!-- prometheus-governance-bot -->`). Includes auto-detection of repo from `git remote`. `--print-workflow` prints a copy-paste GitHub Actions snippet. New file: `prometheus/bin/commands/github-comment.ts`.
+
+- **F4 — Incremental Scan Cache** — sha256-keyed per-file finding cache in `.prometheus/.scan-cache.json`. Unchanged files return cached findings instantly; any rules-version bump invalidates all entries. New exports: `loadCache`, `saveCache`, `getCachedFindings`, `setCachedFindings`, `invalidateCache`, `runReviewCached`. Expected speedup: 70–90% on second scan when most files are unchanged. New file: `prometheus/incremental-cache.ts`.
+
+- **F5 — LSP Real-Time Feedback Server (`prometheus lsp`)** — Standalone LSP 3.17 server over stdio. Surfaces governance findings as real-time squiggles in any LSP-compatible editor (VS Code, Cursor, Neovim, Emacs). Capabilities: `textDocument/didOpen`, `textDocument/didChange` (debounced 500ms), `textDocument/didSave`, hover tooltips with rule explanation, code actions (suppress / explain). VS Code extension now launches the LSP client alongside its existing on-save analysis via `vscode-languageclient`. New file: `prometheus/lang-server.ts`.
+
+**5 Bug Fixes:**
+
+- **BUG-1** — Deleted dead code in `mcp.ts` line 743: `const README_OR_SRC = /(?:README|\.md$|\.txt$)|SOURCE_EXT/` (referenced literal `SOURCE_EXT` string instead of the regex variable; never used).
+- **BUG-2** — Fixed NEXT_038 false positive: skip guard was checking `AUTH_IN_MIDDLEWARE` (which matches `NextResponse.redirect`) against route handler files, causing non-auth redirects to trigger the rule. Fix: gate on route handler export pattern only.
+- **BUG-3** — Fixed PROTO_001 greedy regex: `[^}]*` with `s` flag matched across function boundaries when a merge function contained nested braces. Fix: bounded lazy `[\s\S]{0,300}?` / `[\s\S]{0,200}?` prevents cross-function matching.
+- **BUG-4** — Fixed WS_006 miss: single-regex approach with `[^)]+\)` or `[\s\S]{0,100}?\)` both stop at the arrow function parameter `)` not the outer `ws.on(...)` `)`. Fix: two independent checks — `MSG_HANDLER_WITH_PARSE_RE` (presence of `ws.on("message")`) and `JSON_PARSE_RE` (presence of `JSON.parse`). Also fixed `VALIDATE_RE` false negative where `.parse\s*\(` matched `JSON.parse(` — fixed with negative lookbehind `(?<!JSON)`.
+- **BUG-5** — Fixed AI_034 over-aggressive skip guard: `!/public|POST/.test(content)` skipped most real LLM proxy routes (`/api/chat`, `/api/generate`). Fix: path-based `isApiRoute()` / `isServerFile()` helpers identical to the pattern used in `vibe-coding.ts`.
+
+**Test Coverage (210 new tests across 5 previously untested modules):**
+
+- `rules/mcp.test.ts` — 64 tests for MCP_001–020
+- `rules/rag.test.ts` — 49 tests for RAG_001–015
+- `rules/websocket.test.ts` — 40 tests for WS_001–012
+- `rules/prototype.test.ts` — 34 tests for PROTO_001–010
+- `rules/jwt.test.ts` — 43 tests for JWT_001–013 (including AUTH_008–013)
+- Total test suite: **2623 tests** (2413 previous + 210 new)
+
+### Changed
+
+- `prometheus/fix.ts` now imports `PROMETHEUS_RULES` and `runReview` to power `verifyFix()`.
+- `prometheus/bin/commands/fix.ts` gains `--verify` flag.
+- `extensions/vscode/src/extension.ts` now lazily starts an LSP client (requires `vscode-languageclient` installed).
+- `extensions/vscode/package.json` adds `vscode-languageclient ^9.0.1` as a runtime dependency.
+
+---
+
 ## [2.0.0] — 2026-06-20
 
 ### Added

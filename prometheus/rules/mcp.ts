@@ -740,7 +740,6 @@ const MCP_017: PrometheusRule = {
   },
   detect({ changedFiles = [] }: DetectInput): Finding[] {
     const findings: Finding[] = [];
-    const README_OR_SRC = /(?:README|\.md$|\.txt$)|SOURCE_EXT/;
     const AI_TARGET_RE = /(?:for\s+(?:ai|claude|copilot|cursor|llm|gpt)|ai\s+(?:assistant|agent|model)|note\s+to\s+(?:ai|llm)|ignore\s+(?:your|all|previous)\s+(?:safety|instructions|constraints|guidelines))/i;
     for (const { path, content } of changedFiles) {
       if (!path.match(/\.(md|txt|ts|tsx|js|jsx|py|rb|go|java|cs)$/) ) continue;

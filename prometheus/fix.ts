@@ -18,7 +18,9 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Finding } from './types.js';
+import type { Finding, PrometheusConfig, ScanResult } from './types.js';
+import { PROMETHEUS_RULES } from './rules/registry.js';
+import { runReview } from './review.js';
 
 // ── Fixer type ─────────────────────────────────────────────────────────────────
 
@@ -783,6 +785,79 @@ export function applyFixer(content: string, finding: Finding): string | null {
   const fixer = FIXERS[finding.category.toLowerCase()];
   if (!fixer) return null;
   return fixer(content, finding);
+}
+
+// ── verifyFix ─────────────────────────────────────────────────────────────────
+
+function makeEmptyScan(): ScanResult {
+  return {
+    _generatedSections: [],
+    generatedAt: new Date().toISOString(),
+    scanVersion: '0',
+    pages: [],
+    apiRoutes: [],
+    componentCount: 0,
+    sharedUiFiles: [],
+    designSystemFiles: [],
+    storeFiles: [],
+    testFiles: [],
+    largeFiles: [],
+    riskyFiles: [],
+    scriptFiles: [],
+    envFiles: [],
+    clientBoundaryRisks: [],
+  };
+}
+
+export interface VerifyResult {
+  originalFinding: Finding;
+  fixApplied: boolean;
+  findingResolved: boolean;
+  newFindingsIntroduced: Finding[];
+  safe: boolean;
+}
+
+/**
+ * Re-runs Prometheus rules on before/after content to confirm a fix worked.
+ *
+ * findingResolved: the original finding no longer fires on the patched content.
+ * newFindingsIntroduced: any findings present in after but not in before.
+ * safe: findingResolved && newFindingsIntroduced.length === 0.
+ */
+export function verifyFix(
+  filePath: string,
+  beforeContent: string,
+  afterContent: string,
+  originalFinding: Finding,
+  config: PrometheusConfig,
+): VerifyResult {
+  const rule = PROMETHEUS_RULES.find((r) => r.category === originalFinding.category);
+  if (!rule) {
+    return { originalFinding, fixApplied: true, findingResolved: true, newFindingsIntroduced: [], safe: true };
+  }
+
+  const scan = makeEmptyScan();
+  const afterRuleFindings = rule.detect({ scan, config, changedFiles: [{ path: filePath, content: afterContent }] });
+  const stillFires = afterRuleFindings.some(
+    (f) => f.category === originalFinding.category &&
+      Math.abs((f.line ?? 0) - (originalFinding.line ?? 0)) <= 2,
+  );
+
+  const beforeAll = runReview({ scan, config, changedFiles: [{ path: filePath, content: beforeContent }] });
+  const afterAll = runReview({ scan, config, changedFiles: [{ path: filePath, content: afterContent }] });
+  const newFindingsIntroduced = afterAll.filter(
+    (af) => !beforeAll.some(
+      (bf) => bf.category === af.category && Math.abs((bf.line ?? 0) - (af.line ?? 0)) <= 2,
+    ),
+  );
+
+  return {
+    originalFinding,
+    fixApplied: true,
+    findingResolved: !stillFires,
+    newFindingsIntroduced,
+    safe: !stillFires && newFindingsIntroduced.length === 0,
+  };
 }
 
 // ── Result types ──────────────────────────────────────────────────────────────

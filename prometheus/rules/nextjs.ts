@@ -1284,7 +1284,7 @@ export const NEXTJS_RULES: PrometheusRule[] = [
       const routeFiles = changedFiles.filter((f) => /route\.(ts|js)$/.test(f.path) || /\/(api|pages\/api)\//.test(f.path));
       if (routeFiles.length === 0) return [];
       for (const rf of routeFiles) {
-        if (!AUTH_IN_MIDDLEWARE.test(rf.content) && !/export\s+async\s+function\s+(GET|POST|PUT|DELETE|PATCH)/.test(rf.content)) continue;
+        if (!/export\s+async\s+function\s+(GET|POST|PUT|DELETE|PATCH)/.test(rf.content)) continue;
         if (!/getSession|getServerSession|auth\(\)|verifyToken|session\s*\?/.test(rf.content)) {
           findings.push({ severity, category: 'next_middleware_only_auth', file: rf.path, message: 'Route handler has no auth check — relies solely on middleware (bypassable via CVE-2025-29927).', suggestion: 'Add auth check in route handler: const session = await getServerSession(); if (!session) return unauthorized();' });
         }

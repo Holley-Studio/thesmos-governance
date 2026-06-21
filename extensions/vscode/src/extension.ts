@@ -20,6 +20,7 @@
 
 import * as vscode from 'vscode';
 import { relative } from 'node:path';
+import type { LanguageClient as LanguageClientType } from 'vscode-languageclient/node';
 
 import { DiagnosticsManager } from './diagnostics.js';
 import { StatusBarManager } from './statusBar.js';
@@ -350,6 +351,7 @@ class PrometheusExtension implements vscode.Disposable {
 // ── VS Code entry points ──────────────────────────────────────────────────────
 
 let extension: PrometheusExtension | undefined;
+let lspClient: LanguageClientType | undefined;
 
 export async function activate(
   context: vscode.ExtensionContext,
@@ -363,9 +365,56 @@ export async function activate(
   context.subscriptions.push(extension);
 
   await extension.activate();
+
+  // Start Prometheus LSP server for real-time as-you-type diagnostics.
+  // The server is the prometheus CLI launched with the "lsp" subcommand.
+  // It runs alongside the existing on-save analysis and surfaces squiggles
+  // for TypeScript and JavaScript files without requiring a scan report.
+  void startLspClient(context, workspaceRoot);
 }
 
-export function deactivate(): void {
+async function startLspClient(
+  context: vscode.ExtensionContext,
+  workspaceRoot: string,
+): Promise<void> {
+  try {
+    // Dynamic import so the extension still loads even if vscode-languageclient
+    // is not yet installed (e.g. first-run before `npm install`).
+    const { LanguageClient, TransportKind } = await import('vscode-languageclient/node');
+
+    // Resolve the prometheus binary to use as the LSP server.
+    // Prefer a local project install, fall back to the global CLI.
+    const serverCommand = 'npx';
+    const serverArgs = ['prometheus', 'lsp', '--root', workspaceRoot];
+
+    lspClient = new LanguageClient(
+      'prometheus-lsp',
+      'Prometheus Governance Language Server',
+      {
+        run:   { command: serverCommand, args: serverArgs, transport: TransportKind.stdio },
+        debug: { command: serverCommand, args: [...serverArgs, '--debug'], transport: TransportKind.stdio },
+      },
+      {
+        documentSelector: [
+          { scheme: 'file', language: 'typescript' },
+          { scheme: 'file', language: 'typescriptreact' },
+          { scheme: 'file', language: 'javascript' },
+          { scheme: 'file', language: 'javascriptreact' },
+        ],
+        workspaceFolder: vscode.workspace.workspaceFolders?.[0],
+      },
+    );
+
+    context.subscriptions.push(lspClient);
+    await lspClient.start();
+  } catch {
+    // vscode-languageclient not installed — real-time LSP unavailable.
+    // On-save analysis via the extension's existing diagnostics path still works.
+  }
+}
+
+export function deactivate(): Thenable<void> | undefined {
   extension?.dispose();
   extension = undefined;
+  return lspClient?.stop();
 }

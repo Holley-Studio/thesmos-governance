@@ -11,6 +11,13 @@ import { SOURCE_EXT, JSX_EXT, isTestPath, isCommentLine } from './helpers';
 
 const LLM_CALL_RE = /\bawait\s+(?:openai|anthropic|ai|gemini|groq|client)\s*\.\s*(?:chat\.completions\.create|messages\.create|generate\w*)\s*\(/;
 
+function isApiRoute(p: string) {
+  return /\/(api|route|handler)s?\//.test(p) || /route\.(ts|js)$/.test(p) || /\/(pages|app)\/api\//.test(p);
+}
+function isServerFile(p: string) {
+  return isApiRoute(p) || /\.(server|action)\.(ts|tsx|js)$/.test(p) || /actions\//.test(p);
+}
+
 export const AI_RULES: PrometheusRule[] = [
   {
     id: 'AI_001',
@@ -1203,7 +1210,7 @@ export const AI_RULES: PrometheusRule[] = [
         if (!SOURCE_EXT.test(path)) continue;
         if (isTestPath(path)) continue;
         if (!LLM_CALL_RE.test(content)) continue;
-        if (!/public|POST/.test(content)) continue;
+        if (!isApiRoute(path) && !isServerFile(path)) continue;
         if (!MODERATION_RE.test(content)) {
           findings.push({ severity, category: 'ai_no_content_filter', file: path, message: 'Public LLM endpoint without content moderation filter — harmful output risk.', suggestion: 'Run LLM responses through OpenAI Moderations API or equivalent before returning to users.' });
         }

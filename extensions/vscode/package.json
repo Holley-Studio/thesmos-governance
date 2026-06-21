@@ -340,6 +340,9 @@
     "package": "vsce package --no-dependencies",
     "test": "vitest run"
   },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
   "devDependencies": {
     "@types/node": "^18.19.0",
     "@types/vscode": "^1.85.0",

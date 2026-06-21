@@ -32,7 +32,7 @@ export const PROTOTYPE_RULES: PrometheusRule[] = [
     detect({ changedFiles = [] }: DetectInput): Finding[] {
       const findings: Finding[] = [];
       // Recursive function that merges objects with `for...in` or `Object.keys`
-      const RECURSIVE_MERGE_RE = /function\s+\w*(?:merge|deep|extend|assign|clone)\w*[^{]*\{[^}]*(?:for\s*\(|Object\.keys)[^}]*(?:\w+\[k(?:ey)?\]\s*=|\w+\.\w+\s*=)/s;
+      const RECURSIVE_MERGE_RE = /function\s+\w*(?:merge|deep|extend|assign|clone)\w*[^{]*\{[\s\S]{0,300}?(?:for\s*\(|Object\.keys)[\s\S]{0,200}?(?:\w+\[k(?:ey)?\]\s*=|\w+\.\w+\s*=)/;
       const PROTO_GUARD_RE = /__proto__|constructor.*prototype|hasOwnProperty|Object\.create\s*\(\s*null\)/;
       for (const { path, content } of changedFiles) {
         if (!SOURCE_EXT.test(path)) continue;

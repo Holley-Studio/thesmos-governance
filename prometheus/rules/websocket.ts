@@ -228,12 +228,14 @@ export const WEBSOCKET_RULES: PrometheusRule[] = [
     },
     detect({ changedFiles = [] }: DetectInput): Finding[] {
       const findings: Finding[] = [];
-      const MSG_PARSE_RE = /ws\s*\.\s*on\s*\(\s*['"]message['"]\s*,[^)]+\)\s*\{[^}]*JSON\.parse/s;
-      const VALIDATE_RE = /\.parse\s*\(|\.safeParse|schema\.|z\.|zod\.|validate\s*\(|Schema\.parse/i;
+      const MSG_HANDLER_WITH_PARSE_RE = /ws\s*\.\s*on\s*\(\s*['"]message['"]/;
+      const JSON_PARSE_RE = /JSON\.parse/;
+      const VALIDATE_RE = /(?<!JSON)\.parse\s*\(|\.safeParse|schema\.|z\.|zod\.|validate\s*\(|Schema\.parse/i;
       for (const { path, content } of changedFiles) {
         if (!SOURCE_EXT.test(path)) continue;
         if (isTestPath(path)) continue;
-        if (!MSG_PARSE_RE.test(content)) continue;
+        if (!MSG_HANDLER_WITH_PARSE_RE.test(content)) continue;
+        if (!JSON_PARSE_RE.test(content)) continue;
         if (!VALIDATE_RE.test(content)) {
           findings.push({
             severity: 'HIGH', category: 'ws_message_no_schema_validation',

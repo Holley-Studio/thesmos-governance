@@ -105,6 +105,19 @@ const TOOL_DEFINITIONS = [
     description: 'Get the project\'s governance context snapshot (.prometheus/context.md). Contains architecture, decisions, and active rules summary.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'debug_finding',
+    description: 'Explain a Prometheus finding in context. Returns verdict (true/false positive), exact fix suggestion, and suppression command. Use when you don\'t understand why a rule fired.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rule_id: { type: 'string', description: 'Rule ID, e.g. "JWT_001"' },
+        file_content: { type: 'string', description: 'Full content of the flagged file' },
+        line: { type: 'number', description: 'Line number of the finding (optional)' },
+      },
+      required: ['rule_id', 'file_content'],
+    },
+  },
 ];
 
 const RESOURCE_DEFINITIONS = [
@@ -207,6 +220,30 @@ function handleLintCommit(root: string, params: { message: string }): { findings
   return { findings, valid: findings.length === 0 };
 }
 
+function handleDebugFinding(
+  root: string,
+  params: { rule_id: string; file_content: string; line?: number },
+): unknown {
+  const config = (() => { try { return loadConfig(root); } catch { return CONFIG_DEFAULTS; } })();
+  const rule = PROMETHEUS_RULES.find((r) => r.id === params.rule_id);
+  if (!rule) {
+    return { error: `Unknown rule: ${params.rule_id}. Use explain_rule to list available rules.` };
+  }
+  const fakeFile = { path: 'debug-target.ts', content: params.file_content };
+  const findings = rule.detect({ scan: makeEmptyScan(), config, changedFiles: [fakeFile] });
+  const isTruePositive = params.line !== undefined
+    ? findings.some((f) => Math.abs((f.line ?? 0) - params.line!) <= 2)
+    : findings.length > 0;
+  return {
+    rule: { id: rule.id, severity: rule.severity, description: rule.description },
+    verdict: isTruePositive ? 'true_positive' : 'likely_false_positive',
+    explanation: rule.explain,
+    findings,
+    fix_suggestion: findings[0]?.suggestion ?? rule.explain?.goodExample ?? 'See rule explanation.',
+    suppress_command: `prometheus suppress --rule=${params.rule_id} --file=<your-file>`,
+  };
+}
+
 function handleGetContext(root: string): unknown {
   const contextPath = join(root, '.prometheus', 'context.md');
   if (!existsSync(contextPath)) {
@@ -296,6 +333,10 @@ function dispatch(root: string, request: JsonRpcRequest): JsonRpcResponse {
           case 'get_context':
             return respond({
               content: [{ type: 'text', text: JSON.stringify(handleGetContext(root), null, 2) }],
+            });
+          case 'debug_finding':
+            return respond({
+              content: [{ type: 'text', text: JSON.stringify(handleDebugFinding(root, toolInput as { rule_id: string; file_content: string; line?: number }), null, 2) }],
             });
           default:
             return error(-32601, `Unknown tool: ${name}`);

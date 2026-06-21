@@ -50,6 +50,8 @@ import { cmdDeps } from './commands/deps.ts';
 import { cmdCompliance } from './commands/compliance.ts';
 import { cmdAiFingerprint } from './commands/ai-fingerprint.ts';
 import { cmdPantheon } from './commands/pantheon.ts';
+import { cmdGithubComment } from './commands/github-comment.ts';
+import { startLspServer } from '../lang-server.ts';
 
 const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   init: cmdInit,
@@ -144,6 +146,8 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'vercel:lint':            (argv) => cmdVercelLint(argv),
   'context:snapshot':       (argv) => cmdContext(['snapshot', ...argv]),
   'context:health':         (argv) => cmdContext(['health', ...argv]),
+  'github:comment':         (argv) => cmdGithubComment(argv),
+  'lsp':                    async () => { startLspServer(); },
 };
 
 const argv = process.argv.slice(2); // ['command', ...flags]
