@@ -1083,4 +1083,319 @@ export const VIBE_CODING_RULES: PrometheusRule[] = [
       return findings;
     },
   },
+
+  {
+    id: 'VIBE_026',
+    category: 'vibe_rate_limiter_not_applied',
+    description: 'Rate limiter imported or created but not applied to any route handler — AI generates middleware it never wires up.',
+    severity: 'BLOCKER',
+    tags: ['security', 'rate-limiting', 'vibe-coding', 'ai-risk'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'This is the most common production security gap in AI-generated code. The AI creates a rate limiter (Upstash, express-rate-limit, etc.) in the file but never calls it inside a handler. The limiter exists but protects nothing.',
+      commonViolations: [
+        'const limiter = rateLimit({ windowMs: 15*60*1000, max: 100 });  // defined but never used in handler',
+        'import { ratelimit } from "@/lib/redis"; — imported but app.use(limiter) never called',
+      ],
+      goodExample: 'const limiter = rateLimit({ windowMs: 15*60*1000, max: 100 });\nexport const POST = [limiter, async (req, res) => { ... }];',
+      badExample: 'const limiter = rateLimit({ max: 100 });\n\nexport async function POST(req) { ... }  // ❌ limiter never applied',
+      relatedPlaybooks: ['rate-limiting.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('vibe_rate_limiter_not_applied', config.severityRules);
+      const findings: Finding[] = [];
+      const LIMITER_INIT_RE = /(?:const|let|var)\s+(?:limiter|rateLimit|rateLimiter|throttler)\s*=\s*(?:rateLimit|Ratelimit|createRateLimiter|new\s+RateLimiter)/i;
+      const LIMITER_USED_RE = /app\.use\s*\(\s*(?:limiter|rateLimiter)|limiter\s*\(|rateLimiter\s*\(|await\s+(?:limiter|rateLimiter|rateLimit)\.|\.check\s*\(/i;
+      for (const { path, content } of changedFiles) {
+        if (!isApiRoute(path) && !isServerFile(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!LIMITER_INIT_RE.test(content)) continue;
+        if (!LIMITER_USED_RE.test(content)) {
+          findings.push({
+            severity: sev, category: 'vibe_rate_limiter_not_applied', file: path,
+            message: 'Rate limiter created but never applied to a route handler — endpoints are unprotected.',
+            suggestion: 'Apply the limiter: await rateLimiter.check(identifier); or add as middleware before the handler.',
+          });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'VIBE_027',
+    category: 'vibe_payment_route_no_rate_limit',
+    description: 'Payment or subscription API route has no rate limiting — financial abuse via rapid repeated requests.',
+    severity: 'BLOCKER',
+    tags: ['security', 'rate-limiting', 'payments', 'vibe-coding', 'ai-risk'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Payment endpoints without rate limiting allow card testing attacks (automated card validation) that cost merchants 20-30 basis points per authorization attempt. Attackers probe thousands of cards per minute against unprotected Stripe/Braintree endpoints.',
+      commonViolations: [
+        'POST /api/checkout with no rate limiter',
+        'POST /api/subscription without per-user or per-IP throttling',
+      ],
+      goodExample: 'await rateLimiter.check(session.userId, { max: 5, window: "1h" });\nawait stripe.paymentIntents.create({ amount, currency });',
+      badExample: 'export async function POST(req) { await stripe.paymentIntents.create(...); }  // ❌ no rate limit',
+      relatedPlaybooks: ['rate-limiting.md', 'payment-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('vibe_payment_route_no_rate_limit', config.severityRules);
+      const findings: Finding[] = [];
+      const PAYMENT_RE = /stripe|braintree|paypal|checkout|subscription|paymentIntent|createPayment/i;
+      const RATE_RE = /rateLimit|rateLimiter|throttle|limiter\.|\.check\s*\(|upstash/i;
+      for (const { path, content } of changedFiles) {
+        if (!isApiRoute(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!PAYMENT_RE.test(content)) continue;
+        if (!RATE_RE.test(content)) {
+          findings.push({
+            severity: sev, category: 'vibe_payment_route_no_rate_limit', file: path,
+            message: 'Payment route without rate limiting — vulnerable to card testing attacks.',
+            suggestion: 'Add strict per-user rate limiting: max 5 attempts per hour per user ID.',
+          });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'VIBE_028',
+    category: 'vibe_global_rate_limit_only',
+    description: 'Rate limit applied globally (all users share one counter) — one user can DoS others by exhausting the shared limit.',
+    severity: 'HIGH',
+    tags: ['security', 'rate-limiting', 'vibe-coding', 'ai-risk'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'A global rate limit (e.g., 1000 requests/minute across all users) means a single high-traffic user or attacker can exhaust the limit and block all other users. Rate limits must be per-user or per-IP.',
+      commonViolations: [
+        'rateLimit({ windowMs: 60000, max: 1000 })  // no keyGenerator — global counter',
+        'Upstash ratelimit with a static key instead of session.userId',
+      ],
+      goodExample: 'await ratelimit.limit(session.userId ?? req.ip);  // per-user key',
+      badExample: 'await ratelimit.limit("global");  // ❌ shared counter',
+      relatedPlaybooks: ['rate-limiting.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('vibe_global_rate_limit_only', config.severityRules);
+      const findings: Finding[] = [];
+      const GLOBAL_KEY_RE = /(?:ratelimit|limiter)\s*\.\s*limit\s*\(\s*['"`](?:global|api|app|default|shared)['"`]\s*\)/i;
+      for (const { path, content } of changedFiles) {
+        if (!isApiRoute(path) && !isServerFile(path)) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (GLOBAL_KEY_RE.test(lines[i]!)) {
+            findings.push({
+              severity: sev, category: 'vibe_global_rate_limit_only', file: path, line: i + 1,
+              message: 'Rate limit using a global/static key — one user can exhaust the limit for everyone.',
+              suggestion: 'Use per-user or per-IP key: ratelimit.limit(session.userId ?? req.ip)',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'VIBE_029',
+    category: 'vibe_file_upload_no_limit',
+    description: 'File upload endpoint has no size or frequency rate limit — storage exhaustion and DoS.',
+    severity: 'HIGH',
+    tags: ['security', 'rate-limiting', 'file-upload', 'vibe-coding', 'ai-risk'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'File upload routes without size limits and frequency throttling can be abused to exhaust storage (S3, disk, database) and cause service degradation. AI tools generate the happy-path upload without any of these guards.',
+      commonViolations: [
+        'await supabase.storage.from("uploads").upload(file) — no file size check',
+        'formData multipart handler with no maxFileSize config',
+      ],
+      goodExample: 'if (file.size > MAX_FILE_SIZE_BYTES) return badRequest("File too large");\nawait rateLimiter.check(userId, { max: 10, window: "1h" });\nawait storage.upload(file);',
+      badExample: 'const { file } = await parseMultipart(req);\nawait s3.putObject({ Key: file.name, Body: file.buffer });  // ❌ no size or rate check',
+      relatedPlaybooks: ['rate-limiting.md', 'file-upload-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('vibe_file_upload_no_limit', config.severityRules);
+      const findings: Finding[] = [];
+      const UPLOAD_RE = /\.upload\s*\(|putObject|writeFile|saveFile|multipart|formData\.(?:get|getAll)/i;
+      const LIMIT_RE = /maxFileSize|MAX_FILE_SIZE|file\.size|rateLimit|rateLimiter|limiter\./i;
+      for (const { path, content } of changedFiles) {
+        if (!isApiRoute(path) && !isServerFile(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!UPLOAD_RE.test(content)) continue;
+        if (!LIMIT_RE.test(content)) {
+          findings.push({
+            severity: sev, category: 'vibe_file_upload_no_limit', file: path,
+            message: 'File upload handler without size limit or rate limiting — storage exhaustion risk.',
+            suggestion: 'Add file size check and per-user upload frequency limit before storing.',
+          });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'VIBE_030',
+    category: 'vibe_llm_route_no_rate_limit',
+    description: 'LLM/AI API call route has no rate limiting — financial exposure from unbounded model usage.',
+    severity: 'HIGH',
+    tags: ['security', 'rate-limiting', 'ai', 'cost', 'vibe-coding', 'ai-risk'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Each LLM API call costs real money. A route that proxies to OpenAI, Anthropic, or Gemini without rate limiting can be abused to exhaust your monthly budget in hours. Vibe-coded AI chat apps almost never include rate limiting on the LLM endpoint.',
+      commonViolations: [
+        'POST /api/chat that calls openai.chat.completions.create() with no rate limit',
+        'POST /api/generate with Anthropic SDK and no per-user throttle',
+      ],
+      goodExample: 'await rateLimiter.check(userId, { max: 20, window: "1h" });\nconst response = await openai.chat.completions.create({ model, messages });',
+      badExample: 'export async function POST(req) { const res = await openai.chat.completions.create(...); }  // ❌ no rate limit',
+      relatedPlaybooks: ['rate-limiting.md', 'ai-cost-controls.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('vibe_llm_route_no_rate_limit', config.severityRules);
+      const findings: Finding[] = [];
+      const LLM_CALL_RE = /openai\.|anthropic\.|genai\.|gemini\.|claude\.|completions\.create|messages\.create|generateContent/i;
+      const RATE_RE = /rateLimit|rateLimiter|limiter\.|throttle|upstash|\.check\s*\(/i;
+      for (const { path, content } of changedFiles) {
+        if (!isApiRoute(path) && !isServerFile(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!LLM_CALL_RE.test(content)) continue;
+        if (!RATE_RE.test(content)) {
+          findings.push({
+            severity: sev, category: 'vibe_llm_route_no_rate_limit', file: path,
+            message: 'LLM API call route without rate limiting — financial exposure from unbounded model usage.',
+            suggestion: 'Add per-user rate limiting before LLM calls: max 20 requests per hour per user.',
+          });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'VIBE_031',
+    category: 'vibe_rate_limit_wrong_status',
+    description: 'Rate limiter returns 200 OK or 403 Forbidden instead of RFC 6585 429 Too Many Requests.',
+    severity: 'MEDIUM',
+    tags: ['security', 'rate-limiting', 'vibe-coding'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'RFC 6585 requires HTTP 429 for rate limit responses. Returning 200 (silently failing) or 403 (wrong semantic) makes rate limiting invisible to callers, breaks retry-after header conventions, and confuses monitoring systems.',
+      commonViolations: [
+        'return res.status(200).json({ error: "Rate limit exceeded" })  // wrong status',
+        'return res.status(403).json({ error: "Too many requests" })  // wrong status',
+      ],
+      goodExample: 'return new Response("Too many requests", { status: 429, headers: { "Retry-After": "60" } });',
+      badExample: 'return res.status(200).json({ error: "Rate limit exceeded" });  // ❌ 200 is not an error',
+      relatedPlaybooks: ['rate-limiting.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('vibe_rate_limit_wrong_status', config.severityRules);
+      const findings: Finding[] = [];
+      const RATE_LIMIT_RESPONSE_RE = /(?:rate.?limit|too.?many.?request|limit.?exceed)/i;
+      const WRONG_STATUS_RE = /status\s*\(\s*(?:200|403)\s*\)/i;
+      for (const { path, content } of changedFiles) {
+        if (!isApiRoute(path) && !isServerFile(path)) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (RATE_LIMIT_RESPONSE_RE.test(lines[i]!) && WRONG_STATUS_RE.test(lines[i]!)) {
+            findings.push({
+              severity: sev, category: 'vibe_rate_limit_wrong_status', file: path, line: i + 1,
+              message: 'Rate limit response using wrong HTTP status code — should be 429.',
+              suggestion: 'Return HTTP 429 with Retry-After header: new Response("", { status: 429, headers: { "Retry-After": "60" } })',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'VIBE_032',
+    category: 'vibe_sms_no_rate_limit',
+    description: 'OTP send or password reset endpoint has no rate limiting — SMS pumping and reset enumeration.',
+    severity: 'HIGH',
+    tags: ['security', 'rate-limiting', 'auth', 'vibe-coding', 'ai-risk'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'SMS OTP endpoints without rate limiting are targets for SMS pumping fraud (attackers trigger thousands of SMS sends, billing the service) and OTP brute-force (iterating 6-digit codes at high speed). Both attacks have caused significant financial and security damage.',
+      commonViolations: [
+        'POST /api/auth/send-otp with no rate limit — SMS pumping risk',
+        'POST /api/auth/reset-password with no attempt counter',
+      ],
+      goodExample: 'await rateLimiter.check(req.ip, { max: 3, window: "15m" });\nawait sms.send({ to: phone, body: `Your code: ${otp}` });',
+      badExample: 'await sms.send({ to: req.body.phone, body: `Your OTP: ${otp}` });  // ❌ no rate limit',
+      relatedPlaybooks: ['rate-limiting.md', 'auth-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('vibe_sms_no_rate_limit', config.severityRules);
+      const findings: Finding[] = [];
+      const SMS_OTP_RE = /(?:sms\.send|twilio|vonage|nexmo|sendOTP|sendSMS|verifyCode|resetPassword)\s*\(/i;
+      const RATE_RE = /rateLimit|rateLimiter|limiter\.|throttle|upstash|\.check\s*\(/i;
+      for (const { path, content } of changedFiles) {
+        if (!isApiRoute(path) && !isServerFile(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!SMS_OTP_RE.test(content)) continue;
+        if (!RATE_RE.test(content)) {
+          findings.push({
+            severity: sev, category: 'vibe_sms_no_rate_limit', file: path,
+            message: 'SMS/OTP send endpoint without rate limiting — SMS pumping fraud and OTP brute-force risk.',
+            suggestion: 'Limit by IP and phone number: max 3 OTP sends per 15 minutes.',
+          });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'VIBE_033',
+    category: 'vibe_websocket_auth_missing',
+    description: 'AI-generated code adds REST auth but skips WebSocket upgrade authentication — universal vibe-coding gap.',
+    severity: 'BLOCKER',
+    tags: ['security', 'websocket', 'auth', 'vibe-coding', 'ai-risk'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Every AI coding agent study confirms the same pattern: the assistant wires up JWT/session auth for REST routes but fails to add authentication on the WebSocket upgrade handler. This leaves a persistent, authenticated-looking connection that any unauthenticated client can open.',
+      commonViolations: [
+        'wss.on("connection", (ws) => { handleMessages(ws); })  // no auth on connection',
+        'App has /api routes with auth + WebSocket server with no auth',
+      ],
+      goodExample: 'server.on("upgrade", async (req, socket, head) => {\n  const token = getTokenFromRequest(req);\n  const session = await verifyToken(token);\n  if (!session) { socket.destroy(); return; }\n  wss.handleUpgrade(req, socket, head, (ws) => { ws.session = session; wss.emit("connection", ws, req); });\n});',
+      badExample: 'wss.on("connection", (ws) => { ws.on("message", handleMessage); });  // ❌ no auth',
+      relatedPlaybooks: ['websocket-security.md', 'auth-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+      const sev = classifySeverity('vibe_websocket_auth_missing', config.severityRules);
+      const findings: Finding[] = [];
+      const WS_SERVER_RE = /new\s+(?:WebSocketServer|WebSocket\.Server)\s*\(/i;
+      const AUTH_RE = /verifyToken|getSession|authenticate|bearer|session\s*\?|jwt\.verify|upgrade.*auth|auth.*upgrade/i;
+      for (const { path, content } of changedFiles) {
+        if (!isServerFile(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!WS_SERVER_RE.test(content)) continue;
+        if (!AUTH_RE.test(content)) {
+          findings.push({
+            severity: sev, category: 'vibe_websocket_auth_missing', file: path,
+            message: 'WebSocket server without authentication on upgrade — unauthenticated connections accepted.',
+            suggestion: 'Authenticate on the upgrade event: check token/session before calling wss.handleUpgrade().',
+          });
+        }
+      }
+      return findings;
+    },
+  },
 ];

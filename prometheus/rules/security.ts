@@ -1398,4 +1398,299 @@ export const SECURITY_RULES: PrometheusRule[] = [
       return findings;
     },
   },
+
+  // ── CORS Hardening Rules ───────────────────────────────────────────────────
+
+  {
+    id: 'SEC_038',
+    category: 'cors_reflected_origin',
+    severity: 'BLOCKER',
+    description: 'CORS origin reflected from request header without allowlist — any origin can make credentialed cross-origin requests.',
+    tags: ['security', 'cors', 'ai-risk', 'vibe-coding'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Setting Access-Control-Allow-Origin to the request\'s Origin header without validation means any website can make credentialed requests to your API, bypassing the same-origin policy entirely. AI tools generate this pattern when trying to make CORS "just work".',
+      commonViolations: [
+        'res.setHeader("Access-Control-Allow-Origin", req.headers.origin)',
+        'response.headers.set("Access-Control-Allow-Origin", request.headers.get("origin"))',
+      ],
+      goodExample: 'const ALLOWED = new Set(["https://app.example.com"]);\nconst origin = req.headers.origin;\nif (ALLOWED.has(origin)) res.setHeader("Access-Control-Allow-Origin", origin);',
+      badExample: 'res.setHeader("Access-Control-Allow-Origin", req.headers.origin);  // ❌ any origin allowed',
+      relatedPlaybooks: ['cors-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('cors_reflected_origin', config.severityRules);
+      const findings: Finding[] = [];
+      const REFLECT_RE = /Access-Control-Allow-Origin['"]\s*,\s*(?:req|request)\s*\.\s*headers\s*(?:\[['"]origin['"]\]|\.get\s*\(\s*['"]origin['"]\)|\.origin)/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (REFLECT_RE.test(lines[i]!)) {
+            findings.push({ severity, category: 'cors_reflected_origin', file: path, line: i + 1, message: 'CORS origin reflected from request header — any origin can make credentialed requests.', suggestion: 'Validate origin against an allowlist: if (ALLOWED_ORIGINS.has(origin)) res.setHeader(...)' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_039',
+    category: 'cors_wildcard_with_credentials',
+    severity: 'BLOCKER',
+    description: 'CORS allows wildcard origin (*) combined with credentials:true — credentials are never sent with wildcard but this signals a misconfiguration.',
+    tags: ['security', 'cors'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Access-Control-Allow-Origin: * combined with Access-Control-Allow-Credentials: true is rejected by browsers, but the intent is dangerous. It signals the developer wants any origin to send credentialed requests — which means they will next change * to reflected origin, creating a BLOCKER vulnerability.',
+      commonViolations: [
+        'cors({ origin: "*", credentials: true })',
+        'Access-Control-Allow-Origin: * + Access-Control-Allow-Credentials: true in headers',
+      ],
+      goodExample: 'cors({ origin: ["https://app.example.com"], credentials: true })',
+      badExample: 'cors({ origin: "*", credentials: true });  // ❌ nonsensical + dangerous intent',
+      relatedPlaybooks: ['cors-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('cors_wildcard_with_credentials', config.severityRules);
+      const findings: Finding[] = [];
+      const WILDCARD_CRED_RE = /cors\s*\(\s*\{[^}]*origin\s*:\s*['"][*]['"][^}]*credentials\s*:\s*true/is;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (WILDCARD_CRED_RE.test(content)) {
+          findings.push({ severity, category: 'cors_wildcard_with_credentials', file: path, message: 'Wildcard CORS origin with credentials:true — misconfiguration that signals intent to allow any origin.', suggestion: 'Specify an explicit origin allowlist instead of wildcard.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_040',
+    category: 'cors_regex_allowlist',
+    severity: 'HIGH',
+    description: 'CORS allowlist uses regex pattern matching instead of exact string comparison — regex bypass risk.',
+    tags: ['security', 'cors'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Regex-based CORS origin matching is fragile. For example, /example.com/.test(origin) passes for "evil-example.com". Even anchored patterns require care. Exact string matching with a Set is the only safe approach.',
+      commonViolations: [
+        'origin: /example\\.com$/.test(req.headers.origin)',
+        'if (req.headers.origin.includes("example.com"))',
+      ],
+      goodExample: 'const ALLOWED = new Set(["https://app.example.com", "https://staging.example.com"]);\nif (ALLOWED.has(origin)) { ... }',
+      badExample: 'if (/example\\.com/.test(origin)) { ... }  // ❌ "evilexample.com" passes',
+      relatedPlaybooks: ['cors-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('cors_regex_allowlist', config.severityRules);
+      const findings: Finding[] = [];
+      const CORS_REGEX_RE = /(?:origin|Access-Control)[^;{]*\/[^/]+\/\.test\s*\(|origin\.includes\s*\(/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (CORS_REGEX_RE.test(lines[i]!)) {
+            findings.push({ severity, category: 'cors_regex_allowlist', file: path, line: i + 1, message: 'CORS origin checked with regex or includes() — use Set.has() for exact matching.', suggestion: 'const ALLOWED = new Set([...]); if (ALLOWED.has(origin)) { ... }' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_041',
+    category: 'cors_null_origin',
+    severity: 'HIGH',
+    description: 'CORS allowlist includes "null" origin — allows requests from file:// and sandboxed iframes.',
+    tags: ['security', 'cors'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Browsers send Origin: null for file:// requests, data: URIs, and sandboxed iframes. Including "null" in the allowlist allows attackers to make credentialed requests from a sandboxed iframe served from an attacker-controlled domain.',
+      commonViolations: [
+        'origin: ["https://app.example.com", "null"]',
+        'if (origin === "null" || ALLOWED.has(origin))',
+      ],
+      goodExample: 'const ALLOWED = new Set(["https://app.example.com"]);  // no "null"',
+      badExample: 'const ALLOWED = new Set(["https://app.example.com", "null"]);  // ❌ null origin bypass',
+      relatedPlaybooks: ['cors-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('cors_null_origin', config.severityRules);
+      const findings: Finding[] = [];
+      const NULL_ORIGIN_RE = /origin\s*(?:===|!==|==)\s*['"]null['"]|['"]null['"]\s*(?:===|!==|==)\s*origin|allowedOrigins.*['"]null['"]|origin:\s*\[[^\]]*['"]null['"]/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (NULL_ORIGIN_RE.test(lines[i]!)) {
+            findings.push({ severity, category: 'cors_null_origin', file: path, line: i + 1, message: '"null" origin in CORS allowlist — allows requests from sandboxed iframes and file:// URIs.', suggestion: 'Remove "null" from your CORS allowlist.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_042',
+    category: 'cors_in_route_handler',
+    severity: 'HIGH',
+    description: 'CORS headers set inside individual route handlers instead of global middleware — inconsistent coverage.',
+    tags: ['security', 'cors'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'When CORS is set per route handler, newly added routes silently have no CORS protection. All routes should receive CORS headers consistently via global middleware. Scattering CORS logic across handlers creates security gaps.',
+      commonViolations: [
+        'export async function GET(req) { res.setHeader("Access-Control-Allow-Origin", "..."); ... }',
+        'CORS headers added in only some handlers but not all',
+      ],
+      goodExample: '// middleware.ts or next.config.js headers() — global, covers all routes',
+      badExample: 'export async function GET(req) { res.setHeader("Access-Control-Allow-Origin", "..."); }  // ❌ per-handler',
+      relatedPlaybooks: ['cors-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('cors_in_route_handler', config.severityRules);
+      const findings: Finding[] = [];
+      const HANDLER_RE = /export\s+(?:async\s+)?function\s+(?:GET|POST|PUT|DELETE|PATCH|OPTIONS)\s*\(/;
+      const CORS_IN_HANDLER_RE = /Access-Control-Allow-Origin/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!HANDLER_RE.test(content)) continue;
+        if (CORS_IN_HANDLER_RE.test(content)) {
+          findings.push({ severity, category: 'cors_in_route_handler', file: path, message: 'CORS headers set inside route handler — move to global middleware for consistent coverage.', suggestion: 'Use global middleware (middleware.ts or next.config headers()) to set CORS headers for all routes.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_043',
+    category: 'cors_long_preflight_cache',
+    severity: 'MEDIUM',
+    description: 'CORS preflight max-age exceeds 1 week — permission changes take days to propagate.',
+    tags: ['security', 'cors'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'A long CORS preflight cache means browsers won\'t re-check permissions for up to max-age seconds. If you need to revoke a permission (e.g., remove an allowed origin), it takes the full cache duration to take effect for clients that already cached the preflight.',
+      commonViolations: [
+        'Access-Control-Max-Age: 86400000  // 1000 days',
+        'cors({ maxAge: 31536000 })  // 1 year',
+      ],
+      goodExample: 'cors({ maxAge: 86400 })  // 1 day maximum',
+      badExample: 'cors({ maxAge: 31536000 })  // ❌ 1 year — revocation takes a year to propagate',
+      relatedPlaybooks: ['cors-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('cors_long_preflight_cache', config.severityRules);
+      const findings: Finding[] = [];
+      const MAX_AGE_RE = /(?:maxAge|Max-Age)\s*[=:]\s*(\d+)/i;
+      const ONE_WEEK = 604800;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) && !path.endsWith('.json')) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const m = MAX_AGE_RE.exec(lines[i]!);
+          if (m && parseInt(m[1]!, 10) > ONE_WEEK) {
+            findings.push({ severity, category: 'cors_long_preflight_cache', file: path, line: i + 1, message: `CORS preflight max-age ${m[1]} exceeds 1 week — permission revocation delayed.`, suggestion: 'Set maxAge to 86400 (1 day) or less.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_044',
+    category: 'ssrf_private_ip_range',
+    severity: 'BLOCKER',
+    description: 'HTTP request to a URL that may resolve to a private IP range — SSRF to internal services.',
+    tags: ['security', 'ssrf'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'SSRF to private IP ranges (10.x, 172.16.x, 192.168.x, 169.254.x) reaches internal services, cloud metadata endpoints (AWS IMDSv1 at 169.254.169.254), and Kubernetes cluster services. Most SSRF validators check the URL string but not the resolved IP.',
+      commonViolations: [
+        'fetch(userUrl) where userUrl could point to 169.254.169.254/latest/meta-data',
+        'HTTP proxy that forwards to URL without blocking private ranges',
+      ],
+      goodExample: 'const parsed = new URL(userUrl);\nconst ip = await dns.resolve4(parsed.hostname);\nif (isPrivateIP(ip)) throw new Error("SSRF: private IP blocked");\nawait fetch(userUrl);',
+      badExample: 'const res = await fetch(req.body.url);  // ❌ no IP range check',
+      relatedPlaybooks: ['ssrf-prevention.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ssrf_private_ip_range', config.severityRules);
+      const findings: Finding[] = [];
+      const SSRF_RE = /(?:fetch|axios\.get|axios\.post|got|request)\s*\(\s*(?:url|href|endpoint|target|src|redirect|body\.|params\.|req\.|input\.)/i;
+      const IP_CHECK_RE = /isPrivateIP|isPrivate|privateRange|169\.254|10\.\d|192\.168|172\.1[6-9]\.|172\.2\d\.|172\.3[01]\./i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!SSRF_RE.test(content)) continue;
+        if (!IP_CHECK_RE.test(content)) {
+          const lines = content.split('\n');
+          for (let i = 0; i < lines.length; i++) {
+            if (SSRF_RE.test(lines[i]!)) {
+              findings.push({ severity, category: 'ssrf_private_ip_range', file: path, line: i + 1, message: 'HTTP request with user-controlled URL and no private IP range check — SSRF to internal services.', suggestion: 'Resolve the hostname and block requests to private IP ranges (10.x, 192.168.x, 169.254.x).' });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'SEC_045',
+    category: 'path_traversal_encoding_bypass',
+    severity: 'BLOCKER',
+    description: 'Path validation uses string comparison without URL-decoding first — encoding bypass (..%2F..%2F).',
+    tags: ['security', 'path-traversal'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Path traversal validators that check for "../" can be bypassed with URL-encoded variants: ..%2F, ..%5C, ..%2f%2f, or double-encoded ..%252F. Always decode the path before validation and use path.resolve() + startsWith() as the definitive check.',
+      commonViolations: [
+        'if (filePath.includes("../")) throw error;  // bypassed with ..%2F',
+        'path.join(basePath, userInput)  // without validating the result stays within basePath',
+      ],
+      goodExample: 'const decoded = decodeURIComponent(userInput);\nconst resolved = path.resolve(BASE_DIR, decoded);\nif (!resolved.startsWith(BASE_DIR + path.sep)) throw new Error("Path traversal denied");',
+      badExample: 'if (filePath.includes("../")) throw error;  // ❌ bypassed with ..%2F',
+      relatedPlaybooks: ['path-traversal.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('path_traversal_encoding_bypass', config.severityRules);
+      const findings: Finding[] = [];
+      const STRING_PATH_CHECK_RE = /(?:filePath|userPath|inputPath|reqPath|path)\s*\.\s*includes\s*\(\s*['"](?:\.\.|\.\.\/|\.\.\\)['"]\s*\)/i;
+      const DECODE_RE = /decodeURIComponent|decodeURI|path\.resolve|path\.normalize/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (!STRING_PATH_CHECK_RE.test(lines[i]!)) continue;
+          const ctx = lines.slice(Math.max(0, i - 3), i + 3).join('\n');
+          if (!DECODE_RE.test(ctx)) {
+            findings.push({ severity, category: 'path_traversal_encoding_bypass', file: path, line: i + 1, message: 'Path traversal check using string match without URL-decode — bypassed by %2F encoding.', suggestion: 'Decode first, then use path.resolve() + startsWith(): const resolved = path.resolve(BASE, decodeURIComponent(input));' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
 ];

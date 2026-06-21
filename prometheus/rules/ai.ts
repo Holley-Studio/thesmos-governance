@@ -951,4 +951,374 @@ export const AI_RULES: PrometheusRule[] = [
       return findings;
     },
   },
+
+  {
+    id: 'AI_028',
+    category: 'ai_output_rendered_as_html',
+    description: 'LLM output rendered directly as HTML without sanitization — XSS via AI response.',
+    severity: 'BLOCKER',
+    tags: ['security', 'ai', 'xss', 'owasp-llm05'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'LLM responses can contain injected `<script>` tags or event handlers either through adversarial prompting or model hallucination. Setting dangerouslySetInnerHTML or innerHTML to raw LLM output enables XSS attacks. OWASP LLM05:2025.',
+      commonViolations: [
+        'dangerouslySetInnerHTML={{ __html: llmResponse }}',
+        'element.innerHTML = aiOutput',
+      ],
+      goodExample: "import DOMPurify from 'dompurify';\ndangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(llmResponse) }}",
+      badExample: '<div dangerouslySetInnerHTML={{ __html: completion.choices[0].message.content }} />',
+      relatedPlaybooks: ['ai-governance.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ai_output_rendered_as_html', config.severityRules);
+      const findings: Finding[] = [];
+      const INNER_HTML_RE = /(?:dangerouslySetInnerHTML\s*=\s*\{\s*\{\s*__html\s*:|\.innerHTML\s*=)/i;
+      const LLM_VAR_RE = /(?:llm|ai|completion|response|output|message|content|generation)/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) && !JSX_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (INNER_HTML_RE.test(line) && LLM_VAR_RE.test(line)) {
+            if (!/DOMPurify|sanitize|sanitizeHtml|xss/.test(content)) {
+              findings.push({ severity, category: 'ai_output_rendered_as_html', file: path, line: i + 1, message: 'LLM output rendered as HTML without sanitization — XSS risk.', suggestion: "Sanitize before rendering: DOMPurify.sanitize(llmOutput)" });
+            }
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'AI_029',
+    category: 'ai_system_prompt_user_concatenation',
+    description: 'System prompt concatenated directly with user input — adversarial prompt can override system instructions.',
+    severity: 'BLOCKER',
+    tags: ['security', 'ai', 'prompt-injection', 'owasp-llm01', 'owasp-llm07'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Concatenating user input into the system prompt string allows users to inject "Ignore previous instructions" or similar overrides. The system prompt should be a hardcoded string; user content must only appear in the user role message. OWASP LLM01 and LLM07:2025.',
+      commonViolations: [
+        'const systemPrompt = `You are a helper. User context: ${req.body.userInput}`;',
+        'messages: [{ role: "system", content: SYSTEM_PROMPT + userMessage }]',
+      ],
+      goodExample: "messages: [\n  { role: 'system', content: STATIC_SYSTEM_PROMPT },\n  { role: 'user', content: userMessage },\n]",
+      badExample: "messages: [{ role: 'system', content: `${SYSTEM_PROMPT} User said: ${userInput}` }]",
+      relatedPlaybooks: ['ai-governance.md', 'prompt-injection.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ai_system_prompt_user_concatenation', config.severityRules);
+      const findings: Finding[] = [];
+      const SYSTEM_CONCAT_RE = /role\s*:\s*['"`]system['"`][^}]*content\s*:\s*[`'"]/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (SYSTEM_CONCAT_RE.test(line) && /\$\{/.test(line)) {
+            findings.push({ severity, category: 'ai_system_prompt_user_concatenation', file: path, line: i + 1, message: 'System prompt interpolates dynamic content — prompt injection vector.', suggestion: 'Keep system prompt static. Place user content only in the user role message.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'AI_030',
+    category: 'ai_output_used_as_command',
+    description: 'LLM output used directly as a shell command or SQL query without validation — command/SQL injection via AI.',
+    severity: 'BLOCKER',
+    tags: ['security', 'ai', 'injection', 'owasp-llm05'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Using raw LLM output in exec(), execSync(), or raw SQL strings creates an injection attack surface. The model can be manipulated to produce malicious commands. OWASP LLM05:2025.',
+      commonViolations: [
+        'exec(llmResponse)',
+        'await db.query(aiGeneratedSql)',
+      ],
+      goodExample: "// Parse structured output, validate against an allowlist, then execute\nconst parsed = CommandSchema.parse(JSON.parse(llmOutput));\nif (!ALLOWED_COMMANDS.includes(parsed.command)) throw new Error('Command not permitted');",
+      badExample: "const cmd = await llm.generate(userPrompt);\nexec(cmd.trim());  // ❌ direct execution",
+      relatedPlaybooks: ['ai-governance.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ai_output_used_as_command', config.severityRules);
+      const findings: Finding[] = [];
+      const EXEC_RE = /\bexec(?:Sync)?\s*\(|child_process|\.query\s*\(\s*(?:llm|ai|output|response|completion|generated)/i;
+      const LLM_EXEC_RE = /exec(?:Sync)?\s*\(\s*(?:llm|ai|output|response|completion|generated|result)/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!LLM_CALL_RE.test(content)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (LLM_EXEC_RE.test(lines[i]!)) {
+            findings.push({ severity, category: 'ai_output_used_as_command', file: path, line: i + 1, message: 'LLM output passed directly to exec() — command injection risk.', suggestion: 'Validate LLM output against a strict allowlist before executing any command.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'AI_031',
+    category: 'ai_training_data_no_sanitization',
+    description: 'Training data pipeline accepts user-contributed content without sanitization — data poisoning risk (OWASP LLM04).',
+    severity: 'HIGH',
+    tags: ['security', 'ai', 'data-poisoning', 'owasp-llm04'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Accepting user content directly into fine-tuning or RLHF datasets without sanitization and provenance checks enables training data poisoning attacks. Poisoned data can cause the model to produce targeted malicious outputs. OWASP LLM04:2025.',
+      commonViolations: [
+        'trainingData.push(userSubmittedExample)',
+        'await writeFile("data/train.jsonl", userContent)',
+      ],
+      goodExample: "const sanitized = await validateAndSanitizeExample(userContent);\nif (!isApproved(sanitized)) throw new Error('Content pending review');\nawait queue.add('training-review', sanitized);",
+      badExample: "fs.appendFileSync('train.jsonl', JSON.stringify({ prompt, completion: req.body.completion }));",
+      relatedPlaybooks: ['ai-governance.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ai_training_data_no_sanitization', config.severityRules);
+      const findings: Finding[] = [];
+      const TRAIN_WRITE_RE = /(?:appendFile|writeFile|push|add)\s*\([^)]*(?:train|finetune|fine.?tune|rlhf|dataset)/i;
+      const SANITIZE_RE = /sanitize|validate|approve|review|DOMPurify/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!TRAIN_WRITE_RE.test(content)) continue;
+        if (!SANITIZE_RE.test(content)) {
+          findings.push({ severity, category: 'ai_training_data_no_sanitization', file: path, message: 'Training data written without sanitization — data poisoning risk (OWASP LLM04).', suggestion: 'Sanitize and require human review before accepting user content into training datasets.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'AI_032',
+    category: 'ai_citation_url_unvalidated',
+    description: 'AI-generated citation URLs displayed to user without validation — hallucinated or malicious link risk (OWASP LLM09).',
+    severity: 'HIGH',
+    tags: ['security', 'ai', 'misinformation', 'owasp-llm09'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'LLMs hallucinate URLs that either do not exist or are hijacked by squatters. Displaying AI-generated URLs without validation exposes users to phishing and misinformation. OWASP LLM09:2025.',
+      commonViolations: [
+        '<a href={llmCitation.url}>Source</a>',
+        'window.open(aiResponse.sourceUrl)',
+      ],
+      goodExample: "const safeUrl = validateAndAllowlistUrl(citation.url);\nif (!safeUrl) return null;\nreturn <a href={safeUrl} rel='noopener noreferrer'>Source</a>;",
+      badExample: "<a href={aiResponse.citations[0].url}>Source</a>  // ❌ URL not validated",
+      relatedPlaybooks: ['ai-governance.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ai_citation_url_unvalidated', config.severityRules);
+      const findings: Finding[] = [];
+      const CITATION_RE = /href\s*=\s*\{[^}]*(?:citation|source|reference|url|link)[^}]*\}/i;
+      const VALIDATE_RE = /validateUrl|allowlist|safeUrl|sanitizeUrl|isValidUrl/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path) && !JSX_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!LLM_CALL_RE.test(content) && !/citation|aiResponse|llmResponse/i.test(content)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (CITATION_RE.test(lines[i]!) && !VALIDATE_RE.test(content)) {
+            findings.push({ severity, category: 'ai_citation_url_unvalidated', file: path, line: i + 1, message: 'AI-generated URL rendered in anchor tag without validation — hallucinated link risk.', suggestion: 'Validate citation URLs against allowed domains before rendering.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'AI_033',
+    category: 'ai_system_prompt_client_exposed',
+    description: 'System prompt stored or transmitted in a client-accessible location — prompt leakage (OWASP LLM07).',
+    severity: 'HIGH',
+    tags: ['security', 'ai', 'owasp-llm07', 'system-prompt'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'System prompts often contain business logic, persona instructions, or capability restrictions. Exposing them in frontend bundles, public env files, or API responses allows users to reverse-engineer and bypass them. OWASP LLM07:2025.',
+      commonViolations: [
+        'const SYSTEM_PROMPT = process.env.NEXT_PUBLIC_SYSTEM_PROMPT',
+        'return res.json({ systemPrompt: SYSTEM_PROMPT, response: llmOutput })',
+      ],
+      goodExample: '// Keep system prompt in server-only env variables (no NEXT_PUBLIC_ prefix)\n// Never include it in API responses',
+      badExample: 'const SYSTEM_PROMPT = process.env.NEXT_PUBLIC_SYSTEM_PROMPT;  // ❌ exposed to browser',
+      relatedPlaybooks: ['ai-governance.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ai_system_prompt_client_exposed', config.severityRules);
+      const findings: Finding[] = [];
+      const PUBLIC_PROMPT_RE = /NEXT_PUBLIC_(?:SYSTEM_PROMPT|AI_PROMPT|LLM_PROMPT|PROMPT)/i;
+      const RESPONSE_PROMPT_RE = /(?:res\.json|return\s+Response\.json)\s*\([^)]*(?:systemPrompt|system_prompt|SYSTEM_PROMPT)/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (PUBLIC_PROMPT_RE.test(line) || RESPONSE_PROMPT_RE.test(line)) {
+            findings.push({ severity, category: 'ai_system_prompt_client_exposed', file: path, line: i + 1, message: 'System prompt accessible on the client — prompt leakage (OWASP LLM07).', suggestion: 'Store system prompt in server-only env vars. Never include it in API responses.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'AI_034',
+    category: 'ai_no_content_filter',
+    description: 'LLM response returned to user without content moderation filter — harmful output risk.',
+    severity: 'HIGH',
+    tags: ['security', 'ai', 'moderation', 'owasp-llm05'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Without content filtering on LLM outputs, the model can be jailbroken to produce harmful, illegal, or brand-damaging content that is delivered directly to users. All public-facing LLM endpoints need a content moderation layer.',
+      commonViolations: [
+        'return res.json({ response: completion.choices[0].message.content })  // no filter',
+      ],
+      goodExample: "const response = completion.choices[0].message.content;\nconst moderation = await openai.moderations.create({ input: response });\nif (moderation.results[0].flagged) return { error: 'Content policy violation' };\nreturn { response };",
+      badExample: "const content = await anthropic.messages.create({ ... });\nreturn NextResponse.json({ message: content.content[0].text });  // ❌ no moderation",
+      relatedPlaybooks: ['ai-governance.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ai_no_content_filter', config.severityRules);
+      const findings: Finding[] = [];
+      const MODERATION_RE = /moderations?\.create|contentFilter|moderateContent|harmful|flagged|toxicity/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!LLM_CALL_RE.test(content)) continue;
+        if (!/public|POST/.test(content)) continue;
+        if (!MODERATION_RE.test(content)) {
+          findings.push({ severity, category: 'ai_no_content_filter', file: path, message: 'Public LLM endpoint without content moderation filter — harmful output risk.', suggestion: 'Run LLM responses through OpenAI Moderations API or equivalent before returning to users.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'AI_035',
+    category: 'ai_generated_code_auto_executed',
+    description: 'AI-generated code snippets executed without human review gate — supply chain and code injection risk.',
+    severity: 'HIGH',
+    tags: ['security', 'ai', 'code-execution', 'owasp-llm05'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Executing AI-generated code without a review step (eval, Function constructor, child_process) enables malicious code execution if the model is manipulated. This is distinct from using AI for suggestions — the risk is automated execution without human sign-off.',
+      commonViolations: [
+        'eval(aiGeneratedCode)',
+        'new Function(llmOutput)()',
+      ],
+      goodExample: "// Show code to user for review first\nsetGeneratedCode(llmOutput);\n// Only execute after explicit user confirmation",
+      badExample: "const code = await generateCode(prompt);\neval(code);  // ❌ auto-execution without review",
+      relatedPlaybooks: ['ai-governance.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ai_generated_code_auto_executed', config.severityRules);
+      const findings: Finding[] = [];
+      const EVAL_RE = /\beval\s*\(|new\s+Function\s*\(/i;
+      const LLM_VAR_RE = /(?:generated|llm|ai|code|output|completion|result)/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!LLM_CALL_RE.test(content)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (EVAL_RE.test(line) && LLM_VAR_RE.test(line)) {
+            findings.push({ severity, category: 'ai_generated_code_auto_executed', file: path, line: i + 1, message: 'AI-generated code auto-executed without review gate — code injection risk.', suggestion: 'Always require explicit human confirmation before executing any AI-generated code.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'AI_036',
+    category: 'ai_hallucination_no_grounding',
+    description: 'LLM used for factual queries without retrieval grounding — misinformation risk (OWASP LLM09).',
+    severity: 'MEDIUM',
+    tags: ['ai', 'misinformation', 'owasp-llm09', 'rag'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Using a base LLM for factual questions without RAG or tool-grounding produces hallucinated answers that users may trust. Medical, legal, and financial applications are especially high-risk. OWASP LLM09:2025.',
+      commonViolations: [
+        'const answer = await llm.complete(`What is the current price of ${ticker}?`)',
+      ],
+      goodExample: "// Use tool or RAG to ground factual queries\nconst price = await stockApi.getPrice(ticker);\nconst answer = await llm.complete(`The current price of ${ticker} is $${price}. Summarize the trend.`);",
+      badExample: "const answer = await openai.complete(`What is the dosage of ${drug}?`);  // ❌ no grounding",
+      relatedPlaybooks: ['ai-governance.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ai_hallucination_no_grounding', config.severityRules);
+      const findings: Finding[] = [];
+      const FACTUAL_RE = /(?:what is|current|latest|today|price of|dosage|law|regulation|medication)/i;
+      const GROUNDING_RE = /\bfetch\s*\(|axios\.|prisma\.|db\.|supabase\.|retrieve|search\s*\(|vectorStore/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!LLM_CALL_RE.test(content)) continue;
+        if (FACTUAL_RE.test(content) && !GROUNDING_RE.test(content)) {
+          findings.push({ severity, category: 'ai_hallucination_no_grounding', file: path, message: 'LLM answering factual queries without retrieval grounding — hallucination risk (OWASP LLM09).', suggestion: 'Ground factual queries with live data from an API or RAG pipeline before prompting the LLM.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'AI_037',
+    category: 'ai_model_not_pinned',
+    description: 'LLM model string not pinned to a specific version — silent behavioral drift on model updates.',
+    severity: 'MEDIUM',
+    tags: ['ai', 'stability', 'governance'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Using model aliases like "gpt-4" or "claude-3-opus" without a version suffix means your application behavior changes silently when the provider updates the underlying model. Always pin to a dated version snapshot for production workloads.',
+      commonViolations: [
+        'model: "gpt-4"',
+        'model: "claude-3-opus"',
+        'model: "gemini-pro"',
+      ],
+      goodExample: 'model: "gpt-4o-2024-11-20"  // pinned snapshot\nmodel: "claude-opus-4-8"  // pinned version',
+      badExample: 'model: "gpt-4"  // ❌ unpinned — behavior changes on OpenAI update',
+      relatedPlaybooks: ['ai-governance.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('ai_model_not_pinned', config.severityRules);
+      const findings: Finding[] = [];
+      const UNPINNED_RE = /model\s*:\s*['"`](?:gpt-4|gpt-3\.5-turbo|claude-3-(?:opus|sonnet|haiku)|gemini-pro|gemini-1\.5-(?:pro|flash))['"`]/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (UNPINNED_RE.test(lines[i]!)) {
+            findings.push({ severity, category: 'ai_model_not_pinned', file: path, line: i + 1, message: 'LLM model not pinned to a version snapshot — silent behavioral drift risk.', suggestion: 'Pin to a dated version: "gpt-4o-2024-11-20", "claude-opus-4-8", etc.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
 ];

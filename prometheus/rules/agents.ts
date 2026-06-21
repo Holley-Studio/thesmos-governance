@@ -469,6 +469,352 @@ const AGNT_012: PrometheusRule = {
   },
 };
 
+// ── Rule: AGNT_013 — no hard token cap ───────────────────────────────────────
+
+const AGNT_013: PrometheusRule = {
+  id: 'AGNT_013',
+  category: 'agent_no_hard_token_cap',
+  severity: 'BLOCKER',
+  description: 'Agent loop uses alert/warn on token usage but has no hard stop — cost runaway if alert is ignored.',
+  tags: ['agent', 'governance', 'tokens', 'cost'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Alert-only token budgets (callbacks that log when 80% is reached) do not stop runaway sessions — the session continues past the threshold. The $47,000 runaway agent incident used monitoring that alerted but never enforced a hard stop.',
+    commonViolations: [
+      'onTokenUsage: (usage) => { if (usage > WARN_AT) console.warn("High usage"); }  // no stop',
+      'tokenBudget with only warnAtPercent — no maxTokensPerSession enforcement that aborts',
+    ],
+    goodExample: 'onTokenUsage: (usage) => {\n  if (usage > MAX_TOKENS) { agent.abort(); throw new Error("Token budget exceeded"); }\n}',
+    badExample: 'onTokenUsage: (usage) => { logger.warn("token usage high:", usage); }  // ❌ no enforcement',
+  },
+  detect(input: DetectInput): Finding[] {
+    const configFile = findFile(input, 'config.json');
+    if (!configFile?.path.includes('.prometheus')) return [];
+    const cfg = parseJson(configFile.content);
+    if (!cfg) return [];
+    const budget = cfg.tokenBudget as Record<string, unknown> | undefined;
+    if (!budget) return [];
+    if (budget.maxTokensPerSession && !budget.warnAtPercent) return []; // has hard cap
+    if (budget.warnAtPercent && !budget.maxTokensPerSession) {
+      return [f('agent_no_hard_token_cap', 'BLOCKER',
+        'tokenBudget has warnAtPercent but no maxTokensPerSession — warnings do not stop runaway sessions.',
+        'Add "maxTokensPerSession" with enforcement: sessions must be aborted when the cap is reached.',
+        '.prometheus/config.json')];
+    }
+    return [];
+  },
+};
+
+// ── Rule: AGNT_014 — no iteration limit ──────────────────────────────────────
+
+const AGNT_014: PrometheusRule = {
+  id: 'AGNT_014',
+  category: 'agent_no_iteration_limit',
+  severity: 'BLOCKER',
+  description: 'Agent autopilot config has no maxIterationsPerTask — tasks can loop indefinitely.',
+  tags: ['agent', 'governance', 'cost', 'safety'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Without a per-task iteration limit, a task that cannot be completed (due to a persistent error or a misunderstood goal) will loop until the session token budget is exhausted or the user notices. Even with a token budget, thousands of iterations can be expensive.',
+    commonViolations: [
+      'autopilot config with no maxIterationsPerTask or maxRetriesPerTask',
+      'Agent task runner with while(true) loop and no iteration counter',
+    ],
+    goodExample: '{"autopilot":{"maxRetriesPerTask":3,"taskTimeoutMinutes":30}}',
+    badExample: '{"autopilot":{"enabled":true}}  // no iteration or retry cap',
+  },
+  detect(input: DetectInput): Finding[] {
+    const configFile = findFile(input, 'config.json');
+    if (!configFile?.path.includes('.prometheus')) return [];
+    const cfg = parseJson(configFile.content);
+    if (!cfg) return [];
+    const autopilot = cfg.autopilot as Record<string, unknown> | undefined;
+    if (!autopilot?.enabled) return [];
+    if (autopilot.maxRetriesPerTask || autopilot.taskTimeoutMinutes) return [];
+    return [f('agent_no_iteration_limit', 'BLOCKER',
+      'Autopilot is enabled but has no maxRetriesPerTask or taskTimeoutMinutes — tasks can loop indefinitely.',
+      'Add: "maxRetriesPerTask": 3, "taskTimeoutMinutes": 30 to the autopilot config.',
+      '.prometheus/config.json')];
+  },
+};
+
+// ── Rule: AGNT_015 — no cost cap ─────────────────────────────────────────────
+
+const AGNT_015: PrometheusRule = {
+  id: 'AGNT_015',
+  category: 'agent_no_cost_cap',
+  severity: 'HIGH',
+  description: 'Autopilot config has no maxCostUSD — no financial ceiling on agent sessions.',
+  tags: ['agent', 'governance', 'cost', 'safety'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Token budgets cap token count, but not dollar cost — token prices vary by model. A hard dollar cap (maxCostUSD) provides a model-agnostic financial circuit breaker. Documented incidents include $47,000 from a single overnight session.',
+    commonViolations: [
+      'autopilot config with maxTokensPerSession but no maxCostUSD',
+      'No financial ceiling in any governance config',
+    ],
+    goodExample: '{"autopilot":{"maxCostUSD":5.00},"tokenBudget":{"maxTokensPerSession":100000}}',
+    badExample: '{"tokenBudget":{"maxTokensPerSession":1000000}}  // tokens only — no $ cap',
+  },
+  detect(input: DetectInput): Finding[] {
+    const configFile = findFile(input, 'config.json');
+    if (!configFile?.path.includes('.prometheus')) return [];
+    const cfg = parseJson(configFile.content);
+    if (!cfg) return [];
+    const autopilot = cfg.autopilot as Record<string, unknown> | undefined;
+    if (!autopilot?.enabled) return [];
+    if (autopilot.maxCostUSD) return [];
+    return [f('agent_no_cost_cap', 'HIGH',
+      'Autopilot enabled but no maxCostUSD configured — no financial ceiling on agent sessions.',
+      'Add: "maxCostUSD": 5.00 to the autopilot config to cap spending per session.',
+      '.prometheus/config.json')];
+  },
+};
+
+// ── Rule: AGNT_016 — no abort controller in agent tool chains ────────────────
+
+const AGNT_016: PrometheusRule = {
+  id: 'AGNT_016',
+  category: 'agent_no_abort_controller',
+  severity: 'HIGH',
+  description: 'Agent tool chain has no AbortController — long-running tool calls cannot be cancelled.',
+  tags: ['agent', 'governance', 'cost', 'safety'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Without AbortController, a tool call that hangs (e.g., waiting for a slow external API) blocks the entire agent loop indefinitely. The agent continues consuming tokens waiting for the response, and the tool call cannot be externally cancelled.',
+    commonViolations: [
+      'await callTool(name, args)  // no timeout or abort signal',
+      'fetch(url)  // inside agent loop with no signal',
+    ],
+    goodExample: 'const controller = new AbortController();\nconst timeoutId = setTimeout(() => controller.abort(), TOOL_TIMEOUT_MS);\ntry { await callTool(name, args, { signal: controller.signal }); } finally { clearTimeout(timeoutId); }',
+    badExample: 'const result = await callTool(name, args);  // ❌ no cancellation path',
+  },
+  detect(input: DetectInput): Finding[] {
+    const AGENT_LOOP_FILES = ['agent.ts', 'agent.js', 'autopilot.ts', 'runner.ts', 'executor.ts'];
+    const relevantFiles = (input.changedFiles ?? []).filter(
+      (f) => AGENT_LOOP_FILES.some((n) => f.path.endsWith(n)) || /agent.loop|runAgent|executeTask/.test(f.content),
+    );
+    const findings: Finding[] = [];
+    for (const file of relevantFiles) {
+      if (file.content.includes('AbortController')) continue;
+      if (!/callTool|executeTool|runTool/.test(file.content)) continue;
+      findings.push(f('agent_no_abort_controller', 'HIGH',
+        'Agent tool chain has no AbortController — tool calls cannot be cancelled on timeout.',
+        'Wrap tool calls with AbortController and setTimeout to enforce a per-call deadline.',
+        file.path));
+    }
+    return findings;
+  },
+};
+
+// ── Rule: AGNT_017 — no human approval gate for high-cost actions ────────────
+
+const AGNT_017: PrometheusRule = {
+  id: 'AGNT_017',
+  category: 'agent_no_human_approval_gate',
+  severity: 'HIGH',
+  description: 'Agent can perform destructive or high-cost operations without human-in-the-loop approval.',
+  tags: ['agent', 'governance', 'safety', 'human-in-loop'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Irreversible agent actions (data deletion, large API calls, file overwrites, external service mutations) should require human confirmation above a configurable risk threshold. Autonomous agents that skip this gate can cause unrecoverable damage.',
+    commonViolations: [
+      'Agent that calls DELETE endpoints without human approval in the loop',
+      'Autopilot that writes files and commits without a review gate',
+    ],
+    goodExample: '{"autopilot":{"requireApprovalFor":["delete","drop","truncate","push","deploy"]}}',
+    badExample: '{"autopilot":{"enabled":true,"mode":"auto"}}  // ❌ no approval gates',
+  },
+  detect(input: DetectInput): Finding[] {
+    const configFile = findFile(input, 'config.json');
+    if (!configFile?.path.includes('.prometheus')) return [];
+    const cfg = parseJson(configFile.content);
+    if (!cfg) return [];
+    const autopilot = cfg.autopilot as Record<string, unknown> | undefined;
+    if (!autopilot?.enabled) return [];
+    const hasGate =
+      autopilot.requireApprovalFor ||
+      autopilot.humanApproval ||
+      autopilot.gates ||
+      autopilot.approvalRequired;
+    if (hasGate) return [];
+    return [f('agent_no_human_approval_gate', 'HIGH',
+      'Autopilot enabled with no human approval gate for destructive/high-cost operations.',
+      'Add: "requireApprovalFor": ["delete", "push", "deploy"] to the autopilot config.',
+      '.prometheus/config.json')];
+  },
+};
+
+// ── Rule: AGNT_018 — agent can spawn sub-agents without budget inheritance ───
+
+const AGNT_018: PrometheusRule = {
+  id: 'AGNT_018',
+  category: 'agent_sub_agent_budget_not_inherited',
+  severity: 'MEDIUM',
+  description: 'Sub-agent spawn config does not propagate the parent\'s token/cost budget.',
+  tags: ['agent', 'governance', 'cost', 'sub-agents'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'When a parent agent spawns sub-agents, each sub-agent starts with a fresh (uncapped) budget unless explicitly configured to inherit or share the parent\'s remaining budget. This allows total spend to multiply by the number of sub-agents spawned.',
+    commonViolations: [
+      'Agent(prompt) called without passing remainingBudget from parent context',
+      'Sub-agent spawn with no cost or token ceiling inherited from parent',
+    ],
+    goodExample: 'Agent({ prompt, maxCostUSD: parentBudget.remaining * 0.5 })  // child gets half remaining',
+    badExample: 'Agent({ prompt })  // ❌ fresh uncapped budget for sub-agent',
+  },
+  detect(input: DetectInput): Finding[] {
+    const claudeMd = findFile(input, 'CLAUDE.md');
+    if (!claudeMd) return [];
+    const content = claudeMd.content.toLowerCase();
+    const spawnsAgents = content.includes('agent tool') || content.includes('spawn') || content.includes('sub-agent') || content.includes('subagent');
+    if (!spawnsAgents) return [];
+    const hasBudgetPolicy = content.includes('budget') && (content.includes('inherit') || content.includes('remaining') || content.includes('sub-agent') && content.includes('cost'));
+    if (hasBudgetPolicy) return [];
+    return [f('agent_sub_agent_budget_not_inherited', 'MEDIUM',
+      'CLAUDE.md allows agent spawning but has no policy on budget inheritance for sub-agents.',
+      'Add a budget inheritance rule: sub-agents must receive a fraction of the parent\'s remaining cost budget.',
+      'CLAUDE.md')];
+  },
+};
+
+// ── Rule: AGNT_019 — no circuit breaker on repeated tool failures ─────────────
+
+const AGNT_019: PrometheusRule = {
+  id: 'AGNT_019',
+  category: 'agent_no_failure_circuit_breaker',
+  severity: 'MEDIUM',
+  description: 'Agent loop retries failed tool calls without a consecutive failure circuit breaker.',
+  tags: ['agent', 'governance', 'cost', 'reliability'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'When a tool fails repeatedly (API down, bad parameters), a naive retry loop will retry forever, burning tokens on each LLM call that decides to retry. A consecutive failure circuit breaker stops the agent after N failures and escalates to the user.',
+    commonViolations: [
+      'Retry logic that catches errors and always calls the tool again',
+      'No consecutiveFailures counter or MAX_CONSECUTIVE_FAILURES constant in agent loop',
+    ],
+    goodExample: 'if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {\n  throw new Error(`Circuit breaker: ${MAX_CONSECUTIVE_FAILURES} consecutive tool failures`);\n}',
+    badExample: 'catch (err) { logger.error(err); continue; }  // ❌ always retries',
+  },
+  detect(input: DetectInput): Finding[] {
+    const configFile = findFile(input, 'config.json');
+    if (!configFile?.path.includes('.prometheus')) return [];
+    const cfg = parseJson(configFile.content);
+    if (!cfg) return [];
+    const autopilot = cfg.autopilot as Record<string, unknown> | undefined;
+    if (!autopilot?.enabled) return [];
+    const hasBreaker =
+      autopilot.maxConsecutiveFailures ||
+      autopilot.circuitBreaker ||
+      autopilot.stopOnError;
+    if (hasBreaker) return [];
+    return [f('agent_no_failure_circuit_breaker', 'MEDIUM',
+      'Autopilot has no consecutive failure circuit breaker — retry storm on repeated tool failures.',
+      'Add: "maxConsecutiveFailures": 3 to halt the agent after repeated errors.',
+      '.prometheus/config.json')];
+  },
+};
+
+// ── Rule: AGNT_020 — no cost metric export ───────────────────────────────────
+
+const AGNT_020: PrometheusRule = {
+  id: 'AGNT_020',
+  category: 'agent_no_cost_metrics',
+  severity: 'MEDIUM',
+  description: 'No cost/token metric export configured — agent spend is invisible to monitoring.',
+  tags: ['agent', 'governance', 'observability', 'cost'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Without exporting cost and token usage metrics to a monitoring system, there is no way to detect runaway spending before it becomes catastrophic. Metrics should be emitted per session and per task to enable alerting.',
+    commonViolations: [
+      '.prometheus/config.json with no metrics or observability section',
+      'Agent framework with no token usage callback or cost tracking',
+    ],
+    goodExample: '{"metrics":{"enabled":true,"exportTo":"datadog","costAlertThresholdUSD":10}}',
+    badExample: '{}  // no metrics — spend is invisible',
+  },
+  detect(input: DetectInput): Finding[] {
+    const configFile = findFile(input, 'config.json');
+    if (!configFile?.path.includes('.prometheus')) return [];
+    const cfg = parseJson(configFile.content);
+    if (!cfg) return [];
+    const autopilot = cfg.autopilot as Record<string, unknown> | undefined;
+    if (!autopilot?.enabled) return [];
+    const hasMetrics = cfg.metrics || cfg.observability || cfg.telemetry;
+    if (hasMetrics) return [];
+    return [f('agent_no_cost_metrics', 'MEDIUM',
+      'Autopilot enabled but no metrics/observability configured — agent spend is invisible.',
+      'Add a "metrics" section to track token and cost usage per session.',
+      '.prometheus/config.json')];
+  },
+};
+
+// ── Rule: AGNT_021 — no daily spend cap ──────────────────────────────────────
+
+const AGNT_021: PrometheusRule = {
+  id: 'AGNT_021',
+  category: 'agent_no_daily_spend_cap',
+  severity: 'MEDIUM',
+  description: 'No daily or weekly spend cap configured — multiple session overruns can compound costs.',
+  tags: ['agent', 'governance', 'cost'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Per-session caps stop a single runaway session, but multiple sessions each at the cap can still produce unacceptable daily spend. A daily/weekly aggregate cap provides a second layer of financial protection.',
+    commonViolations: [
+      'maxCostUSD per session but no dailyBudgetUSD or weeklyBudgetUSD',
+    ],
+    goodExample: '{"autopilot":{"maxCostUSD":5,"dailyBudgetUSD":20,"weeklyBudgetUSD":50}}',
+    badExample: '{"autopilot":{"maxCostUSD":5}}  // per-session only — 100 sessions = $500',
+  },
+  detect(input: DetectInput): Finding[] {
+    const configFile = findFile(input, 'config.json');
+    if (!configFile?.path.includes('.prometheus')) return [];
+    const cfg = parseJson(configFile.content);
+    if (!cfg) return [];
+    const autopilot = cfg.autopilot as Record<string, unknown> | undefined;
+    if (!autopilot?.enabled) return [];
+    if (!autopilot.maxCostUSD) return []; // AGNT_015 covers this case
+    const hasDailyCap = autopilot.dailyBudgetUSD || autopilot.weeklyBudgetUSD || autopilot.monthlyBudgetUSD;
+    if (hasDailyCap) return [];
+    return [f('agent_no_daily_spend_cap', 'MEDIUM',
+      'Only per-session cost cap configured — no daily or weekly aggregate spending limit.',
+      'Add "dailyBudgetUSD" or "weeklyBudgetUSD" for aggregate cost protection.',
+      '.prometheus/config.json')];
+  },
+};
+
+// ── Rule: AGNT_022 — no require plugged in ────────────────────────────────────
+
+const AGNT_022: PrometheusRule = {
+  id: 'AGNT_022',
+  category: 'agent_battery_runaway_risk',
+  severity: 'LOW',
+  description: 'Autopilot can run when the machine is on battery — risks unintended overnight runs.',
+  tags: ['agent', 'governance', 'cost', 'safety'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Long autonomous sessions started on a laptop on battery will continue until the machine suspends or the battery dies. Requiring the machine to be plugged in prevents accidental overnight runs that drain the battery and accumulate unexpected costs.',
+    commonViolations: [
+      'autopilot config without requirePluggedIn: true',
+    ],
+    goodExample: '{"autopilot":{"requirePluggedIn":true}}',
+    badExample: '{"autopilot":{"enabled":true}}  // runs on battery — overnight risk',
+  },
+  detect(input: DetectInput): Finding[] {
+    const configFile = findFile(input, 'config.json');
+    if (!configFile?.path.includes('.prometheus')) return [];
+    const cfg = parseJson(configFile.content);
+    if (!cfg) return [];
+    const autopilot = cfg.autopilot as Record<string, unknown> | undefined;
+    if (!autopilot?.enabled) return [];
+    if (autopilot.requirePluggedIn === true) return [];
+    return [f('agent_battery_runaway_risk', 'LOW',
+      'Autopilot does not require machine to be plugged in — overnight battery drain and cost risk.',
+      'Add: "requirePluggedIn": true to the autopilot config.',
+      '.prometheus/config.json')];
+  },
+};
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 export const AGENT_RULES: PrometheusRule[] = [
@@ -484,4 +830,14 @@ export const AGENT_RULES: PrometheusRule[] = [
   AGNT_010,
   AGNT_011,
   AGNT_012,
+  AGNT_013,
+  AGNT_014,
+  AGNT_015,
+  AGNT_016,
+  AGNT_017,
+  AGNT_018,
+  AGNT_019,
+  AGNT_020,
+  AGNT_021,
+  AGNT_022,
 ];

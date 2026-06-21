@@ -60,6 +60,11 @@ import { AGENT_RULES } from './agents';
 import { DEP_RULES } from './deps';
 import { LICENSE_RULES } from './license';
 import { GDPR_RULES } from './gdpr';
+import { MCP_RULES } from './mcp';
+import { RAG_RULES } from './rag';
+import { WEBSOCKET_RULES } from './websocket';
+import { PROTOTYPE_RULES } from './prototype';
+import { JWT_AUTH_RULES } from './jwt';
 
 // ── Local helpers (used inside detect() methods) ──────────────────────────────
 
@@ -656,4 +661,10 @@ export const PROMETHEUS_RULES: PrometheusRule[] = [
   ...LICENSE_RULES,
   // ── GDPR Compliance ───────────────────────────────────────────────────────────
   ...GDPR_RULES,
+  // ── AI-era attack surfaces (v2.1.0) ──────────────────────────────────────────
+  ...MCP_RULES,
+  ...RAG_RULES,
+  ...WEBSOCKET_RULES,
+  ...PROTOTYPE_RULES,
+  ...JWT_AUTH_RULES,
 ];

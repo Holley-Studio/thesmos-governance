@@ -1072,4 +1072,277 @@ export const DATABASE_RULES: PrometheusRule[] = [
       return findings;
     },
   },
+
+  {
+    id: 'DB_024',
+    category: 'db_balance_update_no_transaction',
+    description: 'Balance or inventory updated outside a transaction — concurrent requests can produce incorrect totals (TOCTOU).',
+    severity: 'BLOCKER',
+    tags: ['database', 'race-condition', 'concurrency', 'transactions'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Read-then-write patterns on numeric fields (balances, inventory counts, seat counts) without a transaction or atomic increment are vulnerable to TOCTOU (Time Of Check, Time Of Use) race conditions. Two concurrent requests both read the same value and both write a new value, losing one update.',
+      commonViolations: [
+        'const user = await prisma.user.findFirst(...);\nawait prisma.user.update({ data: { balance: user.balance - amount } });',
+      ],
+      goodExample: 'await prisma.user.update({ where: { id, balance: { gte: amount } }, data: { balance: { decrement: amount } } });',
+      badExample: 'const u = await prisma.user.findUnique({ where: { id } });\nawait prisma.user.update({ data: { balance: u.balance - amount } });  // ❌ race',
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('db_balance_update_no_transaction', config.severityRules);
+      const findings: Finding[] = [];
+      const FIND_RE = /await\s+\w+\.(?:findFirst|findUnique|findOne)\s*\(/i;
+      const BALANCE_UPDATE_RE = /\.balance\s*[+-]\s*|\.credits?\s*[+-]\s*|\.inventory\s*[+-]\s*|\.quantity\s*[+-]\s*/i;
+      const ATOMIC_RE = /\$transaction|decrement|increment|atomic|\bselectForUpdate\b/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!FIND_RE.test(content)) continue;
+        if (!BALANCE_UPDATE_RE.test(content)) continue;
+        if (!ATOMIC_RE.test(content)) {
+          findings.push({ severity, category: 'db_balance_update_no_transaction', file: path, message: 'Balance/inventory updated via read-then-write outside a transaction — race condition risk.', suggestion: 'Use atomic increment/decrement: prisma.user.update({ data: { balance: { decrement: amount } } })' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_025',
+    category: 'db_find_then_update_toctou',
+    description: '`findFirst` + `update` pattern without `$transaction` — classic TOCTOU race condition.',
+    severity: 'HIGH',
+    tags: ['database', 'race-condition', 'concurrency', 'prisma'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'The pattern `const x = await prisma.model.findFirst(...)` followed by `await prisma.model.update(...)` in the same function is a classic TOCTOU race. Between the read and the write, another request can modify the row, corrupting data. Must use $transaction with select-for-update or an upsert.',
+      commonViolations: [
+        'const existing = await prisma.order.findFirst(...);\nif (existing.status === "PENDING") { await prisma.order.update(...) }',
+      ],
+      goodExample: "await prisma.$transaction(async (tx) => {\n  const existing = await tx.order.findFirst({ where: { id }, select: { id: true, status: true } });\n  if (existing?.status !== 'PENDING') throw new Error('Not pending');\n  return tx.order.update({ where: { id }, data: { status: 'PROCESSING' } });\n});",
+      badExample: "const order = await prisma.order.findFirst({ where: { id } });\nif (order?.status === 'PENDING') {\n  await prisma.order.update({ data: { status: 'PROCESSING' } });  // ❌ TOCTOU\n}",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('db_find_then_update_toctou', config.severityRules);
+      const findings: Finding[] = [];
+      const FIND_THEN_UPDATE_RE = /await\s+\w+\.findFirst[\s\S]{1,400}?await\s+\w+\.update\s*\(/;
+      const TRANSACTION_RE = /\$transaction|tx\./i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (FIND_THEN_UPDATE_RE.test(content) && !TRANSACTION_RE.test(content)) {
+          findings.push({ severity, category: 'db_find_then_update_toctou', file: path, message: 'findFirst + update outside a transaction — TOCTOU race condition.', suggestion: 'Wrap both operations in prisma.$transaction() to prevent concurrent state corruption.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_026',
+    category: 'db_concurrent_upsert_no_unique',
+    description: 'Concurrent `upsert` calls can create duplicate records if no unique constraint exists on the target field.',
+    severity: 'HIGH',
+    tags: ['database', 'race-condition', 'concurrency', 'prisma'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Prisma upsert uses a where + create + update pattern. Without a database-level unique constraint, two concurrent requests can both evaluate "not found" and both execute the create, resulting in duplicate rows. The unique constraint is the actual safety mechanism.',
+      commonViolations: [
+        'await prisma.profile.upsert({ where: { userId }, create: { ... }, update: { ... } })  // without @unique on userId',
+      ],
+      goodExample: '// Ensure unique constraint in schema:\n// userId String @unique\n// Then upsert is safe under concurrency',
+      badExample: '// schema.prisma: userId String  (no @unique)\n// code: await prisma.profile.upsert({ where: { userId } ... })  // ❌ duplicate risk',
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('db_concurrent_upsert_no_unique', config.severityRules);
+      const findings: Finding[] = [];
+      const UPSERT_RE = /await\s+\w+\.upsert\s*\(/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (UPSERT_RE.test(lines[i]!)) {
+            findings.push({ severity, category: 'db_concurrent_upsert_no_unique', file: path, line: i + 1, message: 'Upsert without verified unique constraint — concurrent calls may create duplicate records.', suggestion: 'Ensure the where field has a @unique constraint in the Prisma schema to make upsert safe under concurrency.' });
+            break;
+          }
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_027',
+    category: 'db_missing_idempotency_key',
+    description: 'Mutating API route has no idempotency key — double-submit creates duplicate records.',
+    severity: 'HIGH',
+    tags: ['database', 'race-condition', 'idempotency', 'api'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Network retries, double-clicks, and load balancer timeouts can cause duplicate POST requests. Without an idempotency key, payment routes and order creation endpoints create duplicate records. Stripe, Braintree, and AWS all require idempotency keys for this reason.',
+      commonViolations: [
+        'await prisma.order.create({ data: orderData })  // on POST /checkout — no idempotency',
+      ],
+      goodExample: "const idempotencyKey = req.headers['idempotency-key'];\nif (!idempotencyKey) return res.status(400).json({ error: 'Idempotency-Key header required' });\nconst existing = await prisma.idempotencyRecord.findUnique({ where: { key: idempotencyKey } });\nif (existing) return res.json(existing.response);",
+      badExample: "export async function POST(req) {\n  const order = await prisma.order.create({ data: await req.json() });\n  return NextResponse.json(order);  // ❌ no idempotency\n}",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('db_missing_idempotency_key', config.severityRules);
+      const findings: Finding[] = [];
+      const CREATE_RE = /await\s+\w+\.(?:order|payment|invoice|transaction|subscription)\.create\s*\(/i;
+      const IDEMPOTENCY_RE = /idempotency.?key|idempotencyKey|Idempotency-Key/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!CREATE_RE.test(content)) continue;
+        if (!IDEMPOTENCY_RE.test(content)) {
+          findings.push({ severity, category: 'db_missing_idempotency_key', file: path, message: 'Order/payment creation without idempotency key — double-submit creates duplicate records.', suggestion: 'Require Idempotency-Key header and cache responses to prevent duplicate operations.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_028',
+    category: 'db_abort_controller_missing',
+    description: 'Sequential async fetch chain without AbortController — stale responses from cancelled requests corrupt state.',
+    severity: 'MEDIUM',
+    tags: ['database', 'race-condition', 'concurrency', 'frontend'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'When a user triggers multiple sequential requests (e.g., typing in a search box), earlier requests can resolve after later ones. Without AbortController, the stale earlier response overwrites the correct later one — a classic React race condition documented extensively.',
+      commonViolations: [
+        'useEffect(() => { fetch(url).then(setData); }, [query])',
+      ],
+      goodExample: "useEffect(() => {\n  const controller = new AbortController();\n  fetch(url, { signal: controller.signal }).then(r => r.json()).then(setData).catch(() => {});\n  return () => controller.abort();\n}, [query]);",
+      badExample: "useEffect(() => {\n  fetch(`/api/search?q=${query}`).then(r => r.json()).then(setResults);\n}, [query]);  // ❌ stale closure race",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('db_abort_controller_missing', config.severityRules);
+      const findings: Finding[] = [];
+      const USE_EFFECT_FETCH_RE = /useEffect\s*\(\s*(?:\(\s*\)|async\s*\(\s*\)|async\s+\(\s*\))\s*=>\s*\{[\s\S]{0,200}?\bfetch\s*\(/;
+      const ABORT_RE = /AbortController|\.abort\s*\(\)|signal\s*:/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (USE_EFFECT_FETCH_RE.test(content) && !ABORT_RE.test(content)) {
+          findings.push({ severity, category: 'db_abort_controller_missing', file: path, message: 'useEffect with fetch has no AbortController — stale response race condition.', suggestion: 'Add AbortController and return cleanup: const c = new AbortController(); ... return () => c.abort();' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_029',
+    category: 'db_sequential_await_in_loop',
+    description: 'Sequential `await` in a loop instead of `Promise.all` — unnecessary serialization and potential race-free alternative.',
+    severity: 'MEDIUM',
+    tags: ['database', 'performance', 'concurrency'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'AI-generated code commonly uses `for...of` with `await` inside, making independent database operations run serially. This is 5-10× slower than Promise.all for independent queries and signals the developer may have missed concurrency implications entirely.',
+      commonViolations: [
+        'for (const id of ids) { await prisma.user.findUnique({ where: { id } }); }',
+      ],
+      goodExample: 'const results = await Promise.all(ids.map(id => prisma.user.findUnique({ where: { id } })));',
+      badExample: 'for (const id of userIds) {\n  const user = await prisma.user.findUnique({ where: { id } });\n  users.push(user);  // ❌ serial — use Promise.all\n}',
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('db_sequential_await_in_loop', config.severityRules);
+      const findings: Finding[] = [];
+      const FOR_OF_RE = /for\s*\(\s*(?:const|let|var)\s+\w+\s+of\s+\w+/;
+      const AWAIT_IN_LOOP_RE = /for\s*\((?:const|let|var)\s+\w+\s+of[\s\S]{0,300}?\bawait\s+\w+\.\w+\s*\(/;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (FOR_OF_RE.test(content) && AWAIT_IN_LOOP_RE.test(content)) {
+          findings.push({ severity, category: 'db_sequential_await_in_loop', file: path, message: 'Sequential await in for-of loop — use Promise.all for independent async operations.', suggestion: 'Replace with: const results = await Promise.all(items.map(item => asyncOp(item)));' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_030',
+    category: 'db_ticket_reservation_no_lock',
+    description: 'Ticket, seat, or appointment reservation without pessimistic lock — overselling under concurrent requests.',
+    severity: 'HIGH',
+    tags: ['database', 'race-condition', 'concurrency', 'inventory'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Reservation systems (tickets, seats, appointments, limited inventory) require either a SELECT FOR UPDATE pessimistic lock or an optimistic lock with version field. Without this, two concurrent users can both "claim" the last available slot. This is the classic overselling bug.',
+      commonViolations: [
+        'const seat = await prisma.seat.findFirst({ where: { available: true } });\nawait prisma.seat.update({ where: { id: seat.id }, data: { available: false } });',
+      ],
+      goodExample: "await prisma.$transaction(async (tx) => {\n  const seat = await tx.$queryRaw`SELECT * FROM seats WHERE available = true LIMIT 1 FOR UPDATE`;\n  if (!seat[0]) throw new Error('No seats available');\n  await tx.seat.update({ where: { id: seat[0].id }, data: { available: false, userId } });\n});",
+      badExample: "const seat = await prisma.seat.findFirst({ where: { available: true } });\nif (seat) {\n  await prisma.seat.update({ data: { available: false } });  // ❌ oversell race\n}",
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('db_ticket_reservation_no_lock', config.severityRules);
+      const findings: Finding[] = [];
+      const RESERVATION_RE = /(?:seat|ticket|slot|appointment|booking|reservation).*available/i;
+      const LOCK_RE = /FOR\s+UPDATE|SELECT_FOR_UPDATE|pessimistic|optimistic|version.*increment|\$queryRaw/i;
+      const TRANSACTION_RE = /\$transaction/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!RESERVATION_RE.test(content)) continue;
+        if (!LOCK_RE.test(content) && !TRANSACTION_RE.test(content)) {
+          findings.push({ severity, category: 'db_ticket_reservation_no_lock', file: path, message: 'Ticket/seat reservation without SELECT FOR UPDATE lock — overselling under concurrency.', suggestion: 'Use $transaction with SELECT FOR UPDATE or optimistic locking (version field) to prevent overselling.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'DB_031',
+    category: 'db_shared_state_no_atomicity',
+    description: 'Event handler or callback updates shared mutable state without atomicity — lost update under concurrent execution.',
+    severity: 'MEDIUM',
+    tags: ['database', 'race-condition', 'concurrency', 'state'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'In Node.js, shared in-memory state (counters, caches, queues) mutated in async event handlers is subject to interleaving. Although Node.js is single-threaded, `await` yields execution and allows another handler to run concurrently, corrupting shared state.',
+      commonViolations: [
+        'let count = 0;\napp.post("/vote", async (req, res) => { count += 1; await db.save(count); });',
+      ],
+      goodExample: 'await db.collection.updateOne({ _id }, { $inc: { count: 1 } });  // atomic at DB level',
+      badExample: 'let counter = 0;\nwebhook.on("event", async () => {\n  counter += 1;  // ❌ not atomic across concurrent async handlers\n  await save(counter);\n});',
+      relatedPlaybooks: ['database-migrations.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('db_shared_state_no_atomicity', config.severityRules);
+      const findings: Finding[] = [];
+      const SHARED_COUNTER_RE = /(?:let|var)\s+(?:count|counter|total|sum|hits)\s*=\s*0/i;
+      const ASYNC_MUTATION_RE = /async\s+(?:function|\(|(?:req|ctx|event)\s*[,)])[^{]*\{[\s\S]{0,200}?\bcount(?:er|s|)\s*\+=/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (SHARED_COUNTER_RE.test(content) && ASYNC_MUTATION_RE.test(content)) {
+          findings.push({ severity, category: 'db_shared_state_no_atomicity', file: path, message: 'Shared mutable counter incremented inside async handler — lost update under concurrency.', suggestion: 'Use atomic database operations ($inc, SERIAL, or transactions) instead of in-memory shared state.' });
+        }
+      }
+      return findings;
+    },
+  },
 ];

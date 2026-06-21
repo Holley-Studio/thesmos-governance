@@ -1254,4 +1254,351 @@ export const NEXTJS_RULES: PrometheusRule[] = [
       return findings;
     },
   },
+
+  {
+    id: 'NEXT_038',
+    category: 'next_middleware_only_auth',
+    description: 'Authentication enforced only in Next.js middleware — bypassable via x-middleware-subrequest header (CVE-2025-29927, CVSS 9.1).',
+    severity: 'BLOCKER',
+    tags: ['nextjs', 'security', 'auth', 'cve', 'ai-risk'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'CVE-2025-29927 (CVSS 9.1): The x-middleware-subrequest header allows requests to skip Next.js middleware entirely. Any authentication logic placed only in middleware can be bypassed by sending this header. Auth must be enforced in the route handler itself.',
+      commonViolations: [
+        'middleware.ts that redirects to /login if !session — but route handlers have no auth check',
+        'Relying solely on matcher config in middleware for auth protection',
+      ],
+      goodExample: '// route handler ALSO checks auth:\nexport async function GET() {\n  const session = await getServerSession();\n  if (!session) return new Response("Unauthorized", { status: 401 });\n  ...\n}',
+      badExample: '// middleware.ts handles ALL auth — route handler has no check\n// ❌ CVE-2025-29927: x-middleware-subrequest bypasses this',
+      relatedPlaybooks: ['nextjs-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('next_middleware_only_auth', config.severityRules);
+      const findings: Finding[] = [];
+      const middlewareFile = changedFiles.find((f) => /(?:^|\/)middleware\.(ts|js)$/.test(f.path));
+      if (!middlewareFile) return [];
+      const AUTH_IN_MIDDLEWARE = /getSession|getServerSession|auth\(\)|verifyToken|session\s*\?|NextResponse\.redirect/i;
+      if (!AUTH_IN_MIDDLEWARE.test(middlewareFile.content)) return [];
+      // Check if any route handlers in the diff also have auth
+      const routeFiles = changedFiles.filter((f) => /route\.(ts|js)$/.test(f.path) || /\/(api|pages\/api)\//.test(f.path));
+      if (routeFiles.length === 0) return [];
+      for (const rf of routeFiles) {
+        if (!AUTH_IN_MIDDLEWARE.test(rf.content) && !/export\s+async\s+function\s+(GET|POST|PUT|DELETE|PATCH)/.test(rf.content)) continue;
+        if (!/getSession|getServerSession|auth\(\)|verifyToken|session\s*\?/.test(rf.content)) {
+          findings.push({ severity, category: 'next_middleware_only_auth', file: rf.path, message: 'Route handler has no auth check — relies solely on middleware (bypassable via CVE-2025-29927).', suggestion: 'Add auth check in route handler: const session = await getServerSession(); if (!session) return unauthorized();' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_039',
+    category: 'next_middleware_subrequest_not_stripped',
+    description: 'x-middleware-subrequest header not stripped at edge/proxy — CVE-2025-29927 bypass.',
+    severity: 'BLOCKER',
+    tags: ['nextjs', 'security', 'cve', 'headers'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'CVE-2025-29927: Requests with x-middleware-subrequest header skip Next.js middleware. This header must be stripped by your edge/proxy/CDN before it reaches the Next.js process. If next.config includes security headers but not this one, the bypass remains possible.',
+      commonViolations: [
+        'next.config.js with headers() function that omits x-middleware-subrequest removal',
+        'Vercel config without header stripping for x-middleware-subrequest',
+      ],
+      goodExample: "// next.config.js headers()\n{ key: 'x-middleware-subrequest', value: '' }  // strip before routing\n// Or vercel.json: { \"headers\": [{ \"source\": \"/(.*)\", \"headers\": [{ \"key\": \"x-middleware-subrequest\", \"value\": \"\" }] }] }",
+      badExample: '// next.config.js has no stripping of x-middleware-subrequest  // ❌ CVE-2025-29927',
+      relatedPlaybooks: ['nextjs-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('next_middleware_subrequest_not_stripped', config.severityRules);
+      const findings: Finding[] = [];
+      const configFiles = changedFiles.filter((f) => /next\.config\.(js|ts|mjs)$/.test(f.path) || /vercel\.json$/.test(f.path));
+      for (const { path, content } of configFiles) {
+        if (/headers\s*\(/.test(content) && !/x-middleware-subrequest/i.test(content)) {
+          findings.push({ severity, category: 'next_middleware_subrequest_not_stripped', file: path, message: 'Security headers configured but x-middleware-subrequest not stripped — CVE-2025-29927 bypass.', suggestion: 'Add header stripping: { key: "x-middleware-subrequest", value: "" } in your headers() config.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_040',
+    category: 'next_no_security_headers',
+    description: 'next.config has no security headers — missing X-Frame-Options, HSTS, X-Content-Type-Options.',
+    severity: 'HIGH',
+    tags: ['nextjs', 'security', 'headers'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Security headers prevent a class of attacks: X-Frame-Options blocks clickjacking, Strict-Transport-Security enforces HTTPS, X-Content-Type-Options prevents MIME sniffing. AI-generated Next.js configs almost never include these.',
+      commonViolations: ['next.config.js with no headers() function', 'headers() defined but only adds cache-control'],
+      goodExample: "headers: async () => [{ source: '/(.*)', headers: [{ key: 'X-Frame-Options', value: 'DENY' }, { key: 'X-Content-Type-Options', value: 'nosniff' }, { key: 'Strict-Transport-Security', value: 'max-age=63072000' }] }]",
+      badExample: 'module.exports = { reactStrictMode: true }  // ❌ no security headers',
+      relatedPlaybooks: ['nextjs-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('next_no_security_headers', config.severityRules);
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        if (!/next\.config\.(js|ts|mjs)$/.test(path)) continue;
+        const SECURITY_HEADER_RE = /X-Frame-Options|X-Content-Type-Options|Strict-Transport-Security|Content-Security-Policy/i;
+        if (!SECURITY_HEADER_RE.test(content)) {
+          findings.push({ severity, category: 'next_no_security_headers', file: path, message: 'next.config has no security headers — missing clickjacking, MIME, and HSTS protections.', suggestion: 'Add a headers() function with X-Frame-Options, X-Content-Type-Options, and Strict-Transport-Security.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_041',
+    category: 'next_server_action_no_csrf',
+    description: 'Next.js Server Action exposed without CSRF validation.',
+    severity: 'HIGH',
+    tags: ['nextjs', 'security', 'csrf', 'server-actions'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Next.js 14+ Server Actions are POST requests. While Next.js adds Origin validation in newer versions, older versions and custom implementations may not enforce CSRF tokens. Server Actions that mutate data should verify the Origin header matches the expected host.',
+      commonViolations: [
+        '"use server" functions with mutations and no origin check',
+        'Server Action called from form without CSRF token in older Next.js versions',
+      ],
+      goodExample: '"use server";\nexport async function updateUser(formData) {\n  const session = await getServerSession();\n  if (!session) throw new Error("Unauthorized");\n  // Next.js 14.2+ validates Origin automatically — keep up to date\n}',
+      badExample: '"use server";\nexport async function deleteItem(id) { await db.delete(id); }  // no session check',
+      relatedPlaybooks: ['nextjs-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('next_server_action_no_csrf', config.severityRules);
+      const findings: Finding[] = [];
+      const USE_SERVER_RE = /['"]use server['"]/;
+      const MUTATION_RE = /await\s+(?:db\.|prisma\.|supabase\.).*(?:delete|update|insert|create|upsert)/i;
+      const AUTH_RE = /getServerSession|auth\(\)|session\s*\?|getSession|requireAuth/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (!USE_SERVER_RE.test(content)) continue;
+        if (MUTATION_RE.test(content) && !AUTH_RE.test(content)) {
+          findings.push({ severity, category: 'next_server_action_no_csrf', file: path, message: 'Server Action performs mutation without session/auth check.', suggestion: 'Add auth check at the top of Server Actions: const session = await getServerSession(); if (!session) throw unauthorized();' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_042',
+    category: 'next_revalidate_unprotected',
+    description: 'revalidatePath or revalidateTag callable from an unauthenticated route.',
+    severity: 'HIGH',
+    tags: ['nextjs', 'security', 'cache', 'auth'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'revalidatePath() and revalidateTag() trigger cache purges that can be computationally expensive and cause serve-origin fallthrough for every user. An unauthenticated route that exposes revalidation enables a cache-busting DoS attack.',
+      commonViolations: [
+        'POST /api/revalidate with no auth check — webhook caller can purge cache',
+        'Server Action calling revalidatePath without auth gate',
+      ],
+      goodExample: 'const secret = req.headers.get("x-revalidate-secret");\nif (secret !== process.env.REVALIDATE_SECRET) return unauthorized();\nrevalidatePath("/");',
+      badExample: 'export async function POST() { revalidatePath("/blog"); return ok(); }  // ❌ public',
+      relatedPlaybooks: ['nextjs-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('next_revalidate_unprotected', config.severityRules);
+      const findings: Finding[] = [];
+      const REVALIDATE_RE = /revalidatePath\s*\(|revalidateTag\s*\(/;
+      const AUTH_RE = /getServerSession|auth\(\)|secret\s*!==|REVALIDATE_SECRET|verifyToken|requireAuth/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (!REVALIDATE_RE.test(content)) continue;
+        if (!AUTH_RE.test(content)) {
+          findings.push({ severity, category: 'next_revalidate_unprotected', file: path, message: 'revalidatePath/revalidateTag used in route without auth protection — cache DoS risk.', suggestion: 'Protect revalidation with a secret header or session check.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_043',
+    category: 'next_route_no_content_type_check',
+    description: 'POST route handler processes body without validating Content-Type header.',
+    severity: 'MEDIUM',
+    tags: ['nextjs', 'security', 'validation'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Without Content-Type validation, a route handler that calls req.json() can receive application/x-www-form-urlencoded or multipart bodies — causing unexpected parsing behavior or bypassing JSON-specific sanitization logic.',
+      commonViolations: [
+        'export async function POST(req) { const body = await req.json(); ... }  // no Content-Type check',
+      ],
+      goodExample: "if (req.headers.get('content-type') !== 'application/json') return new Response('Unsupported Media Type', { status: 415 });",
+      badExample: 'export async function POST(req) { const body = await req.json(); }  // ❌ any content type',
+      relatedPlaybooks: ['nextjs-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('next_route_no_content_type_check', config.severityRules);
+      const findings: Finding[] = [];
+      const POST_HANDLER_RE = /export\s+async\s+function\s+POST\s*\(/;
+      const JSON_RE = /await\s+req\.json\s*\(\s*\)/;
+      const CONTENT_TYPE_RE = /content-type|contentType|headers\.get\s*\(\s*['"]content/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!POST_HANDLER_RE.test(content) || !JSON_RE.test(content)) continue;
+        if (!CONTENT_TYPE_RE.test(content)) {
+          findings.push({ severity, category: 'next_route_no_content_type_check', file: path, message: 'POST route handler calls req.json() without Content-Type header validation.', suggestion: "Validate: if (req.headers.get('content-type') !== 'application/json') return new Response('', { status: 415 });" });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_044',
+    category: 'next_dynamic_route_no_type_coercion',
+    description: 'Dynamic route param used as number/ID without explicit type coercion and validation.',
+    severity: 'MEDIUM',
+    tags: ['nextjs', 'security', 'validation', 'injection'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'Next.js dynamic route params are always strings. Using params.id directly in a Prisma query (where: { id: params.id }) when the schema expects an integer silently coerces or fails. An attacker can send "1 OR 1=1" — validate and coerce explicitly.',
+      commonViolations: [
+        'db.user.findUnique({ where: { id: params.id } })  // id is a string, schema expects Int',
+        'prisma.order.findFirst({ where: { id: Number(params.id) } })  // NaN if non-numeric',
+      ],
+      goodExample: 'const id = z.coerce.number().int().positive().parse(params.id);\nconst item = await db.item.findUnique({ where: { id } });',
+      badExample: 'const item = await db.item.findUnique({ where: { id: params.id } });  // ❌ string vs number',
+      relatedPlaybooks: ['nextjs-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('next_dynamic_route_no_type_coercion', config.severityRules);
+      const findings: Finding[] = [];
+      const PARAM_ID_RE = /params\.id\b(?!\s*\.\s*toString)/;
+      const COERCE_RE = /z\s*\.\s*coerce|parseInt\s*\(|Number\s*\(|parseFloat\s*\(|\.parse\s*\(|isNaN\s*\(/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (!PARAM_ID_RE.test(content)) continue;
+        if (!COERCE_RE.test(content)) {
+          findings.push({ severity, category: 'next_dynamic_route_no_type_coercion', file: path, message: 'Dynamic route param used without type coercion/validation.', suggestion: 'Coerce and validate: const id = z.coerce.number().int().parse(params.id);' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_045',
+    category: 'next_server_component_cookie_no_boundary',
+    description: 'Server Component reads cookies() without error boundary — unhandled cookie access errors crash the component.',
+    severity: 'MEDIUM',
+    tags: ['nextjs', 'reliability', 'server-components'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'cookies() and headers() in Server Components throw if called in contexts where they are unavailable (e.g., during static rendering or in certain edge cases). Without an error boundary or try/catch, this crashes the component tree and returns a 500 error to users.',
+      commonViolations: [
+        'const token = cookies().get("auth")?.value  // no boundary if cookies() throws',
+        'Server Component that reads headers() without error handling',
+      ],
+      goodExample: "// Wrap in try/catch or use a Suspense boundary\ntry {\n  const token = cookies().get('auth')?.value;\n} catch {\n  return null;  // or redirect('/login')\n}",
+      badExample: "const token = cookies().get('auth').value;  // ❌ crashes if cookie absent or API unavailable",
+      relatedPlaybooks: ['nextjs-security.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('next_server_component_cookie_no_boundary', config.severityRules);
+      const findings: Finding[] = [];
+      const COOKIE_RE = /\bcookies\s*\(\s*\)\s*\.\s*get\s*\([^)]+\)\s*\.value\b/i;
+      const SAFE_RE = /try\s*\{|ErrorBoundary|Suspense/i;
+      for (const { path, content } of changedFiles) {
+        if (!SOURCE_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (/'use client'/.test(content)) continue;
+        if (!COOKIE_RE.test(content)) continue;
+        if (!SAFE_RE.test(content)) {
+          findings.push({ severity, category: 'next_server_component_cookie_no_boundary', file: path, message: 'cookies().get().value accessed without optional chaining or error boundary.', suggestion: 'Use optional chaining: cookies().get("auth")?.value  or wrap in try/catch.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_046',
+    category: 'next_image_no_domains',
+    description: 'Next.js Image component loads from external src without configuring allowed domains.',
+    severity: 'MEDIUM',
+    tags: ['nextjs', 'security', 'ssrf'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'The Next.js Image optimization endpoint acts as a server-side proxy for external images. Without a domains or remotePatterns allowlist, it becomes an open SSRF proxy — attackers can use it to make requests to internal services via the image URL parameter.',
+      commonViolations: [
+        '<Image src={user.avatarUrl} />  // external URL without next.config domains',
+        'next.config with no remotePatterns for Image component',
+      ],
+      goodExample: "// next.config.js\nimages: { remotePatterns: [{ protocol: 'https', hostname: 'avatars.githubusercontent.com' }] }",
+      badExample: '<Image src={externalUrl} />  // ❌ SSRF if next.config has no remotePatterns',
+      relatedPlaybooks: ['nextjs-security.md', 'ssrf-prevention.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('next_image_no_domains', config.severityRules);
+      const findings: Finding[] = [];
+      const DYNAMIC_IMG_RE = /(?:next\/image|Image)\b[^}]*src\s*=\s*\{(?!['"])/i;
+      const CONFIG_FILES = changedFiles.filter((f) => /next\.config\.(js|ts|mjs)$/.test(f.path));
+      const hasDomains = CONFIG_FILES.some((f) => /remotePatterns|domains\s*:/i.test(f.content));
+      if (hasDomains) return [];
+      for (const { path, content } of changedFiles) {
+        if (!JSX_EXT.test(path)) continue;
+        if (isTestPath(path)) continue;
+        if (DYNAMIC_IMG_RE.test(content)) {
+          findings.push({ severity, category: 'next_image_no_domains', file: path, message: 'Next.js Image with dynamic external src and no remotePatterns in next.config — SSRF risk.', suggestion: 'Add remotePatterns to next.config for all allowed external image hosts.' });
+        }
+      }
+      return findings;
+    },
+  },
+
+  {
+    id: 'NEXT_047',
+    category: 'next_env_public_secret',
+    description: 'Secret or private key stored in NEXT_PUBLIC_ environment variable — exposed to client bundle.',
+    severity: 'BLOCKER',
+    tags: ['nextjs', 'security', 'secrets', 'env'],
+    sinceVersion: '2.1.0',
+    explain: {
+      why: 'NEXT_PUBLIC_ variables are embedded in the client-side JavaScript bundle at build time. Any variable prefixed with NEXT_PUBLIC_ is readable by anyone who inspects the browser bundle — including secrets, API keys, and private configuration.',
+      commonViolations: [
+        'NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=...',
+        'NEXT_PUBLIC_API_SECRET=...',
+        'NEXT_PUBLIC_STRIPE_SECRET_KEY=...',
+      ],
+      goodExample: 'NEXT_PUBLIC_SUPABASE_URL=...  # public\nSUPABASE_SERVICE_ROLE_KEY=...  # private, no prefix',
+      badExample: 'NEXT_PUBLIC_API_SECRET=sk-...  // ❌ shipped to browser',
+      relatedPlaybooks: ['nextjs-security.md', 'secret-management.md'],
+      relatedAgents: ['security-reviewer'],
+    },
+    detect({ config, changedFiles = [] }: DetectInput): Finding[] {
+      const severity = classifySeverity('next_env_public_secret', config.severityRules);
+      const findings: Finding[] = [];
+      const PUBLIC_SECRET_RE = /NEXT_PUBLIC_\w*(?:SECRET|KEY|PRIVATE|SERVICE_ROLE|STRIPE_SECRET|OPENAI_API|ANTHROPIC|PASSWORD|TOKEN_SECRET)\w*/i;
+      for (const { path, content } of changedFiles) {
+        if (!path.endsWith('.env') && !path.endsWith('.env.local') && !path.endsWith('.env.example') && !path.endsWith('.env.production')) continue;
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]!;
+          if (isCommentLine(line)) continue;
+          if (PUBLIC_SECRET_RE.test(line)) {
+            findings.push({ severity, category: 'next_env_public_secret', file: path, line: i + 1, message: 'Secret key stored with NEXT_PUBLIC_ prefix — exposed to client bundle.', suggestion: 'Remove NEXT_PUBLIC_ prefix. Access the secret only in Server Components, Server Actions, or API routes.' });
+          }
+        }
+      }
+      return findings;
+    },
+  },
 ];

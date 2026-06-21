@@ -1,6 +1,6 @@
 {
   "name": "prometheus-governance",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "AI-stack-agnostic repo governance: code review rules, CI gates, and adapter generation for Claude, Gemini, Cursor, Copilot, Codex, and AGENTS.md",
   "license": "SEE LICENSE IN LICENSE",
   "author": "Matt Holley",
