@@ -26,6 +26,30 @@ import {
   generateAgent,
   generateAgentPlan,
 } from '../../builder/generators/agent.js';
+import {
+  generateDashboard,
+  generateDashboardPlan,
+} from '../../builder/generators/dashboard.js';
+import {
+  generateWorkflow,
+  generateWorkflowPlan,
+} from '../../builder/generators/workflow.js';
+import {
+  generateRag,
+  generateRagPlan,
+} from '../../builder/generators/rag.js';
+import {
+  generateVoice,
+  generateVoicePlan,
+} from '../../builder/generators/voice.js';
+import {
+  generateMcpTool,
+  generateMcpToolPlan,
+} from '../../builder/generators/mcp-tool.js';
+import {
+  generateAutomation,
+  generateAutomationPlan,
+} from '../../builder/generators/automation.js';
 
 const log = makeLogger('build');
 
@@ -376,35 +400,506 @@ async function runBuildSkill(argv: string[]): Promise<void> {
   log.info('build:skill complete', { name, scaffold });
 }
 
-// ── Generic stubs for other builders ─────────────────────────────────────────
+// ── Dashboard wizard questions ────────────────────────────────────────────────
 
-async function runBuildStub(builderType: string, argv: string[]): Promise<void> {
+const DASHBOARD_QUESTIONS: WizardQuestion[] = [
+  {
+    key: 'dataSource',
+    question: 'Where does the dashboard data come from?',
+    type: 'choice',
+    options: [
+      { value: 'prometheus-report', label: 'Prometheus report.json (governance metrics)' },
+      { value: 'api', label: 'API endpoint (REST or GraphQL)' },
+      { value: 'supabase', label: 'Supabase (PostgreSQL)' },
+      { value: 'custom', label: 'Custom data source' },
+    ],
+    engineering_note: 'Data source determines auth model and fetch strategy.',
+  },
+  {
+    key: 'target',
+    question: 'What is the render target?',
+    type: 'choice',
+    options: [
+      { value: 'nextjs', label: 'Next.js React component' },
+      { value: 'html', label: 'Plain HTML + Chart.js (no framework)' },
+      { value: 'grafana', label: 'Grafana dashboard JSON' },
+    ],
+    engineering_note: 'Determines output format and component structure.',
+  },
+  {
+    key: 'metric',
+    question: 'What is the primary metric you want to display?',
+    type: 'text',
+    hint: 'e.g. "Governance health score", "API error rate", "Active users per day"',
+    engineering_note: 'The primary metric shapes the entire dashboard layout.',
+  },
+  {
+    key: 'refresh',
+    question: 'How should the data refresh?',
+    type: 'choice',
+    options: [
+      { value: 'real-time', label: 'Real-time polling (every 5 seconds)' },
+      { value: 'on-scan', label: 'On Prometheus scan trigger' },
+      { value: 'manual', label: 'Manual refresh (user clicks refresh)' },
+    ],
+    engineering_note: 'Real-time polling has cost and performance implications.',
+  },
+  {
+    key: 'name',
+    question: 'Dashboard name (slug format)',
+    type: 'text',
+    hint: 'e.g. governance-health, api-performance, user-activity',
+  },
+];
+
+// ── Workflow wizard questions ──────────────────────────────────────────────────
+
+const WORKFLOW_QUESTIONS: WizardQuestion[] = [
+  {
+    key: 'job',
+    question: 'What does this workflow do?',
+    type: 'text',
+    hint: 'e.g. "Run tests and deploy to Vercel on every PR merge"',
+    engineering_note: 'Specificity drives correct trigger and step selection.',
+  },
+  {
+    key: 'trigger',
+    question: 'When does this workflow trigger?',
+    type: 'choice',
+    options: [
+      { value: 'pr', label: 'PR open/update (pull_request)' },
+      { value: 'push-main', label: 'Push to main branch' },
+      { value: 'scheduled', label: 'Scheduled (cron — weekly by default)' },
+      { value: 'manual', label: 'Manual (workflow_dispatch)' },
+      { value: 'release', label: 'On GitHub Release created' },
+    ],
+    engineering_note: 'Wrong trigger = wrong error-handling model.',
+  },
+  {
+    key: 'runtime',
+    question: 'What runtime does this workflow use?',
+    type: 'choice',
+    options: [
+      { value: 'nodejs', label: 'Node.js' },
+      { value: 'python', label: 'Python' },
+      { value: 'docker', label: 'Docker container' },
+      { value: 'any', label: 'No specific runtime (shell only)' },
+    ],
+    engineering_note: 'Runtime determines setup steps and caching strategy.',
+  },
+  {
+    key: 'steps',
+    question: 'What steps does this workflow run?',
+    type: 'choice',
+    options: [
+      { value: 'test-lint', label: 'Test + lint (CI check)' },
+      { value: 'build-deploy', label: 'Build + deploy' },
+      { value: 'notify', label: 'Send notification only' },
+      { value: 'full-ci', label: 'Full CI pipeline (test + lint + build + scan + deploy)' },
+    ],
+    engineering_note: 'Full CI includes a Prometheus governance scan on every run.',
+  },
+  {
+    key: 'deployTarget',
+    question: 'Deployment target (if deploying)?',
+    type: 'choice',
+    options: [
+      { value: 'none', label: 'None — no deployment step' },
+      { value: 'vercel', label: 'Vercel' },
+      { value: 'aws', label: 'AWS (ECS, Lambda, or S3)' },
+      { value: 'gcp', label: 'GCP (Cloud Run or GCS)' },
+    ],
+    engineering_note: 'Deploy target determines which secrets to configure.',
+  },
+  {
+    key: 'needsApproval',
+    question: 'Does deployment require a manual approval gate?',
+    type: 'choice',
+    options: [
+      { value: 'no', label: 'No — fully automated' },
+      { value: 'yes', label: 'Yes — human must approve before deploy' },
+    ],
+    engineering_note: 'Manual gates are required for production deployments in most orgs.',
+  },
+  {
+    key: 'name',
+    question: 'Workflow name (slug format)',
+    type: 'text',
+    hint: 'e.g. ci, deploy-production, weekly-scan',
+  },
+];
+
+// ── RAG wizard questions ───────────────────────────────────────────────────────
+
+const RAG_QUESTIONS: WizardQuestion[] = [
+  {
+    key: 'job',
+    question: 'What will users search for with this RAG pipeline?',
+    type: 'text',
+    hint: 'e.g. "Company documentation", "Codebase Q&A", "Customer support articles"',
+    engineering_note: 'The use case drives chunk size, retrieval strategy, and output format.',
+  },
+  {
+    key: 'docFormat',
+    question: 'What format are the source documents?',
+    type: 'choice',
+    options: [
+      { value: 'markdown', label: 'Markdown' },
+      { value: 'pdf', label: 'PDF' },
+      { value: 'source-code', label: 'Source code' },
+      { value: 'web-pages', label: 'Web pages (HTML)' },
+    ],
+    engineering_note: 'Format determines the chunking strategy and pre-processing needed.',
+  },
+  {
+    key: 'embedModel',
+    question: 'Which embedding model will you use?',
+    type: 'choice',
+    options: [
+      { value: 'openai', label: 'OpenAI (text-embedding-3-small) — BYOK' },
+      { value: 'cohere', label: 'Cohere (embed-v3) — BYOK' },
+      { value: 'anthropic', label: 'Anthropic — BYOK' },
+      { value: 'local', label: 'Local (sentence-transformers) — no API key' },
+    ],
+    engineering_note: 'Embedding model determines quality, cost, and API key requirements.',
+  },
+  {
+    key: 'vectorStore',
+    question: 'Where will vectors be stored?',
+    type: 'choice',
+    options: [
+      { value: 'supabase', label: 'Supabase pgvector (if Supabase detected)' },
+      { value: 'pinecone', label: 'Pinecone' },
+      { value: 'weaviate', label: 'Weaviate' },
+      { value: 'in-memory', label: 'In-memory (dev/testing only)' },
+    ],
+    engineering_note: 'In-memory loses data on restart. Choose a persistent store for production.',
+  },
+  {
+    key: 'retrieval',
+    question: 'Retrieval strategy?',
+    type: 'choice',
+    options: [
+      { value: 'similarity', label: 'Similarity (top-K by cosine score)' },
+      { value: 'mmr', label: 'MMR — diverse results (reduces redundancy)' },
+      { value: 'hybrid', label: 'Hybrid — keyword + vector combined' },
+    ],
+    engineering_note: 'MMR is better for long documents. Hybrid wins on keyword-heavy queries.',
+  },
+  {
+    key: 'outputFormat',
+    question: 'Output format?',
+    type: 'choice',
+    options: [
+      { value: 'plain-text', label: 'Plain text answer' },
+      { value: 'json-citations', label: 'JSON with source citations' },
+      { value: 'streaming', label: 'Streaming (token-by-token)' },
+    ],
+    engineering_note: 'JSON citations enable source attribution. Streaming improves perceived speed.',
+  },
+  {
+    key: 'mcpTool',
+    question: 'Expose this pipeline as a Prometheus MCP tool?',
+    type: 'choice',
+    options: [
+      { value: 'yes', label: 'Yes — AI agents can query this pipeline via MCP' },
+      { value: 'no', label: 'No — standalone pipeline only' },
+    ],
+    engineering_note: 'MCP exposure lets any Claude agent query this RAG pipeline directly.',
+  },
+  {
+    key: 'chunkSize',
+    question: 'Chunk size?',
+    type: 'choice',
+    options: [
+      { value: 'small', label: 'Small (~512 tokens) — precise retrieval, more chunks' },
+      { value: 'medium', label: 'Medium (~1024 tokens) — balanced (recommended)' },
+      { value: 'large', label: 'Large (~2048 tokens) — more context per chunk, fewer chunks' },
+    ],
+    engineering_note: 'Small chunks = precise retrieval. Large chunks = more context per result.',
+  },
+  {
+    key: 'name',
+    question: 'Pipeline name (slug format)',
+    type: 'text',
+    hint: 'e.g. docs-search, codebase-qa, support-rag',
+  },
+];
+
+// ── Voice wizard questions ─────────────────────────────────────────────────────
+
+const VOICE_QUESTIONS: WizardQuestion[] = [
+  {
+    key: 'job',
+    question: 'What does this voice agent do?',
+    type: 'text',
+    hint: 'e.g. "Answer customer questions about orders", "Guide users through onboarding"',
+    engineering_note: 'Use case determines system prompt tone and response length targets.',
+  },
+  {
+    key: 'transport',
+    question: 'How is audio delivered?',
+    type: 'choice',
+    options: [
+      { value: 'webrtc', label: 'WebRTC (browser-to-server, real-time)' },
+      { value: 'twilio', label: 'Twilio Media Streams (telephone calls)' },
+      { value: 'browser-speech', label: 'Browser SpeechAPI (client-side only)' },
+    ],
+    engineering_note: 'WebRTC for web apps. Twilio for phone IVR. Browser Speech for simple demos.',
+  },
+  {
+    key: 'stt',
+    question: 'Speech-to-text provider?',
+    type: 'choice',
+    options: [
+      { value: 'deepgram', label: 'Deepgram Nova-2 — BYOK (fastest, best accuracy)' },
+      { value: 'assemblyai', label: 'AssemblyAI — BYOK' },
+      { value: 'whisper', label: 'OpenAI Whisper — BYOK' },
+      { value: 'browser-native', label: 'Browser SpeechRecognition (free, limited)' },
+    ],
+    engineering_note: 'Deepgram has the lowest latency. Whisper is best for accuracy on technical terms.',
+  },
+  {
+    key: 'tts',
+    question: 'Text-to-speech provider?',
+    type: 'choice',
+    options: [
+      { value: 'elevenlabs', label: 'ElevenLabs — BYOK (most natural voice)' },
+      { value: 'deepgram', label: 'Deepgram Aura — BYOK (low latency)' },
+      { value: 'browser-native', label: 'Browser SpeechSynthesis (free, robotic)' },
+    ],
+    engineering_note: 'ElevenLabs for production. Browser native for dev/demo only.',
+  },
+  {
+    key: 'llm',
+    question: 'Language model for responses?',
+    type: 'choice',
+    options: [
+      { value: 'claude', label: 'Claude (Anthropic) — BYOK' },
+      { value: 'openai', label: 'OpenAI GPT — BYOK' },
+      { value: 'local', label: 'Local LLM (no API key)' },
+    ],
+    engineering_note: 'All LLM options are BYOK — Prometheus never stores your API key.',
+  },
+  {
+    key: 'useCase',
+    question: 'Use case?',
+    type: 'choice',
+    options: [
+      { value: 'customer-support', label: 'Customer support' },
+      { value: 'personal-assistant', label: 'Personal assistant' },
+      { value: 'ivr', label: 'IVR / phone tree' },
+      { value: 'demo', label: 'Demo / prototype' },
+    ],
+    engineering_note: 'Use case shapes the system prompt and fallback behavior.',
+  },
+  {
+    key: 'latency',
+    question: 'Latency target?',
+    type: 'choice',
+    options: [
+      { value: 'real-time', label: 'Real-time (<300ms) — requires streaming STT + TTS' },
+      { value: 'standard', label: 'Standard (<1s) — simpler, lower cost' },
+    ],
+    engineering_note: 'Real-time requires streaming at every layer. Standard is much simpler to build.',
+  },
+  {
+    key: 'name',
+    question: 'Voice agent name (slug format)',
+    type: 'text',
+    hint: 'e.g. support-bot, onboarding-guide, order-assistant',
+  },
+];
+
+// ── MCP tool wizard questions ──────────────────────────────────────────────────
+
+const MCP_TOOL_QUESTIONS: WizardQuestion[] = [
+  {
+    key: 'job',
+    question: 'What does this tool do for AI agents?',
+    type: 'text',
+    hint: 'e.g. "Fetch live stock prices", "Run a database query", "Check DNS records"',
+    engineering_note: 'MCP tools extend what AI agents can do. Be specific about the capability.',
+  },
+  {
+    key: 'inputSchema',
+    question: 'What parameters does it accept? (describe freely)',
+    type: 'text',
+    hint: 'e.g. "ticker symbol (string), date range (from/to dates)", "SQL query string"',
+    engineering_note: 'This becomes the JSON Schema that AI agents use to call this tool.',
+  },
+  {
+    key: 'returns',
+    question: 'What does it return?',
+    type: 'choice',
+    options: [
+      { value: 'text', label: 'Text (plain string)' },
+      { value: 'json', label: 'Structured JSON' },
+      { value: 'file-list', label: 'File list with metadata' },
+      { value: 'findings', label: 'Prometheus scan findings' },
+    ],
+    engineering_note: 'Return type determines how AI agents parse and use the result.',
+  },
+  {
+    key: 'sideEffects',
+    question: 'Does this tool have side effects?',
+    type: 'choice',
+    options: [
+      { value: 'read-only', label: 'Read-only — safe to call anytime' },
+      { value: 'writes-files', label: 'Writes files — needs audit logging' },
+      { value: 'calls-external-api', label: 'Calls external API — needs BYOK key + rate limits' },
+    ],
+    engineering_note: 'Side effects determine blast radius and required safeguards.',
+  },
+  {
+    key: 'name',
+    question: 'Tool name (slug format)',
+    type: 'text',
+    hint: 'e.g. fetch-stock-price, run-query, check-dns',
+  },
+];
+
+// ── Automation wizard questions ────────────────────────────────────────────────
+
+const AUTOMATION_QUESTIONS: WizardQuestion[] = [
+  {
+    key: 'job',
+    question: 'What does this automation do?',
+    type: 'text',
+    hint: 'e.g. "Run nightly Prometheus scan and email results", "Clean stale branches weekly"',
+    engineering_note: 'Specificity determines correct trigger and failure handling.',
+  },
+  {
+    key: 'trigger',
+    question: 'What triggers this automation?',
+    type: 'choice',
+    options: [
+      { value: 'cron', label: 'Cron schedule (GitHub Actions schedule)' },
+      { value: 'webhook', label: 'Webhook / repository_dispatch event' },
+      { value: 'file-change', label: 'File change (push + paths filter)' },
+      { value: 'manual', label: 'Manual (workflow_dispatch)' },
+      { value: 'event', label: 'Code event (push to main / PR)' },
+    ],
+    engineering_note: 'Cron for periodic tasks. Webhook for external integrations. Event for code gates.',
+  },
+  {
+    key: 'steps',
+    question: 'What steps does this automation run?',
+    type: 'choice',
+    options: [
+      { value: 'run-tests', label: 'Run tests' },
+      { value: 'build-artifact', label: 'Build and upload artifact' },
+      { value: 'deploy', label: 'Deploy' },
+      { value: 'send-notification', label: 'Send notification' },
+      { value: 'custom', label: 'Custom steps (scaffold shell)' },
+    ],
+    engineering_note: 'Drives the generated steps in the workflow or shell script.',
+  },
+  {
+    key: 'onFailure',
+    question: 'What happens on failure?',
+    type: 'choice',
+    options: [
+      { value: 'fail-alert', label: 'Fail immediately and alert (default)' },
+      { value: 'retry-alert', label: 'Retry 3x then alert' },
+      { value: 'log-continue', label: 'Log and continue (best-effort)' },
+    ],
+    engineering_note: 'Fail-fast is safer for deployments. Retry for flaky network operations.',
+  },
+  {
+    key: 'needsApproval',
+    question: 'Does this automation require a human gate before execution?',
+    type: 'choice',
+    options: [
+      { value: 'no', label: 'No — fully automated' },
+      { value: 'yes', label: 'Yes — human must approve before running' },
+    ],
+    engineering_note: 'Required for production deployments and destructive operations.',
+  },
+  {
+    key: 'name',
+    question: 'Automation name (slug format)',
+    type: 'text',
+    hint: 'e.g. nightly-scan, stale-branch-cleanup, weekly-report',
+  },
+];
+
+// ── Generic builder runner ────────────────────────────────────────────────────
+
+async function runBuilderWizard<T extends { files: Array<{ path: string; content: string; label: string }> }>(opts: {
+  type: string;
+  questions: WizardQuestion[];
+  generate: (answers: Record<string, string>, context: ReturnType<typeof analyzeContext>, o: { scaffold: boolean; planOnly: boolean }) => Promise<T>;
+  generatePlan: (answers: Record<string, string>, context: ReturnType<typeof analyzeContext>) => string;
+  argv: string[];
+}): Promise<void> {
+  const { type, questions, generate, generatePlan, argv } = opts;
+  const scaffold = argv.includes('--scaffold');
+  const planOnly = !scaffold;
+  const skipConfirm = argv.includes('--yes');
   const root = process.cwd();
-  console.log(`\n  Prometheus Builder Wizard — ${builderType}\n`);
-  console.log(`  This wizard is available in Prometheus v3.2.0+`);
-  console.log(`  For now, run: prometheus build:agent (the most capable builder)\n`);
+  const context = analyzeContext(root);
 
-  // Provide useful defaults
-  const planDir = join(root, '.prometheus', 'builds');
-  mkdirSync(planDir, { recursive: true });
-  const stub = [
-    `# ${builderType} Build Plan`,
-    '',
-    `Generated: ${new Date().toISOString()}`,
-    '',
-    `## Use the agent builder for now`,
-    '',
-    '```bash',
-    'prometheus build:agent',
-    '```',
-    '',
-    `The ${builderType} wizard will be added in a future release.`,
-  ].join('\n');
+  console.log(`\n  Prometheus Builder Wizard — ${type}\n`);
+  if (context.detectedStack.length > 0) {
+    console.log(`  Detected: ${context.detectedStack.join(', ')}\n`);
+  }
+  console.log(`  ${questions.length} questions — ${planOnly ? 'outputs a plan (no code written)' : 'will write code files when complete'}\n`);
 
-  const stubPath = join(planDir, `${builderType}-stub.md`);
-  writeFileSync(stubPath, stub, 'utf-8');
-  console.log(`  Stub plan: .prometheus/builds/${builderType}-stub.md\n`);
-  log.info(`build:${builderType} stub invoked`);
+  const answers = await runWizard(questions, context, {});
+  const name = (answers['name'] ?? type).toLowerCase().replace(/[^a-z0-9-]/g, '-');
+  answers['name'] = name;
+
+  if (planOnly) {
+    const plan = generatePlan(answers, context);
+    const planDir = join(root, '.prometheus', 'builds');
+    mkdirSync(planDir, { recursive: true });
+    const planPath = join(planDir, `${name}-${type}-plan.md`);
+    writeFileSync(planPath, plan, 'utf-8');
+
+    console.log(`\n  Building ${name}...`);
+    console.log(`  → Generated: .prometheus/builds/${name}-${type}-plan.md\n`);
+    console.log(`  Hand this plan to Claude Code, or run with --scaffold to write code files.\n`);
+    log.info(`build:${type} plan complete`, { name });
+    return;
+  }
+
+  if (!skipConfirm) {
+    const { createInterface } = await import('node:readline');
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const confirmed = await new Promise<boolean>((resolve) => {
+      rl.question(`\n  Write files for "${name}"? [y/N]: `, (a) => {
+        rl.close();
+        resolve(a.toLowerCase() === 'y' || a.toLowerCase() === 'yes');
+      });
+    });
+    if (!confirmed) {
+      console.log('\n  Cancelled. Run with --plan to generate a plan without writing files.\n');
+      return;
+    }
+  }
+
+  const result = await generate(answers, context, { scaffold: true, planOnly: false });
+
+  console.log(`\n  Building ${name}...\n`);
+  for (const file of result.files) {
+    writeArtifact(root, file.path, file.content);
+    console.log(`  → Writing ${file.path}`);
+  }
+
+  console.log('\n  Running Prometheus governance scan on generated files...');
+  const filePaths = result.files.map((f) => f.path);
+  const { findings, blockers } = await runGovernanceScan(root, filePaths);
+  if (blockers > 0) {
+    console.log(`  ⚠  ${findings} finding${findings === 1 ? '' : 's'} (${blockers} BLOCKER${blockers === 1 ? '' : 's'}) — run: prometheus review`);
+  } else if (findings > 0) {
+    console.log(`  ⚠  ${findings} finding${findings === 1 ? '' : 's'} — run: prometheus review to see details`);
+  } else {
+    console.log(`  ✅ No findings — all generated files pass governance`);
+  }
+
+  console.log(`\n  Done. Files written: ${result.files.length}\n`);
+  log.info(`build:${type} scaffold complete`, { name, files: result.files.length, findings });
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -420,12 +915,58 @@ export async function cmdBuild(argv: string[]): Promise<void> {
       return runBuildSkill(argv.slice(1));
 
     case 'dashboard':
+      return runBuilderWizard({
+        type: 'dashboard',
+        questions: DASHBOARD_QUESTIONS,
+        generate: generateDashboard,
+        generatePlan: generateDashboardPlan,
+        argv: argv.slice(1),
+      });
+
     case 'workflow':
+      return runBuilderWizard({
+        type: 'workflow',
+        questions: WORKFLOW_QUESTIONS,
+        generate: generateWorkflow,
+        generatePlan: generateWorkflowPlan,
+        argv: argv.slice(1),
+      });
+
     case 'rag':
+      return runBuilderWizard({
+        type: 'rag',
+        questions: RAG_QUESTIONS,
+        generate: generateRag,
+        generatePlan: generateRagPlan,
+        argv: argv.slice(1),
+      });
+
     case 'voice':
+      return runBuilderWizard({
+        type: 'voice',
+        questions: VOICE_QUESTIONS,
+        generate: generateVoice,
+        generatePlan: generateVoicePlan,
+        argv: argv.slice(1),
+      });
+
     case 'mcp-tool':
+      return runBuilderWizard({
+        type: 'mcp-tool',
+        questions: MCP_TOOL_QUESTIONS,
+        generate: generateMcpTool,
+        generatePlan: generateMcpToolPlan,
+        argv: argv.slice(1),
+      });
+
     case 'automation':
-      return runBuildStub(subcommand, argv.slice(1));
+      return runBuilderWizard({
+        type: 'automation',
+        questions: AUTOMATION_QUESTIONS,
+        generate: generateAutomation,
+        generatePlan: generateAutomationPlan,
+        argv: argv.slice(1),
+      });
 
     default:
       console.log('\n  Prometheus Builder Wizard\n');

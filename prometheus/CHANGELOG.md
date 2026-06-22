@@ -6,6 +6,38 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+## [3.3.0] — 2026-06-22
+
+### Added
+
+**Complete Builder Wizard — 6 New Generators:**
+
+- **`prometheus build:dashboard`** — 5-question wizard that creates a monitoring/analytics dashboard. Supports Next.js React components and plain HTML + Chart.js. Pre-wires Prometheus governance metrics as default data source. Outputs to `src/components/dashboards/<name>.tsx` or `public/dashboards/<name>.html`.
+
+- **`prometheus build:workflow`** — 7-question wizard that creates GitHub Actions CI/CD workflows. Covers all trigger types (PR, push, scheduled, manual, release), all common step groups (test+lint, build+deploy, full CI with Prometheus scan), and all major deploy targets (Vercel, AWS, GCP). Manual approval gates wired via `trstringer/manual-approval`.
+
+- **`prometheus build:rag`** — 9-question wizard for Retrieval-Augmented Generation pipelines. Generates `chunker.ts`, `retriever.ts`, and `pipeline.ts`. Supports OpenAI, Cohere, Anthropic, and local embeddings (all BYOK). Vector stores: Supabase pgvector, Pinecone, Weaviate, in-memory. Retrieval strategies: similarity, MMR (diverse), hybrid keyword+vector. Optional MCP tool wrapper to expose the pipeline to AI agents. Security note included in generated code: sanitize retrieved content to prevent prompt injection via documents.
+
+- **`prometheus build:voice`** — 8-question wizard for real-time voice AI agents. Generates `session.ts`, `transport.ts`, and `pipeline.ts`. Supports WebRTC, Twilio Media Streams, and browser SpeechAPI transports. STT providers: Deepgram, AssemblyAI, OpenAI Whisper, browser native. TTS: ElevenLabs, Deepgram, browser native. LLM: Claude, OpenAI, local (all BYOK). Security warnings for audio PII and session isolation included in generated code.
+
+- **`prometheus build:mcp-tool`** — 5-question wizard that creates a new custom tool for the Prometheus MCP server. Generates `prometheus/mcp-tools/<name>.ts` with full type-safe handler and registration instructions for `mcp-server.ts`. Supports read-only, file-writing, and external-API side-effect profiles. Return types: text, JSON, file list, Prometheus findings.
+
+- **`prometheus build:automation`** — 6-question wizard for CI/CD automations. For GitHub-hosted triggers (cron, webhook, file-change, event) generates `.github/workflows/<name>.yml`. For local triggers generates `.prometheus/automation/<name>.sh` with retry logic and dry-run support. Covers all common step groups (tests, build, deploy, notification, custom) and failure modes (fail+alert, retry×3+alert, log+continue).
+
+**Builder Wizard Infrastructure:**
+
+- Generic `runBuilderWizard()` runner shared by all 6 builders — eliminates 200+ lines of duplicated wizard-loop code
+- All 6 builders support `--plan` (outputs Markdown plan + design decisions), `--scaffold` (writes code), and `--yes` (skips confirmation)
+- All scaffold outputs are immediately scanned by the Prometheus governance engine before reporting
+- All API keys are BYOK — Prometheus never stores, caches, or proxies credentials
+
+### Changed
+
+- `prometheus/package.json`: version `3.2.0` → `3.3.0`; added keywords: `ai-safety`, `owasp`, `mcp-server`, `brain`, `builder`
+- `prometheus/bin/commands/build.ts`: replaced 6 `runBuildStub` stubs with real implementations; added 6 question arrays (40 total questions); imported 6 generator modules
+
+---
+
 ## [2.2.0] — 2026-06-21
 
 ### Added
