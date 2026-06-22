@@ -21,7 +21,7 @@ Thank you for helping make this better. This guide covers everything you need to
 ## Development setup
 
 ```bash
-git clone https://github.com/TenticleTim/prometheus-helper.git
+git clone https://github.com/Holley-Studio/prometheus-governance.git
 cd prometheus-helper
 npm install
 ```
@@ -323,7 +323,7 @@ PRs that lower test coverage thresholds or break the registry integrity test wil
 
 ## Reporting bugs
 
-Open an issue at https://github.com/TenticleTim/prometheus-helper/issues with:
+Open an issue at https://github.com/Holley-Studio/prometheus-governance/issues with:
 
 - The command you ran
 - Expected vs. actual output

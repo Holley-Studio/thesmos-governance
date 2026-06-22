@@ -65,7 +65,7 @@ claude --agent=hermes-marketing-agent "Write a campaign brief for our product la
 
 ### Option 2: Download directly (no install required)
 
-Browse [pantheon/exports/](https://github.com/TenticleTim/prometheus-fire/tree/main/pantheon/exports) and download the file for your platform. No npm install, no configuration.
+Browse [pantheon/exports/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports) and download the file for your platform. No npm install, no configuration.
 
 ---
 
@@ -98,7 +98,7 @@ Claude Code will also auto-route tasks to the right agent based on the task desc
 **Global install (available in all projects):**
 ```bash
 # Download directly
-curl -L https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/hermes-marketing-agent.md \
+curl -L https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/hermes-marketing-agent.md \
   -o ~/.claude/agents/hermes-marketing-agent.md
 
 # Or export all to global agents directory
@@ -111,7 +111,7 @@ prometheus pantheon:export --target=claude-code --out=~/.claude/agents
 
 1. Go to [claude.ai](https://claude.ai) → Projects → Create Project
 2. Click "Set Instructions"
-3. Download the agent file from [pantheon/exports/claude-project/](https://github.com/TenticleTim/prometheus-fire/tree/main/pantheon/exports/claude-project)
+3. Download the agent file from [pantheon/exports/claude-project/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports/claude-project)
 4. Paste the contents into Project Instructions
 5. Every conversation in this project now has that agent's persona
 
@@ -128,7 +128,7 @@ prometheus pantheon:export --target=claude-project --agent=hermes-marketing-agen
 
 1. Go to [chatgpt.com](https://chatgpt.com) → Explore GPTs → Create a GPT
 2. Click "Configure" → "Instructions"
-3. Download your agent from [pantheon/exports/chatgpt/](https://github.com/TenticleTim/prometheus-fire/tree/main/pantheon/exports/chatgpt)
+3. Download your agent from [pantheon/exports/chatgpt/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports/chatgpt)
 4. Paste the contents into the Instructions field
 5. Save as private or share with your team
 
@@ -152,7 +152,7 @@ prometheus pantheon:export --target=openai-assistant --agent=zeus-executive-agen
 ### Gemini Gems
 
 1. Go to [gemini.google.com](https://gemini.google.com) → Gems → New Gem
-2. Download your agent from [pantheon/exports/gemini/](https://github.com/TenticleTim/prometheus-fire/tree/main/pantheon/exports/gemini)
+2. Download your agent from [pantheon/exports/gemini/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports/gemini)
 3. Paste contents into the Gem instructions field
 4. Save and use
 
@@ -172,7 +172,7 @@ prometheus pantheon:export --target=cursor
 # Creates: .cursor/rules/hermes-marketing-agent.mdc (and 20 more)
 ```
 
-Cursor will automatically offer the agent when your prompt matches the agent's description. Or download directly from [pantheon/exports/cursor/](https://github.com/TenticleTim/prometheus-fire/tree/main/pantheon/exports/cursor).
+Cursor will automatically offer the agent when your prompt matches the agent's description. Or download directly from [pantheon/exports/cursor/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports/cursor).
 
 ---
 
@@ -183,7 +183,7 @@ prometheus pantheon:export --target=copilot
 # Creates: .github/instructions/hermes-marketing-agent.instructions.md (and 20 more)
 ```
 
-Or download from [pantheon/exports/copilot/](https://github.com/TenticleTim/prometheus-fire/tree/main/pantheon/exports/copilot).
+Or download from [pantheon/exports/copilot/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports/copilot).
 
 ---
 

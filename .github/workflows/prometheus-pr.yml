@@ -41,7 +41,7 @@ jobs:
           fetch-depth: 0
 
       - name: Prometheus PR Review
-        uses: TenticleTim/prometheus-fire/actions/pr-review@v1
+        uses: Holley-Studio/prometheus-governance/actions/pr-review@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-severity: BLOCKER  # Change to HIGH, MEDIUM, or "none" as needed

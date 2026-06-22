@@ -21,6 +21,9 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import type { Finding, PrometheusConfig, ScanResult, ChangedFile } from './types.js';
 import { PROMETHEUS_RULES } from './rules/registry.js';
+import { makeLogger } from './logger.js';
+
+const log = makeLogger('cache');
 
 // ── Cache types ───────────────────────────────────────────────────────────────
 
@@ -52,8 +55,9 @@ export function loadCache(root: string): ScanCache {
     if (parsed && typeof parsed === 'object' && 'entries' in parsed) {
       return parsed as ScanCache;
     }
+    log.warn('corrupt cache, resetting', { path: p });
   } catch {
-    // corrupt cache — start fresh
+    log.warn('corrupt cache, resetting', { path: p });
   }
   return { entries: {} };
 }
@@ -63,8 +67,8 @@ export function saveCache(root: string, cache: ScanCache): void {
   try {
     mkdirSync(dirname(p), { recursive: true });
     writeFileSync(p, JSON.stringify(cache, null, 2), 'utf8');
-  } catch {
-    // non-fatal — cache is a performance optimisation, not a correctness requirement
+  } catch (e) {
+    log.warn('cache write failed', { path: p, error: e instanceof Error ? e.message : String(e) });
   }
 }
 
@@ -81,9 +85,10 @@ export function getCachedFindings(
   rulesVersion: string,
 ): Finding[] | null {
   const entry = cache.entries[filePath];
-  if (!entry) return null;
-  if (entry.rulesVersion !== rulesVersion) return null;
-  if (entry.contentHash !== contentHash(content)) return null;
+  if (!entry) { log.debug('cache miss', { file: filePath, reason: 'no entry' }); return null; }
+  if (entry.rulesVersion !== rulesVersion) { log.debug('cache miss', { file: filePath, reason: 'version changed' }); return null; }
+  if (entry.contentHash !== contentHash(content)) { log.debug('cache miss', { file: filePath, reason: 'content changed' }); return null; }
+  log.debug('cache hit', { file: filePath });
   return entry.findings;
 }
 

@@ -516,7 +516,7 @@ export function formatFindingsHtml(
   ${renderPackInventory()}
 
   <div class="report-footer">
-    <span>Prometheus Governance · <a href="https://github.com/TenticleTim/prometheus-fire" style="color:rgba(201,168,76,.5)">github.com/TenticleTim/prometheus-fire</a></span>
+    <span>Prometheus Governance · <a href="https://github.com/Holley-Studio/prometheus-governance" style="color:rgba(201,168,76,.5)">github.com/Holley-Studio/prometheus-governance</a></span>
     <span>Built by Holley Studios</span>
   </div>
 </div>

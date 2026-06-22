@@ -12,6 +12,9 @@ import type { Finding, PrometheusConfig, ScanResult } from './types';
 import { PROMETHEUS_RULES } from './rules/registry';
 import { sortFindings, SEVERITY_EMOJI } from './severity';
 import { toSarif } from './sarif.js';
+import { makeLogger } from './logger.js';
+
+const log = makeLogger('review');
 
 // ── Public input types ─────────────────────────────────────────────────────────
 
@@ -47,7 +50,35 @@ export function runReview(
     : registry.filter(
         (r) => !disabled.has(r.id.toLowerCase()) && !disabled.has(r.category.toLowerCase())
       );
-  return sortFindings(activeRules.flatMap((rule) => rule.detect(input)));
+
+  const findings: Finding[] = [];
+  let rulesSkipped = 0;
+  const scanStart = Date.now();
+
+  for (const rule of activeRules) {
+    const t0 = Date.now();
+    try {
+      findings.push(...rule.detect(input));
+      const elapsed = Date.now() - t0;
+      if (elapsed > 100) log.warn('slow rule', { rule: rule.id, durationMs: elapsed });
+    } catch (e) {
+      rulesSkipped++;
+      log.error('rule detect() threw', {
+        rule: rule.id,
+        error: e instanceof Error ? e.message : String(e),
+        stack: e instanceof Error ? e.stack : undefined,
+      });
+    }
+  }
+
+  log.info('scan complete', {
+    files: input.changedFiles?.length ?? 0,
+    findings: findings.length,
+    rulesSkipped,
+    durationMs: Date.now() - scanStart,
+  });
+
+  return sortFindings(findings);
 }
 
 // ── Output formatters ──────────────────────────────────────────────────────────

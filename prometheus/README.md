@@ -1,6 +1,6 @@
 # prometheus-governance
 
-[![CI](https://github.com/TenticleTim/prometheus-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/TenticleTim/prometheus-helper/actions/workflows/ci.yml)
+[![CI](https://github.com/Holley-Studio/prometheus-governance/actions/workflows/ci.yml/badge.svg)](https://github.com/Holley-Studio/prometheus-governance/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/prometheus-governance)](https://www.npmjs.com/package/prometheus-governance)
 [![npm downloads](https://img.shields.io/npm/dm/prometheus-governance)](https://www.npmjs.com/package/prometheus-governance)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -80,27 +80,27 @@ Or download any agent directly — no install required:
 
 | Agent | Role | Download |
 | --- | --- | --- |
-| Zeus | Executive orchestration | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/zeus-executive-agent.md) |
-| Athena | Business strategy | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/athena-strategy-agent.md) |
-| Hermes | Marketing | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/hermes-marketing-agent.md) |
-| Nike | Lead generation | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/nike-leadgen-agent.md) |
-| Ares | Sales | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/ares-sales-agent.md) |
-| Apollo | Content & copy | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/apollo-content-agent.md) |
-| Aphrodite | Creative direction | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/aphrodite-creative-agent.md) |
-| Hephaestus | UI/UX design | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/hephaestus-design-agent.md) |
-| Argus | Security | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/argus-security-agent.md) |
-| Hestia | Customer experience | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/hestia-cx-agent.md) |
-| Tyche | Analytics & KPIs | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/tyche-analytics-agent.md) |
-| Themis | Legal | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/themis-legal-agent.md) |
-| Plutus | Finance & pricing | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/plutus-finance-agent.md) |
-| Pheme | PR & comms | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/pheme-pr-agent.md) |
-| Hera | Operations & HR | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/hera-operations-agent.md) |
-| Daedalus | Product management | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/daedalus-product-agent.md) |
-| Heracles | Business development | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/heracles-bd-agent.md) |
-| Iris | Photography | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/iris-photography-agent.md) |
-| Morpheus | Animation & motion | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/morpheus-animation-agent.md) |
-| Dionysus | Video production | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/dionysus-video-agent.md) |
-| Mnemosyne | Knowledge management | [Claude Code](https://raw.githubusercontent.com/TenticleTim/prometheus-fire/main/pantheon/exports/claude-code/mnemosyne-knowledge-agent.md) |
+| Zeus | Executive orchestration | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/zeus-executive-agent.md) |
+| Athena | Business strategy | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/athena-strategy-agent.md) |
+| Hermes | Marketing | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/hermes-marketing-agent.md) |
+| Nike | Lead generation | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/nike-leadgen-agent.md) |
+| Ares | Sales | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/ares-sales-agent.md) |
+| Apollo | Content & copy | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/apollo-content-agent.md) |
+| Aphrodite | Creative direction | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/aphrodite-creative-agent.md) |
+| Hephaestus | UI/UX design | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/hephaestus-design-agent.md) |
+| Argus | Security | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/argus-security-agent.md) |
+| Hestia | Customer experience | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/hestia-cx-agent.md) |
+| Tyche | Analytics & KPIs | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/tyche-analytics-agent.md) |
+| Themis | Legal | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/themis-legal-agent.md) |
+| Plutus | Finance & pricing | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/plutus-finance-agent.md) |
+| Pheme | PR & comms | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/pheme-pr-agent.md) |
+| Hera | Operations & HR | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/hera-operations-agent.md) |
+| Daedalus | Product management | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/daedalus-product-agent.md) |
+| Heracles | Business development | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/heracles-bd-agent.md) |
+| Iris | Photography | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/iris-photography-agent.md) |
+| Morpheus | Animation & motion | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/morpheus-animation-agent.md) |
+| Dionysus | Video production | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/dionysus-video-agent.md) |
+| Mnemosyne | Knowledge management | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/mnemosyne-knowledge-agent.md) |
 
 See [pantheon/README.md](../pantheon/README.md) for the full documentation, all platform exports, and the installation guide.
 
@@ -667,7 +667,7 @@ PROMETHEUS_RULES             ← single source of truth (911 built-in rules + pa
 
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for development setup, how to add rules, commit conventions, and the PR process.
 
-- [Open an issue](https://github.com/TenticleTim/prometheus-helper/issues)
+- [Open an issue](https://github.com/Holley-Studio/prometheus-governance/issues)
 - [Read the security policy](../SECURITY.md)
 - [Code of Conduct](../CODE_OF_CONDUCT.md)
 

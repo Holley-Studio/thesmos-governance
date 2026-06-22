@@ -27,6 +27,9 @@ import { createInterface } from 'node:readline';
 import type { Finding, PrometheusConfig, ScanResult } from './types.js';
 import { PROMETHEUS_RULES } from './rules/registry.js';
 import { loadConfig, CONFIG_DEFAULTS } from './config.js';
+import { makeLogger } from './logger.js';
+
+const log = makeLogger('lsp');
 
 // ── LSP protocol types ────────────────────────────────────────────────────────
 
@@ -166,7 +169,10 @@ function scheduleScan(state: FileState, delayMs = 500): void {
 function scanImmediate(state: FileState): void {
   clearTimeout(state.debounceTimer);
   const filePath = uriToPath(state.uri);
+  const t0 = Date.now();
   state.findings = scanFile(filePath, state.content, config);
+  const elapsed = Date.now() - t0;
+  if (elapsed > 500) log.warn('slow scan', { file: filePath, durationMs: elapsed });
   publishDiagnostics(state.uri, state.content, state.findings);
 }
 
@@ -350,7 +356,7 @@ function dispatch(msg: LspRequest): void {
 // ── stdio transport (header-framed) ──────────────────────────────────────────
 
 export function startLspServer(): void {
-  process.stderr.write(`[prometheus-lsp] server started (${PROMETHEUS_RULES.length} rules loaded)\n`);
+  log.info('server started', { rules: PROMETHEUS_RULES.length });
 
   let buffer = '';
 

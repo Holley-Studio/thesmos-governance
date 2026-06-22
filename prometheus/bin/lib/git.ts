@@ -6,6 +6,9 @@ import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ChangedFile } from '../../review.ts';
+import { makeLogger } from '../../logger.js';
+
+const log = makeLogger('git');
 
 /**
  * Return changed files by diffing HEAD against `base`.
@@ -19,7 +22,8 @@ export function getChangedFiles(root: string, base: string): ChangedFile[] {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     names = out.toString().trim().split('\n').filter(Boolean);
-  } catch {
+  } catch (e) {
+    log.warn('git diff failed', { base, error: e instanceof Error ? e.message : String(e) });
     return [];
   }
 
@@ -34,11 +38,13 @@ export function getChangedFiles(root: string, base: string): ChangedFile[] {
           cwd: root,
           stdio: ['pipe', 'pipe', 'pipe'],
         }).toString();
-      } catch {
+      } catch (e) {
+        log.warn('git diff (per-file) failed', { path, error: e instanceof Error ? e.message : String(e) });
         diff = undefined;
       }
       return [{ path, content, diff }];
-    } catch {
+    } catch (e) {
+      log.warn('file read failed', { path, error: e instanceof Error ? e.message : String(e) });
       return [];
     }
   });
@@ -54,7 +60,8 @@ export function readFilesFromPaths(root: string, paths: string[]): ChangedFile[]
     try {
       const content = readFileSync(absPath, 'utf8');
       return [{ path, content }];
-    } catch {
+    } catch (e) {
+      log.warn('file read failed', { path, error: e instanceof Error ? e.message : String(e) });
       return [];
     }
   });

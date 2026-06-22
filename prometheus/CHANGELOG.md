@@ -174,4 +174,4 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 - **JSON Schema** for `.prometheus/config.json`: add `$schema` for full editor autocomplete and validation
 - **GitHub Actions CI/CD**: workflows for continuous integration (Node 18/20/22 matrix) and npm publishing on version tags
 
-[1.0.0]: https://github.com/TenticleTim/prometheus-helper/releases/tag/v1.0.0
+[1.0.0]: https://github.com/Holley-Studio/prometheus-governance/releases/tag/v1.0.0

@@ -30,6 +30,9 @@ import { computeHealthForRoot } from './health.js';
 import { loadConfig, CONFIG_DEFAULTS } from './config.js';
 import { COMMIT_RULES } from './rules/commits.js';
 import type { Finding, ScanResult, DetectInput } from './types.js';
+import { makeLogger } from './logger.js';
+
+const log = makeLogger('mcp');
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -307,6 +310,7 @@ function dispatch(root: string, request: JsonRpcRequest): JsonRpcResponse {
       case 'tools/call': {
         const name = request.params?.name as string | undefined;
         const toolInput = (request.params?.arguments ?? {}) as Record<string, string>;
+        log.debug('tool call', { tool: name });
 
         switch (name) {
           case 'scan_file':
@@ -364,6 +368,11 @@ function dispatch(root: string, request: JsonRpcRequest): JsonRpcResponse {
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    log.error('dispatch threw', {
+      method: request.method,
+      error: msg,
+      stack: e instanceof Error ? e.stack : undefined,
+    });
     return error(-32603, `Internal error: ${msg}`);
   }
 }
@@ -373,7 +382,7 @@ function dispatch(root: string, request: JsonRpcRequest): JsonRpcResponse {
 export function startMcpServer(root: string): void {
   const rl = createInterface({ input: process.stdin, terminal: false });
 
-  process.stderr.write(`[prometheus-mcp] server started (${PROMETHEUS_RULES.length} rules loaded)\n`);
+  log.info('server started', { rules: PROMETHEUS_RULES.length });
 
   rl.on('line', (line) => {
     const trimmed = line.trim();

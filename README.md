@@ -61,7 +61,7 @@ jobs:
           fetch-depth: 0
 
       - name: Prometheus PR Review
-        uses: TenticleTim/prometheus-fire/actions/pr-review@v1
+        uses: Holley-Studio/prometheus-governance/actions/pr-review@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-severity: BLOCKER
@@ -145,7 +145,7 @@ Drop any `.json` rule pack into `.prometheus/packs/` — they load at runtime wi
 ## Repository Structure
 
 ```
-prometheus-fire/
+prometheus-governance/
 ├── website/              Marketing site (deployed to Vercel)
 │   └── index.html
 ├── prometheus/           npm package — CLI + core engine
@@ -167,7 +167,7 @@ prometheus-fire/
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Rule contributions are especially welcome — the catalog is the heart of Prometheus.
 
-Issues and feature requests: [GitHub Issues](https://github.com/TenticleTim/prometheus-fire/issues)
+Issues and feature requests: [GitHub Issues](https://github.com/Holley-Studio/prometheus-governance/issues)
 
 ---
 
@@ -177,4 +177,4 @@ MIT — [LICENSE](LICENSE)
 
 ---
 
-*Built by [Holley Studios](https://github.com/TenticleTim)*
+*Built by [Holley Studios](https://github.com/Holley-Studio)*
