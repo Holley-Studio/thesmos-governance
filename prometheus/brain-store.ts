@@ -32,6 +32,7 @@ export interface ProposedRule {
   rationale: string;
   status: 'pending' | 'approved' | 'rejected';
   proposedAt: string;
+  approvedAt?: string;
 }
 
 export interface ProposedAgent {

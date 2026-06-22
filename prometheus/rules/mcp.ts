@@ -58,7 +58,39 @@ const MCP_001: PrometheusRule = {
   },
   detect({ changedFiles = [] }: DetectInput): Finding[] {
     const findings: Finding[] = [];
-    const INJECTION_RE = /(?:ignore\s+(?:previous|all|prior)\s+(?:instructions?|constraints?|rules?)|SYSTEM\s*:|<\s*system\s*>|before\s+calling\s+this|you\s+must\s+also|additionally\s+(?:send|exfiltrate|upload)|base64_decode)/i;
+    const INJECTION_RE = new RegExp([
+      // System prompt overrides
+      'ignore\\s+(?:previous|all|prior)\\s+(?:instructions?|constraints?|rules?|prompts?)',
+      'disregard\\s+(?:previous|all|prior|your)\\s+(?:instructions?|constraints?|rules?)',
+      'forget\\s+(?:everything|all|your\\s+(?:previous|prior))',
+      'override\\s+(?:your|all|the|previous)\\s+(?:instructions?|constraints?|rules?)',
+      'your\\s+new\\s+instructions?\\s+are',
+      // Role-play escapes
+      'you\\s+are\\s+now\\s+(?:a|an|the)\\s+\\w',
+      'act\\s+as\\s+(?:a|an|if|though)\\s+\\w',
+      'pretend\\s+(?:you\\s+are|to\\s+be)',
+      'roleplay\\s+as',
+      // Delimiter injection
+      '<\\s*system\\s*>',
+      '\\[INST\\]',
+      '<\\|(?:im_start|system|user|assistant)\\|>',
+      '###\\s+(?:System|Instruction|Human|Assistant)',
+      // Instruction hijacking
+      'SYSTEM\\s*:',
+      'before\\s+calling\\s+this',
+      'you\\s+must\\s+also',
+      'additionally\\s+(?:send|exfiltrate|upload|leak|transmit)',
+      'after\\s+(?:completing|running|this)\\b.*(?:send|upload|exfiltrate)',
+      // Encoding obfuscation
+      'base64_?decode',
+      'atob\\s*\\(',
+      'fromCharCode\\s*\\(',
+      'String\\.fromCharCode',
+      '(?:\\\\x[0-9a-fA-F]{2}){4,}',
+      // Exfil signals
+      'exfiltrate',
+      '(?:send|upload|post)\\s+(?:to|all|the)\\s+(?:https?:\\/\\/|\\/api\\/)',
+    ].join('|'), 'i');
     for (const { path, content } of changedFiles) {
       if (!path.endsWith('.json') && !path.endsWith('.ts') && !path.endsWith('.js')) continue;
       if (isTestPath(path)) continue;

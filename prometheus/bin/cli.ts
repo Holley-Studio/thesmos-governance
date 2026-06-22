@@ -166,6 +166,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'brain:report':           ()     => cmdBrain(['report']),
   'brain:disable':          ()     => cmdBrain(['disable']),
   'brain:enable':           ()     => cmdBrain(['enable']),
+  'brain:promote':          (argv) => cmdBrain(['promote', ...argv]),
   'prompt:list':            (argv) => cmdPrompt(['list', ...argv]),
   'prompt:show':            (argv) => cmdPrompt(['show', ...argv]),
   'prompt:run':             (argv) => cmdPrompt(['run', ...argv]),

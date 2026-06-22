@@ -739,7 +739,7 @@ export const SECURITY_RULES: PrometheusRule[] = [
     },
     detect({ config, changedFiles = [] }: DetectInput): Finding[] {
       const severity = classifySeverity('hardcoded_credentials', config.severityRules);
-      const CRED_RE = /(?:password|passwd|secret|apiKey|api_key)\s*(?:[:=])\s*['"][^'"]{4,}['"]/i;
+      const CRED_RE = /(?:password|passwd|secret|apiKey|api_key|privateKey|private_key|clientSecret|client_secret|serviceAccountKey|database_password|db_password|connectionString|connection_string)\s*(?:[:=])\s*['"][^'"]{4,}['"]/i;
       const SAFE_RE = /process\.env|getenv|process\[/;
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
