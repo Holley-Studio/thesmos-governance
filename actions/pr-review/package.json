@@ -14,9 +14,9 @@
     "prometheus-governance": "file:../../prometheus"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^26.0.0",
     "esbuild": "^0.28.1",
-    "typescript": "^5.4.5",
-    "vitest": "^4.1.8"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
   }
 }
