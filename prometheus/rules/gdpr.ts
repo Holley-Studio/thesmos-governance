@@ -24,7 +24,7 @@ import type { PrometheusRule, DetectInput, Finding } from '../types.js';
 
 // ── Patterns ──────────────────────────────────────────────────────────────────
 
-const PII_FIELD_RE = /\b(?:email|phone|phoneNumber|mobile|firstName|lastName|fullName|dateOfBirth|birthDate|ssn|nationalId|address|postcode|zipCode|passportNumber|creditCard|cardNumber|ipAddress|userId|username)\b/i;
+const PII_FIELD_RE = /\b(?:email|phone|phoneNumber|mobile|firstName|lastName|fullName|dateOfBirth|birthDate|ssn|nationalId|address|postcode|zipCode|passportNumber|creditCard|cardNumber|ipAddress|userId|username|bankAccount|routingNumber|accountNumber|creditScore|socialSecurity|taxId|driversLicense|medicalRecord|healthInsurance|salary|compensation|is_admin|isAdmin|permissions|sessionId|session_token|accessToken|refreshToken)\b/i;
 
 const CONSOLE_LOG_RE = /console\.(log|error|warn|info|debug)\s*\(/;
 const URL_PARAMS_RE = /[?&](?:email|phone|user_id|userId|name|fullname|address)=/i;

@@ -10,8 +10,8 @@
  *   prometheus brain:hook-install    # Install Stop hook in .claude/settings.json
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { makeLogger } from '../../logger.js';
 import {
   generateBrainSnapshot,
@@ -297,6 +297,7 @@ async function runBrainEvolve(argv: string[]): Promise<void> {
         continue;
       }
       rule.status = 'approved';
+      rule.approvedAt = new Date().toISOString();
       console.log(`  ✅ Approved: ${id} — "${rule.name}"`);
     }
   }
@@ -343,6 +344,126 @@ async function runBrainToggle(enable: boolean): Promise<void> {
   log.info(`brain:learn ${state}`);
 }
 
+// ── brain:promote ─────────────────────────────────────────────────────────────
+
+function buildRuleStub(rule: { id: string; name: string; description: string; severity: string; rationale: string }): string {
+  const snakeId = rule.id.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const CONST = rule.id.replace(/-/g, '_');
+  return `/**
+ * ${rule.id} — community rule promoted via brain:promote
+ * Name: ${rule.name}
+ *
+ * Next steps:
+ *   1. Replace TODO_REPLACE_WITH_ACTUAL_REGEX with a real pattern
+ *   2. Add 2–3 commonViolations examples
+ *   3. Fill in goodExample / badExample
+ *   4. Set sinceVersion to the next release version
+ *   5. Import ${CONST}_RULES in prometheus/rules/registry.ts and push onto PROMETHEUS_RULES
+ *   6. Add a test in prometheus/rules/${snakeId}.test.ts
+ */
+
+import type { PrometheusRule, DetectInput, Finding } from '../../types.js';
+
+const ${CONST}_RE = /TODO_REPLACE_WITH_ACTUAL_REGEX/;
+
+export const ${CONST}_RULES: PrometheusRule[] = [
+  {
+    id: '${rule.id}',
+    category: '${snakeId}',
+    description: '${rule.description.replace(/'/g, "\\'")}',
+    severity: '${rule.severity}' as const,
+    tags: ['custom', 'community'],
+    sinceVersion: '0.0.1',
+    explain: {
+      why: '${rule.rationale.replace(/'/g, "\\'")}',
+      commonViolations: [
+        // TODO: add 2–3 concrete code examples that trigger this rule
+      ],
+      goodExample: '// TODO: add a compliant example',
+      badExample:  '// TODO: add a non-compliant example',
+    },
+    detect({ changedFiles = [] }: DetectInput): Finding[] {
+      const findings: Finding[] = [];
+      for (const { path, content } of changedFiles) {
+        const lines = content.split('\\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (${CONST}_RE.test(lines[i]!)) {
+            findings.push({
+              severity: '${rule.severity}' as const,
+              category: '${snakeId}',
+              file: path,
+              line: i + 1,
+              message: '${rule.description.replace(/'/g, "\\'")}',
+              suggestion: '// TODO: add remediation guidance',
+            });
+          }
+        }
+      }
+      return findings;
+    },
+  },
+];
+`;
+}
+
+async function runBrainPromote(argv: string[]): Promise<void> {
+  const root = process.cwd();
+  const ruleId = argv.find((a) => a.startsWith('--rule='))?.split('=')[1];
+
+  if (!ruleId) {
+    console.error('\n  ❌ --rule=<ID> is required\n');
+    console.error('  Usage: prometheus brain:promote --rule=CUSTOM_001\n');
+    process.exitCode = 1;
+    return;
+  }
+
+  const store = loadBrainStore(root);
+  const proposal = store.proposedRules.find((r) => r.id === ruleId && r.status === 'approved');
+
+  if (!proposal) {
+    const exists = store.proposedRules.find((r) => r.id === ruleId);
+    if (exists) {
+      console.error(`\n  ❌ Rule ${ruleId} exists but is not approved (status: ${exists.status})\n`);
+      console.error(`  Approve it first: prometheus brain:evolve --approve=${ruleId}\n`);
+    } else {
+      console.error(`\n  ❌ Rule ${ruleId} not found in brain.json\n`);
+      console.error('  Run: prometheus brain:learn  then  prometheus brain:evolve --approve=<ID>\n');
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  const communityDir = join(root, 'prometheus', 'rules', 'community');
+  const outPath = join(communityDir, `${ruleId}.ts`);
+
+  mkdirSync(communityDir, { recursive: true });
+
+  if (existsSync(outPath)) {
+    console.error(`\n  ❌ ${outPath} already exists — remove it first if you want to regenerate.\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const stub = buildRuleStub(proposal);
+  writeFileSync(outPath, stub, 'utf8');
+
+  const snakeId = ruleId.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const CONST = ruleId.replace(/-/g, '_');
+
+  console.log(`\n  ✅ Promoted: ${ruleId} → prometheus/rules/community/${ruleId}.ts\n`);
+  console.log('  Next steps to wire into Prometheus core:\n');
+  console.log(`  1. Edit the regex — replace TODO_REPLACE_WITH_ACTUAL_REGEX in ${ruleId}.ts`);
+  console.log(`  2. Add examples — fill commonViolations, goodExample, badExample`);
+  console.log(`  3. Import in prometheus/rules/registry.ts:`);
+  console.log(`       import { ${CONST}_RULES } from './community/${ruleId}.js';`);
+  console.log(`       PROMETHEUS_RULES.push(...${CONST}_RULES);`);
+  console.log(`  4. Write a test: prometheus/rules/${snakeId}.test.ts`);
+  console.log(`  5. Set sinceVersion to the upcoming release version`);
+  console.log(`  6. Update CHANGELOG.md and bump package.json version\n`);
+
+  log.info('brain:promote complete', { ruleId, outPath });
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 export async function cmdBrain(argv: string[]): Promise<void> {
@@ -376,6 +497,9 @@ export async function cmdBrain(argv: string[]): Promise<void> {
     case 'enable':
       return runBrainToggle(true);
 
+    case 'promote':
+      return runBrainPromote(argv.slice(1));
+
     default:
       if (!subcommand) {
         return runBrainSnapshot(argv);
@@ -383,7 +507,7 @@ export async function cmdBrain(argv: string[]): Promise<void> {
       console.error(`  Unknown brain subcommand: ${subcommand}`);
       console.error('  Usage: prometheus brain:snapshot | brain:compact | brain:hook-install');
       console.error('         prometheus brain:observe | brain:learn | brain:evolve | brain:report');
-      console.error('         prometheus brain:disable | brain:enable');
+      console.error('         prometheus brain:disable | brain:enable | brain:promote');
       process.exitCode = 1;
   }
 }

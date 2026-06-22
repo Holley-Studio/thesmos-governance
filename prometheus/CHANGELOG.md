@@ -6,6 +6,46 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+## [3.4.0] — 2026-06-22
+
+### Added
+
+**`brain:promote` — Community Rule Promotion:**
+
+- New command `prometheus brain:promote --rule=<ID>` scaffolds an approved `ProposedRule` from `brain.json` into a TypeScript rule stub at `prometheus/rules/community/<ID>.ts`
+- Generated stubs follow the exact `PrometheusRule` pattern used throughout the core rules (exported `*_RULES` array, externalized regex constant, `.js` imports)
+- Printed step-by-step wiring instructions guide the developer to import the stub into `registry.ts`, add a test, and set the release version
+- `brain:evolve --approve` now stamps `approvedAt` timestamp on approved proposals
+- New `prometheus/rules/community/` directory with README documenting the promotion workflow
+- Route registered in CLI: `brain:promote`
+
+**MCP_001 — Expanded Injection Pattern Detection:**
+
+- `INJECTION_RE` in `prometheus/rules/mcp.ts` expanded from 6 patterns to 25+ across 6 attack categories
+- System prompt overrides: `ignore/disregard/forget/override previous instructions`, `your new instructions are`
+- Role-play escapes: `you are now a`, `act as if`, `pretend to be`, `roleplay as`
+- Delimiter injection: `<system>`, `[INST]`, `<|im_start|>`, `### System`
+- Instruction hijacking: `SYSTEM:`, `before calling this`, `you must also`, `additionally send/exfiltrate`
+- Encoding obfuscation: `base64_decode`, `atob()`, `String.fromCharCode`, hex escape sequences
+- Exfil signals: `exfiltrate`, `send/upload/post to https://` or `/api/`
+
+**Sensitive Field Taxonomy:**
+
+- `PII_FIELD_RE` in GDPR rules extended with high-sensitivity fields: `bankAccount`, `routingNumber`, `accountNumber`, `creditScore`, `socialSecurity`, `taxId`, `driversLicense`, `medicalRecord`, `healthInsurance`
+- `PII_FIELD_RE` extended with medium-sensitivity API response fields: `salary`, `compensation`, `is_admin`, `isAdmin`, `permissions`, `sessionId`, `session_token`, `accessToken`, `refreshToken`
+- `CRED_RE` in security rules extended with: `privateKey`, `private_key`, `clientSecret`, `client_secret`, `serviceAccountKey`, `database_password`, `db_password`, `connectionString`, `connection_string`
+
+**6 New Pantheon Security Investigation Agents:**
+
+- **Hecate** (`hecate-prompt-injection-agent`) — AI prompt injection and MCP tool poisoning investigator. Detects direct and indirect injection in LLM pipelines, tool descriptions, and agent configurations. References MCP_001–003.
+- **Nemesis** (`nemesis-supply-chain-agent`) — CI/CD supply chain attack investigator. Audits GitHub Actions for unpinned actions, script injection, secrets exposure, and dependency confusion. References SC_001–008.
+- **Cerberus** (`cerberus-oauth-agent`) — OAuth token theft investigator. Reviews token storage, JWT handling, cookie security, and timing attack risks in authentication flows. References AUTH_002–005, SEC_019.
+- **Nyx** (`nyx-api-enumeration-agent`) — API enumeration and BOLA/IDOR investigator. Ensures resource ownership validation and rate limiting on all identifier-based API routes. References AUTH_002, SEC_015, DAST_001–002.
+- **Ate** (`ate-sql-injection-agent`) — SQL injection and WAF evasion investigator. Detects unparameterized queries, raw ORM misuse, and WAF bypass patterns. References SEC_004, DAST_005–006.
+- **Hades** (`hades-credential-agent`) — Credential dumping and secret exposure investigator. Audits hardcoded credentials, unsafe secret storage, and git history for leaked key material. References SEC_007–011, SEC_016, GDPR_008.
+
+---
+
 ## [3.3.0] — 2026-06-22
 
 ### Added
