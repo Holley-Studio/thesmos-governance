@@ -165,7 +165,7 @@ Prometheus auto-discovers packs under \`node_modules/@prometheus/\`.
 
 ## Authoring rules
 
-See the [Prometheus rule authoring guide](https://github.com/TenticleTim/prometheus-fire/blob/main/CONTRIBUTING.md#writing-rules)
+See the [Prometheus rule authoring guide](https://github.com/Holley-Studio/prometheus-governance/blob/main/CONTRIBUTING.md#writing-rules)
 for the full \`PrometheusRule\` API, severity levels, and best practices.
 `;
 }

@@ -21,6 +21,9 @@ import { join } from 'node:path';
 import type { Finding, PrometheusConfig, ScanResult } from './types.js';
 import { PROMETHEUS_RULES } from './rules/registry.js';
 import { runReview } from './review.js';
+import { makeLogger } from './logger.js';
+
+const log = makeLogger('fix');
 
 // ── Fixer type ─────────────────────────────────────────────────────────────────
 
@@ -943,7 +946,8 @@ export function runFix(
     let content: string;
     try {
       content = readFileSync(absPath, 'utf8');
-    } catch {
+    } catch (e) {
+      log.error('file read failed', { file: relFile, error: e instanceof Error ? e.message : String(e) });
       for (const f of filefindings) {
         skipped.push({ file: relFile, line: f.line ?? null, rule: f.category, reason: 'file not readable' });
       }
@@ -957,9 +961,11 @@ export function runFix(
     for (const f of sorted) {
       const result = applyFixer(patched, f);
       if (result === null) {
+        log.warn('fixer returned null', { file: relFile, rule: f.category, line: f.line });
         skipped.push({ file: relFile, line: f.line ?? null, rule: f.category, reason: 'fixer could not apply safely' });
         continue;
       }
+      log.info('fix applied', { file: relFile, rule: f.category, line: f.line, dry: !apply });
       patched = result;
       applied.push({ file: relFile, line: f.line ?? null, rule: f.category, action: describeAction(f.category) });
     }
@@ -968,6 +974,7 @@ export function runFix(
       try {
         writeFileSync(absPath, patched, 'utf8');
       } catch (err) {
+        log.error('file write failed', { file: relFile, error: err instanceof Error ? err.message : String(err) });
         // Roll back applied entries for this file so the result is accurate
         const fileApplied = applied.filter((e) => e.file === relFile);
         for (const e of fileApplied) {

@@ -51,7 +51,14 @@ import { cmdCompliance } from './commands/compliance.ts';
 import { cmdAiFingerprint } from './commands/ai-fingerprint.ts';
 import { cmdPantheon } from './commands/pantheon.ts';
 import { cmdGithubComment } from './commands/github-comment.ts';
+import { cmdSelf } from './commands/self.ts';
+import { cmdBrain } from './commands/brain.ts';
+import { cmdPrompt } from './commands/prompt.ts';
+import { cmdBuild } from './commands/build.ts';
 import { startLspServer } from '../lang-server.ts';
+import { makeLogger } from '../logger.ts';
+
+const log = makeLogger('cli');
 
 const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   init: cmdInit,
@@ -147,6 +154,31 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'context:snapshot':       (argv) => cmdContext(['snapshot', ...argv]),
   'context:health':         (argv) => cmdContext(['health', ...argv]),
   'github:comment':         (argv) => cmdGithubComment(argv),
+  'self:check':             (argv) => cmdSelf(['check', ...argv]),
+  'self:update':            (argv) => cmdSelf(['update', ...argv]),
+  'self:repair':            (argv) => cmdSelf(['repair', ...argv]),
+  'brain:snapshot':         (argv) => cmdBrain(['snapshot', ...argv]),
+  'brain:compact':          ()     => cmdBrain(['compact']),
+  'brain:hook-install':     ()     => cmdBrain(['hook-install']),
+  'brain:observe':          (argv) => cmdBrain(['observe', ...argv]),
+  'brain:learn':            (argv) => cmdBrain(['learn', ...argv]),
+  'brain:evolve':           (argv) => cmdBrain(['evolve', ...argv]),
+  'brain:report':           ()     => cmdBrain(['report']),
+  'brain:disable':          ()     => cmdBrain(['disable']),
+  'brain:enable':           ()     => cmdBrain(['enable']),
+  'prompt:list':            (argv) => cmdPrompt(['list', ...argv]),
+  'prompt:show':            (argv) => cmdPrompt(['show', ...argv]),
+  'prompt:run':             (argv) => cmdPrompt(['run', ...argv]),
+  'prompt:suggest':         ()     => cmdPrompt(['suggest']),
+  'prompt:import':          (argv) => cmdPrompt(['import', ...argv]),
+  'build:agent':            (argv) => cmdBuild(['agent', ...argv]),
+  'build:skill':            (argv) => cmdBuild(['skill', ...argv]),
+  'build:dashboard':        (argv) => cmdBuild(['dashboard', ...argv]),
+  'build:workflow':         (argv) => cmdBuild(['workflow', ...argv]),
+  'build:rag':              (argv) => cmdBuild(['rag', ...argv]),
+  'build:voice':            (argv) => cmdBuild(['voice', ...argv]),
+  'build:mcp-tool':         (argv) => cmdBuild(['mcp-tool', ...argv]),
+  'build:automation':       (argv) => cmdBuild(['automation', ...argv]),
   'lsp':                    async () => { startLspServer(); },
 };
 
@@ -412,8 +444,21 @@ if (!handler) {
   process.exit(1);
 }
 
-handler(argv.slice(1)).catch((err: unknown) => {
-  const msg = err instanceof Error ? err.message : String(err);
-  process.stderr.write(`prometheus ${command}: ${msg}\n`);
-  process.exit(1);
-});
+const cliStart = Date.now();
+log.info('command start', { command });
+
+handler(argv.slice(1))
+  .then(() => {
+    log.info('command complete', { command, durationMs: Date.now() - cliStart });
+  })
+  .catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    log.error('command failed', {
+      command,
+      error: msg,
+      stack: err instanceof Error ? err.stack : undefined,
+      durationMs: Date.now() - cliStart,
+    });
+    process.stderr.write(`prometheus ${command}: ${msg}\n`);
+    process.exit(1);
+  });

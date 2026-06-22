@@ -17,6 +17,9 @@ import { join } from 'node:path';
 import { DEBT_RULES } from '../../rules/debt.js';
 import type { DetectInput, Finding, ScanResult } from '../../types.js';
 import { CONFIG_DEFAULTS, loadConfig } from '../../config.js';
+import { makeLogger } from '../../logger.js';
+
+const log = makeLogger('debt');
 
 const SEVERITY_WEIGHT: Record<string, number> = { BLOCKER: 20, HIGH: 10, MEDIUM: 5, LOW: 2 };
 
@@ -96,7 +99,14 @@ export async function cmdDebtScan(argv: string[]): Promise<void> {
 
   const allFindings: Finding[] = [];
   for (const rule of DEBT_RULES) {
-    try { allFindings.push(...rule.detect(detectInput)); } catch { /* */ }
+    try {
+      allFindings.push(...rule.detect(detectInput));
+    } catch (e) {
+      log.warn('debt rule threw', {
+        rule: rule.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
 
   const score = scoreFromFindings(allFindings, changedFiles.length);

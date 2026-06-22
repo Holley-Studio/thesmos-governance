@@ -15,7 +15,7 @@ FSL permits free use for personal projects, internal tooling, and open source wo
 To inquire about a commercial license, please reach out:
 
 **Email:** holley42@yahoo.com  
-**GitHub:** https://github.com/TenticleTim/prometheus-fire
+**GitHub:** https://github.com/Holley-Studio/prometheus-governance
 
 Commercial licenses are available for teams, enterprises, and SaaS builders. We're happy to work out terms that fit your use case.
 

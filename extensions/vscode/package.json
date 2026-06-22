@@ -10,7 +10,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TenticleTim/prometheus-helper.git",
+    "url": "https://github.com/Holley-Studio/prometheus-governance.git",
     "directory": "extensions/vscode"
   },
   "engines": {

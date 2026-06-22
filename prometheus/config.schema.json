@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/TenticleTim/prometheus-helper/blob/main/prometheus/config.schema.json",
+  "$id": "https://github.com/Holley-Studio/prometheus-governance/blob/main/prometheus/config.schema.json",
   "title": "PrometheusConfig",
   "description": "Configuration file for prometheus-governance (.prometheus/config.json)",
   "type": "object",

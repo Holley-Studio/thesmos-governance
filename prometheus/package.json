@@ -1,17 +1,17 @@
 {
   "name": "prometheus-governance",
-  "version": "2.2.0",
-  "description": "AI-stack-agnostic repo governance: code review rules, CI gates, and adapter generation for Claude, Gemini, Cursor, Copilot, Codex, and AGENTS.md",
+  "version": "3.2.0",
+  "description": "AI-stack-agnostic repo governance: 1,075 rules, MCP server, Learning Brain, Builder Wizard, and Pantheon agents for Claude, Gemini, Cursor, Copilot, Codex, and AGENTS.md",
   "license": "SEE LICENSE IN LICENSE",
   "author": "Matt Holley",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TenticleTim/prometheus-fire.git",
+    "url": "git+https://github.com/Holley-Studio/prometheus-governance.git",
     "directory": "prometheus"
   },
-  "homepage": "https://github.com/TenticleTim/prometheus-fire#readme",
+  "homepage": "https://holley.studio/prometheus",
   "bugs": {
-    "url": "https://github.com/TenticleTim/prometheus-fire/issues"
+    "url": "https://github.com/Holley-Studio/prometheus-governance/issues"
   },
   "keywords": [
     "governance",

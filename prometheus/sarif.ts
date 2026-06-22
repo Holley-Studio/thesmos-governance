@@ -142,7 +142,7 @@ export function toSarif(
           driver: {
             name: 'prometheus-governance',
             version,
-            informationUri: 'https://github.com/TenticleTim/prometheus-helper',
+            informationUri: 'https://github.com/Holley-Studio/prometheus-governance',
             rules: ruleDescriptors,
           },
         },
