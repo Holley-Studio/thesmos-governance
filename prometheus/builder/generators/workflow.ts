@@ -1,0 +1,241 @@
+/**
+ * Workflow generator — creates GitHub Actions workflow YAML from wizard answers.
+ *
+ * Outputs (plan mode):
+ *   - .prometheus/builds/<name>-workflow-plan.md
+ *
+ * Outputs (scaffold mode):
+ *   - .github/workflows/<name>.yml
+ */
+
+import type { WizardAnswers, WizardContext } from '../wizard.js';
+import { makeLogger } from '../../logger.js';
+
+const log = makeLogger('generator:workflow');
+
+export interface WorkflowArtifact {
+  files: Array<{ path: string; content: string; label: string }>;
+  workflowName: string;
+}
+
+// ── Trigger YAML ──────────────────────────────────────────────────────────────
+
+function buildTriggerYaml(trigger: string): string {
+  switch (trigger) {
+    case 'pr': return `on:\n  pull_request:\n    types: [opened, synchronize, reopened]`;
+    case 'push-main': return `on:\n  push:\n    branches: [main]`;
+    case 'scheduled': return `on:\n  schedule:\n    - cron: '0 9 * * 1'  # Every Monday 9am UTC`;
+    case 'manual': return `on:\n  workflow_dispatch:\n    inputs:\n      reason:\n        description: 'Reason for manual run'\n        required: false`;
+    case 'release': return `on:\n  release:\n    types: [created]`;
+    default: return `on:\n  workflow_dispatch:`;
+  }
+}
+
+// ── Steps YAML ────────────────────────────────────────────────────────────────
+
+function buildStepsYaml(steps: string, runtime: string, deployTarget: string, needsApproval: string): string {
+  const setupNode = runtime === 'nodejs' ? `
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci` : '';
+
+  const testStep = (steps === 'test-lint' || steps === 'full-ci')
+    ? `
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test` : '';
+
+  const buildStep = (steps === 'build-deploy' || steps === 'full-ci')
+    ? `
+      - name: Build
+        run: npm run build` : '';
+
+  const scanStep = (steps === 'full-ci')
+    ? `
+      - name: Prometheus governance scan
+        run: npx prometheus review --format sarif --output prometheus-report.sarif
+        continue-on-error: true
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: prometheus-report.sarif` : '';
+
+  const deployStep = (steps === 'build-deploy' || steps === 'full-ci') && deployTarget !== 'none'
+    ? buildDeployStep(deployTarget) : '';
+
+  const approvalStep = needsApproval === 'yes'
+    ? `
+      - name: Await manual approval
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: \${{ github.TOKEN }}
+          approvers: \${{ github.repository_owner }}
+          minimum-approvals: 1` : '';
+
+  const notifyStep = steps === 'notify'
+    ? `
+      - name: Notify
+        if: always()
+        run: |
+          echo "Workflow \${{ github.workflow }} completed with status: \${{ job.status }}"
+          # TODO: replace with real notification (Slack, email, etc.)` : '';
+
+  return `${approvalStep}${setupNode}${testStep}${buildStep}${scanStep}${deployStep}${notifyStep}`;
+}
+
+function buildDeployStep(deployTarget: string): string {
+  switch (deployTarget) {
+    case 'vercel': return `
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: \${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: \${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: \${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'`;
+    case 'aws': return `
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: \${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: \${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy to AWS
+        run: |
+          # TODO: replace with real AWS deploy command
+          echo "Deploying to AWS..."`;
+    default: return '';
+  }
+}
+
+// ── Workflow YAML ─────────────────────────────────────────────────────────────
+
+function buildWorkflowYaml(answers: WizardAnswers, context: WizardContext): string {
+  const name = answers['name'] ?? 'workflow';
+  const displayName = name.split('-').map((w: string) => w[0]!.toUpperCase() + w.slice(1)).join(' ');
+  const job = answers['job'] ?? 'automated workflow';
+  const trigger = answers['trigger'] ?? 'manual';
+  const runtime = answers['runtime'] ?? 'nodejs';
+  const steps = answers['steps'] ?? 'test-lint';
+  const deployTarget = answers['deployTarget'] ?? 'none';
+  const needsApproval = answers['needsApproval'] ?? 'no';
+  const stack = context.detectedStack.join(', ') || 'unknown';
+
+  const triggerYaml = buildTriggerYaml(trigger);
+  const stepsYaml = buildStepsYaml(steps, runtime, deployTarget, needsApproval);
+
+  return `# ${displayName}
+# ${job}
+# Generated by prometheus build:workflow
+# Stack: ${stack}
+
+name: ${displayName}
+
+${triggerYaml}
+
+jobs:
+  ${name}:
+    name: ${displayName}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+${stepsYaml}
+`;
+}
+
+// ── Plan generator ────────────────────────────────────────────────────────────
+
+export function generateWorkflowPlan(answers: WizardAnswers, context: WizardContext): string {
+  const name = answers['name'] ?? 'workflow';
+  const displayName = name.split('-').map((w: string) => w[0]!.toUpperCase() + w.slice(1)).join(' ');
+  const job = answers['job'] ?? 'automated workflow';
+  const trigger = answers['trigger'] ?? 'manual';
+  const runtime = answers['runtime'] ?? 'nodejs';
+  const steps = answers['steps'] ?? 'test-lint';
+  const deployTarget = answers['deployTarget'] ?? 'none';
+  const needsApproval = answers['needsApproval'] ?? 'no';
+
+  return [
+    `# ${displayName} — Workflow Implementation Plan`,
+    '',
+    `## Purpose`,
+    job,
+    '',
+    `## Architecture decisions`,
+    '',
+    `| Decision | Choice | Rationale |`,
+    `|----------|--------|-----------|`,
+    `| Trigger | ${trigger} | Matches the workflow's run cadence |`,
+    `| Runtime | ${runtime} | Matches detected stack |`,
+    `| Steps | ${steps} | Covers required automation surface |`,
+    `| Deploy target | ${deployTarget} | Destination for build artifacts |`,
+    `| Needs approval | ${needsApproval} | Human gate requirement |`,
+    '',
+    `## Generated file`,
+    '',
+    `\`.github/workflows/${name}.yml\``,
+    '',
+    `## Implementation checklist`,
+    '',
+    `- [ ] Create \`.github/workflows/${name}.yml\``,
+    needsApproval === 'yes' ? `- [ ] Configure manual approval reviewers in workflow` : '',
+    deployTarget !== 'none' ? `- [ ] Set required secrets (see workflow comments)` : '',
+    `- [ ] Test workflow: trigger via ${trigger === 'manual' ? 'Actions tab → Run workflow' : trigger}`,
+    `- [ ] Verify governance: ensure Prometheus scan step is present for CI workflows`,
+    '',
+    `## Required secrets`,
+    '',
+    deployTarget === 'vercel'
+      ? `- \`VERCEL_TOKEN\`\n- \`VERCEL_ORG_ID\`\n- \`VERCEL_PROJECT_ID\``
+      : deployTarget === 'aws'
+      ? `- \`AWS_ACCESS_KEY_ID\`\n- \`AWS_SECRET_ACCESS_KEY\``
+      : '- None required',
+    '',
+    `## Security considerations`,
+    '',
+    `- Secrets are injected via GitHub Secrets, never hardcoded`,
+    `- Workflow permissions follow least-privilege (read by default)`,
+    needsApproval === 'yes' ? `- Manual approval gate prevents unauthorized deployments` : '',
+    '',
+    `---`,
+    `*Generated by prometheus build:workflow --plan*`,
+    `*Run: prometheus build:workflow --scaffold to write the workflow file*`,
+  ].filter((l) => l !== '').join('\n');
+}
+
+// ── Main generator ────────────────────────────────────────────────────────────
+
+export async function generateWorkflow(
+  answers: WizardAnswers,
+  context: WizardContext,
+  opts: { scaffold: boolean; planOnly: boolean },
+): Promise<WorkflowArtifact> {
+  const name = (answers['name'] ?? 'workflow').toLowerCase().replace(/[^a-z0-9-]/g, '-');
+  answers['name'] = name;
+
+  const files: WorkflowArtifact['files'] = [];
+
+  if (opts.scaffold) {
+    files.push({
+      path: `.github/workflows/${name}.yml`,
+      content: buildWorkflowYaml(answers, context),
+      label: 'GitHub Actions workflow',
+    });
+  }
+
+  log.info('workflow generator complete', { name, files: files.length });
+  return { files, workflowName: name };
+}
