@@ -1,6 +1,6 @@
 {
   "name": "prometheus-governance",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "AI-stack-agnostic repo governance: 1,075 rules, MCP server, Learning Brain, Builder Wizard, and Pantheon agents for Claude, Gemini, Cursor, Copilot, Codex, and AGENTS.md",
   "license": "SEE LICENSE IN LICENSE",
   "author": "Matt Holley",
