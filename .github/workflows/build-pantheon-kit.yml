@@ -1,0 +1,107 @@
+name: Build Pantheon Pro Kit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prometheus/catalog/agents/pantheon/**'
+      - 'prometheus/catalog/agents/aether-ai-strategy-agent.md'
+      - 'prometheus/catalog/agents/calliope-email-agent.md'
+      - 'prometheus/catalog/agents/cassandra-qa-agent.md'
+      - 'prometheus/catalog/agents/chiron-architecture-agent.md'
+      - 'prometheus/catalog/agents/clio-case-study-agent.md'
+      - 'prometheus/catalog/agents/eos-automation-agent.md'
+      - 'prometheus/catalog/agents/erato-brand-voice-agent.md'
+      - 'prometheus/catalog/agents/kratos-devops-agent.md'
+      - 'prometheus/catalog/agents/metis-pm-agent.md'
+      - 'prometheus/catalog/agents/momus-challenger-agent.md'
+      - 'prometheus/catalog/agents/polyhymnia-docs-agent.md'
+      - 'prometheus/catalog/agents/proteus-drift-agent.md'
+      - 'prometheus/catalog/agents/talos-web-dev-agent.md'
+      - 'prometheus/package.json'
+
+jobs:
+  build-kit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: prometheus
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: prometheus/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build CLI
+        run: npm run build
+
+      - name: Generate all platform exports
+        run: node dist/bin/cli.js pantheon:export --target all
+
+      - name: Get version
+        id: ver
+        run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Assemble kit directory
+        run: |
+          mkdir -p kit/setup
+          # Platform exports
+          cp -r pantheon/exports/claude-code        kit/ 2>/dev/null || true
+          cp -r pantheon/exports/claude-project     kit/ 2>/dev/null || true
+          cp -r pantheon/exports/chatgpt            kit/ 2>/dev/null || true
+          cp -r pantheon/exports/cursor             kit/ 2>/dev/null || true
+          cp -r pantheon/exports/gemini             kit/ 2>/dev/null || true
+          cp -r pantheon/exports/copilot            kit/ 2>/dev/null || true
+          cp -r "pantheon/exports/openai-assistants" kit/ 2>/dev/null || true
+          # Setup guides
+          cp docs/setup/*.md kit/setup/ 2>/dev/null || true
+          # Top-level README
+          cp docs/kit-readme.md kit/README.md 2>/dev/null || true
+
+      - name: Package zip
+        run: |
+          KIT_NAME="pantheon-pro-v${{ steps.ver.outputs.VERSION }}.zip"
+          zip -r "$KIT_NAME" kit/
+          echo "KIT_PATH=$KIT_NAME" >> $GITHUB_ENV
+          echo "Kit size: $(du -sh $KIT_NAME | cut -f1)"
+
+      - name: Upload to Supabase Storage
+        run: |
+          curl -sf -X PUT \
+            "${{ secrets.SUPABASE_URL }}/storage/v1/object/documents/kits/${{ env.KIT_PATH }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/zip" \
+            --data-binary @"${{ env.KIT_PATH }}"
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Update active kit path in database
+        run: |
+          curl -sf -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/digital_products" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Prefer: resolution=merge-duplicates" \
+            -d "{\"slug\":\"pantheon-pro\",\"title\":\"Pantheon Pro\",\"price_cents\":7900,\"storage_path\":\"kits/${{ env.KIT_PATH }}\",\"active\":true}"
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Kit build summary
+        run: |
+          echo "### Pantheon Pro Kit Built" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** v${{ steps.ver.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Kit file:** \`${{ env.KIT_PATH }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Uploaded to:** Supabase Storage \`documents/kits/${{ env.KIT_PATH }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Subscribers will receive the updated kit on their next download." >> $GITHUB_STEP_SUMMARY
