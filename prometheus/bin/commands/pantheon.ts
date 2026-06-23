@@ -1,5 +1,5 @@
 /**
- * prometheus pantheon:list        — list all 21 Pantheon agents
+ * prometheus pantheon:list        — list all 34 God Agents
  * prometheus pantheon:install     — add agents to .prometheus/registry.json
  * prometheus pantheon:status      — show installed Pantheon agents
  * prometheus pantheon:export      — export agents to platform-specific formats
@@ -16,7 +16,25 @@ import { parseArgs, flag } from '../lib/args.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PANTHEON_DIR = join(__dirname, '../../catalog/agents/pantheon');
+const AGENTS_DIR = join(__dirname, '../../catalog/agents');
 const MEMORY_DIR_REL = '.prometheus/pantheon/memory';
+
+// The 13 God Agents that live at catalog/agents root (outside pantheon/ subdir)
+const WORKFLOW_GOD_AGENTS = [
+  'aether-ai-strategy-agent',
+  'calliope-email-agent',
+  'cassandra-qa-agent',
+  'chiron-architecture-agent',
+  'clio-case-study-agent',
+  'eos-automation-agent',
+  'erato-brand-voice-agent',
+  'kratos-devops-agent',
+  'metis-pm-agent',
+  'momus-challenger-agent',
+  'polyhymnia-docs-agent',
+  'proteus-drift-agent',
+  'talos-web-dev-agent',
+];
 
 // ── Agent metadata ─────────────────────────────────────────────────────────────
 
@@ -33,15 +51,28 @@ interface PantheonAgent {
 }
 
 function loadPantheonAgents(): PantheonAgent[] {
-  if (!existsSync(PANTHEON_DIR)) return [];
-  return readdirSync(PANTHEON_DIR)
-    .filter(f => f.endsWith('.md') && f !== 'README.md')
-    .sort()
-    .map(filename => {
+  const agents: PantheonAgent[] = [];
+
+  // Load the 21 core Pantheon agents from catalog/agents/pantheon/
+  if (existsSync(PANTHEON_DIR)) {
+    for (const filename of readdirSync(PANTHEON_DIR).filter(f => f.endsWith('.md') && f !== 'README.md').sort()) {
       const raw = readFileSync(join(PANTHEON_DIR, filename), 'utf8');
-      return parsePantheonAgent(raw, filename.replace('.md', ''));
-    })
-    .filter((a): a is PantheonAgent => a !== null);
+      const agent = parsePantheonAgent(raw, filename.replace('.md', ''));
+      if (agent) agents.push(agent);
+    }
+  }
+
+  // Load the 13 workflow God Agents from catalog/agents/ root
+  for (const slug of WORKFLOW_GOD_AGENTS) {
+    const filepath = join(AGENTS_DIR, `${slug}.md`);
+    if (existsSync(filepath)) {
+      const raw = readFileSync(filepath, 'utf8');
+      const agent = parsePantheonAgent(raw, slug);
+      if (agent) agents.push(agent);
+    }
+  }
+
+  return agents;
 }
 
 function parsePantheonAgent(raw: string, fallbackId: string): PantheonAgent | null {

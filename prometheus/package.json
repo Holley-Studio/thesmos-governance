@@ -49,7 +49,9 @@
   },
   "files": [
     "dist/",
-    "catalog/",
+    "catalog/agents/reviewers/",
+    "catalog/profiles/",
+    "catalog/skills/",
     "presets/",
     "README.md",
     "CHANGELOG.md",

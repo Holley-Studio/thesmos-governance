@@ -222,7 +222,7 @@ export function loadBuiltInCatalog(): {
 } {
   const catalogDir = findCatalogDir();
   return {
-    agents: loadCatalogDir(join(catalogDir, 'agents'), 'builtin'),
+    agents: loadCatalogDir(join(catalogDir, 'agents', 'reviewers'), 'builtin'),
     skills: loadCatalogDir(join(catalogDir, 'skills'), 'builtin'),
   };
 }
