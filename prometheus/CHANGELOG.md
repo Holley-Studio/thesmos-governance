@@ -6,6 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+## [3.5.0] — 2026-06-23
+
+### Added
+
+**10 New Pantheon Agents — Creative, Business, and Developer Workflow:**
+
+- **Calliope** (`calliope-email-agent`) — Email Design & HTML/MJML Agent. MJML source code, compiled HTML email templates, responsive cross-client design, deliverability checklists, A/B variant specs. Governed by GDPR_004 (no PII in email URLs), SEC_008 (no secrets in templates), GDPR_001 (consent gate awareness).
+- **Talos** (`talos-web-dev-agent`) — Web Dev & Implementation Agent. Production-ready Next.js/React/TypeScript components, API routes, database queries, and test scaffolds. Runs a mental Prometheus governance scan on every file before delivery. Governed by SEC_004, AUTH_002, NEXT_003, MCP_001.
+- **Clio** (`clio-case-study-agent`) — Case Study & Social Proof Agent. Customer interview frameworks (STAR structure), first draft with [VERIFY] placeholders, ROI calculation worksheets, testimonial pull quotes, LinkedIn post versions, and PDF design briefs for Hephaestus. Governed by LIC_001 (no fabricated quotes), GDPR_013 (client consent required).
+- **Eos** (`eos-automation-agent`) — Automation & Workflow Engineering Agent. n8n/Zapier/Make workflow JSON, GitHub Actions YAML, shell scripts, webhook handler code, and runbooks. All API keys BYOK. Governed by SC_007 (no script injection), SC_001 (pinned actions), SEC_007 (no hardcoded credentials).
+- **Erato** (`erato-brand-voice-agent`) — Brand Voice & Messaging Architecture Agent. Brand voice guides, messaging architecture (hero message → pillars → proof points), tagline options with rationale, boilerplate copy at 4 lengths, competitor voice differentiation matrix. The guide that Apollo executes within.
+- **Kratos** (`kratos-devops-agent`) — DevOps & Infrastructure Agent. Dockerfiles (multi-stage, non-root), docker-compose, GitHub Actions CI/CD, Terraform modules, K8s manifests, secrets management plans, and runbooks. Governed by K8S_001, SC_006, SEC_007.
+- **Aether** (`aether-ai-strategy-agent`) — AI Product Strategy & Prompt Engineering Agent. LLM selection matrix, system prompt engineering (with injection hardening), RAG pipeline architecture, evaluation frameworks, token cost estimates. Governed by MCP_001, AGNT_001, LIC_008. All LLM API keys BYOK.
+- **Polyhymnia** (`polyhymnia-docs-agent`) — Technical Documentation Agent. READMEs with badges/quickstart/API surface, API references, ADR templates, runbooks, JSDoc/TSDoc annotations, and changelog entries. Developer-facing technical docs only — not marketing content. Governed by LIC_001, GDPR_013.
+- **Cassandra** (`cassandra-qa-agent`) — QA & Testing Strategy Agent. Test strategy documents, test plans (happy path + edge cases + error cases), Vitest/Jest scaffolds, Playwright E2E outlines, coverage targets by module type, CI test pipeline config. Risk-based prioritisation; never recommends 100% coverage as a goal. Governed by SC_002, AUTH_002, GDPR_001.
+- **Chiron** (`chiron-architecture-agent`) — Architecture & Engineering Advisory Agent. Architecture recommendations with named alternatives and explicit trade-offs, ADR documents, C4 model system diagrams, technology selection matrices, refactoring roadmaps, and technical debt inventories. The senior engineer in the room. Governed by MCP_001, SC_001, AGNT_001.
+
+**Pantheon now spans 31 agents** covering executive, marketing, content, creative, design, sales, CX, legal, finance, PR, BD, operations, knowledge, video, animation, photography, security investigation, email design, web development, case studies, automation, brand voice, DevOps, AI strategy, technical documentation, QA, and architecture.
+
+---
+
 ## [3.4.0] — 2026-06-22
 
 ### Added
