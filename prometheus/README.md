@@ -65,9 +65,38 @@ That's it. You now have:
 
 ---
 
+## Why Prometheus is different
+
+Other platforms give you AI assistants. Prometheus gives you a governed AI team — 34 God Agents with domain expertise, built-in challengers, and every output governance-checked.
+
+| Capability | ChatGPT GPTs | Cursor Agents | Claude Projects | Prometheus God Agents |
+| --- | --- | --- | --- | --- |
+| Domain specialization | Basic | Code only | Custom instructions | Deep methodology + mythology |
+| Governance-checked outputs | ✗ | ✗ | ✗ | ✅ Prometheus badge on every output |
+| Consultation mode (ranked options) | ✗ | ✗ | ✗ | ✅ Universal protocol |
+| Cross-agent team + arbitration | ✗ | ✗ | ✗ | ✅ God Council |
+| Devil's advocate built-in | ✗ | ✗ | ✗ | ✅ God Agent Momus |
+| Drift detection | ✗ | ✗ | ✗ | ✅ God Agent Proteus |
+| PM / execution planning | ✗ | ✗ | ✗ | ✅ God Agent Metis |
+| Calibrated confidence | ✗ | ✗ | Partial | ✅ [ASSUMPTION] / [VERIFY] markers |
+| Problem diagnosis first | ✗ | ✗ | ✗ | ✅ Every agent asks the real question first |
+| BYOK / zero surveillance | N/A | N/A | N/A | ✅ All API keys user-supplied |
+
+**7 things no other agent platform does:**
+
+1. **Governance badge on every output** — Every God Agent delivery closes with `Prometheus check: [RULE_ID] ✅`. No other platform runs 1,075 governance rules against AI outputs automatically.
+2. **34 world-class God Agents — not assistants** — Each agent has a named methodology, failure mode taxonomy, and adversarial self-check. Not "I know marketing" but "I use Ehrenberg-Bass reach theory, and here's the specific thing your brief gets wrong."
+3. **God Council arbitration** — When agents conflict, Zeus arbitrates. Argus holds a permanent security veto; Themis holds a permanent legal veto. You get one decision, not a debate.
+4. **God Agent Momus** — The only agent platform with a mandatory challenger. Momus challenges every major decision before it ships using Socratic method, Gary Klein's Pre-mortem, and Munger's Inversion.
+5. **God Agent Proteus** — Drift detection built into the team. Product, prompt, architecture, brand, and strategy drift — caught before it costs a sprint.
+6. **BYOK and zero surveillance** — Every API key is yours. Nothing is stored. The governance is local. No SaaS subscription required to maintain compliance.
+7. **Calibrated confidence** — Every God Agent marks claims with [ASSUMPTION] and [VERIFY]. You know exactly where the confidence ends.
+
+---
+
 ## The Prometheus Pantheon
 
-A governed AI business team built into the package. 21 specialists named after Greek gods — one for every major business function.
+34 God Agents — a governed AI team named after Greek gods, covering every major business and engineering function. Every agent has deep methodology, failure mode taxonomy, domain mastery sections, and the Universal Intelligence Protocol injected by `prometheus adapters`.
 
 Install the full team:
 
@@ -101,13 +130,26 @@ Or download any agent directly — no install required:
 | Morpheus | Animation & motion | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/morpheus-animation-agent.md) |
 | Dionysus | Video production | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/dionysus-video-agent.md) |
 | Mnemosyne | Knowledge management | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/mnemosyne-knowledge-agent.md) |
+| Chiron | Architecture advisory | `prometheus pantheon:export --agent=chiron` |
+| Calliope | Email & MJML design | `prometheus pantheon:export --agent=calliope` |
+| Cassandra | QA & testing strategy | `prometheus pantheon:export --agent=cassandra` |
+| Erato | Brand voice & messaging | `prometheus pantheon:export --agent=erato` |
+| Aether | AI product strategy | `prometheus pantheon:export --agent=aether` |
+| Kratos | DevOps & infrastructure | `prometheus pantheon:export --agent=kratos` |
+| Talos | Web development | `prometheus pantheon:export --agent=talos` |
+| Polyhymnia | Technical documentation | `prometheus pantheon:export --agent=polyhymnia` |
+| Clio | Case studies | `prometheus pantheon:export --agent=clio` |
+| Eos | Automation & workflows | `prometheus pantheon:export --agent=eos` |
+| **Proteus** | **Drift & alignment monitor** | `prometheus pantheon:export --agent=proteus` |
+| **Momus** | **Challenger & clarity enforcer** | `prometheus pantheon:export --agent=momus` |
+| **Metis** | **PM & execution planner** | `prometheus pantheon:export --agent=metis` |
 
 See [pantheon/README.md](../pantheon/README.md) for the full documentation, all platform exports, and the installation guide.
 
 **Pantheon commands:**
 
 ```bash
-prometheus pantheon:list                          # List all 21 agents
+prometheus pantheon:list                          # List all 34 agents
 prometheus pantheon:export --target=claude-code   # Export as Claude Code native agents
 prometheus pantheon:export --target=all           # Export for all 7 platforms
 prometheus pantheon:orchestrate "<task>"          # Zeus routes task to specialists

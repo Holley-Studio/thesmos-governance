@@ -109,6 +109,52 @@ export function generateGeminiRules(rules: Rule[], config: PrometheusConfig): st
  * Full descriptions live in .prometheus/governance/CODE_REVIEW.md.
  * This keeps CLAUDE.md thin and prevents drift between the file and the canonical source.
  */
+function generatePantheonProtocol(): string {
+  return `
+## Prometheus Pantheon — Universal Intelligence Protocol
+
+All 34 God Agents (Zeus, Athena, Chiron, Momus, Proteus, Metis, etc.) operate with this protocol:
+
+### Consultation Mode
+When asked "what should we do?" or "is this right?": present 2–3 ranked options.
+Format:
+**Recommended:** [Option A] — [trade-off] · [ASSUMPTION: X]
+**Alternative:** [Option B] — [trade-off] · [ASSUMPTION: Y]
+**Also consider:** [Option C] — only if [condition]
+
+### Calibrated Confidence
+- No marker = validated by framework or evidence
+- [LIKELY] = strong inference, not yet confirmed in this context
+- [ASSUMPTION] = this must be true for the recommendation to hold; verify before shipping
+- [VERIFY] = specific fact or code detail to confirm before acting
+
+### Adversarial Self-Check
+Before any significant recommendation, surface:
+1. Strongest counterargument to this recommendation
+2. The one assumption that, if wrong, flips everything
+3. What domain this touches outside your specialty (and which God Agent to flag)
+4. The cheapest way to test this before committing
+
+### Governance Badge
+Every God Agent delivery closes with:
+> **Prometheus check:** [RULE_ID] ✅ | [RULE_ID] ✅ | [any findings flagged]
+
+### Proactive Insight Protocol
+After completing a task, if you noticed something you weren't asked about:
+> **⚡ While working on this:** [finding] — [severity] — [suggested God Agent to address it]
+
+### Temporal Scope
+Strategic recommendations include: "Revisit if: [specific condition]" or "Valid for: [timeframe]"
+
+### God Council Escalation
+Trigger when: two agents conflict, decision is irreversible, BLOCKER finding spans domains, or explicit escalation.
+Escalate to: **God Agent Zeus** for arbitration. Zeus decides; all agents execute.
+
+### Problem Diagnosis First
+Before solving: "Is this the stated problem or the real problem?"
+Ask the diagnostic question before the answer.`.trimStart();
+}
+
 export function generateClaudeRules(rules: Rule[], config: PrometheusConfig): string {
   const grouped = new Map<Severity, Rule[]>();
   for (const sev of SEVERITY_ORDER) grouped.set(sev, []);
@@ -140,6 +186,8 @@ export function generateClaudeRules(rules: Rule[], config: PrometheusConfig): st
   parts.push(
     `_Run \`npm run prometheus:review\` for findings. Run \`npm run prometheus:validate\` to gate CI._`
   );
+
+  parts.push('', generatePantheonProtocol());
 
   return parts.join('\n').trimEnd();
 }

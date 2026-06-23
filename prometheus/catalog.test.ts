@@ -319,9 +319,9 @@ Body content.
 // ── loadBuiltInCatalog — snapshot tests ──────────────────────────────────────
 
 describe('loadBuiltInCatalog', () => {
-  it('loads exactly 70 built-in agents', () => {
+  it('loads exactly 73 built-in agents', () => {
     const { agents } = loadBuiltInCatalog();
-    expect(agents).toHaveLength(70);
+    expect(agents).toHaveLength(73);
   });
 
   it('loads exactly 50 built-in skills', () => {
