@@ -3,7 +3,7 @@ id: infrastructure-reviewer
 name: Infrastructure Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - terraform
   - infrastructure

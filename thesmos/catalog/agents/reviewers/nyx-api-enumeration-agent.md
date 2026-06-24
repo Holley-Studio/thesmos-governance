@@ -3,7 +3,7 @@ id: nyx-api-enumeration-agent
 name: "God Agent Nyx — API Enumeration Investigator"
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - api-security
   - enumeration
@@ -50,7 +50,7 @@ Per-route findings: the route path, whether the identifier is predictable (integ
 
 ## What not to do
 
-- Do not flag public read-only endpoints explicitly marked `// @prometheus-public-route`
+- Do not flag public read-only endpoints explicitly marked `// @thesmos-public-route`
 - Do not require rate limiting on static asset endpoints
 - Do not flag admin-only routes behind role checks — focus on user-facing routes where IDOR is exploitable
 - Do not require UUIDs everywhere — flag the missing ownership check, not the ID format

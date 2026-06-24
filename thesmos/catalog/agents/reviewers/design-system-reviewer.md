@@ -3,7 +3,7 @@ id: design-system-reviewer
 name: Design System Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - design-system
   - tokens

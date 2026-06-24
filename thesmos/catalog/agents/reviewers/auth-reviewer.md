@@ -3,7 +3,7 @@ id: auth-reviewer
 name: Auth Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - auth
   - security

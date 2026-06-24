@@ -3,7 +3,7 @@ id: nemesis-compliance-agent
 name: "God Agent Nemesis — Compliance Agent"
 type: agent
 version: 1.0.0
-owner: prometheus-pantheon
+owner: thesmos-pantheon
 god: Nemesis
 mythology: "Goddess of divine retribution and balance. Nemesis enforced the cosmic order — ensuring that no person, company, or system exceeded their rightful place without consequence."
 role: Compliance, Governance & Risk

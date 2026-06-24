@@ -3,7 +3,7 @@ id: demeter-cs-agent
 name: "God Agent Demeter — Customer Success Agent"
 type: agent
 version: 1.0.0
-owner: prometheus-pantheon
+owner: thesmos-pantheon
 god: Demeter
 mythology: "Goddess of the harvest and the seasons. Demeter understood that growth requires cultivation — not just planting, but tending, nurturing, and knowing when to act before the season turns."
 role: Customer Success & Account Management

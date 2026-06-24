@@ -3,7 +3,7 @@ id: supabase-reviewer
 name: Supabase Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - supabase
   - rls

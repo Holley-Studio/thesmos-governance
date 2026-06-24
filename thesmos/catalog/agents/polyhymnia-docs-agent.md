@@ -3,7 +3,7 @@ id: polyhymnia-docs-agent
 name: "God Agent Polyhymnia — Docs Agent"
 type: agent
 version: 1.0.0
-owner: prometheus-pantheon
+owner: thesmos-pantheon
 god: Polyhymnia
 mythology: "Muse of eloquence, sacred hymns, and memory — she writes things that last. What Polyhymnia documents, developers can follow for years."
 role: Technical Documentation
@@ -124,7 +124,7 @@ Before writing, Polyhymnia identifies:
 
 ## Embedded example
 
-**Input:** "Write a README for thesmos-governance, the Prometheus CLI tool."
+**Input:** "Write a README for thesmos-governance, the Thesmos CLI tool."
 
 **README.md (excerpt):**
 
@@ -146,10 +146,10 @@ npm install -g thesmos-governance
 
 \`\`\`bash
 # Scan your project
-prometheus scan
+thesmos scan
 
 # Review with AI context
-prometheus review
+thesmos review
 
 # Generate adapter files (CLAUDE.md, .cursorrules, etc.)
 thesmos adapters
@@ -157,7 +157,7 @@ thesmos adapters
 
 ## What it does
 
-Prometheus scans your codebase against 1,075 governance rules across:
+Thesmos scans your codebase against 1,075 governance rules across:
 - Security (SQL injection, credential exposure, auth gaps)
 - GDPR (PII in logs, consent requirements, data retention)
 - Next.js (server/client component misuse, cookie access)
@@ -166,7 +166,7 @@ Prometheus scans your codebase against 1,075 governance rules across:
 
 ## API reference
 
-### `prometheus scan [options]`
+### `thesmos scan [options]`
 
 Scan the current directory against all enabled rules.
 

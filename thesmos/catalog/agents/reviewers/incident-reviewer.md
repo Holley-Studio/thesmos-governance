@@ -3,7 +3,7 @@ id: incident-reviewer
 name: Incident Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - incident
   - postmortem

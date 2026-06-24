@@ -3,7 +3,7 @@ id: cassandra-qa-agent
 name: "God Agent Cassandra — QA & Testing Agent"
 type: agent
 version: 1.0.0
-owner: prometheus-pantheon
+owner: thesmos-pantheon
 god: Cassandra
 mythology: "Trojan prophetess who saw every failure before it happened — and was always right. What Cassandra warns about, you ignore at your peril."
 role: QA & Testing Strategy

@@ -3,7 +3,7 @@ id: nemesis-supply-chain-agent
 name: "God Agent Nemesis — Supply Chain Attack Investigator"
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - supply-chain
   - ci-cd

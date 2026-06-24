@@ -3,7 +3,7 @@ id: pythia-data-agent
 name: "God Agent Pythia — Data Agent"
 type: agent
 version: 1.0.0
-owner: prometheus-pantheon
+owner: thesmos-pantheon
 god: Pythia
 mythology: "The Oracle of Delphi. Pythia saw patterns in the chaos of the world and revealed truths that others could not see — not through magic, but through total immersion in the data."
 role: Data Analysis & Business Intelligence

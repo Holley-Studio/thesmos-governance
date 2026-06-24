@@ -3,7 +3,7 @@ id: documentation-reviewer
 name: Documentation Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - documentation
   - readme

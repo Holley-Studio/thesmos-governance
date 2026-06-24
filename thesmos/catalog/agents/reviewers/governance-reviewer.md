@@ -3,10 +3,10 @@ id: governance-reviewer
 name: Governance Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - governance
-  - prometheus
+  - thesmos
   - adapters
   - rules
 enabled: true
@@ -17,13 +17,13 @@ model: claude-haiku-4-5-20251001
 
 ## Purpose
 
-Reviews the Prometheus governance setup itself: adapter freshness, rule configuration drift, severity model alignment, and `.thesmos/` documentation currency. The meta-reviewer for the governance system.
+Reviews the Thesmos governance setup itself: adapter freshness, rule configuration drift, severity model alignment, and `.thesmos/` documentation currency. The meta-reviewer for the governance system.
 
 ## When to use
 
-- When `prometheus doctor` reports stale adapters or configuration drift
+- When `thesmos doctor` reports stale adapters or configuration drift
 - Before onboarding a new team to the governance system
-- When the project's Prometheus version is being upgraded
+- When the project's Thesmos version is being upgraded
 - Quarterly governance health reviews
 
 ## Rule focus

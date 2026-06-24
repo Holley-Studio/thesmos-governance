@@ -3,7 +3,7 @@ id: performance-reviewer
 name: Performance Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - performance
   - bundle

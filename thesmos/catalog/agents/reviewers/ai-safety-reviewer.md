@@ -3,7 +3,7 @@ id: ai-safety-reviewer
 name: AI Safety Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - ai
   - llm

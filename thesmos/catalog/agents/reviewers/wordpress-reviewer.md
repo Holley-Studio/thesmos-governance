@@ -3,7 +3,7 @@ id: wordpress-reviewer
 name: WordPress Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - wordpress
   - headless

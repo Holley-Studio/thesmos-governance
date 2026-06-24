@@ -3,7 +3,7 @@ id: feature-flag-reviewer
 name: Feature Flag Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - feature-flags
   - monday

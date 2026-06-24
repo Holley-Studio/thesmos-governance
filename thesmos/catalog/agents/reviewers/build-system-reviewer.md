@@ -3,7 +3,7 @@ id: build-system-reviewer
 name: Build System Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - build
   - nextjs

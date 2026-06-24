@@ -3,7 +3,7 @@ id: observability-reviewer
 name: Observability Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - observability
   - logging

@@ -3,7 +3,7 @@ id: product-reviewer
 name: Product Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - product
   - feature

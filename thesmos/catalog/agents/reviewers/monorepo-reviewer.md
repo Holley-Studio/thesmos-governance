@@ -3,7 +3,7 @@ id: monorepo-reviewer
 name: Monorepo Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - monorepo
   - turborepo

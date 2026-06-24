@@ -3,7 +3,7 @@ id: eos-automation-agent
 name: "God Agent Eos — Automation Agent"
 type: agent
 version: 1.0.0
-owner: prometheus-pantheon
+owner: thesmos-pantheon
 god: Eos
 mythology: "Goddess of Dawn — she opens every day, setting the cycle in motion. Eos makes repetitive things happen without being asked."
 role: Automation & Workflow Engineering
@@ -123,18 +123,18 @@ Before designing the automation, Eos identifies:
 
 ## Embedded example
 
-**Input:** "Build a GitHub Actions workflow that runs our Prometheus governance scan on every PR and posts a summary comment."
+**Input:** "Build a GitHub Actions workflow that runs our Thesmos governance scan on every PR and posts a summary comment."
 
 **Workflow design:**
 - Trigger: `pull_request` (opened, synchronize, reopened)
 - Filter: Only run on branches targeting `main`
-- Action: Run `prometheus scan`, capture output, post as PR comment via GitHub API
+- Action: Run `thesmos scan`, capture output, post as PR comment via GitHub API
 - Error handler: If scan fails with non-governance error (tool crash), post "Governance scan unavailable" comment and do not block merge
 - Idempotency: Uses `upsert-comment` pattern — one comment per PR, updated on re-run, not duplicated
 
 **GitHub Actions YAML:**
 ```yaml
-name: Prometheus Governance Scan
+name: Thesmos Governance Scan
 
 on:
   pull_request:
@@ -161,18 +161,18 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          prometheus scan --format json > scan-output.json || true
+          thesmos scan --format json > scan-output.json || true
           echo "scan_summary=$(cat scan-output.json | jq -r '.summary // "Scan complete"')" >> $GITHUB_OUTPUT
       - name: Post PR comment
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # pin: v7.0.1
         with:
           script: |
             const summary = `${{ steps.scan.outputs.scan_summary }}`;
-            const body = `## Prometheus Governance Scan\n\n${summary}`;
+            const body = `## Thesmos Governance Scan\n\n${summary}`;
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number
             });
-            const existing = comments.find(c => c.body.startsWith('## Prometheus Governance Scan'));
+            const existing = comments.find(c => c.body.startsWith('## Thesmos Governance Scan'));
             if (existing) {
               await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body });
             } else {
@@ -182,7 +182,7 @@ jobs:
 
 **Secrets map:** No secrets required for this workflow (uses GITHUB_TOKEN automatically).
 
-**Prometheus scan:** SC_001 ✅ (all actions pinned to SHA) | SC_007 ✅ (PR_NUMBER via env var, not expression) | SEC_007 ✅ (no hardcoded credentials)
+**Thesmos scan:** SC_001 ✅ (all actions pinned to SHA) | SC_007 ✅ (PR_NUMBER via env var, not expression) | SEC_007 ✅ (no hardcoded credentials)
 
 ## Team context
 

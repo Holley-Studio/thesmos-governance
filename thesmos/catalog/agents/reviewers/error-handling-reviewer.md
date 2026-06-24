@@ -3,7 +3,7 @@ id: error-handling-reviewer
 name: Error Handling Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - error-handling
   - resilience

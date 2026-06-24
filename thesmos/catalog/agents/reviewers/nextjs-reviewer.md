@@ -3,7 +3,7 @@ id: nextjs-reviewer
 name: Next.js Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - nextjs
   - app-router

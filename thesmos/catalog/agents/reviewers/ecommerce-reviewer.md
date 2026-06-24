@@ -3,7 +3,7 @@ id: ecommerce-reviewer
 name: E-Commerce Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - ecommerce
   - payments

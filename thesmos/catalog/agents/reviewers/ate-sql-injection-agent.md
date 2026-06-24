@@ -3,7 +3,7 @@ id: ate-sql-injection-agent
 name: "God Agent Ate — SQL Injection & WAF Investigator"
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - sql-injection
   - waf

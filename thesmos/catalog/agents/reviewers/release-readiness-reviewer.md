@@ -3,7 +3,7 @@ id: release-readiness-reviewer
 name: Release Readiness Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - release
   - gate

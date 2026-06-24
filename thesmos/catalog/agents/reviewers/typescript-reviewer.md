@@ -3,7 +3,7 @@ id: typescript-reviewer
 name: TypeScript Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - typescript
   - types

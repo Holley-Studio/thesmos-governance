@@ -3,7 +3,7 @@ id: dependency-reviewer
 name: Dependency Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - dependencies
   - npm

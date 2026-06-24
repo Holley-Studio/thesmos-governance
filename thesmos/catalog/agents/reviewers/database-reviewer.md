@@ -3,7 +3,7 @@ id: database-reviewer
 name: Database Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - database
   - rls

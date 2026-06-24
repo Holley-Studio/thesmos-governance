@@ -3,7 +3,7 @@ id: python-reviewer
 name: Python Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - python
   - security

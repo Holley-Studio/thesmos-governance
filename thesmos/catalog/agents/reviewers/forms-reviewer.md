@@ -3,7 +3,7 @@ id: forms-reviewer
 name: Forms Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - forms
   - validation

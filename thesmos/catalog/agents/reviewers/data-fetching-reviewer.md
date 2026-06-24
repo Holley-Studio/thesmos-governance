@@ -3,7 +3,7 @@ id: data-fetching-reviewer
 name: Data Fetching Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - data-fetching
   - react-query

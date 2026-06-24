@@ -3,7 +3,7 @@ id: package-publishing-reviewer
 name: Package Publishing Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - npm
   - publishing

@@ -3,7 +3,7 @@ id: api-reviewer
 name: API Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - api
   - auth
@@ -45,7 +45,7 @@ Per-route findings with HTTP method, the missing or broken auth check, the recom
 ## What not to do
 
 - Do not flag webhook endpoints that use HMAC signature verification instead of session auth
-- Do not flag public API routes that are explicitly marked `// @prometheus-public-route`
+- Do not flag public API routes that are explicitly marked `// @thesmos-public-route`
 - Do not require auth on Next.js `public/` static file serving
 
 ## Related skills

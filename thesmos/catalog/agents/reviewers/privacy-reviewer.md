@@ -3,7 +3,7 @@ id: privacy-reviewer
 name: Privacy Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - privacy
   - gdpr

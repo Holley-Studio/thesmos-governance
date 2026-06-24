@@ -3,7 +3,7 @@ id: code-quality-reviewer
 name: Code Quality Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - quality
   - typescript

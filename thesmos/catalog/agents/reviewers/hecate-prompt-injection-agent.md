@@ -3,7 +3,7 @@ id: hecate-prompt-injection-agent
 name: "God Agent Hecate — AI Prompt Injection Investigator"
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - mcp
   - llm-security
@@ -50,7 +50,7 @@ Per-finding report: the file and line where injection-like content was found, th
 - Do not flag comment-only lines explaining what prompt injection is (documentation)
 - Do not flag test files that intentionally contain injection samples for unit-test fixtures
 - Do not require all LLM prompts to avoid the word "system" — only flag structural injection patterns
-- Do not flag `// @prometheus-allow-injection-test` annotated lines
+- Do not flag `// @thesmos-allow-injection-test` annotated lines
 
 ## What makes this God Agent's judgment unique
 

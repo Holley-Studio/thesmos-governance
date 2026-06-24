@@ -3,7 +3,7 @@ id: cerberus-oauth-agent
 name: "God Agent Cerberus — OAuth Token Theft Investigator"
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - oauth
   - token-theft

@@ -3,7 +3,7 @@ id: localization-reviewer
 name: Localization Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - i18n
   - l10n

@@ -3,7 +3,7 @@ id: backend-reviewer
 name: Backend Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - backend
   - server

@@ -3,7 +3,7 @@ id: refactor-reviewer
 name: Refactor Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - refactor
   - architecture

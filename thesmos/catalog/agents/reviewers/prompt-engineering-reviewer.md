@@ -3,7 +3,7 @@ id: prompt-engineering-reviewer
 name: Prompt Engineering Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - prompts
   - llm

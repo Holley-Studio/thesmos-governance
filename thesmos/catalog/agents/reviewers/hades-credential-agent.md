@@ -3,7 +3,7 @@ id: hades-credential-agent
 name: "God Agent Hades — Credential Dumping Investigator"
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - credential-dumping
   - secrets

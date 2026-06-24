@@ -3,7 +3,7 @@ id: calliope-email-agent
 name: "God Agent Calliope — Email Design Agent"
 type: agent
 version: 1.0.0
-owner: prometheus-pantheon
+owner: thesmos-pantheon
 god: Calliope
 mythology: "Muse of epic poetry and eloquence. Calliope gives precise, beautiful words their perfect form."
 role: Email Design & HTML/MJML

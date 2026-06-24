@@ -3,7 +3,7 @@ id: compliance-reviewer
 name: Compliance Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - compliance
   - soc2

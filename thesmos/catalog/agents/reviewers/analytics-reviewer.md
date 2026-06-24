@@ -3,7 +3,7 @@ id: analytics-reviewer
 name: Analytics Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - analytics
   - tracking

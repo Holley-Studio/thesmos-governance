@@ -3,7 +3,7 @@ id: testing-reviewer
 name: Testing Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - testing
   - coverage

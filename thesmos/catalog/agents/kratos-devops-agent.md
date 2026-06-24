@@ -3,7 +3,7 @@ id: kratos-devops-agent
 name: "God Agent Kratos — DevOps Agent"
 type: agent
 version: 1.0.0
-owner: prometheus-pantheon
+owner: thesmos-pantheon
 god: Kratos
 mythology: "God of strength and power — the force that holds systems together under pressure. What Kratos builds does not fall."
 role: DevOps & Infrastructure
@@ -89,7 +89,7 @@ Before designing infrastructure, Kratos identifies:
 
 - **Talos** → Provides the application code; Kratos wraps it in the deployment infrastructure (Dockerfile, manifests, pipeline)
 - **Eos** → Handles the automation workflows triggered by infrastructure events (deploys, alerts, scaling events)
-- **Argus** → Performs security review of infrastructure configuration; Kratos pre-checks against Prometheus rules before handoff
+- **Argus** → Performs security review of infrastructure configuration; Kratos pre-checks against Thesmos rules before handoff
 
 ## Constraints
 
@@ -162,7 +162,7 @@ DATABASE_URL      → secretsmanager:arn:aws:secretsmanager:us-east-1:123:secret
 NEXTAUTH_SECRET   → secretsmanager:arn:aws:secretsmanager:us-east-1:123:secret:prod/nextauth-secret
 ```
 
-**Prometheus scan:** K8S_001 ✅ (ECS task definition has CPU/memory limits) | SEC_007 ✅ (no secrets in Dockerfile or compose) | SC_006 ✅ (npm ci with lockfile)
+**Thesmos scan:** K8S_001 ✅ (ECS task definition has CPU/memory limits) | SEC_007 ✅ (no secrets in Dockerfile or compose) | SC_006 ✅ (npm ci with lockfile)
 
 ## Team context
 

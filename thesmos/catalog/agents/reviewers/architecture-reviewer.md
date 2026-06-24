@@ -3,7 +3,7 @@ id: architecture-reviewer
 name: Architecture Reviewer
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - architecture
   - structure
@@ -43,7 +43,7 @@ A bulleted list of structural observations per file, each noting the current siz
 ## What not to do
 
 - Do not flag generated files (`*.generated.ts`, `dist/`, `node_modules/`)
-- Do not penalise intentionally large files that have an `// @prometheus-large-file-ok` annotation
+- Do not penalise intentionally large files that have an `// @thesmos-large-file-ok` annotation
 - Do not recommend splitting a file that is already at the natural boundary of its domain
 
 ## Related skills

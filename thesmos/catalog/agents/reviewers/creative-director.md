@@ -3,7 +3,7 @@ id: creative-director
 name: Creative Director
 type: agent
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - design
   - branding
@@ -163,9 +163,9 @@ Then use these as the reference standard for every finding. A rule that contradi
 - `accessibility-reviewer` — dedicated WCAG audit
 - `code-quality-reviewer` — code structure quality
 
-## Related Prometheus rule categories
+## Related Thesmos rule categories
 
-The following built-in Prometheus rules fire automatically on every scan and complement this agent's manual review:
+The following built-in Thesmos rules fire automatically on every scan and complement this agent's manual review:
 
 - `DESIGN_001–020` — design governance rules (token misuse, inline styles, missing focus states, icon mixing, etc.)
 - `CSS_001–020` — CSS quality rules (z-index magic numbers, `outline-none` without alternatives, etc.)
