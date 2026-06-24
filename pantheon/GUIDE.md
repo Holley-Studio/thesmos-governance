@@ -73,7 +73,7 @@ Browse [pantheon/exports/](https://github.com/Holley-Studio/thesmos-governance/t
 
 ### Claude Code — Native Sub-Agents (Best Experience)
 
-Claude Code natively supports custom agents via `.claude/agents/*.md`. Prometheus generates these files directly.
+Claude Code natively supports custom agents via `.claude/agents/*.md`. Thesmos generates these files directly.
 
 **Install all agents:**
 ```bash
@@ -90,7 +90,7 @@ thesmos pantheon:export --target=claude-code --agent=hermes-marketing-agent
 ```bash
 claude --agent=hermes-marketing-agent "Write a campaign brief for our B2B SaaS launch"
 claude --agent=ares-sales-agent "Help me handle the objection: we already have a process"
-claude --agent=zeus-executive-agent "Orchestrate a product launch for Prometheus v3.0"
+claude --agent=zeus-executive-agent "Orchestrate a product launch for Thesmos v4.0"
 ```
 
 Claude Code will also auto-route tasks to the right agent based on the task description matching the agent's description field.
@@ -165,7 +165,7 @@ thesmos pantheon:export --target=gemini --agent=apollo-content-agent
 
 ### Cursor
 
-Prometheus exports Cursor-compatible `.mdc` files with the correct YAML frontmatter.
+Thesmos exports Cursor-compatible `.mdc` files with the correct YAML frontmatter.
 
 ```bash
 thesmos pantheon:export --target=cursor
@@ -283,7 +283,7 @@ For ChatGPT/Gemini, paste the memory file content at the start of your conversat
 
 ## Governance Integration
 
-Every Pantheon agent output can be validated with Prometheus governance rules:
+Every Pantheon agent output can be validated with Thesmos governance rules:
 
 ```bash
 # After receiving output from Hermes on a campaign:
@@ -591,7 +591,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to propose a new Greek-god-named 
 
 ## FAQ
 
-**Q: Do I need to pay for Prometheus to use the agents?**
+**Q: Do I need to pay for Thesmos to use the agents?**
 A: The agent `.md` files are free and open source. Download them directly from the GitHub repo — no npm install required.
 
 **Q: Can I use multiple agents in the same session?**
@@ -601,7 +601,7 @@ A: Yes. In Claude Code, you can switch agents per message or run `thesmos panthe
 A: Edit the agent's `.md` file body section. The YAML frontmatter stays the same; the personality and instructions are in the Markdown body below.
 
 **Q: Can I use these agents for client work?**
-A: Yes. The agents are licensed under the same terms as Prometheus (MIT). You can use them in client projects, include them in agency deliverables, and build on top of them.
+A: Yes. The agents are licensed under the same terms as Thesmos (MIT). You can use them in client projects, include them in agency deliverables, and build on top of them.
 
 **Q: The ChatGPT agent got truncated — how do I get the full version?**
 A: Use the OpenAI Assistants API format instead of the Custom GPT format. The Assistants API supports 256,000 characters vs. the ~8,000 character limit in the GPT Builder UI.

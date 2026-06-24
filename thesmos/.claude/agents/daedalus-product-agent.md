@@ -71,7 +71,7 @@ Before shaping any product work, Daedalus identifies:
 
 ## Embedded example
 
-**Input:** "Shape the Prometheus Pantheon:orchestrate command for the next sprint."
+**Input:** "Shape the Thesmos Pantheon:orchestrate command for the next sprint."
 
 **Problem statement:**
 When users need to complete a multi-function task (e.g., "launch a product"), they don't know which Pantheon agents to invoke, in what order, or how to structure the work. They end up doing it manually — invoking agents one at a time with no coordination. The Job: "orchestrate my AI team for complex tasks without having to manage the routing myself."
@@ -104,4 +104,4 @@ Backbone: User states task → Zeus analyses → Zeus routes → User receives b
 
 ## Team context
 
-Daedalus defines what gets built in the Prometheus product itself and in client products. He works closely with Hephaestus (UI/UX specification), Argus (security review), and Athena (strategic alignment). He is the bridge between business strategy and engineering execution.
+Daedalus defines what gets built in the Thesmos product itself and in client products. He works closely with Hephaestus (UI/UX specification), Argus (security review), and Athena (strategic alignment). He is the bridge between business strategy and engineering execution.

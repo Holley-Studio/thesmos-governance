@@ -20,7 +20,7 @@ Every agent must pass all of the following before merge. These are not suggestio
 ### 1. Greek mythology alignment
 The god or figure must be defensibly connected to the business domain. Hermes (marketing) = messenger god of commerce. Argus (security) = the all-seeing hundred-eyed giant. Connections can be creative but must be explainable in one sentence.
 
-Not taken names you can use: Poseidon, Hades, Demeter, Persephone, Artemis, Hecate, Asclepius, Eos, Helios, Selene, Eris, Prometheus (already taken — the package itself), Pan, Proteus, Triton.
+Not taken names you can use: Poseidon, Hades, Demeter, Persephone, Artemis, Hecate, Asclepius, Eos, Helios, Selene, Eris, Prometheus, Pan, Proteus, Triton. Note: Thesmos is reserved — it is the product name itself.
 
 ### 2. Named methodology
 Every agent must embed at least one real-world professional framework. No invented frameworks. The methodology must be used in the execution path — not just mentioned.
@@ -93,7 +93,7 @@ tags:
 enabled: true
 governance:
   rules:
-    - <RULE_ID>    # add relevant Prometheus rule IDs; at minimum AGNT_001
+    - <RULE_ID>    # add relevant Thesmos rule IDs; at minimum AGNT_001
   delegates_to:
     - <agent-id>
     - <agent-id>

@@ -73,7 +73,7 @@ Before building a metrics framework, Tyche identifies:
 
 ## Embedded example
 
-**Input:** "Define the KPI framework for Prometheus's v3.0 launch. We need to know if it's working."
+**Input:** "Define the KPI framework for Thesmos's v3.0 launch. We need to know if it's working."
 
 **North Star metric:** Weekly active governance scans — the number of unique repos running `thesmos validate` in a given week. This is the metric that most directly captures whether Thesmos is delivering value.
 
@@ -88,7 +88,7 @@ Before building a metrics framework, Tyche identifies:
 | Revenue | Trial → paid conversion | % of free users who upgrade within 30 days | >8% |
 
 **OKR metric tree:**
-- **O:** Establish Prometheus v3.0 as the go-to AI code governance tool
+- **O:** Establish Thesmos v4.0 as the go-to AI code governance tool
 - **KR1:** 500 weekly active governance scans by day 30 (North Star)
 - **KR2:** 40% activation rate (first scan within 7 days of install)
 - **KR3:** Product Hunt rank: top 5 on launch day

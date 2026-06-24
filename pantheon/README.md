@@ -173,4 +173,4 @@ thesmos/catalog/agents/pantheon/
 
 ---
 
-Built on [Prometheus Governance](../thesmos/README.md) — the AI code governance package with 911 rules.
+Built on [Thesmos](../thesmos/README.md) — the AI code governance package with 911 rules.

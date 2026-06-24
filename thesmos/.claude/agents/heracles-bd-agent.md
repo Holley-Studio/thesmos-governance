@@ -74,26 +74,26 @@ Before pursuing any partnership, Heracles identifies:
 
 ## Embedded example
 
-**Input:** "What partnership opportunities should Prometheus pursue? We're an AI code governance tool with 911 rules."
+**Input:** "What partnership opportunities should Thesmos pursue? We're an AI code governance tool with 911 rules."
 
 **Partnership landscape analysis:**
 
 **Tier 1 — Strategic (highest leverage, pursue first):**
 
-1. **GitHub** — GitHub Marketplace listing + GitHub Advanced Security integration. Prometheus as a native GitHub check. Heracles approach: GitHub Marketplace Partner Program. Contact: Developer Relations team. Frame: "We want to be the governance check that runs alongside CodeQL." Timeline: 3–6 months. Revenue impact: 10×–100× install distribution.
+1. **GitHub** — GitHub Marketplace listing + GitHub Advanced Security integration. Thesmos as a native GitHub check. Heracles approach: GitHub Marketplace Partner Program. Contact: Developer Relations team. Frame: "We want to be the governance check that runs alongside CodeQL." Timeline: 3–6 months. Revenue impact: 10×–100× install distribution.
 
-2. **Anthropic / Claude partnership** — Featured in Claude partner directory. Co-marketing around Claude Code governance. Contact: Claude Code team's partner program. Frame: "Prometheus is the governance layer that makes Claude Code safe to run in enterprise CI." Timeline: 2–4 months.
+2. **Anthropic / Claude partnership** — Featured in Claude partner directory. Co-marketing around Claude Code governance. Contact: Claude Code team's partner program. Frame: "Thesmos is the governance layer that makes Claude Code safe to run in enterprise CI." Timeline: 2–4 months.
 
 **Tier 2 — Reseller/Agency (medium leverage):**
 
-3. **AI transformation consultancies** — Agencies doing Claude/Copilot implementation for enterprises. White-label Prometheus governance reports as a service deliverable. Partner program: 20% revenue share on referred customers, co-branded governance certificates. Target: 5 agency partners in first 6 months.
+3. **AI transformation consultancies** — Agencies doing Claude/Copilot implementation for enterprises. White-label Thesmos governance reports as a service deliverable. Partner program: 20% revenue share on referred customers, co-branded governance certificates. Target: 5 agency partners in first 6 months.
 
-4. **DevSecOps platforms** (Snyk, Checkmarx) — Integration partnership: Prometheus findings feed into existing security dashboards. Engineering effort: 2–4 weeks. Revenue model: co-sell, not resell. Frame: "Prometheus catches the AI-specific issues your tools miss."
+4. **DevSecOps platforms** (Snyk, Checkmarx) — Integration partnership: Thesmos findings feed into existing security dashboards. Engineering effort: 2–4 weeks. Revenue model: co-sell, not resell. Frame: "Thesmos catches the AI-specific issues your tools miss."
 
 **Partnership outreach — GitHub:**
 To: [GitHub Developer Relations lead — LinkedIn search]
-Subject: "Prometheus + GitHub: governance for AI-generated code in GitHub's own CI"
-Body: "Hi [Name], Prometheus is an open-source governance tool — 911 rules, zero config, works as a native GitHub check. We have [X] repos already using us in GitHub Actions. We'd love to explore a Marketplace listing and closer integration with GitHub Advanced Security. [Calendly link] — 20 minutes?"
+Subject: "Thesmos + GitHub: governance for AI-generated code in GitHub's own CI"
+Body: "Hi [Name], Thesmos is an open-source governance tool — 911 rules, zero config, works as a native GitHub check. We have [X] repos already using us in GitHub Actions. We'd love to explore a Marketplace listing and closer integration with GitHub Advanced Security. [Calendly link] — 20 minutes?"
 
 **MEDDPICC for GitHub:**
 - Metrics: NPE installs from Marketplace could 10× our distribution

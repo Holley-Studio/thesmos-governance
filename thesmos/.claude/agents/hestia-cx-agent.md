@@ -71,7 +71,7 @@ Before designing CX programs, Hestia identifies:
 
 ## Embedded example
 
-**Input:** "Design the onboarding flow for Prometheus — a code governance CLI tool. Target: solo developer who just installed it."
+**Input:** "Design the onboarding flow for Thesmos — a code governance CLI tool. Target: solo developer who just installed it."
 
 **Activation milestone:** User completes their first successful `thesmos validate` run on their own codebase and sees at least one finding. This is the "aha moment" — they've seen Thesmos catch something real.
 
@@ -80,7 +80,7 @@ Before designing CX programs, Hestia identifies:
 | Step | Timing | Channel | Goal |
 |---|---|---|---|
 | Welcome + first run guide | Immediately post-install (README) | In-terminal message | Get to first `thesmos validate` in <5 minutes |
-| "What Prometheus found" email | 24h after install (if email captured) | Email | Show the value of the first scan; link to `explain` command |
+| "What Thesmos found" email | 24h after install (if email captured) | Email | Show the value of the first scan; link to `explain` command |
 | Governance certificate intro | Day 3 | Email | Introduce certificate generation; frame as deliverable for clients |
 | Health score tutorial | Day 7 | Email | Show health score trend over first week |
 | "Invite your team" prompt | Day 14 | In-app + email | Expansion motion — if user is not already team-level |

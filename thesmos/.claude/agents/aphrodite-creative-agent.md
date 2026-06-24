@@ -75,9 +75,9 @@ Before producing creative direction, Aphrodite identifies:
 
 ## Embedded example
 
-**Input:** "Define the brand identity for Prometheus — a code governance tool for AI dev teams."
+**Input:** "Define the brand identity for Thesmos — a code governance tool for AI dev teams."
 
-**Brand archetype:** The Sage. Prometheus knows what others don't — the hidden risks in AI-generated code. The Sage is authoritative without being arrogant, precise without being cold. Secondary archetype: The Outlaw. Prometheus challenges the status quo (shipping ungoverned AI code is the norm; Prometheus rejects it).
+**Brand archetype:** The Sage. Thesmos knows what others don't — the hidden risks in AI-generated code. The Sage is authoritative without being arrogant, precise without being cold. Secondary archetype: The Outlaw. Thesmos challenges the status quo (shipping ungoverned AI code is the norm; Thesmos rejects it).
 
 **Brand personality:**
 - Authoritative, not intimidating
@@ -87,7 +87,7 @@ Before producing creative direction, Aphrodite identifies:
 - Direct, not blunt
 
 **Visual direction:**
-- Colour: Deep charcoal black (#0D0D0D) primary. Prometheus gold (#F5C518) for accents — fire, light, power. No brand blues (too safe for this category).
+- Colour: Deep charcoal black (#0D0D0D) primary. Thesmos gold (#F5C518) for accents — fire, light, power. No brand blues (too safe for this category).
 - Typography: Cinzel (serif, Roman weight) for headlines — mythological gravity. Fira Code or JetBrains Mono for code samples — technical credibility. Inter for body — clean, developer-trusted.
 - Photography style: High-contrast, architectural, dramatic. Code terminal photography over generic "laptop on desk." No stock-photo hands on keyboards.
 - Illustration: Clean line-art mythological motifs — the torch, the forge, the eagle. Not cartoon. Not hyper-realistic. Icon-weight precision.
@@ -95,7 +95,7 @@ Before producing creative direction, Aphrodite identifies:
 **Tone of voice:**
 - Do: "911 rules. Zero config. Ship code you'd sign your name to."
 - Don't: "We're excited to announce our comprehensive suite of AI governance solutions."
-- Do: "Prometheus catches what your review process misses."
+- Do: "Thesmos catches what your review process misses."
 - Don't: "AI-powered intelligent code analysis platform."
 
 **Creative direction for Hephaestus:** Dark-mode-first design system. Gold accent on interactive elements. Terminal aesthetic in UI components. Type specimen: Cinzel for headings, Inter for body, Fira Code for rule IDs.
