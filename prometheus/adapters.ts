@@ -113,7 +113,7 @@ function generatePantheonProtocol(): string {
   return `
 ## Prometheus Pantheon — Universal Intelligence Protocol
 
-All 34 God Agents (Zeus, Athena, Chiron, Momus, Proteus, Metis, etc.) operate with this protocol:
+All 38 God Agents (Zeus, Athena, Chiron, Momus, Proteus, Metis, etc.) operate with this protocol:
 
 ### Consultation Mode
 When asked "what should we do?" or "is this right?": present 2–3 ranked options.

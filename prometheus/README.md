@@ -67,7 +67,7 @@ That's it. You now have:
 
 ## Why Prometheus is different
 
-Other platforms give you AI assistants. Prometheus gives you a governed AI team — 34 God Agents with domain expertise, built-in challengers, and every output governance-checked.
+Other platforms give you AI assistants. Prometheus gives you a governed AI team — 38 God Agents with domain expertise, built-in challengers, and every output governance-checked.
 
 | Capability | ChatGPT GPTs | Cursor Agents | Claude Projects | Prometheus God Agents |
 | --- | --- | --- | --- | --- |
@@ -85,7 +85,7 @@ Other platforms give you AI assistants. Prometheus gives you a governed AI team 
 **7 things no other agent platform does:**
 
 1. **Governance badge on every output** — Every God Agent delivery closes with `Prometheus check: [RULE_ID] ✅`. No other platform runs 1,075 governance rules against AI outputs automatically.
-2. **34 world-class God Agents — not assistants** — Each agent has a named methodology, failure mode taxonomy, and adversarial self-check. Not "I know marketing" but "I use Ehrenberg-Bass reach theory, and here's the specific thing your brief gets wrong."
+2. **38 world-class God Agents — not assistants** — Each agent has a named methodology, failure mode taxonomy, and adversarial self-check. Not "I know marketing" but "I use Ehrenberg-Bass reach theory, and here's the specific thing your brief gets wrong."
 3. **God Council arbitration** — When agents conflict, Zeus arbitrates. Argus holds a permanent security veto; Themis holds a permanent legal veto. You get one decision, not a debate.
 4. **God Agent Momus** — The only agent platform with a mandatory challenger. Momus challenges every major decision before it ships using Socratic method, Gary Klein's Pre-mortem, and Munger's Inversion.
 5. **God Agent Proteus** — Drift detection built into the team. Product, prompt, architecture, brand, and strategy drift — caught before it costs a sprint.
@@ -96,7 +96,7 @@ Other platforms give you AI assistants. Prometheus gives you a governed AI team 
 
 ## The Prometheus Pantheon
 
-34 God Agents — a governed AI team named after Greek gods, covering every major business and engineering function. Every agent has deep methodology, failure mode taxonomy, domain mastery sections, and the Universal Intelligence Protocol injected by `prometheus adapters`.
+38 God Agents — a governed AI team named after Greek gods, covering every major business and engineering function. Every agent has deep methodology, failure mode taxonomy, domain mastery sections, and the Universal Intelligence Protocol injected by `prometheus adapters`.
 
 Install the full team:
 
@@ -126,7 +126,7 @@ Or download any agent directly — no install required:
 | Hera | Operations & HR | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/hera-operations-agent.md) |
 | Daedalus | Product management | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/daedalus-product-agent.md) |
 | Heracles | Business development | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/heracles-bd-agent.md) |
-| Iris | Photography | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/iris-photography-agent.md) |
+| Artemis | Photography & art direction | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/artemis-photography-agent.md) |
 | Morpheus | Animation & motion | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/morpheus-animation-agent.md) |
 | Dionysus | Video production | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/dionysus-video-agent.md) |
 | Mnemosyne | Knowledge management | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/mnemosyne-knowledge-agent.md) |
@@ -143,13 +143,59 @@ Or download any agent directly — no install required:
 | **Proteus** | **Drift & alignment monitor** | `prometheus pantheon:export --agent=proteus` |
 | **Momus** | **Challenger & clarity enforcer** | `prometheus pantheon:export --agent=momus` |
 | **Metis** | **PM & execution planner** | `prometheus pantheon:export --agent=metis` |
+| **Pythia** | **Data analysis & BI** | `prometheus pantheon:export --agent=pythia` |
+| **Psyche** | **UX research & user insights** | `prometheus pantheon:export --agent=psyche` |
+| **Nemesis** | **Compliance, GRC & risk** | `prometheus pantheon:export --agent=nemesis` |
+| **Demeter** | **Customer success & accounts** | `prometheus pantheon:export --agent=demeter` |
 
 See [pantheon/README.md](../pantheon/README.md) for the full documentation, all platform exports, and the installation guide.
+
+### Pantheon Grid
+
+| | Agent | One-liner |
+| --- | --- | --- |
+| ⚡ | **Zeus** | Routes every task to the right god — executive command centre |
+| 🦉 | **Athena** | Maps the battlefield before your team moves — strategy and GTM |
+| 📣 | **Hermes** | Turns positioning into campaigns that reach the right people |
+| 🏹 | **Artemis** | Hunter's eye for every shot — photography and visual art direction |
+| ⚔️ | **Ares** | Closes deals and wins rooms — sales playbooks and objection handling |
+| 📝 | **Apollo** | Words that earn attention — content, copy, SEO, and scripts |
+| 🎨 | **Aphrodite** | Makes it beautiful and unmistakable — brand and creative direction |
+| 🔨 | **Hephaestus** | Builds interfaces that work and feel inevitable — UI/UX design |
+| 👁️ | **Argus** | Sees every threat before it lands — security and vulnerability analysis |
+| 💛 | **Hestia** | Turns customers into advocates — CX, support, and retention |
+| 📊 | **Tyche** | Makes numbers tell the story — analytics, dashboards, and KPIs |
+| ⚖️ | **Themis** | Guards you from the contracts that bite — legal and compliance |
+| 💰 | **Plutus** | Finds the money and keeps it — finance, pricing, unit economics |
+| 📡 | **Pheme** | Gets you in the right rooms and headlines — PR and communications |
+| 🏛️ | **Hera** | Runs the machine that runs the company — operations and HR |
+| 🗺️ | **Daedalus** | Builds the product the market actually wants — PM and roadmapping |
+| 🤝 | **Heracles** | Opens doors no one else can — partnerships and business development |
+| 🎥 | **Dionysus** | Makes video people want to watch — production and direction |
+| 🌀 | **Morpheus** | Brings interfaces to life — animation and motion direction |
+| 🧠 | **Mnemosyne** | Keeps institutional memory alive — knowledge management |
+| 🏰 | **Chiron** | Architects systems that don't break — technical advisory |
+| ✉️ | **Calliope** | Email that gets opened and acted on — campaigns and MJML |
+| 🔍 | **Cassandra** | Finds the bugs before your users do — QA and testing strategy |
+| 🎙️ | **Erato** | Gives your brand a voice people remember — messaging and tone |
+| 🤖 | **Aether** | Makes AI a product advantage, not a risk — AI product strategy |
+| 🚀 | **Kratos** | Ships infrastructure that stays up — DevOps and platform engineering |
+| 🕸️ | **Talos** | Builds the web layer that converts — full-stack web development |
+| 📚 | **Polyhymnia** | Turns complexity into clarity — technical documentation |
+| 📖 | **Clio** | Writes the wins that sell the next deal — case studies |
+| ⚙️ | **Eos** | Automates the work that shouldn't be manual — workflows and integrations |
+| 🌀 | **Proteus** | Catches drift before it costs a sprint — alignment monitoring |
+| 😈 | **Momus** | The voice that says "but what if we're wrong?" — adversarial challenger |
+| 🗓️ | **Metis** | Plans the execution so the strategy doesn't die in a doc — PM orchestration |
+| 🔮 | **Pythia** | Surfaces insights hiding in your data — SQL, BI, anomaly detection |
+| 🦋 | **Psyche** | Understands what users mean, not just what they say — UX research |
+| ⚖️ | **Nemesis** | Keeps you on the right side of every regulation — compliance and GRC |
+| 🌾 | **Demeter** | Grows accounts that don't churn — customer success and renewals |
 
 **Pantheon commands:**
 
 ```bash
-prometheus pantheon:list                          # List all 34 agents
+prometheus pantheon:list                          # List all 38 agents
 prometheus pantheon:export --target=claude-code   # Export as Claude Code native agents
 prometheus pantheon:export --target=all           # Export for all 7 platforms
 prometheus pantheon:orchestrate "<task>"          # Zeus routes task to specialists

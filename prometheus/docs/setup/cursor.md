@@ -11,7 +11,7 @@ Your kit's `cursor/` folder contains 34 `.mdc` files.
 ### Step 2: Copy to your project
 
 ```bash
-# Install all 34 agents as Cursor rules
+# Install all 38 agents as Cursor rules
 cp -r cursor/* .cursor/rules/
 
 # Or install a single agent
@@ -37,7 +37,7 @@ Or simply start a chat — if Zeus is installed, he will route to the right agen
 
 ## Cursor-Specific Tips
 
-- `.mdc` format supports frontmatter for rule metadata — all 34 files are pre-configured
+- `.mdc` format supports frontmatter for rule metadata — all 38 files are pre-configured
 - Agent rules persist across Cursor sessions once installed in `.cursor/rules/`
 - Commit `.cursor/rules/` to your repo to share the Pantheon with your team (requires team licenses for all users)
 - The `prometheus adapters` command can auto-sync rules: `prometheus adapters --targets cursor`

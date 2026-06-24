@@ -10,6 +10,7 @@ tags:
   - components
   - state
 enabled: true
+model: claude-haiku-4-5-20251001
 ---
 
 # Frontend Reviewer

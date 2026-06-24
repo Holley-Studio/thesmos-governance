@@ -10,6 +10,11 @@
       "type": "string",
       "description": "JSON Schema reference — add this for editor autocomplete"
     },
+    "disabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Set true to suppress all Prometheus MCP tool responses. Use when token spend is too high or you want to temporarily pause Prometheus governance checks. Re-enable by setting to false."
+    },
     "project": {
       "type": "string",
       "description": "Human-readable project name shown in reports and adapter files",

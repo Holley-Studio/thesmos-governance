@@ -10,6 +10,7 @@ tags:
   - swr
   - nextjs
 enabled: true
+model: claude-haiku-4-5-20251001
 ---
 
 # Data Fetching Reviewer

@@ -1,5 +1,5 @@
 /**
- * prometheus pantheon:list        — list all 34 God Agents
+ * prometheus pantheon:list        — list all 38 God Agents
  * prometheus pantheon:install     — add agents to .prometheus/registry.json
  * prometheus pantheon:status      — show installed Pantheon agents
  * prometheus pantheon:export      — export agents to platform-specific formats
@@ -43,6 +43,7 @@ interface PantheonAgent {
   name: string;
   god: string;
   role: string;
+  mythology: string;
   color: string;
   avatar: string;
   version: string;
@@ -96,6 +97,7 @@ function parsePantheonAgent(raw: string, fallbackId: string): PantheonAgent | nu
     name: get('name').replace(/['"]/g, ''),
     god: get('god'),
     role: get('role'),
+    mythology: get('mythology').replace(/['"]/g, ''),
     color: get('color'),
     avatar: get('avatar'),
     version: get('version') || '1.0.0',
@@ -119,7 +121,11 @@ const DOMAIN_ROUTING: Array<{ pattern: RegExp; agents: string[] }> = [
   { pattern: /content|copy|blog|seo|email|post|write|script/i, agents: ['apollo-content-agent'] },
   { pattern: /video|production|shoot|edit|film/i, agents: ['dionysus-video-agent'] },
   { pattern: /animation|motion|storyboard|after effects|micro-interaction/i, agents: ['morpheus-animation-agent'] },
-  { pattern: /photo|shot list|photography|art direction|retouching/i, agents: ['iris-photography-agent'] },
+  { pattern: /photo|shot list|photography|art direction|retouching/i, agents: ['artemis-photography-agent'] },
+  { pattern: /data|sql|bi|business intelligence|cohort|attribution|anomaly/i, agents: ['pythia-data-agent', 'tyche-analytics-agent'] },
+  { pattern: /ux research|user interview|usability|persona|jtbd|affinity map/i, agents: ['psyche-research-agent', 'daedalus-product-agent'] },
+  { pattern: /compliance|grc|gdpr|soc2|iso 27001|eu ai act|audit trail|risk register/i, agents: ['nemesis-compliance-agent', 'argus-security-agent'] },
+  { pattern: /customer success|renewal|churn prevention|qbr|upsell|health score/i, agents: ['demeter-cs-agent', 'hestia-cx-agent'] },
   { pattern: /strategy|gtm|competitive|okr|roadmap|positioning/i, agents: ['athena-strategy-agent'] },
   { pattern: /leads|pipeline|prospecting|outbound|icp|lead gen/i, agents: ['nike-leadgen-agent'] },
   { pattern: /creative|brand|identity|visual|aesthetic|logo/i, agents: ['aphrodite-creative-agent'] },
@@ -157,18 +163,27 @@ function writeRegistry(root: string, data: Record<string, unknown>): void {
 
 // ── Export generators ──────────────────────────────────────────────────────────
 
+const OPUS_AGENTS = new Set(['zeus-executive-agent', 'argus-security-agent', 'athena-strategy-agent']);
+const HAIKU_AGENTS = new Set([
+  'calliope-writing-agent', 'clio-history-agent', 'erato-poetry-agent',
+  'polyhymnia-hymn-agent', 'morpheus-animation-agent', 'artemis-photography-agent',
+  'eos-social-agent', 'dionysus-video-agent',
+]);
+
 function exportClaudeCode(agent: PantheonAgent): string {
   const tools = ['Read', 'Write', 'Bash'];
-  const model = agent.id === 'zeus-executive-agent' || agent.id === 'argus-security-agent' ||
-    agent.id === 'athena-strategy-agent' || agent.id === 'plutus-finance-agent' ||
-    agent.id === 'daedalus-product-agent'
+  const model = OPUS_AGENTS.has(agent.id)
     ? 'claude-opus-4-8'
-    : 'claude-sonnet-4-6';
+    : HAIKU_AGENTS.has(agent.id)
+      ? 'claude-haiku-4-5-20251001'
+      : 'claude-sonnet-4-6';
+
+  const mythologySnippet = agent.mythology ? ' ' + agent.mythology.slice(0, 90).replace(/\n/g, ' ') : '';
 
   return `---
 name: ${agent.name}
 description: >
-  ${agent.role} — ${agent.tags.slice(0, 3).join(', ')}. Invoke for any task in this domain.
+  God Agent ${agent.god} — ${agent.role}.${mythologySnippet}
 model: ${model}
 tools:
 ${tools.map(t => `  - ${t}`).join('\n')}

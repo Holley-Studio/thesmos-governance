@@ -1,6 +1,6 @@
 # Pantheon Pro Kit
 
-Welcome to Pantheon Pro. You have all 34 God Agents ready to deploy.
+Welcome to Pantheon Pro. You have all 38 God Agents ready to deploy.
 
 ## Quick Start
 
@@ -21,7 +21,7 @@ Welcome to Pantheon Pro. You have all 34 God Agents ready to deploy.
 | `copilot/` | GitHub Copilot | `.md` (use with Copilot instructions) |
 | `openai-assistants/` | OpenAI Assistants API | `.json` (use `instructions` field) |
 
-## The 34 God Agents
+## The 38 God Agents
 
 ### Core Pantheon (21)
 Zeus · Athena · Hermes · Nike · Ares · Apollo · Aphrodite · Hephaestus · Argus · Hestia · Tyche · Themis · Daedalus · Dionysus · Heracles · Hera · Iris · Mnemosyne · Morpheus · Pheme · Plutus

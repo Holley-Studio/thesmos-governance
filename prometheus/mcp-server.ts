@@ -31,6 +31,7 @@ import { loadConfig, CONFIG_DEFAULTS } from './config.js';
 import { COMMIT_RULES } from './rules/commits.js';
 import type { Finding, ScanResult, DetectInput } from './types.js';
 import { makeLogger } from './logger.js';
+import { buildBudgetReport, calcCost, getCurrentSessionId, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
 
 const log = makeLogger('mcp');
 
@@ -119,6 +120,22 @@ const TOOL_DEFINITIONS = [
         line: { type: 'number', description: 'Line number of the finding (optional)' },
       },
       required: ['rule_id', 'file_content'],
+    },
+  },
+  {
+    name: 'get_token_budget',
+    description: 'Get the current session, daily, and project token spend vs. configured budgets. Call before spawning large agent chains to check if budget allows it.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'check_model_cost',
+    description: 'Compare the estimated cost of Haiku, Sonnet, and Opus for a given token count. Use to decide which model tier to invoke for a task.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokens: { type: 'number', description: 'Estimated total token count (input + output combined)' },
+      },
+      required: ['tokens'],
     },
   },
 ];
@@ -259,6 +276,41 @@ function handleGetContext(root: string): unknown {
   return { content, path: contextPath };
 }
 
+function handleGetTokenBudget(root: string): unknown {
+  const config = (() => { try { return loadConfig(root); } catch { return CONFIG_DEFAULTS; } })();
+  const budgetConfig = (config as unknown as Record<string, unknown>).tokenBudget as typeof TOKEN_BUDGET_DEFAULTS | undefined
+    ?? TOKEN_BUDGET_DEFAULTS;
+  const sessionId = getCurrentSessionId(root);
+  const report = buildBudgetReport(root, budgetConfig, sessionId);
+  const lines = [
+    `Session: ${report.session.totalTokens.toLocaleString()} tokens · $${report.session.costUSD.toFixed(4)}`,
+    `Today:   ${report.today.totalTokens.toLocaleString()} tokens · $${report.today.costUSD.toFixed(4)}`,
+    `Project: ${report.project.totalTokens.toLocaleString()} tokens · $${report.project.costUSD.toFixed(4)}`,
+  ];
+  if (report.alerts.length > 0) lines.push('', 'Alerts:', ...report.alerts.map((a) => `  ⚠ ${a}`));
+  if (report.hardStop) lines.push('', `HARD STOP: ${report.hardStopReason}`);
+  return { text: lines.join('\n'), report };
+}
+
+function handleCheckModelCost(params: { tokens: number }): unknown {
+  const t = Math.max(0, params.tokens);
+  const half = Math.round(t / 2);
+  const models = [
+    { name: 'Haiku (claude-haiku-4-5-20251001)', input: 0.25, output: 1.25 },
+    { name: 'Sonnet (claude-sonnet-4-6)', input: 3.00, output: 15.00 },
+    { name: 'Opus (claude-opus-4-8)', input: 15.00, output: 75.00 },
+  ];
+  const rows = models.map((m) => {
+    const cost = calcCost(m.name.split(' ')[0].toLowerCase(), half, half, {
+      haiku:  { inputPer1M: 0.25, outputPer1M: 1.25 },
+      sonnet: { inputPer1M: 3.00, outputPer1M: 15.00 },
+      opus:   { inputPer1M: 15.00, outputPer1M: 75.00 },
+    }) || (half * m.input + half * m.output) / 1_000_000;
+    return `${m.name.padEnd(42)} $${cost.toFixed(4)}`;
+  });
+  return { text: [`Estimated cost for ${t.toLocaleString()} tokens:`, ...rows].join('\n') };
+}
+
 // ── Resource handlers ─────────────────────────────────────────────────────────
 
 function handleResourceRead(root: string, uri: string): unknown {
@@ -312,6 +364,16 @@ function dispatch(root: string, request: JsonRpcRequest): JsonRpcResponse {
         const toolInput = (request.params?.arguments ?? {}) as Record<string, string>;
         log.debug('tool call', { tool: name });
 
+        const callConfig = (() => { try { return loadConfig(root); } catch { return CONFIG_DEFAULTS; } })();
+        if ((callConfig as unknown as Record<string, unknown>).disabled === true) {
+          return respond({
+            content: [{
+              type: 'text',
+              text: 'Prometheus is paused. Set "disabled": false in .prometheus/config.json to re-enable governance checks.',
+            }],
+          });
+        }
+
         switch (name) {
           case 'scan_file':
             return respond({
@@ -340,7 +402,15 @@ function dispatch(root: string, request: JsonRpcRequest): JsonRpcResponse {
             });
           case 'debug_finding':
             return respond({
-              content: [{ type: 'text', text: JSON.stringify(handleDebugFinding(root, toolInput as { rule_id: string; file_content: string; line?: number }), null, 2) }],
+              content: [{ type: 'text', text: JSON.stringify(handleDebugFinding(root, toolInput as unknown as { rule_id: string; file_content: string; line?: number }), null, 2) }],
+            });
+          case 'get_token_budget':
+            return respond({
+              content: [{ type: 'text', text: JSON.stringify(handleGetTokenBudget(root), null, 2) }],
+            });
+          case 'check_model_cost':
+            return respond({
+              content: [{ type: 'text', text: JSON.stringify(handleCheckModelCost(toolInput as unknown as { tokens: number }), null, 2) }],
             });
           default:
             return error(-32601, `Unknown tool: ${name}`);

@@ -11,7 +11,7 @@ Your kit's `claude-code/` folder contains 34 `.md` files — one per God Agent.
 ### Step 2: Copy to your project
 
 ```bash
-# Install all 34 agents
+# Install all 38 agents
 cp -r claude-code/* .claude/agents/
 
 # Or install a single agent
