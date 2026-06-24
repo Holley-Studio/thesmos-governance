@@ -1,11 +1,11 @@
 /**
- * Command registrations for the Prometheus Governance extension.
+ * Command registrations for the Thesmos Governance extension.
  *
  * All commands are registered here and exposed as a Disposable so the
  * extension can cleanly tear them down on deactivation.
  *
  * Commands:
- *   thesmos.scan          — run `prometheus scan`, then refresh all findings
+ *   thesmos.scan          — run `thesmos scan`, then refresh all findings
  *   thesmos.reviewFile    — review the currently open file
  *   thesmos.health        — open the health dashboard webview
  *   thesmos.adapters      — regenerate all AI adapter files
@@ -21,8 +21,8 @@ import {
   runScan,
   runHealth,
   runAdapters,
-  runPrometheus,
-  PrometheusNotFoundError,
+  runThesmos,
+  ThesmosNotFoundError,
   ThesmosReportMissingError,
 } from './runner.js';
 import { HealthPanel } from './panel.js';
@@ -55,13 +55,13 @@ export function sanitizeId(input: string): string {
 // ── Helper ────────────────────────────────────────────────────────────────────
 
 function handleError(err: unknown): void {
-  if (err instanceof PrometheusNotFoundError) {
+  if (err instanceof ThesmosNotFoundError) {
     void vscode.window.showErrorMessage(
-      `Prometheus Governance: ${err.message}`,
+      `Thesmos Governance: ${err.message}`,
       'Install now',
     ).then((choice) => {
       if (choice === 'Install now') {
-        const terminal = vscode.window.createTerminal('Prometheus');
+        const terminal = vscode.window.createTerminal('Thesmos');
         terminal.sendText('npm install --save-dev thesmos-governance');
         terminal.show();
       }
@@ -71,7 +71,7 @@ function handleError(err: unknown): void {
 
   if (err instanceof ThesmosReportMissingError) {
     void vscode.window.showWarningMessage(
-      `Prometheus Governance: ${err.message}`,
+      `Thesmos Governance: ${err.message}`,
       'Scan now',
     ).then((choice) => {
       if (choice === 'Scan now') {
@@ -82,7 +82,7 @@ function handleError(err: unknown): void {
   }
 
   const message = err instanceof Error ? err.message : String(err);
-  void vscode.window.showErrorMessage(`Prometheus Governance: ${message}`);
+  void vscode.window.showErrorMessage(`Thesmos Governance: ${message}`);
 }
 
 // ── Command factory ───────────────────────────────────────────────────────────
@@ -107,14 +107,14 @@ export function registerCommands(
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: 'Prometheus: Scanning repository…',
+          title: 'Thesmos: Scanning repository…',
           cancellable: false,
         },
         async () => {
           try {
             await runScan(workspaceRoot, cfg.binaryPath || undefined);
             void vscode.window.showInformationMessage(
-              'Prometheus: Scan complete. Refreshing findings…',
+              'Thesmos: Scan complete. Refreshing findings…',
             );
             await onRefresh();
           } catch (err) {
@@ -135,7 +135,7 @@ export function registerCommands(
       const doc = vscode.window.activeTextEditor?.document;
       if (!doc) {
         void vscode.window.showWarningMessage(
-          'Prometheus: No active file to review.',
+          'Thesmos: No active file to review.',
         );
         return;
       }
@@ -143,7 +143,7 @@ export function registerCommands(
       try {
         await onReviewFile(doc.uri);
         void vscode.window.showInformationMessage(
-          `Prometheus: Review complete for ${doc.fileName.split('/').pop()}`,
+          `Thesmos: Review complete for ${doc.fileName.split('/').pop()}`,
         );
       } catch (err) {
         handleError(err);
@@ -161,7 +161,7 @@ export function registerCommands(
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: 'Prometheus: Loading health score…',
+          title: 'Thesmos: Loading health score…',
           cancellable: false,
         },
         async () => {
@@ -189,14 +189,14 @@ export function registerCommands(
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: 'Prometheus: Regenerating AI adapters…',
+          title: 'Thesmos: Regenerating AI adapters…',
           cancellable: false,
         },
         async () => {
           try {
             await runAdapters(workspaceRoot, cfg.binaryPath || undefined);
             void vscode.window.showInformationMessage(
-              'Prometheus: AI adapter files updated (CLAUDE.md, GEMINI.md, .cursor/rules, …)',
+              'Thesmos: AI adapter files updated (CLAUDE.md, GEMINI.md, .cursor/rules, …)',
             );
           } catch (err) {
             handleError(err);
@@ -210,10 +210,10 @@ export function registerCommands(
 
   disposables.push(
     vscode.commands.registerCommand('thesmos.openConfig', async () => {
-      const configPath = join(workspaceRoot, '.prometheus', 'config.json');
+      const configPath = join(workspaceRoot, '.thesmos', 'config.json');
       if (!existsSync(configPath)) {
         void vscode.window.showWarningMessage(
-          'Prometheus: .thesmos/config.json not found. Run "Prometheus: Scan Repository" first.',
+          'Thesmos: .thesmos/config.json not found. Run "Thesmos: Scan Repository" first.',
         );
         return;
       }
@@ -251,14 +251,14 @@ export function registerCommands(
       if (!goal) return;
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus Autopilot',
+        name: 'Thesmos Autopilot',
         cwd: workspaceRoot,
       });
-      terminal.sendText(`prometheus autopilot generate "${sanitizeShellArg(goal)}"`);
+      terminal.sendText(`thesmos autopilot generate "${sanitizeShellArg(goal)}"`);
       terminal.show();
 
       void vscode.window.showInformationMessage(
-        'Prometheus Autopilot: Generating plan in terminal. Answer the clarifying questions, then validate with: prometheus autopilot validate MASTER_PLAN.md',
+        'Thesmos Autopilot: Generating plan in terminal. Answer the clarifying questions, then validate with: thesmos autopilot validate MASTER_PLAN.md',
       );
     }),
   );
@@ -269,7 +269,7 @@ export function registerCommands(
     vscode.commands.registerCommand('thesmos.autopilot.cancel', async () => {
       const session = getAutopilotWatcher().session;
       if (!session) {
-        void vscode.window.showWarningMessage('Prometheus Autopilot: No active session to cancel.');
+        void vscode.window.showWarningMessage('Thesmos Autopilot: No active session to cancel.');
         return;
       }
 
@@ -281,15 +281,15 @@ export function registerCommands(
       if (confirm !== 'Cancel Session') return;
 
       // Create the cancel sentinel file
-      const cancelPath = join(workspaceRoot, '.prometheus', 'autopilot', '.cancel');
+      const cancelPath = join(workspaceRoot, '.thesmos', 'autopilot', '.cancel');
       try {
         writeFileSync(cancelPath, '', 'utf8');
         void vscode.window.showInformationMessage(
-          'Prometheus Autopilot: Cancel signal sent. Session will stop after the current task.',
+          'Thesmos Autopilot: Cancel signal sent. Session will stop after the current task.',
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        void vscode.window.showErrorMessage(`Prometheus Autopilot: Could not create cancel sentinel: ${msg}`);
+        void vscode.window.showErrorMessage(`Thesmos Autopilot: Could not create cancel sentinel: ${msg}`);
       }
     }),
   );
@@ -301,21 +301,21 @@ export function registerCommands(
       const session = getAutopilotWatcher().session;
       if (!session) {
         void vscode.window.showWarningMessage(
-          'Prometheus Autopilot: No active session. Provide a session ID in the terminal: prometheus autopilot review <id>',
+          'Thesmos Autopilot: No active session. Provide a session ID in the terminal: thesmos autopilot review <id>',
         );
         return;
       }
 
-      const cfg = vscode.workspace.getConfiguration('prometheus');
+      const cfg = vscode.workspace.getConfiguration('thesmos');
       const baseBranch = cfg.get<string>('autopilot.baseBranch', 'main');
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus Review',
+        name: 'Thesmos Review',
         cwd: workspaceRoot,
       });
       const safeId = sanitizeId(session.id);
       const safeBase = sanitizeBranchName(baseBranch);
-      terminal.sendText(`prometheus autopilot review "${safeId}" --base="${safeBase}"`);
+      terminal.sendText(`thesmos autopilot review "${safeId}" --base="${safeBase}"`);
       terminal.show();
     }),
   );
@@ -326,15 +326,15 @@ export function registerCommands(
     vscode.commands.registerCommand('thesmos.autopilot.openPR', async () => {
       const session = getAutopilotWatcher().session;
       if (!session) {
-        void vscode.window.showWarningMessage('Prometheus Autopilot: No active session.');
+        void vscode.window.showWarningMessage('Thesmos Autopilot: No active session.');
         return;
       }
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus PR',
+        name: 'Thesmos PR',
         cwd: workspaceRoot,
       });
-      terminal.sendText(`prometheus autopilot open-pr "${sanitizeId(session.id)}"`);
+      terminal.sendText(`thesmos autopilot open-pr "${sanitizeId(session.id)}"`);
       terminal.show();
     }),
   );
@@ -345,13 +345,13 @@ export function registerCommands(
     vscode.commands.registerCommand('thesmos.autopilot.viewJournal', async () => {
       const session = getAutopilotWatcher().session;
       if (!session) {
-        void vscode.window.showWarningMessage('Prometheus Autopilot: No active session.');
+        void vscode.window.showWarningMessage('Thesmos Autopilot: No active session.');
         return;
       }
 
       if (!existsSync(session.journalPath)) {
         void vscode.window.showWarningMessage(
-          `Prometheus Autopilot: Journal not found at ${session.journalPath}`,
+          `Thesmos Autopilot: Journal not found at ${session.journalPath}`,
         );
         return;
       }
@@ -369,7 +369,7 @@ export function registerCommands(
     vscode.commands.registerCommand('thesmos.autopilot.revert', async () => {
       const session = getAutopilotWatcher().session;
       if (!session) {
-        void vscode.window.showWarningMessage('Prometheus Autopilot: No active session to revert.');
+        void vscode.window.showWarningMessage('Thesmos Autopilot: No active session to revert.');
         return;
       }
 
@@ -381,13 +381,13 @@ export function registerCommands(
       if (confirm !== 'Revert and Delete Branch') return;
 
       try {
-        await runPrometheus(workspaceRoot, ['autopilot', 'revert', session.id]);
+        await runThesmos(workspaceRoot, ['autopilot', 'revert', session.id]);
         void vscode.window.showInformationMessage(
-          `Prometheus Autopilot: Session reverted. Branch "${session.branch}" deleted. main is unchanged.`,
+          `Thesmos Autopilot: Session reverted. Branch "${session.branch}" deleted. main is unchanged.`,
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        void vscode.window.showErrorMessage(`Prometheus Autopilot: Revert failed: ${msg}`);
+        void vscode.window.showErrorMessage(`Thesmos Autopilot: Revert failed: ${msg}`);
       }
     }),
   );
@@ -400,10 +400,10 @@ export function registerCommands(
       if (!cfg.enable) return;
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus: Import Scan',
+        name: 'Thesmos: Import Scan',
         cwd: workspaceRoot,
       });
-      terminal.sendText('prometheus import:scan');
+      terminal.sendText('thesmos import:scan');
       terminal.show();
     }),
   );
@@ -416,10 +416,10 @@ export function registerCommands(
       if (!cfg.enable) return;
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus: Debt Scan',
+        name: 'Thesmos: Debt Scan',
         cwd: workspaceRoot,
       });
-      terminal.sendText('prometheus debt:scan');
+      terminal.sendText('thesmos debt:scan');
       terminal.show();
     }),
   );
@@ -434,14 +434,14 @@ export function registerCommands(
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: 'Prometheus: Snapshotting project context…',
+          title: 'Thesmos: Snapshotting project context…',
           cancellable: false,
         },
         async () => {
           try {
-            await runPrometheus(workspaceRoot, ['context:snapshot'], cfg.binaryPath || undefined);
+            await runThesmos(workspaceRoot, ['context:snapshot'], cfg.binaryPath || undefined);
             void vscode.window.showInformationMessage(
-              'Prometheus: Context snapshot written to .thesmos/context.md',
+              'Thesmos: Context snapshot written to .thesmos/context.md',
             );
           } catch (err) {
             handleError(err);
@@ -461,19 +461,19 @@ export function registerCommands(
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: 'Prometheus: Checking context health…',
+          title: 'Thesmos: Checking context health…',
           cancellable: false,
         },
         async () => {
           try {
-            const out = await runPrometheus(
+            const out = await runThesmos(
               workspaceRoot,
               ['context:health'],
               cfg.binaryPath || undefined,
             );
             // First non-empty line contains the score summary
             const summary = out.split('\n').find((l) => l.trim().startsWith('Context Health:')) ?? out.trim();
-            void vscode.window.showInformationMessage(`Prometheus: ${summary.trim()}`);
+            void vscode.window.showInformationMessage(`Thesmos: ${summary.trim()}`);
           } catch (err) {
             handleError(err);
           }
@@ -490,10 +490,10 @@ export function registerCommands(
       if (!cfg.enable) return;
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus: Scope Init',
+        name: 'Thesmos: Scope Init',
         cwd: workspaceRoot,
       });
-      terminal.sendText('prometheus scope:init');
+      terminal.sendText('thesmos scope:init');
       terminal.show();
     }),
   );
@@ -506,10 +506,10 @@ export function registerCommands(
       if (!cfg.enable) return;
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus: Scope Status',
+        name: 'Thesmos: Scope Status',
         cwd: workspaceRoot,
       });
-      terminal.sendText('prometheus scope:status');
+      terminal.sendText('thesmos scope:status');
       terminal.show();
     }),
   );
@@ -529,10 +529,10 @@ export function registerCommands(
       if (!target) return;
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus: Scope Check',
+        name: 'Thesmos: Scope Check',
         cwd: workspaceRoot,
       });
-      terminal.sendText(`prometheus scope:check "${sanitizeShellArg(target)}"`);
+      terminal.sendText(`thesmos scope:check "${sanitizeShellArg(target)}"`);
       terminal.show();
     }),
   );
@@ -545,10 +545,10 @@ export function registerCommands(
       if (!cfg.enable) return;
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus: Token Report',
+        name: 'Thesmos: Token Report',
         cwd: workspaceRoot,
       });
-      terminal.sendText('prometheus tokens:report');
+      terminal.sendText('thesmos tokens:report');
       terminal.show();
     }),
   );
@@ -568,8 +568,8 @@ export function registerCommands(
       if (confirm !== 'Reset Session') return;
 
       try {
-        await runPrometheus(workspaceRoot, ['tokens:reset', '--session'], cfg.binaryPath || undefined);
-        void vscode.window.showInformationMessage('Prometheus: Session token budget reset.');
+        await runThesmos(workspaceRoot, ['tokens:reset', '--session'], cfg.binaryPath || undefined);
+        void vscode.window.showInformationMessage('Thesmos: Session token budget reset.');
       } catch (err) {
         handleError(err);
       }
@@ -584,10 +584,10 @@ export function registerCommands(
       if (!cfg.enable) return;
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus: Token Budget',
+        name: 'Thesmos: Token Budget',
         cwd: workspaceRoot,
       });
-      terminal.sendText('prometheus tokens:budget');
+      terminal.sendText('thesmos tokens:budget');
       terminal.show();
     }),
   );
@@ -602,13 +602,13 @@ export function registerCommands(
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: 'Prometheus: Linting last commit message…',
+          title: 'Thesmos: Linting last commit message…',
           cancellable: false,
         },
         async () => {
           try {
-            await runPrometheus(workspaceRoot, ['commit:lint', '--last'], cfg.binaryPath || undefined);
-            void vscode.window.showInformationMessage('Prometheus: Commit message is valid.');
+            await runThesmos(workspaceRoot, ['commit:lint', '--last'], cfg.binaryPath || undefined);
+            void vscode.window.showInformationMessage('Thesmos: Commit message is valid.');
           } catch (err) {
             handleError(err);
           }
@@ -625,10 +625,10 @@ export function registerCommands(
       if (!cfg.enable) return;
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus: Commit Wizard',
+        name: 'Thesmos: Commit Wizard',
         cwd: workspaceRoot,
       });
-      terminal.sendText('prometheus commit:create');
+      terminal.sendText('thesmos commit:create');
       terminal.show();
     }),
   );
@@ -641,10 +641,10 @@ export function registerCommands(
       if (!cfg.enable) return;
 
       const terminal = vscode.window.createTerminal({
-        name: 'Prometheus: Vercel Lint',
+        name: 'Thesmos: Vercel Lint',
         cwd: workspaceRoot,
       });
-      terminal.sendText('prometheus vercel:lint');
+      terminal.sendText('thesmos vercel:lint');
       terminal.show();
     }),
   );

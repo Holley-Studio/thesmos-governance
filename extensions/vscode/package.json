@@ -20,8 +20,13 @@
     "Linters",
     "Other"
   ],
+  "icon": "resources/thesmos-marketplace.png",
   "keywords": [
+    "thesmos",
     "governance",
+    "ai-governance",
+    "ai-coding",
+    "mcp",
     "AI",
     "Claude",
     "Cursor",
@@ -189,24 +194,36 @@
         "icon": "$(cloud)"
       }
     ],
-    "views": {
-      "explorer": [
+    "viewsContainers": {
+      "activitybar": [
         {
-          "id": "thesmos.findingsView",
-          "name": "Thesmos Findings",
-          "icon": "$(shield)",
-          "contextualTitle": "Thesmos Governance",
-          "when": "thesmos.active"
-        },
-        {
-          "id": "thesmos.autopilotView",
-          "name": "Thesmos Autopilot",
-          "icon": "$(rocket)",
-          "contextualTitle": "Thesmos Autopilot",
-          "when": "thesmos.active"
+          "id": "thesmos",
+          "title": "Thesmos Governance",
+          "icon": "resources/thesmos-activitybar.svg"
         }
       ]
     },
+    "views": {
+      "thesmos": [
+        {
+          "id": "thesmos.findingsView",
+          "name": "Findings",
+          "icon": "$(shield)"
+        },
+        {
+          "id": "thesmos.autopilotView",
+          "name": "Autopilot",
+          "icon": "$(rocket)"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "thesmos.findingsView",
+        "contents": "No Thesmos report found.\n[Run Thesmos Scan](command:thesmos.scan)\n\nLearn more at [holley.studio/thesmos](https://holley.studio/thesmos)",
+        "when": "!thesmos.active"
+      }
+    ],
     "menus": {
       "view/title": [
         {
@@ -323,7 +340,7 @@
         "thesmos.autoScan": {
           "type": "boolean",
           "default": false,
-          "description": "Automatically run 'prometheus scan' on activation when report.json is missing."
+          "description": "Automatically run 'thesmos scan' on activation when .thesmos/report.json is missing."
         },
         "thesmos.autopilot.baseBranch": {
           "type": "string",
@@ -348,7 +365,7 @@
     "@types/vscode": "^1.125.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.28.1",
-    "typescript": "^6.0.3",
+    "typescript": "^5.7.2",
     "vitest": "^4.1.9"
   }
 }

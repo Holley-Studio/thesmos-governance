@@ -2,12 +2,12 @@
  * StatusBarManager — shows governance health in the VS Code status bar.
  *
  * States:
- *   loading  → $(sync~spin) Prometheus: analysing…
+ *   loading  → $(sync~spin) Thesmos: analysing…
  *   healthy  → $(shield) A+  96         (no background)
  *   warning  → $(warning) B  72         (warningBackground)
  *   error    → $(error) 3 issues        (errorBackground)
- *   inactive → $(shield) Prometheus     (no background, no score)
- *   missing  → $(warning) Prometheus: scan needed
+ *   inactive → $(shield) Thesmos        (no background, no score)
+ *   missing  → $(warning) Thesmos: scan needed
  */
 
 import * as vscode from 'vscode';
@@ -22,14 +22,14 @@ export class StatusBarManager implements vscode.Disposable {
       100,
     );
     this.item.command = 'thesmos.health';
-    this.item.tooltip = 'Prometheus Governance — click to view health score';
+    this.item.tooltip = 'Thesmos Governance — click to view health score';
     this.showInactive();
     this.item.show();
   }
 
   showLoading(): void {
-    this.item.text = '$(sync~spin) Prometheus';
-    this.item.tooltip = 'Prometheus Governance — analysing…';
+    this.item.text = '$(sync~spin) Thesmos';
+    this.item.tooltip = 'Thesmos Governance — analysing…';
     this.item.backgroundColor = undefined;
   }
 
@@ -57,7 +57,7 @@ export class StatusBarManager implements vscode.Disposable {
         : `${findingCount} finding${findingCount === 1 ? '' : 's'}`;
 
     this.item.tooltip = new vscode.MarkdownString(
-      `**Prometheus Governance** — Health Score\n\n` +
+      `**Thesmos Governance** — Health Score\n\n` +
         `Grade: **${grade}**   Score: **${score}/100**\n\n` +
         `${issueText}\n\n` +
         `_Click to open health dashboard_`,
@@ -65,16 +65,16 @@ export class StatusBarManager implements vscode.Disposable {
   }
 
   showScanNeeded(): void {
-    this.item.text = '$(warning) Prometheus: scan needed';
+    this.item.text = '$(warning) Thesmos: scan needed';
     this.item.tooltip =
-      'Prometheus Governance — run "Prometheus: Scan Repository" to start';
+      'Thesmos Governance — run "Thesmos: Scan Repository" to start';
     this.item.backgroundColor = new vscode.ThemeColor(
       'statusBarItem.warningBackground',
     );
   }
 
   showNotInstalled(): void {
-    this.item.text = '$(error) Prometheus: not installed';
+    this.item.text = '$(error) Thesmos: not installed';
     this.item.tooltip =
       'thesmos-governance not found — run: npm install --save-dev thesmos-governance';
     this.item.backgroundColor = new vscode.ThemeColor(
@@ -98,13 +98,13 @@ export class StatusBarManager implements vscode.Disposable {
 
   clearAutopilotSession(): void {
     this.item.command = 'thesmos.health';
-    this.item.tooltip = 'Prometheus Governance — click to view health score';
+    this.item.tooltip = 'Thesmos Governance — click to view health score';
     this.item.backgroundColor = undefined;
   }
 
   showInactive(): void {
-    this.item.text = '$(shield) Prometheus';
-    this.item.tooltip = 'Prometheus Governance';
+    this.item.text = '$(shield) Thesmos';
+    this.item.tooltip = 'Thesmos Governance';
     this.item.backgroundColor = undefined;
   }
 

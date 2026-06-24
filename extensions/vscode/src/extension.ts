@@ -1,5 +1,5 @@
 /**
- * Prometheus Governance — VS Code Extension
+ * Thesmos Governance — VS Code Extension
  * by Holley Studios
  *
  * Entry point. Wires together all subsystems:
@@ -28,14 +28,14 @@ import { FindingsTreeProvider } from './treeView.js';
 import { AutopilotWatcher } from './autopilotWatcher.js';
 import { AutopilotTreeProvider } from './autopilotView.js';
 import { registerCommands } from './commands.js';
-import { PrometheusHoverProvider } from './hover.js';
-import { PrometheusCodeActionProvider } from './codeAction.js';
+import { ThesmosHoverProvider } from './hover.js';
+import { ThesmosCodeActionProvider } from './codeAction.js';
 import {
   runReview,
   runHealth,
   isInstalled,
   hasReport,
-  PrometheusNotFoundError,
+  ThesmosNotFoundError,
   ThesmosReportMissingError,
 } from './runner.js';
 
@@ -44,7 +44,7 @@ import type { ExtensionConfig, Finding } from './types.js';
 // ── Config helper ─────────────────────────────────────────────────────────────
 
 function readConfig(): ExtensionConfig {
-  const cfg = vscode.workspace.getConfiguration('prometheus');
+  const cfg = vscode.workspace.getConfiguration('thesmos');
   return {
     enable: cfg.get<boolean>('enable', true),
     runOnSave: cfg.get<boolean>('runOnSave', true),
@@ -57,7 +57,7 @@ function readConfig(): ExtensionConfig {
 
 // ── Extension class ───────────────────────────────────────────────────────────
 
-class PrometheusExtension implements vscode.Disposable {
+class ThesmosExtension implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private readonly diagnostics: DiagnosticsManager;
   private readonly statusBar: StatusBarManager;
@@ -141,15 +141,15 @@ class PrometheusExtension implements vscode.Disposable {
     // Hover provider — rich tooltips on findings
     const hoverProvider = vscode.languages.registerHoverProvider(
       { scheme: 'file' },
-      new PrometheusHoverProvider(this.workspaceRoot, () => this.allFindings),
+      new ThesmosHoverProvider(this.workspaceRoot, () => this.allFindings),
     );
     this.disposables.push(hoverProvider);
 
     // Code action provider — suppress quick-fix lightbulbs
     const codeActionProvider = vscode.languages.registerCodeActionsProvider(
       { scheme: 'file' },
-      new PrometheusCodeActionProvider(),
-      { providedCodeActionKinds: PrometheusCodeActionProvider.providedCodeActionKinds },
+      new ThesmosCodeActionProvider(),
+      { providedCodeActionKinds: ThesmosCodeActionProvider.providedCodeActionKinds },
     );
     this.disposables.push(codeActionProvider);
 
@@ -169,7 +169,7 @@ class PrometheusExtension implements vscode.Disposable {
 
     // Config change watcher
     const cfgWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration('prometheus')) {
+      if (e.affectsConfiguration('thesmos')) {
         const updated = readConfig();
         if (updated.showStatusBar) {
           this.statusBar.show();
@@ -195,12 +195,12 @@ class PrometheusExtension implements vscode.Disposable {
       this.treeProvider.setNotInstalled();
 
       void vscode.window.showWarningMessage(
-        'Prometheus Governance: thesmos-governance is not installed in this project.',
+        'Thesmos: thesmos-governance is not installed in this project.',
         'Install',
         'Dismiss',
       ).then((choice) => {
         if (choice === 'Install') {
-          const terminal = vscode.window.createTerminal('Prometheus');
+          const terminal = vscode.window.createTerminal('Thesmos');
           terminal.sendText('npm install --save-dev thesmos-governance');
           terminal.show();
         }
@@ -216,7 +216,7 @@ class PrometheusExtension implements vscode.Disposable {
         void vscode.commands.executeCommand('thesmos.scan');
       } else {
         void vscode.window.showInformationMessage(
-          'Prometheus Governance: No scan report found.',
+          'Thesmos: No scan report found.',
           'Scan now',
           'Dismiss',
         ).then((choice) => {
@@ -305,7 +305,7 @@ class PrometheusExtension implements vscode.Disposable {
   }
 
   private handleAnalysisError(err: unknown): void {
-    if (err instanceof PrometheusNotFoundError) {
+    if (err instanceof ThesmosNotFoundError) {
       this.statusBar.showNotInstalled();
       this.treeProvider.setNotInstalled();
       return;
@@ -319,7 +319,7 @@ class PrometheusExtension implements vscode.Disposable {
 
     const message = err instanceof Error ? err.message : String(err);
     this.statusBar.showInactive();
-    void vscode.window.showErrorMessage(`Prometheus Governance: ${message}`);
+    void vscode.window.showErrorMessage(`Thesmos: ${message}`);
   }
 
   /**
@@ -332,7 +332,7 @@ class PrometheusExtension implements vscode.Disposable {
     if (relPath.startsWith('..')) return false;
     if (relPath.startsWith('node_modules')) return false;
     if (relPath.startsWith('.git')) return false;
-    if (relPath.startsWith('.prometheus')) return false;
+    if (relPath.startsWith('.thesmos')) return false;
     if (relPath.startsWith('dist/')) return false;
 
     const ext = uri.fsPath.slice(uri.fsPath.lastIndexOf('.'));
@@ -350,7 +350,7 @@ class PrometheusExtension implements vscode.Disposable {
 
 // ── VS Code entry points ──────────────────────────────────────────────────────
 
-let extension: PrometheusExtension | undefined;
+let extension: ThesmosExtension | undefined;
 let lspClient: LanguageClientType | undefined;
 
 export async function activate(
@@ -361,13 +361,13 @@ export async function activate(
 
   const workspaceRoot = folders[0].uri.fsPath;
 
-  extension = new PrometheusExtension(context, workspaceRoot);
+  extension = new ThesmosExtension(context, workspaceRoot);
   context.subscriptions.push(extension);
 
   await extension.activate();
 
-  // Start Prometheus LSP server for real-time as-you-type diagnostics.
-  // The server is the prometheus CLI launched with the "lsp" subcommand.
+  // Start Thesmos LSP server for real-time as-you-type diagnostics.
+  // The server is the thesmos CLI launched with the "lsp" subcommand.
   // It runs alongside the existing on-save analysis and surfaces squiggles
   // for TypeScript and JavaScript files without requiring a scan report.
   void startLspClient(context, workspaceRoot);
@@ -382,14 +382,14 @@ async function startLspClient(
     // is not yet installed (e.g. first-run before `npm install`).
     const { LanguageClient, TransportKind } = await import('vscode-languageclient/node');
 
-    // Resolve the prometheus binary to use as the LSP server.
+    // Resolve the thesmos binary to use as the LSP server.
     // Prefer a local project install, fall back to the global CLI.
     const serverCommand = 'npx';
-    const serverArgs = ['prometheus', 'lsp', '--root', workspaceRoot];
+    const serverArgs = ['thesmos', 'lsp', '--root', workspaceRoot];
 
     lspClient = new LanguageClient(
-      'prometheus-lsp',
-      'Prometheus Governance Language Server',
+      'thesmos-lsp',
+      'Thesmos Language Server',
       {
         run:   { command: serverCommand, args: serverArgs, transport: TransportKind.stdio },
         debug: { command: serverCommand, args: [...serverArgs, '--debug'], transport: TransportKind.stdio },
@@ -405,8 +405,11 @@ async function startLspClient(
       },
     );
 
-    context.subscriptions.push(lspClient);
-    await lspClient.start();
+    const client = lspClient;
+    if (client) {
+      context.subscriptions.push(client);
+      await client.start();
+    }
   } catch {
     // vscode-languageclient not installed — real-time LSP unavailable.
     // On-save analysis via the extension's existing diagnostics path still works.

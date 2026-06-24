@@ -5,11 +5,11 @@ import { tmpdir } from 'node:os';
 import { AutopilotWatcher } from '../autopilotWatcher.js';
 import { getLastMockWatcher } from '../__mocks__/vscode.js';
 
-const SESSION_PATH_SUFFIX = join('.prometheus', 'autopilot', '.session.json');
+const SESSION_PATH_SUFFIX = join('.thesmos', 'autopilot', '.session.json');
 
 function makeWorkspace(): string {
-  const dir = join(tmpdir(), `prometheus-watcher-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(join(dir, '.prometheus', 'autopilot'), { recursive: true });
+  const dir = join(tmpdir(), `thesmos-watcher-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  mkdirSync(join(dir, '.thesmos', 'autopilot'), { recursive: true });
   return dir;
 }
 

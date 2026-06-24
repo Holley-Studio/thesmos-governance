@@ -1,5 +1,5 @@
 /**
- * DiagnosticsManager — maps prometheus findings to VS Code squiggles.
+ * DiagnosticsManager — maps thesmos findings to VS Code squiggles.
  *
  * Severity mapping:
  *   BLOCKER  → DiagnosticSeverity.Error
@@ -16,7 +16,7 @@ import * as vscode from 'vscode';
 import { join } from 'node:path';
 import type { Finding, Severity } from './types.js';
 
-const DIAGNOSTIC_SOURCE = 'Prometheus';
+const DIAGNOSTIC_SOURCE = 'Thesmos';
 
 function toVscodeSeverity(severity: Severity): vscode.DiagnosticSeverity {
   switch (severity) {

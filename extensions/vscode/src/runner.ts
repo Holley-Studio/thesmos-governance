@@ -1,7 +1,7 @@
 /**
- * Prometheus CLI execution layer.
+ * Thesmos CLI execution layer.
  *
- * Discovers the project-local binary (node_modules/.bin/prometheus), falls
+ * Discovers the project-local binary (node_modules/.bin/thesmos), falls
  * back to a user-specified override, and exposes typed async wrappers for
  * every CLI command the extension needs.
  *
@@ -21,52 +21,52 @@ const MAX_BUFFER = 10 * 1024 * 1024; // 10 MB
 
 // ── Error types ───────────────────────────────────────────────────────────────
 
-export class PrometheusNotFoundError extends Error {
+export class ThesmosNotFoundError extends Error {
   constructor(root: string) {
     super(
       `thesmos-governance not found in ${root}/node_modules/.bin/thesmos.\n` +
         `Run: npm install --save-dev thesmos-governance`,
     );
-    this.name = 'PrometheusNotFoundError';
+    this.name = 'ThesmosNotFoundError';
   }
 }
 
 export class ThesmosReportMissingError extends Error {
   constructor() {
     super(
-      `.thesmos/report.json not found — run "Prometheus: Scan Repository" first.`,
+      `.thesmos/report.json not found — run "Thesmos: Scan Repository" first.`,
     );
     this.name = 'ThesmosReportMissingError';
   }
 }
 
-export class PrometheusParseError extends Error {
+export class ThesmosParseError extends Error {
   constructor(command: string, raw: string) {
-    super(`Failed to parse JSON from 'prometheus ${command}':\n${raw.slice(0, 300)}`);
-    this.name = 'PrometheusParseError';
+    super(`Failed to parse JSON from 'thesmos ${command}':\n${raw.slice(0, 300)}`);
+    this.name = 'ThesmosParseError';
   }
 }
 
 // ── Binary resolution ─────────────────────────────────────────────────────────
 
 /**
- * Returns the path to the prometheus binary for a given workspace root.
+ * Returns the path to the thesmos binary for a given workspace root.
  * Checks:
  *   1. User override (settings → thesmos.binaryPath)
- *   2. project-local node_modules/.bin/prometheus
+ *   2. project-local node_modules/.bin/thesmos
  *
- * Throws PrometheusNotFoundError if neither is available.
+ * Throws ThesmosNotFoundError if neither is available.
  */
 export function resolveBinary(workspaceRoot: string, override?: string): string {
   if (override && override.trim()) {
     if (existsSync(override.trim())) return override.trim();
-    throw new PrometheusNotFoundError(workspaceRoot);
+    throw new ThesmosNotFoundError(workspaceRoot);
   }
 
-  const local = join(workspaceRoot, 'node_modules', '.bin', 'prometheus');
+  const local = join(workspaceRoot, 'node_modules', '.bin', 'thesmos');
   if (existsSync(local)) return local;
 
-  throw new PrometheusNotFoundError(workspaceRoot);
+  throw new ThesmosNotFoundError(workspaceRoot);
 }
 
 /** Returns true if thesmos-governance is installed in the given workspace. */
@@ -81,7 +81,7 @@ export function isInstalled(workspaceRoot: string, override?: string): boolean {
 
 /** Returns true if .thesmos/report.json exists. */
 export function hasReport(workspaceRoot: string): boolean {
-  return existsSync(join(workspaceRoot, '.prometheus', 'report.json'));
+  return existsSync(join(workspaceRoot, '.thesmos', 'report.json'));
 }
 
 // ── CLI wrappers ──────────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ async function exec(
 }
 
 /**
- * Runs `prometheus review --json [files...]` and returns typed output.
+ * Runs `thesmos review --json [files...]` and returns typed output.
  *
  * Passing no files runs scan-based checks only.
  * Passing one or more relative paths also runs content-based rule checks.
@@ -119,7 +119,7 @@ export async function runReview(
     stdout = await exec(bin, args, workspaceRoot);
   } catch (err) {
     const e = err as NodeJS.ErrnoException & { stdout?: string; stderr?: string };
-    // `prometheus review` exits 0. Any non-zero exit is a hard error.
+    // `thesmos review` exits 0. Any non-zero exit is a hard error.
     if (e.stderr?.includes('report.json not found')) {
       throw new ThesmosReportMissingError();
     }
@@ -129,12 +129,12 @@ export async function runReview(
   try {
     return JSON.parse(stdout) as ReviewOutput;
   } catch {
-    throw new PrometheusParseError('review', stdout);
+    throw new ThesmosParseError('review', stdout);
   }
 }
 
 /**
- * Runs `prometheus health --json` and returns a typed HealthScore.
+ * Runs `thesmos health --json` and returns a typed HealthScore.
  */
 export async function runHealth(
   workspaceRoot: string,
@@ -156,12 +156,12 @@ export async function runHealth(
   try {
     return JSON.parse(stdout) as HealthScore;
   } catch {
-    throw new PrometheusParseError('health', stdout);
+    throw new ThesmosParseError('health', stdout);
   }
 }
 
 /**
- * Runs `prometheus scan` (no JSON output — writes report.json to disk).
+ * Runs `thesmos scan` (no JSON output — writes report.json to disk).
  * Progress is communicated via the returned Promise.
  */
 export async function runScan(
@@ -173,7 +173,7 @@ export async function runScan(
 }
 
 /**
- * Runs `prometheus adapters` to regenerate all AI adapter files.
+ * Runs `thesmos adapters` to regenerate all AI adapter files.
  */
 export async function runAdapters(
   workspaceRoot: string,
@@ -187,7 +187,7 @@ export async function runAdapters(
  * Generic CLI runner for autopilot subcommands (revert, open-pr, etc.).
  * Resolves the binary from the workspace, passes arbitrary args.
  */
-export async function runPrometheus(
+export async function runThesmos(
   workspaceRoot: string,
   args: string[],
   binaryOverride?: string,

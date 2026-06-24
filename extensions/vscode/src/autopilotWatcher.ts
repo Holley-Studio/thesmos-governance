@@ -13,7 +13,7 @@ import * as vscode from 'vscode';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// ── Minimal session shape (mirrors AutopilotSession in prometheus types) ──────
+// ── Minimal session shape (mirrors AutopilotSession in thesmos types) ──────
 
 export interface AutopilotTaskState {
   index: number;
@@ -65,8 +65,8 @@ export class AutopilotWatcher implements vscode.Disposable {
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly workspaceRoot: string) {
-    this.sessionPath = join(workspaceRoot, '.prometheus', 'autopilot', '.session.json');
-    this.cancelPath = join(workspaceRoot, '.prometheus', 'autopilot', '.cancel');
+    this.sessionPath = join(workspaceRoot, '.thesmos', 'autopilot', '.session.json');
+    this.cancelPath = join(workspaceRoot, '.thesmos', 'autopilot', '.cancel');
 
     // Watch the autopilot dir for any file changes
     const pattern = new vscode.RelativePattern(
@@ -165,7 +165,7 @@ export class AutopilotWatcher implements vscode.Disposable {
   }
 }
 
-// ── Minimal plan task parser (avoids importing the full prometheus package) ───
+// ── Minimal plan task parser (avoids importing the full thesmos package) ───
 
 function parsePlanTasks(content: string): PlanTaskSummary[] {
   const tasks: PlanTaskSummary[] = [];

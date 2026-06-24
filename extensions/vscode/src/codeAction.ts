@@ -1,11 +1,11 @@
 /**
- * PrometheusCodeActionProvider — suppression quick-fix lightbulbs.
+ * ThesmosCodeActionProvider — suppression quick-fix lightbulbs.
  *
- * When a Prometheus diagnostic exists at the cursor, this provider offers a
+ * When a Thesmos diagnostic exists at the cursor, this provider offers a
  * "Suppress finding" quick-fix that inserts the canonical suppression comment
  * on the line above:
  *
- *   // prometheus-disable-next-line <category> -- reason: TODO
+ *   // thesmos-disable-next-line <category> -- reason: TODO
  *
  * The user then replaces "TODO" with the actual justification. The format is
  * parsed by thesmos-governance's suppress.ts — it requires a reason clause
@@ -14,9 +14,9 @@
 
 import * as vscode from 'vscode';
 
-const PROMETHEUS_SOURCE = 'Prometheus';
+const THESMOS_SOURCE = 'Thesmos';
 
-export class PrometheusCodeActionProvider implements vscode.CodeActionProvider {
+export class ThesmosCodeActionProvider implements vscode.CodeActionProvider {
   static readonly providedCodeActionKinds = [vscode.CodeActionKind.QuickFix];
 
   provideCodeActions(
@@ -24,11 +24,11 @@ export class PrometheusCodeActionProvider implements vscode.CodeActionProvider {
     _range: vscode.Range,
     context: vscode.CodeActionContext,
   ): vscode.CodeAction[] {
-    const prometheusDigas = context.diagnostics.filter(
-      (d) => d.source === PROMETHEUS_SOURCE && typeof d.code === 'string',
+    const thesmosDigas = context.diagnostics.filter(
+      (d) => d.source === THESMOS_SOURCE && typeof d.code === 'string',
     );
 
-    return prometheusDigas.flatMap((diag) => {
+    return thesmosDigas.flatMap((diag) => {
       const category = diag.code as string;
       const targetLine = diag.range.start.line;
 
@@ -36,10 +36,10 @@ export class PrometheusCodeActionProvider implements vscode.CodeActionProvider {
       const lineText = document.lineAt(targetLine).text;
       const indent = /^(\s*)/.exec(lineText)?.[1] ?? '';
       const suppressionText =
-        `${indent}// prometheus-disable-next-line ${category} -- reason: TODO\n`;
+        `${indent}// thesmos-disable-next-line ${category} -- reason: TODO\n`;
 
       const action = new vscode.CodeAction(
-        `Suppress: ${category} (add prometheus-disable-next-line comment)`,
+        `Suppress: ${category} (add thesmos-disable-next-line comment)`,
         vscode.CodeActionKind.QuickFix,
       );
       action.diagnostics = [diag];

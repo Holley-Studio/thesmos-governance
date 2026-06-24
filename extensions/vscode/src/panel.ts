@@ -18,7 +18,7 @@ export class HealthPanel implements vscode.Disposable {
   private constructor(extensionUri: vscode.Uri) {
     this.panel = vscode.window.createWebviewPanel(
       'thesmos.health',
-      'Prometheus Health',
+      'Thesmos Health',
       vscode.ViewColumn.Beside,
       {
         enableScripts: true,
@@ -131,7 +131,7 @@ function buildHtml(health: HealthScore): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'none'; style-src 'unsafe-inline';" />
-  <title>Prometheus Health</title>
+  <title>Thesmos Health</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -327,7 +327,7 @@ function buildHtml(health: HealthScore): string {
     <div class="header-meta">
       <h1>Governance Health</h1>
       <span class="grade-badge">${escHtml(grade)}</span>
-      <p>Prometheus Governance · Holley Studios</p>
+      <p>Thesmos Governance · Holley Studios</p>
       ${scoreBar(score)}
     </div>
   </div>
@@ -357,7 +357,7 @@ function buildHtml(health: HealthScore): string {
     </table>
   </section>
 
-  <p class="footer">Prometheus Governance by Holley Studios</p>
+  <p class="footer">Thesmos Governance by Holley Studios</p>
 </body>
 </html>`;
 }

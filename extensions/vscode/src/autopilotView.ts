@@ -11,7 +11,7 @@
  *
  * When no session is active:
  *   (No active autopilot session)
- *   Generate a plan: Prometheus: Generate Autopilot Plan
+ *   Generate a plan: Thesmos: Generate Autopilot Plan
  */
 
 import * as vscode from 'vscode';
@@ -84,7 +84,7 @@ export class AutopilotTreeProvider
     if (!session) {
       this.items = [
         Object.assign(new AutopilotItem('No active autopilot session', 'empty'), {
-          description: 'Run: prometheus autopilot start MASTER_PLAN.md',
+          description: 'Run: thesmos autopilot start MASTER_PLAN.md',
         }),
         Object.assign(new AutopilotItem('Generate a plan…', 'action'), {
           iconPath: new vscode.ThemeIcon('wand'),

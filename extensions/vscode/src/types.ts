@@ -9,7 +9,7 @@ export type Severity = 'BLOCKER' | 'HIGH' | 'MEDIUM' | 'LOW' | 'TECH_DEBT';
 
 export type HealthGrade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
 
-/** Shape of a single finding from `prometheus review --json`. */
+/** Shape of a single finding from `thesmos review --json`. */
 export interface Finding {
   severity: Severity;
   file: string;
@@ -19,13 +19,13 @@ export interface Finding {
   suggestion?: string;
 }
 
-/** Shape of `prometheus review --json` stdout. */
+/** Shape of `thesmos review --json` stdout. */
 export interface ReviewOutput {
   total: number;
   findings: Finding[];
 }
 
-/** Shape of `prometheus health --json` stdout. */
+/** Shape of `thesmos health --json` stdout. */
 export interface HealthScore {
   score: number;
   grade: HealthGrade;

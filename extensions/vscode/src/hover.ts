@@ -1,7 +1,7 @@
 /**
- * PrometheusHoverProvider — rich tooltips when hovering over squiggles.
+ * ThesmosHoverProvider — rich tooltips when hovering over squiggles.
  *
- * When the cursor rests on a line that has a Prometheus finding, this shows
+ * When the cursor rests on a line that has a Thesmos finding, this shows
  * a Markdown card with the severity, category, message, and fix suggestion.
  * Multiple findings on the same line are stacked in a single hover card.
  */
@@ -18,7 +18,7 @@ const SEVERITY_EMOJI: Record<Severity, string> = {
   TECH_DEBT: '⚪',
 };
 
-export class PrometheusHoverProvider implements vscode.HoverProvider {
+export class ThesmosHoverProvider implements vscode.HoverProvider {
   constructor(
     private readonly workspaceRoot: string,
     private readonly getFindings: () => Finding[],
@@ -57,7 +57,7 @@ export class PrometheusHoverProvider implements vscode.HoverProvider {
       }
     }
 
-    md.appendMarkdown(`---\n_Prometheus Governance — use the 💡 lightbulb to suppress_`);
+    md.appendMarkdown(`---\n_Thesmos Governance — use the 💡 lightbulb to suppress_`);
 
     const line = position.line;
     const range = new vscode.Range(line, 0, line, Number.MAX_SAFE_INTEGER);

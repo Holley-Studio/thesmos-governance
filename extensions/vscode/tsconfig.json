@@ -10,7 +10,10 @@
     "outDir": "dist",
     "rootDir": "src",
     "sourceMap": true,
-    "declaration": false
+    "declaration": false,
+    "paths": {
+      "vscode-languageclient/node": ["../../node_modules/vscode-languageclient/node.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

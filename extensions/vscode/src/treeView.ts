@@ -177,7 +177,7 @@ export class FindingsTreeProvider
     }
 
     if (this.state === 'no-report') {
-      return [new EmptyItem('Run "Prometheus: Scan Repository" to start')];
+      return [new EmptyItem('Run "Thesmos: Scan Repository" to start')];
     }
 
     if (this.state === 'not-installed') {
