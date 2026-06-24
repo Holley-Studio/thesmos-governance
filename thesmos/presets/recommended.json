@@ -1,6 +1,6 @@
 {
   "$schema": "../config.schema.json",
-  "name": "prometheus/recommended",
+  "name": "thesmos/recommended",
   "version": "1.0.0",
   "description": "Balanced preset for production TypeScript projects. Blocks on security and correctness; warns on quality.",
   "failOnSeverity": ["BLOCKER"],

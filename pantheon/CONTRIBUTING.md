@@ -59,8 +59,8 @@ All frontmatter fields are required. Do not leave any field blank.
 ## File Structure
 
 ```
-prometheus/catalog/agents/pantheon/
-  <god-name>-<domain>-agent.md     ← the agent definition (in prometheus catalog)
+thesmos/catalog/agents/pantheon/
+  <god-name>-<domain>-agent.md     ← the agent definition (in thesmos catalog)
 
 pantheon/assets/avatars/
   <god-name>-<domain>-agent.svg    ← SVG avatar (you must provide this)
@@ -80,7 +80,7 @@ id: <god>-<domain>-agent
 name: "<GodName> — <Role> Agent"
 type: agent
 version: 1.0.0
-owner: prometheus-pantheon
+owner: thesmos-pantheon
 god: <GodName>
 mythology: "<One-sentence mythology hook — what the god is known for, applied to the domain>"
 role: <Role (e.g., "Competitive Intelligence")>
@@ -183,12 +183,12 @@ Look at the existing SVGs in `pantheon/assets/avatars/` for the visual style ref
 
 ## Submitting a PR
 
-1. Fork `prometheus-fire` on GitHub
+1. Fork `thesmos-governance` on GitHub
 2. Create a branch: `feat/pantheon-<agent-id>`
 3. Add your files:
-   - `prometheus/catalog/agents/pantheon/<id>.md` — the agent definition
+   - `thesmos/catalog/agents/pantheon/<id>.md` — the agent definition
    - `pantheon/assets/avatars/<id>.svg` — the SVG avatar
-4. Run the test suite: `cd prometheus && npm test` — all existing tests must pass
+4. Run the test suite: `cd thesmos && npm test` — all existing tests must pass
 5. Run the export: `npx tsx bin/cli.ts pantheon:export --target=all` and confirm your agent appears in all 7 platform exports
 6. Submit a PR with:
    - 2-sentence description of the business function gap this agent fills

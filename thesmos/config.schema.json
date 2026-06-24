@@ -168,7 +168,7 @@
         "workflow": {
           "type": "string",
           "description": "Path to the generated GitHub Actions workflow file",
-          "default": ".github/workflows/prometheus-review.yml"
+          "default": ".github/workflows/thesmos-pr.yml"
         },
         "requiresSecrets": {
           "type": "array",
@@ -179,7 +179,7 @@
     },
     "scan": {
       "type": "object",
-      "description": "Settings for `prometheus scan`",
+      "description": "Settings for `thesmos scan`",
       "additionalProperties": false,
       "properties": {
         "generatedSections": {
@@ -201,7 +201,7 @@
     },
     "scripts": {
       "type": "object",
-      "description": "Custom script overrides for prometheus commands",
+      "description": "Custom script overrides for thesmos commands",
       "additionalProperties": { "type": "string" }
     },
     "design": {

@@ -3,7 +3,7 @@
   "name": "Next.js + Supabase Profile",
   "description": "Governance profile optimised for Next.js App Router projects using Supabase for authentication and database. Includes all web agents plus Supabase-specific RLS and auth reviewers.",
   "version": "1.0.0",
-  "owner": "prometheus",
+  "owner": "thesmos",
   "agents": [
     "security-reviewer",
     "architecture-reviewer",

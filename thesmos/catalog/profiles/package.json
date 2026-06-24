@@ -3,7 +3,7 @@
   "name": "Package Profile",
   "description": "Governance profile for npm package development. Focuses on public API quality, bundle size, TypeScript types, documentation completeness, and publishing readiness.",
   "version": "1.0.0",
-  "owner": "prometheus",
+  "owner": "thesmos",
   "agents": [
     "security-reviewer",
     "code-quality-reviewer",

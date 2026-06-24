@@ -3,7 +3,7 @@
   "name": "Web Profile",
   "description": "Full-stack web application governance for React, Next.js, and TypeScript projects. Adds frontend, API, database, and UX reviewers on top of the base profile.",
   "version": "1.0.0",
-  "owner": "prometheus",
+  "owner": "thesmos",
   "agents": [
     "security-reviewer",
     "architecture-reviewer",

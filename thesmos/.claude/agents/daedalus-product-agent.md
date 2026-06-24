@@ -78,7 +78,7 @@ When users need to complete a multi-function task (e.g., "launch a product"), th
 
 **Shape Up brief:**
 - **Appetite:** Small batch — 1 week of engineering time
-- **In scope:** Static keyword routing table → Zeus brief output; `prometheus pantheon:orchestrate "[task]"` CLI command; structured Markdown brief per delegate agent
+- **In scope:** Static keyword routing table → Zeus brief output; `thesmos pantheon:orchestrate "[task]"` CLI command; structured Markdown brief per delegate agent
 - **Not in scope:** LLM-based routing, multi-turn orchestration, agent output execution
 - **Risk:** Routing accuracy — static keywords may miss complex tasks; mitigation: Zeus always shows its routing decision and lets user override
 
@@ -94,7 +94,7 @@ Backbone: User states task → Zeus analyses → Zeus routes → User receives b
 | User reviews | Read brief | Brief is formatted, readable, copyable |
 
 **Acceptance criteria:**
-- `prometheus pantheon:orchestrate "launch marketing campaign"` outputs a brief with ≥2 delegate sections
+- `thesmos pantheon:orchestrate "launch marketing campaign"` outputs a brief with ≥2 delegate sections
 - Each section includes: Agent name, sub-task, context, deliver-to list, governance note
 - Unrecognised tasks output a fallback: "Zeus could not confidently route this task. Relevant agents may include: [list]. Run `pantheon:list` to browse all agents."
 - Command runs in <500ms (no LLM call)

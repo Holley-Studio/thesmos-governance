@@ -10,7 +10,7 @@
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
-Report vulnerabilities privately by emailing the maintainer or using [GitHub's private vulnerability reporting](https://github.com/Holley-Studio/thesmos-governance/security/advisories/new).
+Report vulnerabilities privately by emailing **security@holley.studio** or using [GitHub's private vulnerability reporting](https://github.com/Holley-Studio/thesmos-governance/security/advisories/new).
 
 Include:
 

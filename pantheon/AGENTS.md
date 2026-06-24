@@ -134,7 +134,7 @@ All 21 agents are exported for all 7 platforms in [exports/](exports/):
 
 ## Agent Files
 
-All 21 master agent definitions live in `prometheus/catalog/agents/pantheon/`:
+All 21 master agent definitions live in `thesmos/catalog/agents/pantheon/`:
 
 ```
 zeus-executive-agent.md

@@ -1,7 +1,7 @@
 /**
  * Thesmos MCP Server — JSON-RPC 2.0 over stdio (NDJSON transport).
  *
- * When Prometheus runs as an MCP server, AI assistants call governance tools
+ * When Thesmos runs as an MCP server, AI assistants call governance tools
  * BEFORE generating or writing code. This shifts governance left: zero correction
  * cycles, 40-60% fewer fix-iteration tokens.
  *
@@ -16,8 +16,8 @@
  *   get_context()                → .thesmos/context.md contents
  *
  * Resources:
- *   prometheus://rules           → full rule catalog
- *   prometheus://health          → current HealthScore
+ *   thesmos://rules              → full rule catalog
+ *   thesmos://health             → current HealthScore
  */
 
 import { createInterface } from 'node:readline';

@@ -3,7 +3,7 @@
   "name": "Enterprise Profile",
   "description": "Maximum governance coverage for enterprise applications in regulated industries. Includes all security, compliance, observability, and audit agents with comprehensive skill coverage.",
   "version": "1.0.0",
-  "owner": "prometheus",
+  "owner": "thesmos",
   "agents": [
     "security-reviewer",
     "architecture-reviewer",

@@ -1,7 +1,7 @@
 /**
- * Prometheus Catalog — built-in agent, skill, and profile loader.
+ * Thesmos Catalog — built-in agent, skill, and profile loader.
  *
- * Built-in catalog lives at prometheus/catalog/ in source and at ../catalog/
+ * Built-in catalog lives at thesmos/catalog/ in source and at ../catalog/
  * relative to the compiled dist/ bundle. The finder tries dev path first
  * (running from source via vite-node), then falls back to prod path (npm install).
  *

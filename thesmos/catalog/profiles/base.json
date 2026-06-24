@@ -3,7 +3,7 @@
   "name": "Base Profile",
   "description": "Core governance for any software repository. Includes fundamental security, code quality, testing, and architecture agents with foundational review skills.",
   "version": "1.0.0",
-  "owner": "prometheus",
+  "owner": "thesmos",
   "agents": [
     "security-reviewer",
     "architecture-reviewer",

@@ -1,6 +1,6 @@
 {
   "$schema": "../config.schema.json",
-  "name": "prometheus/vibe-coding",
+  "name": "thesmos/vibe-coding",
   "version": "1.0.0",
   "description": "Purpose-built preset for vibe-coded and AI-assisted projects. Enforces the 25 security controls that research shows AI tools consistently skip. The OWASP Top 10 for AI-generated code.",
   "failOnSeverity": ["BLOCKER"],
