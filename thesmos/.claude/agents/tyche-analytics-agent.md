@@ -75,16 +75,16 @@ Before building a metrics framework, Tyche identifies:
 
 **Input:** "Define the KPI framework for Prometheus's v3.0 launch. We need to know if it's working."
 
-**North Star metric:** Weekly active governance scans — the number of unique repos running `prometheus validate` in a given week. This is the metric that most directly captures whether Prometheus is delivering value.
+**North Star metric:** Weekly active governance scans — the number of unique repos running `thesmos validate` in a given week. This is the metric that most directly captures whether Thesmos is delivering value.
 
 **AARRR framework:**
 
 | Stage | Metric | Definition | Target (30-day post-launch) |
 |---|---|---|---|
 | Acquisition | npm installs | Weekly new installs via npm registry | 500/week |
-| Activation | First successful scan | % of installs that complete `prometheus validate` within 7 days | >40% |
+| Activation | First successful scan | % of installs that complete `thesmos validate` within 7 days | >40% |
 | Retention | Weekly active repos | Repos that ran a scan in both week 1 and week 2 | >60% of activated |
-| Referral | GitHub stars growth rate | Stars/week on prometheus-fire repo | +50 stars/week |
+| Referral | GitHub stars growth rate | Stars/week on thesmos-governance repo | +50 stars/week |
 | Revenue | Trial → paid conversion | % of free users who upgrade within 30 days | >8% |
 
 **OKR metric tree:**
@@ -99,7 +99,7 @@ Before building a metrics framework, Tyche identifies:
 - Data sources: npm registry API, GitHub API, PostHog (with consent), Stripe
 - Refresh: Daily automated pull at 08:00 UTC
 
-**GDPR note:** PostHog events require user consent prompt on first CLI run. Add: `prometheus init` consent prompt that records opt-in/opt-out to `.thesmos/telemetry.json`. No telemetry without opt-in.
+**GDPR note:** PostHog events require user consent prompt on first CLI run. Add: `thesmos init` consent prompt that records opt-in/opt-out to `.thesmos/telemetry.json`. No telemetry without opt-in.
 
 ## Team context
 

@@ -4,28 +4,28 @@ on:
   push:
     branches: [main]
     paths:
-      - 'prometheus/catalog/agents/pantheon/**'
-      - 'prometheus/catalog/agents/aether-ai-strategy-agent.md'
-      - 'prometheus/catalog/agents/calliope-email-agent.md'
-      - 'prometheus/catalog/agents/cassandra-qa-agent.md'
-      - 'prometheus/catalog/agents/chiron-architecture-agent.md'
-      - 'prometheus/catalog/agents/clio-case-study-agent.md'
-      - 'prometheus/catalog/agents/eos-automation-agent.md'
-      - 'prometheus/catalog/agents/erato-brand-voice-agent.md'
-      - 'prometheus/catalog/agents/kratos-devops-agent.md'
-      - 'prometheus/catalog/agents/metis-pm-agent.md'
-      - 'prometheus/catalog/agents/momus-challenger-agent.md'
-      - 'prometheus/catalog/agents/polyhymnia-docs-agent.md'
-      - 'prometheus/catalog/agents/proteus-drift-agent.md'
-      - 'prometheus/catalog/agents/talos-web-dev-agent.md'
-      - 'prometheus/package.json'
+      - 'thesmos/catalog/agents/pantheon/**'
+      - 'thesmos/catalog/agents/aether-ai-strategy-agent.md'
+      - 'thesmos/catalog/agents/calliope-email-agent.md'
+      - 'thesmos/catalog/agents/cassandra-qa-agent.md'
+      - 'thesmos/catalog/agents/chiron-architecture-agent.md'
+      - 'thesmos/catalog/agents/clio-case-study-agent.md'
+      - 'thesmos/catalog/agents/eos-automation-agent.md'
+      - 'thesmos/catalog/agents/erato-brand-voice-agent.md'
+      - 'thesmos/catalog/agents/kratos-devops-agent.md'
+      - 'thesmos/catalog/agents/metis-pm-agent.md'
+      - 'thesmos/catalog/agents/momus-challenger-agent.md'
+      - 'thesmos/catalog/agents/polyhymnia-docs-agent.md'
+      - 'thesmos/catalog/agents/proteus-drift-agent.md'
+      - 'thesmos/catalog/agents/talos-web-dev-agent.md'
+      - 'thesmos/package.json'
 
 jobs:
   build-kit:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: prometheus
+        working-directory: thesmos
 
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: prometheus/package-lock.json
+          cache-dependency-path: thesmos/package-lock.json
 
       - name: Install dependencies
         run: npm ci

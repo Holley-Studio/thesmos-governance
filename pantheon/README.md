@@ -159,7 +159,7 @@ pantheon/
     copilot/             ← 21 .instructions.md files
     claude-project/      ← 21 .txt files for Claude Projects
 
-prometheus/catalog/agents/pantheon/
+thesmos/catalog/agents/pantheon/
   *.md                   ← master agent definitions (source of truth)
 ```
 

@@ -3,7 +3,14 @@
   "version": "4.0.0",
   "description": "AI-stack-agnostic repo governance: 1,075 rules, MCP server, Learning Brain, Builder Wizard, and Pantheon agents for Claude, Gemini, Cursor, Copilot, Codex, and AGENTS.md",
   "license": "SEE LICENSE IN LICENSE",
-  "author": "Matt Holley",
+  "author": {
+    "name": "Matt Holley",
+    "url": "https://holley.studio"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://github.com/sponsors/Holley-Studio"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Holley-Studio/thesmos-governance.git",
@@ -39,9 +46,15 @@
     "ai-safety",
     "owasp",
     "mcp-server",
+    "model-context-protocol",
     "brain",
     "builder"
   ],
+  "mcp": {
+    "command": "npx",
+    "args": ["thesmos-governance", "mcp", "--stdio"],
+    "description": "Thesmos Governance MCP Server — repo governance tools for Claude, Cursor, Windsurf, and Codex"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

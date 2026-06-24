@@ -21,6 +21,31 @@
     "Other"
   ],
   "icon": "resources/thesmos-marketplace.png",
+  "galleryBanner": {
+    "color": "#050408",
+    "theme": "dark"
+  },
+  "badges": [
+    {
+      "url": "https://img.shields.io/github/actions/workflow/status/Holley-Studio/thesmos-governance/ci.yml?branch=main",
+      "href": "https://github.com/Holley-Studio/thesmos-governance/actions",
+      "description": "CI"
+    },
+    {
+      "url": "https://img.shields.io/npm/v/thesmos-governance",
+      "href": "https://www.npmjs.com/package/thesmos-governance",
+      "description": "npm version"
+    }
+  ],
+  "qna": "https://github.com/Holley-Studio/thesmos-governance/discussions",
+  "homepage": "https://holley.studio/thesmos",
+  "bugs": {
+    "url": "https://github.com/Holley-Studio/thesmos-governance/issues"
+  },
+  "license": "MIT",
+  "sponsor": {
+    "url": "https://github.com/sponsors/Holley-Studio"
+  },
   "keywords": [
     "thesmos",
     "governance",
@@ -355,6 +380,8 @@
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
     "package": "vsce package --no-dependencies",
+    "publish:vsce": "vsce publish --no-dependencies",
+    "publish:ovsx": "ovsx publish --no-dependencies",
     "test": "vitest run"
   },
   "dependencies": {
@@ -364,6 +391,7 @@
     "@types/node": "^26.0.0",
     "@types/vscode": "^1.125.0",
     "@vscode/vsce": "^3.9.2",
+    "ovsx": "^0.9.5",
     "esbuild": "^0.28.1",
     "typescript": "^5.7.2",
     "vitest": "^4.1.9"

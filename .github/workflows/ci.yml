@@ -5,6 +5,7 @@ on:
     branches: ["**"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -43,7 +44,7 @@ jobs:
         run: npm ci
 
       - name: Typecheck (core)
-        working-directory: prometheus
+        working-directory: thesmos
         run: npm run typecheck
 
       - name: Typecheck (vscode extension)
@@ -55,11 +56,11 @@ jobs:
         run: npm run typecheck
 
       - name: Test
-        working-directory: prometheus
+        working-directory: thesmos
         run: npm test
 
       - name: Build
-        working-directory: prometheus
+        working-directory: thesmos
         run: npm run build
 
       - name: Build (vscode extension)
@@ -74,10 +75,19 @@ jobs:
         working-directory: actions/pr-review
         run: npm run build
 
-      - name: Upload coverage
+      - name: Upload coverage to Codecov
         if: matrix.node-version == '22.x'
-        uses: actions/upload-artifact@v7
+        uses: codecov/codecov-action@v5
+        with:
+          directory: thesmos/coverage/
+          flags: core
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
+
+      - name: Upload coverage artifact
+        if: matrix.node-version == '22.x'
+        uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: prometheus/coverage/
+          path: thesmos/coverage/
           retention-days: 7

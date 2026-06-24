@@ -1,5 +1,5 @@
 /**
- * Prometheus shared types — imported by all lib/prometheus/ modules and scripts.
+ * Thesmos shared types — imported by all thesmos/ modules and scripts.
  * Do not add logic here. Types only.
  */
 

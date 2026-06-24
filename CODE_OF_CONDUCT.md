@@ -24,7 +24,7 @@ We as contributors and maintainers pledge to make participation in this project 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behaviour may be reported by opening an issue or contacting the maintainers directly via GitHub. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behaviour may be reported by emailing **conduct@holley.studio** or by contacting the maintainers via [GitHub's private advisory reporting](https://github.com/Holley-Studio/thesmos-governance/security/advisories/new). All complaints will be reviewed and investigated promptly and fairly.
 
 Maintainers have the right and responsibility to remove, edit, or reject comments, commits, code, issues, and other contributions that are not aligned with this Code of Conduct.
 

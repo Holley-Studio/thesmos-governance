@@ -34,7 +34,7 @@ jobs:
         run: npm ci
 
       - name: Typecheck (core)
-        working-directory: prometheus
+        working-directory: thesmos
         run: npm run typecheck
 
       - name: Typecheck (vscode extension)
@@ -46,7 +46,7 @@ jobs:
         run: npm run typecheck
 
       - name: Test
-        working-directory: prometheus
+        working-directory: thesmos
         run: npm test
 
       - name: Test (pr-review action)
@@ -54,7 +54,7 @@ jobs:
         run: npm test
 
       - name: Build
-        working-directory: prometheus
+        working-directory: thesmos
         run: npm run build
 
       - name: Build (vscode extension)
@@ -70,11 +70,11 @@ jobs:
         run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
       - name: Bump package version
-        working-directory: prometheus
+        working-directory: thesmos
         run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version
 
       - name: Publish
-        working-directory: prometheus
+        working-directory: thesmos
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -86,3 +86,47 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes
+
+  publish-vscode:
+    name: Publish VS Code Extension
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Bump extension version
+        working-directory: extensions/vscode
+        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+
+      - name: Build extension
+        working-directory: extensions/vscode
+        run: npm run build
+
+      - name: Publish to VS Code Marketplace
+        working-directory: extensions/vscode
+        run: npx vsce publish --no-dependencies
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX Registry
+        working-directory: extensions/vscode
+        run: npx ovsx publish --no-dependencies
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        continue-on-error: true

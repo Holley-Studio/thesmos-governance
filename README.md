@@ -1,5 +1,12 @@
 # Thesmos Governance
 
+[![CI](https://github.com/Holley-Studio/thesmos-governance/actions/workflows/ci.yml/badge.svg)](https://github.com/Holley-Studio/thesmos-governance/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/thesmos-governance?color=blue)](https://www.npmjs.com/package/thesmos-governance)
+[![npm downloads](https://img.shields.io/npm/dm/thesmos-governance)](https://www.npmjs.com/package/thesmos-governance)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/holley-studios.thesmos-governance-vscode)](https://marketplace.visualstudio.com/items?itemName=holley-studios.thesmos-governance-vscode)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Node ≥20](https://img.shields.io/node/v/thesmos-governance)](https://nodejs.org)
+
 **1035 rules. Zero config. Built for the AI-assisted engineering era.**
 
 Thesmos is an open-source code governance toolkit that watches AI-generated code for security holes, broken patterns, and architectural mistakes — before they reach production.

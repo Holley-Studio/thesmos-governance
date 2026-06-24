@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a Question
+    url: https://github.com/Holley-Studio/thesmos-governance/discussions
+    about: Use GitHub Discussions for questions, ideas, and show-and-tell
+  - name: Documentation
+    url: https://holley.studio/thesmos
+    about: Read the full Thesmos documentation
+  - name: Security Vulnerability
+    url: https://github.com/Holley-Studio/thesmos-governance/security/advisories/new
+    about: Report a security vulnerability privately

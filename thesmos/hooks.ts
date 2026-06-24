@@ -1,5 +1,5 @@
 /**
- * Prometheus Git Hook integration.
+ * Thesmos Git Hook integration.
  *
  * Installs governance checks into git hooks without requiring husky or any
  * external dependency. Writes directly to .git/hooks/ (local-only) or to
@@ -9,7 +9,7 @@
  * - All content generation is pure (no fs access)
  * - I/O is isolated to installHooks() / uninstallHooks()
  * - Idempotent: safe to run multiple times
- * - Non-destructive: preserves existing hook content, appends prometheus block
+ * - Non-destructive: preserves existing hook content, appends thesmos block
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from 'node:fs';
@@ -65,7 +65,7 @@ function shellHeader(): string {
 }
 
 /**
- * Generate the prometheus block for a given hook.
+ * Generate the thesmos block for a given hook.
  * The block is wrapped in start/end markers so it can be detected and updated.
  */
 export function generateHookBlock(hook: HookName, base: string): string {
@@ -100,7 +100,7 @@ export function generateHookBlock(hook: HookName, base: string): string {
 }
 
 /**
- * Inject or replace the prometheus block in an existing hook file.
+ * Inject or replace the thesmos block in an existing hook file.
  * Preserves all content outside the markers.
  */
 export function injectHookBlock(existing: string, block: string): string {
@@ -168,8 +168,8 @@ export function getHookStatus(
 // ── I/O entry point ───────────────────────────────────────────────────────────
 
 /**
- * Install prometheus git hooks.
- * Idempotent: existing prometheus blocks are updated, other hook content is preserved.
+ * Install thesmos git hooks.
+ * Idempotent: existing thesmos blocks are updated, other hook content is preserved.
  */
 export function installHooks(root: string, options: HookInstallOptions = {}): HookResult[] {
   const target  = options.target ?? 'git';

@@ -10,7 +10,7 @@
 
 **One rule registry. Every AI assistant. Zero duplication.**
 
-Prometheus is a repo governance tool for TypeScript projects. Define your code review rules once, then automatically generate instruction files for Claude, Gemini, Cursor, Copilot, Codex, and `AGENTS.md` — keeping every AI assistant on your team in sync. Gate CI on violations, score your codebase health, and give every AI a complete picture of how your repo works.
+Thesmos is a repo governance tool for TypeScript projects. Define your code review rules once, then automatically generate instruction files for Claude, Gemini, Cursor, Copilot, Codex, and `AGENTS.md` — keeping every AI assistant on your team in sync. Gate CI on violations, score your codebase health, and give every AI a complete picture of how your repo works.
 
 ---
 
@@ -42,26 +42,26 @@ Prometheus solves this with a **single source of truth**: 911 rules defined once
 npm install --save-dev thesmos-governance
 
 # Scaffold the governance folder + GitHub Actions workflow
-npx prometheus init
+npx thesmos init
 
 # Analyse your repo
-npx prometheus scan
+npx thesmos scan
 
 # Generate AI assistant instruction files
 npx thesmos adapters
 
 # Review changed files (compare against main)
-npx prometheus review --base=main
+npx thesmos review --base=main
 
 # Gate CI — exits 1 on BLOCKER findings
-npx prometheus validate --base=origin/main
+npx thesmos validate --base=origin/main
 ```
 
 That's it. You now have:
 
 - `.thesmos/` — governance folder with rules, config, and AI context
 - `CLAUDE.md`, `GEMINI.md`, `.cursor/rules/thesmos.mdc`, and more — auto-generated adapter files
-- `.github/workflows/prometheus-review.yml` — CI workflow ready to go
+- `.github/workflows/thesmos-pr.yml` — CI workflow ready to go
 
 ---
 
@@ -101,8 +101,8 @@ Other platforms give you AI assistants. Prometheus gives you a governed AI team 
 Install the full team:
 
 ```bash
-prometheus pantheon:install --all
-prometheus pantheon:export --target=claude-code
+thesmos pantheon:install --all
+thesmos pantheon:export --target=claude-code
 ```
 
 Or download any agent directly — no install required:
@@ -130,23 +130,23 @@ Or download any agent directly — no install required:
 | Morpheus | Animation & motion | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/morpheus-animation-agent.md) |
 | Dionysus | Video production | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/dionysus-video-agent.md) |
 | Mnemosyne | Knowledge management | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/mnemosyne-knowledge-agent.md) |
-| Chiron | Architecture advisory | `prometheus pantheon:export --agent=chiron` |
-| Calliope | Email & MJML design | `prometheus pantheon:export --agent=calliope` |
-| Cassandra | QA & testing strategy | `prometheus pantheon:export --agent=cassandra` |
-| Erato | Brand voice & messaging | `prometheus pantheon:export --agent=erato` |
-| Aether | AI product strategy | `prometheus pantheon:export --agent=aether` |
-| Kratos | DevOps & infrastructure | `prometheus pantheon:export --agent=kratos` |
-| Talos | Web development | `prometheus pantheon:export --agent=talos` |
-| Polyhymnia | Technical documentation | `prometheus pantheon:export --agent=polyhymnia` |
-| Clio | Case studies | `prometheus pantheon:export --agent=clio` |
-| Eos | Automation & workflows | `prometheus pantheon:export --agent=eos` |
-| **Proteus** | **Drift & alignment monitor** | `prometheus pantheon:export --agent=proteus` |
-| **Momus** | **Challenger & clarity enforcer** | `prometheus pantheon:export --agent=momus` |
-| **Metis** | **PM & execution planner** | `prometheus pantheon:export --agent=metis` |
-| **Pythia** | **Data analysis & BI** | `prometheus pantheon:export --agent=pythia` |
-| **Psyche** | **UX research & user insights** | `prometheus pantheon:export --agent=psyche` |
-| **Nemesis** | **Compliance, GRC & risk** | `prometheus pantheon:export --agent=nemesis` |
-| **Demeter** | **Customer success & accounts** | `prometheus pantheon:export --agent=demeter` |
+| Chiron | Architecture advisory | `thesmos pantheon:export --agent=chiron` |
+| Calliope | Email & MJML design | `thesmos pantheon:export --agent=calliope` |
+| Cassandra | QA & testing strategy | `thesmos pantheon:export --agent=cassandra` |
+| Erato | Brand voice & messaging | `thesmos pantheon:export --agent=erato` |
+| Aether | AI product strategy | `thesmos pantheon:export --agent=aether` |
+| Kratos | DevOps & infrastructure | `thesmos pantheon:export --agent=kratos` |
+| Talos | Web development | `thesmos pantheon:export --agent=talos` |
+| Polyhymnia | Technical documentation | `thesmos pantheon:export --agent=polyhymnia` |
+| Clio | Case studies | `thesmos pantheon:export --agent=clio` |
+| Eos | Automation & workflows | `thesmos pantheon:export --agent=eos` |
+| **Proteus** | **Drift & alignment monitor** | `thesmos pantheon:export --agent=proteus` |
+| **Momus** | **Challenger & clarity enforcer** | `thesmos pantheon:export --agent=momus` |
+| **Metis** | **PM & execution planner** | `thesmos pantheon:export --agent=metis` |
+| **Pythia** | **Data analysis & BI** | `thesmos pantheon:export --agent=pythia` |
+| **Psyche** | **UX research & user insights** | `thesmos pantheon:export --agent=psyche` |
+| **Nemesis** | **Compliance, GRC & risk** | `thesmos pantheon:export --agent=nemesis` |
+| **Demeter** | **Customer success & accounts** | `thesmos pantheon:export --agent=demeter` |
 
 See [pantheon/README.md](../pantheon/README.md) for the full documentation, all platform exports, and the installation guide.
 
@@ -195,11 +195,11 @@ See [pantheon/README.md](../pantheon/README.md) for the full documentation, all 
 **Pantheon commands:**
 
 ```bash
-prometheus pantheon:list                          # List all 38 agents
-prometheus pantheon:export --target=claude-code   # Export as Claude Code native agents
-prometheus pantheon:export --target=all           # Export for all 7 platforms
-prometheus pantheon:orchestrate "<task>"          # Zeus routes task to specialists
-prometheus pantheon:memory save --agent hermes "Note"
+thesmos pantheon:list                          # List all 38 agents
+thesmos pantheon:export --target=claude-code   # Export as Claude Code native agents
+thesmos pantheon:export --target=all           # Export for all 7 platforms
+thesmos pantheon:orchestrate "<task>"          # Zeus routes task to specialists
+thesmos pantheon:memory save --agent hermes "Note"
 ```
 
 ---
@@ -237,19 +237,19 @@ yarn add -D thesmos-governance
 bun add -d thesmos-governance
 ```
 
-Add scripts to your `package.json` (optional — you can also use `npx prometheus <command>` directly):
+Add scripts to your `package.json` (optional — you can also use `npx thesmos <command>` directly):
 
 ```json
 {
   "scripts": {
-    "prometheus:init":     "prometheus init",
-    "thesmos:scan":     "prometheus scan",
-    "thesmos:review":   "prometheus review",
-    "thesmos:validate": "prometheus validate",
-    "thesmos:doctor":   "prometheus doctor",
-    "prometheus:adapters": "thesmos adapters",
-    "prometheus:ci-check": "prometheus ci-check",
-    "prometheus:health":   "prometheus health"
+    "thesmos:init":     "thesmos init",
+    "thesmos:scan":     "thesmos scan",
+    "thesmos:review":   "thesmos review",
+    "thesmos:validate": "thesmos validate",
+    "thesmos:doctor":   "thesmos doctor",
+    "thesmos:adapters": "thesmos adapters",
+    "thesmos:ci-check": "thesmos ci-check",
+    "thesmos:health":   "thesmos health"
   }
 }
 ```
@@ -262,13 +262,13 @@ Add scripts to your `package.json` (optional — you can also use `npx prometheu
 
 All commands support `--json`, `--markdown`, and `--dry-run` flags where applicable.
 
-### `prometheus init`
+### `thesmos init`
 
 Scaffolds or updates the `.thesmos/` governance folder.
 
 ```bash
-npx prometheus init
-npx prometheus init --dry-run    # preview without writing
+npx thesmos init
+npx thesmos init --dry-run    # preview without writing
 ```
 
 **Creates:**
@@ -281,39 +281,39 @@ npx prometheus init --dry-run    # preview without writing
 | `.thesmos/governance/CODE_REVIEW.md` | Code review checklist |
 | `.thesmos/governance/REVIEW_AGENT.md` | AI agent instructions |
 | `.thesmos/governance/SEVERITY_MODEL.md` | Severity levels explained |
-| `.github/workflows/prometheus-review.yml` | CI workflow |
+| `.github/workflows/thesmos-pr.yml` | CI workflow |
 
 ---
 
-### `prometheus scan`
+### `thesmos scan`
 
 Analyses your repo and writes `.thesmos/report.json`. Detects framework, auth system, test setup, API routes, large files, risky patterns, and more.
 
 ```bash
-npx prometheus scan
-npx prometheus scan --json
+npx thesmos scan
+npx thesmos scan --json
 ```
 
 ---
 
-### `prometheus review`
+### `thesmos review`
 
 Reviews changed files against your rule set. Always exits 0 — use `validate` for CI gating.
 
 ```bash
-npx prometheus review --base=main
-npx prometheus review --base=origin/main --markdown
-npx prometheus review src/api/users.ts src/lib/auth.ts
+npx thesmos review --base=main
+npx thesmos review --base=origin/main --markdown
+npx thesmos review src/api/users.ts src/lib/auth.ts
 ```
 
 ---
 
-### `prometheus validate`
+### `thesmos validate`
 
 Same as `review` but exits 1 when `failOnSeverity` findings are present (default: `BLOCKER`). Use this as your CI gate.
 
 ```bash
-npx prometheus validate --base=origin/$GITHUB_BASE_REF
+npx thesmos validate --base=origin/$GITHUB_BASE_REF
 ```
 
 ---
@@ -329,76 +329,76 @@ npx thesmos adapters --targets=claude,gemini
 
 ---
 
-### `prometheus doctor`
+### `thesmos doctor`
 
 Full installation health check: required files, npm scripts, adapter freshness, report age, config validity, IDE dirs, and GitHub workflow.
 
 ```bash
-npx prometheus doctor
-npx prometheus doctor --json
+npx thesmos doctor
+npx thesmos doctor --json
 ```
 
 ---
 
-### `prometheus ci-check`
+### `thesmos ci-check`
 
 Lightweight CI gate — checks adapter freshness and required files without re-running the full generator. Faster than `doctor`. Exits 1 on failure.
 
 ```bash
-npx prometheus ci-check
+npx thesmos ci-check
 ```
 
 ---
 
-### `prometheus health`
+### `thesmos health`
 
 Scores your governance posture from 0 to 100 with a letter grade (A+ to F). Combines findings, drift, suppressions, and baseline into a single number.
 
 ```bash
-npx prometheus health
-npx prometheus health --json
+npx thesmos health
+npx thesmos health --json
 ```
 
 ---
 
-### `prometheus drift`
+### `thesmos drift`
 
 Detects 12 categories of stale or missing governance artifacts: outdated adapters, missing files, registry mismatches, stale report, and more.
 
 ```bash
-npx prometheus drift
+npx thesmos drift
 ```
 
 ---
 
-### `prometheus explain <rule-id>`
+### `thesmos explain <rule-id>`
 
 Shows why a rule exists, common violations, good and bad code examples, and related playbooks.
 
 ```bash
-npx prometheus explain ENV_001
-npx prometheus explain direct_env_access
+npx thesmos explain ENV_001
+npx thesmos explain direct_env_access
 ```
 
 ---
 
-### `prometheus audit`
+### `thesmos audit`
 
 Combined `doctor` + scan-based `review`. Always exits 0. Use for broad visibility during development.
 
 ```bash
-npx prometheus audit --markdown
+npx thesmos audit --markdown
 ```
 
 ---
 
-### `prometheus fix`
+### `thesmos fix`
 
 Auto-fixes safe violations. Dry-run by default.
 
 ```bash
-npx prometheus fix --base=main --dry-run
-npx prometheus fix --base=main             # applies changes
+npx thesmos fix --base=main --dry-run
+npx thesmos fix --base=main             # applies changes
 ```
 
 ---
@@ -488,19 +488,19 @@ export const PACK_RULES = [
 ];
 ```
 
-Pack rules are automatically loaded by `prometheus review` and `prometheus validate`. Use `pack:list` and `pack:validate` to inspect what's installed.
+Pack rules are automatically loaded by `thesmos review` and `thesmos validate`. Use `pack:list` and `pack:validate` to inspect what's installed.
 
 ---
 
 ## GitHub Actions
 
-`prometheus init` writes `.github/workflows/prometheus-review.yml` to your repo. It runs on every pull request:
+`thesmos init` writes `.github/workflows/thesmos-pr.yml` to your repo. It runs on every pull request:
 
 ```text
 scan → ci-check → review → validate (gate) → doctor
 ```
 
-`validate` is the only step that can fail the job. All other steps upload output to a `prometheus-report` artifact.
+`validate` is the only step that can fail the job. All other steps upload output to a `thesmos-report` artifact.
 
 **Adjust for your package manager:**
 
@@ -515,7 +515,7 @@ scan → ci-check → review → validate (gate) → doctor
 
 ## Configuration
 
-Edit `.thesmos/config.json` to customise behaviour. The file is created by `prometheus init` and is never overwritten by subsequent runs.
+Edit `.thesmos/config.json` to customise behaviour. The file is created by `thesmos init` and is never overwritten by subsequent runs.
 
 ```json
 {
@@ -553,7 +553,7 @@ Adding `"$schema"` gives you full autocomplete and validation in VS Code and any
 }
 ```
 
-Use rule IDs (`ENV_001`) or category names (`direct_env_access`). Both are shown in `prometheus explain`.
+Use rule IDs (`ENV_001`) or category names (`direct_env_access`). Both are shown in `thesmos explain`.
 
 ---
 
@@ -570,7 +570,7 @@ Every adapter is generated from the same `PROMETHEUS_RULES` array. You never wri
 | `codex` | `.codex/thesmos.md` | OpenAI Codex CLI |
 | `agents` | `AGENTS.md` | OpenAI Agents, generic agents |
 
-Adapters embed a `<!-- PROMETHEUS:META -->` comment with `version`, `target`, and `ruleCount`. `prometheus ci-check` reads this metadata to detect drift without re-running the generator — fully deterministic, no timestamps.
+Adapters embed a `<!-- PROMETHEUS:META -->` comment with `version`, `target`, and `ruleCount`. `thesmos ci-check` reads this metadata to detect drift without re-running the generator — fully deterministic, no timestamps.
 
 Manual content you write outside `<!-- PROMETHEUS:GENERATED START -->` / `<!-- PROMETHEUS:GENERATED END -->` markers is **always preserved** across regenerations.
 
@@ -578,10 +578,10 @@ Manual content you write outside `<!-- PROMETHEUS:GENERATED START -->` / `<!-- P
 
 ## Health score
 
-`prometheus health` synthesises your governance state into a single number:
+`thesmos health` synthesises your governance state into a single number:
 
 ```text
-prometheus health
+thesmos health
 
   Grade: A  (87/100)
 
@@ -606,13 +606,13 @@ The baseline lets you adopt Prometheus in an existing codebase without failing C
 
 ```bash
 # Snapshot current findings as known debt
-npx prometheus baseline:create --base=main
+npx thesmos baseline:create --base=main
 
 # After fixing some debt, update the snapshot
-npx prometheus baseline:update --base=main
+npx thesmos baseline:update --base=main
 
 # See what's in the baseline
-npx prometheus baseline:report
+npx thesmos baseline:report
 ```
 
 Findings in the baseline are fingerprinted by `(category, file, normalised message)` — they survive file moves and minor edits.
@@ -624,20 +624,20 @@ Findings in the baseline are fingerprinted by `(category, file, normalised messa
 Suppress a single violation inline with a required reason:
 
 ```typescript
-// prometheus-disable-next-line ENV_001 -- reason: legacy pattern, tracked in #4521
+// thesmos-disable-next-line ENV_001 -- reason: legacy pattern, tracked in #4521
 const val = process.env.MY_VAR;
 ```
 
 Optional fields:
 
 ```typescript
-// prometheus-disable-next-line ENV_001 -- reason: legacy -- owner: @alice -- expires: 2026-12-31
+// thesmos-disable-next-line ENV_001 -- reason: legacy -- owner: @alice -- expires: 2026-12-31
 ```
 
 Audit all suppressions in the repo:
 
 ```bash
-npx prometheus suppressions:audit
+npx thesmos suppressions:audit
 ```
 
 This flags: missing reasons, expired suppressions, blanket disables (no rule ID), and suppressions where the violation no longer exists.

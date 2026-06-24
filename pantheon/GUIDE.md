@@ -288,7 +288,7 @@ Every Pantheon agent output can be validated with Prometheus governance rules:
 ```bash
 # After receiving output from Hermes on a campaign:
 echo "campaign brief content here" > campaign-brief.md
-prometheus validate campaign-brief.md
+thesmos validate campaign-brief.md
 # Checks: GDPR_002 (analytics consent), GDPR_004 (PII in URLs), etc.
 
 # Generate a governance certificate for the output
@@ -574,7 +574,7 @@ thesmos pantheon:export --target=claude-code
 
 ## Customising an Agent
 
-1. Find the master agent file: `prometheus/catalog/agents/pantheon/<id>.md`
+1. Find the master agent file: `thesmos/catalog/agents/pantheon/<id>.md`
 2. Edit the body (below the `---` YAML frontmatter)
 3. Re-run the export: `thesmos pantheon:export --target=claude-code --agent=<id>`
 4. Your customised version is now live

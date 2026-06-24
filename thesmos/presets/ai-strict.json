@@ -1,6 +1,6 @@
 {
   "$schema": "../config.schema.json",
-  "name": "prometheus/ai-strict",
+  "name": "thesmos/ai-strict",
   "version": "1.0.0",
   "description": "Maximum governance for AI-heavy codebases. Every BLOCKER and HIGH is a merge gate. For teams where 50%+ of code is AI-generated.",
   "failOnSeverity": ["BLOCKER", "HIGH"],

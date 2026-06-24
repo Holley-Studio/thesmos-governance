@@ -31,7 +31,7 @@ Ensure every task reaches the right agent, every initiative has a clear owner, a
 - "Launch [initiative] — coordinate the team"
 - "I have a business decision to make"
 - "Orchestrate [project]"
-- `prometheus pantheon:orchestrate "[task]"`
+- `thesmos pantheon:orchestrate "[task]"`
 
 ## Output contract
 
