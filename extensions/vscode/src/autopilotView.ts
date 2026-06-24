@@ -88,15 +88,15 @@ export class AutopilotTreeProvider
         }),
         Object.assign(new AutopilotItem('Generate a plan…', 'action'), {
           iconPath: new vscode.ThemeIcon('wand'),
-          command: { command: 'prometheus.autopilot.generate', title: 'Generate Plan' },
+          command: { command: 'thesmos.autopilot.generate', title: 'Generate Plan' },
         }),
       ];
 
-      void vscode.commands.executeCommand('setContext', 'prometheus.autopilotActive', false);
+      void vscode.commands.executeCommand('setContext', 'thesmos.autopilotActive', false);
       return;
     }
 
-    void vscode.commands.executeCommand('setContext', 'prometheus.autopilotActive', true);
+    void vscode.commands.executeCommand('setContext', 'thesmos.autopilotActive', true);
 
     const totalTasks = session.completedTaskIndexes.length
       + session.blockedTasks.length

@@ -24,19 +24,19 @@ const MAX_BUFFER = 10 * 1024 * 1024; // 10 MB
 export class PrometheusNotFoundError extends Error {
   constructor(root: string) {
     super(
-      `prometheus-governance not found in ${root}/node_modules/.bin/prometheus.\n` +
-        `Run: npm install --save-dev prometheus-governance`,
+      `thesmos-governance not found in ${root}/node_modules/.bin/thesmos.\n` +
+        `Run: npm install --save-dev thesmos-governance`,
     );
     this.name = 'PrometheusNotFoundError';
   }
 }
 
-export class PrometheusReportMissingError extends Error {
+export class ThesmosReportMissingError extends Error {
   constructor() {
     super(
-      `.prometheus/report.json not found — run "Prometheus: Scan Repository" first.`,
+      `.thesmos/report.json not found — run "Prometheus: Scan Repository" first.`,
     );
-    this.name = 'PrometheusReportMissingError';
+    this.name = 'ThesmosReportMissingError';
   }
 }
 
@@ -52,7 +52,7 @@ export class PrometheusParseError extends Error {
 /**
  * Returns the path to the prometheus binary for a given workspace root.
  * Checks:
- *   1. User override (settings → prometheus.binaryPath)
+ *   1. User override (settings → thesmos.binaryPath)
  *   2. project-local node_modules/.bin/prometheus
  *
  * Throws PrometheusNotFoundError if neither is available.
@@ -69,7 +69,7 @@ export function resolveBinary(workspaceRoot: string, override?: string): string 
   throw new PrometheusNotFoundError(workspaceRoot);
 }
 
-/** Returns true if prometheus-governance is installed in the given workspace. */
+/** Returns true if thesmos-governance is installed in the given workspace. */
 export function isInstalled(workspaceRoot: string, override?: string): boolean {
   try {
     resolveBinary(workspaceRoot, override);
@@ -79,7 +79,7 @@ export function isInstalled(workspaceRoot: string, override?: string): boolean {
   }
 }
 
-/** Returns true if .prometheus/report.json exists. */
+/** Returns true if .thesmos/report.json exists. */
 export function hasReport(workspaceRoot: string): boolean {
   return existsSync(join(workspaceRoot, '.prometheus', 'report.json'));
 }
@@ -121,7 +121,7 @@ export async function runReview(
     const e = err as NodeJS.ErrnoException & { stdout?: string; stderr?: string };
     // `prometheus review` exits 0. Any non-zero exit is a hard error.
     if (e.stderr?.includes('report.json not found')) {
-      throw new PrometheusReportMissingError();
+      throw new ThesmosReportMissingError();
     }
     throw err;
   }
@@ -148,7 +148,7 @@ export async function runHealth(
   } catch (err) {
     const e = err as NodeJS.ErrnoException & { stderr?: string };
     if (e.stderr?.includes('report.json not found')) {
-      throw new PrometheusReportMissingError();
+      throw new ThesmosReportMissingError();
     }
     throw err;
   }

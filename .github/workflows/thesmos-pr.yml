@@ -1,0 +1,49 @@
+##
+## Thesmos Governance — Pull Request Review
+## by Holley Studios
+##
+## Runs on every PR open/update/reopen against main.
+## Posts inline findings as GitHub review comments and blocks merge on BLOCKER violations.
+##
+## Required permissions (set at job level below — no repo-wide change needed):
+##   contents:      read   — checkout the code
+##   pull-requests: write  — post review comments and summary
+##
+## Setup:
+##   1. Copy this file to your project's .github/workflows/
+##   2. Commit. That's it — no tokens, no secrets, no extra config required.
+##
+## Optional config:
+##   - fail-on-severity: change to HIGH, MEDIUM, or "none" for report-only mode
+##   - See actions/pr-review/action.yml for all inputs
+##
+
+name: Thesmos Governance PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  governance:
+    name: Governance Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Thesmos PR Review
+        uses: Holley-Studio/thesmos-governance/actions/pr-review@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-severity: BLOCKER  # Change to HIGH, MEDIUM, or "none" as needed
+          post-inline-comments: 'true'
+          update-summary: 'true'

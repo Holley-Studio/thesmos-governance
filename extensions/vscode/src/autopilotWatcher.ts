@@ -1,7 +1,7 @@
 /**
  * Autopilot session watcher.
  *
- * File-watches `.prometheus/autopilot/.session.json` and emits change events
+ * File-watches `.thesmos/autopilot/.session.json` and emits change events
  * when the session state updates. This is how the sidebar and status bar stay
  * live without polling.
  *
@@ -71,7 +71,7 @@ export class AutopilotWatcher implements vscode.Disposable {
     // Watch the autopilot dir for any file changes
     const pattern = new vscode.RelativePattern(
       vscode.Uri.file(workspaceRoot),
-      '.prometheus/autopilot/**',
+      '.thesmos/autopilot/**',
     );
 
     const watcher = vscode.workspace.createFileSystemWatcher(pattern);

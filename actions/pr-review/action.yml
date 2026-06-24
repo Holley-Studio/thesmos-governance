@@ -1,6 +1,6 @@
-name: 'Prometheus Governance PR Review'
+name: 'Thesmos Governance PR Review'
 description: >
-  Runs prometheus review on every pull request and posts inline findings as
+  Runs thesmos review on every pull request and posts inline findings as
   review comments — BLOCKER and HIGH violations block the merge check.
   Powered by Holley Studios.
 author: 'Holley Studios'

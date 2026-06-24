@@ -1,8 +1,8 @@
 /**
- * Type declarations mirroring the JSON output of the prometheus-governance CLI.
+ * Type declarations mirroring the JSON output of the thesmos-governance CLI.
  *
  * These are intentionally standalone — the extension does not depend on the
- * prometheus-governance package at runtime. All data arrives via CLI + JSON.
+ * thesmos-governance package at runtime. All data arrives via CLI + JSON.
  */
 
 export type Severity = 'BLOCKER' | 'HIGH' | 'MEDIUM' | 'LOW' | 'TECH_DEBT';

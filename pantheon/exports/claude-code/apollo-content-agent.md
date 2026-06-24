@@ -98,11 +98,11 @@ Prometheus v3.0 is built for the world you're actually in.
 
 **What's new in v3.0**
 
-911 rules across 6 governance pillars: security, GDPR compliance, license compliance, agent governance, dependency CVEs, and SARIF output for your GitHub Security tab. Plus 21 AI business agents — the Prometheus Pantheon — available for Claude, ChatGPT, Gemini, and Cursor.
+911 rules across 6 governance pillars: security, GDPR compliance, license compliance, agent governance, dependency CVEs, and SARIF output for your GitHub Security tab. Plus 21 AI business agents — the Thesmos Pantheon — available for Claude, ChatGPT, Gemini, and Cursor.
 
 One install. Zero configuration. The rules run on every PR, every commit, every AI-generated file.
 
-**[Install: `npm i -g prometheus-governance`]**
+**[Install: `npm i -g thesmos-governance`]**
 
 ---
 

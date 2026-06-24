@@ -17,7 +17,7 @@ export class HealthPanel implements vscode.Disposable {
 
   private constructor(extensionUri: vscode.Uri) {
     this.panel = vscode.window.createWebviewPanel(
-      'prometheus.health',
+      'thesmos.health',
       'Prometheus Health',
       vscode.ViewColumn.Beside,
       {

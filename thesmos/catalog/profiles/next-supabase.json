@@ -1,0 +1,48 @@
+{
+  "id": "next-supabase",
+  "name": "Next.js + Supabase Profile",
+  "description": "Governance profile optimised for Next.js App Router projects using Supabase for authentication and database. Includes all web agents plus Supabase-specific RLS and auth reviewers.",
+  "version": "1.0.0",
+  "owner": "prometheus",
+  "agents": [
+    "security-reviewer",
+    "architecture-reviewer",
+    "code-quality-reviewer",
+    "testing-reviewer",
+    "frontend-reviewer",
+    "backend-reviewer",
+    "api-reviewer",
+    "database-reviewer",
+    "auth-reviewer",
+    "supabase-reviewer",
+    "typescript-reviewer",
+    "react-reviewer",
+    "nextjs-reviewer",
+    "performance-reviewer",
+    "accessibility-reviewer",
+    "design-system-reviewer",
+    "feature-flag-reviewer",
+    "governance-reviewer"
+  ],
+  "skills": [
+    "pr-review",
+    "staged-change-review",
+    "repo-health-audit",
+    "add-tests",
+    "final-hardening-pass",
+    "security-scan",
+    "auth-flow-review",
+    "rls-policy-audit",
+    "database-schema-review",
+    "migration-safety-check",
+    "api-design-review",
+    "a11y-audit",
+    "data-fetching-audit",
+    "feature-flag-audit",
+    "env-variable-audit",
+    "adapter-sync"
+  ],
+  "rulePacks": [
+    "@thesmos/core"
+  ]
+}

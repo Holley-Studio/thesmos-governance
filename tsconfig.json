@@ -1,7 +1,7 @@
 {
   "files": [],
   "references": [
-    { "path": "./prometheus" },
+    { "path": "./thesmos" },
     { "path": "./actions/pr-review" },
     { "path": "./extensions/vscode" }
   ]

@@ -11,7 +11,7 @@
  *   - File watcher        → debounced re-review on save
  *
  * Activation: triggered automatically when a workspace contains
- * .prometheus/config.json (declared in package.json activationEvents).
+ * .thesmos/config.json (declared in package.json activationEvents).
  *
  * Lifecycle:
  *   activate()   → build subsystems, run initial analysis
@@ -36,7 +36,7 @@ import {
   isInstalled,
   hasReport,
   PrometheusNotFoundError,
-  PrometheusReportMissingError,
+  ThesmosReportMissingError,
 } from './runner.js';
 
 import type { ExtensionConfig, Finding } from './types.js';
@@ -107,14 +107,14 @@ class PrometheusExtension implements vscode.Disposable {
     if (!cfg.enable) return;
 
     // Register findings tree view
-    const treeView = vscode.window.createTreeView('prometheus.findingsView', {
+    const treeView = vscode.window.createTreeView('thesmos.findingsView', {
       treeDataProvider: this.treeProvider,
       showCollapseAll: true,
     });
     this.disposables.push(treeView);
 
     // Register autopilot tree view
-    const autopilotTreeView = vscode.window.createTreeView('prometheus.autopilotView', {
+    const autopilotTreeView = vscode.window.createTreeView('thesmos.autopilotView', {
       treeDataProvider: this.autopilotView,
       showCollapseAll: false,
     });
@@ -123,7 +123,7 @@ class PrometheusExtension implements vscode.Disposable {
     // Set context flag so tree view & menus are visible
     await vscode.commands.executeCommand(
       'setContext',
-      'prometheus.active',
+      'thesmos.active',
       true,
     );
 
@@ -195,13 +195,13 @@ class PrometheusExtension implements vscode.Disposable {
       this.treeProvider.setNotInstalled();
 
       void vscode.window.showWarningMessage(
-        'Prometheus Governance: prometheus-governance is not installed in this project.',
+        'Prometheus Governance: thesmos-governance is not installed in this project.',
         'Install',
         'Dismiss',
       ).then((choice) => {
         if (choice === 'Install') {
           const terminal = vscode.window.createTerminal('Prometheus');
-          terminal.sendText('npm install --save-dev prometheus-governance');
+          terminal.sendText('npm install --save-dev thesmos-governance');
           terminal.show();
         }
       });
@@ -213,7 +213,7 @@ class PrometheusExtension implements vscode.Disposable {
       this.treeProvider.setNoReport();
 
       if (cfg.autoScan) {
-        void vscode.commands.executeCommand('prometheus.scan');
+        void vscode.commands.executeCommand('thesmos.scan');
       } else {
         void vscode.window.showInformationMessage(
           'Prometheus Governance: No scan report found.',
@@ -221,7 +221,7 @@ class PrometheusExtension implements vscode.Disposable {
           'Dismiss',
         ).then((choice) => {
           if (choice === 'Scan now') {
-            void vscode.commands.executeCommand('prometheus.scan');
+            void vscode.commands.executeCommand('thesmos.scan');
           }
         });
       }
@@ -283,7 +283,7 @@ class PrometheusExtension implements vscode.Disposable {
 
       await this.refreshStatusBar(cfg);
     } catch (err) {
-      if (!(err instanceof PrometheusReportMissingError)) {
+      if (!(err instanceof ThesmosReportMissingError)) {
         this.handleAnalysisError(err);
       }
     }
@@ -311,7 +311,7 @@ class PrometheusExtension implements vscode.Disposable {
       return;
     }
 
-    if (err instanceof PrometheusReportMissingError) {
+    if (err instanceof ThesmosReportMissingError) {
       this.statusBar.showScanNeeded();
       this.treeProvider.setNoReport();
       return;
@@ -341,7 +341,7 @@ class PrometheusExtension implements vscode.Disposable {
 
   dispose(): void {
     clearTimeout(this.debounceTimer);
-    void vscode.commands.executeCommand('setContext', 'prometheus.active', false);
+    void vscode.commands.executeCommand('setContext', 'thesmos.active', false);
     for (const d of this.disposables) {
       d.dispose();
     }

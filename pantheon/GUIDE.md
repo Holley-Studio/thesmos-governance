@@ -1,15 +1,15 @@
-# The Prometheus Pantheon — Complete Guide
+# The Thesmos Pantheon — Complete Guide
 
 **21 governed AI business agents. Every platform. Zero install required.**
 
 ---
 
-## What is the Prometheus Pantheon?
+## What is the Thesmos Pantheon?
 
-The Prometheus Pantheon is a team of 21 AI business agents named after Greek gods — one for every major business function. They are built into the Prometheus governance package and designed to be used across Claude, ChatGPT, Gemini, Cursor, and GitHub Copilot.
+The Thesmos Pantheon is a team of 21 AI business agents named after Greek gods — one for every major business function. They are built into the Thesmos governance package and designed to be used across Claude, ChatGPT, Gemini, Cursor, and GitHub Copilot.
 
 Unlike generic AI prompts, Pantheon agents are:
-- **Governed** — each agent knows which Prometheus rules apply to its outputs
+- **Governed** — each agent knows which Thesmos rules apply to its outputs
 - **Team-aware** — agents know who to delegate to and who they report to
 - **Versioned** — agent personas have version numbers and can be upgraded
 - **Memory-capable** — persistent context via Mnemosyne memory store
@@ -50,14 +50,14 @@ Unlike generic AI prompts, Pantheon agents are:
 ### Option 1: Install via npm (developers)
 
 ```bash
-# Install prometheus-governance globally
-npm install -g prometheus-governance
+# Install thesmos-governance globally
+npm install -g thesmos-governance
 
 # Install all 21 Pantheon agents to your project
-prometheus pantheon:install --all
+thesmos pantheon:install --all
 
 # Export all agents to Claude Code native format
-prometheus pantheon:export --target=claude-code
+thesmos pantheon:export --target=claude-code
 
 # Launch any agent
 claude --agent=hermes-marketing-agent "Write a campaign brief for our product launch"
@@ -65,7 +65,7 @@ claude --agent=hermes-marketing-agent "Write a campaign brief for our product la
 
 ### Option 2: Download directly (no install required)
 
-Browse [pantheon/exports/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports) and download the file for your platform. No npm install, no configuration.
+Browse [pantheon/exports/](https://github.com/Holley-Studio/thesmos-governance/tree/main/pantheon/exports) and download the file for your platform. No npm install, no configuration.
 
 ---
 
@@ -77,13 +77,13 @@ Claude Code natively supports custom agents via `.claude/agents/*.md`. Prometheu
 
 **Install all agents:**
 ```bash
-prometheus pantheon:export --target=claude-code
+thesmos pantheon:export --target=claude-code
 # Creates: .claude/agents/zeus-executive-agent.md (and 20 more)
 ```
 
 **Install a single agent:**
 ```bash
-prometheus pantheon:export --target=claude-code --agent=hermes-marketing-agent
+thesmos pantheon:export --target=claude-code --agent=hermes-marketing-agent
 ```
 
 **Launch an agent:**
@@ -98,11 +98,11 @@ Claude Code will also auto-route tasks to the right agent based on the task desc
 **Global install (available in all projects):**
 ```bash
 # Download directly
-curl -L https://raw.githubusercontent.com/Holley-Studio/prometheus-governance/main/pantheon/exports/claude-code/hermes-marketing-agent.md \
+curl -L https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/hermes-marketing-agent.md \
   -o ~/.claude/agents/hermes-marketing-agent.md
 
 # Or export all to global agents directory
-prometheus pantheon:export --target=claude-code --out=~/.claude/agents
+thesmos pantheon:export --target=claude-code --out=~/.claude/agents
 ```
 
 ---
@@ -111,13 +111,13 @@ prometheus pantheon:export --target=claude-code --out=~/.claude/agents
 
 1. Go to [claude.ai](https://claude.ai) → Projects → Create Project
 2. Click "Set Instructions"
-3. Download the agent file from [pantheon/exports/claude-project/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports/claude-project)
+3. Download the agent file from [pantheon/exports/claude-project/](https://github.com/Holley-Studio/thesmos-governance/tree/main/pantheon/exports/claude-project)
 4. Paste the contents into Project Instructions
 5. Every conversation in this project now has that agent's persona
 
 **Or via CLI:**
 ```bash
-prometheus pantheon:export --target=claude-project --agent=hermes-marketing-agent
+thesmos pantheon:export --target=claude-project --agent=hermes-marketing-agent
 # Outputs: hermes-marketing-agent-claude-project.txt
 # Paste into Claude.ai Project Instructions
 ```
@@ -128,13 +128,13 @@ prometheus pantheon:export --target=claude-project --agent=hermes-marketing-agen
 
 1. Go to [chatgpt.com](https://chatgpt.com) → Explore GPTs → Create a GPT
 2. Click "Configure" → "Instructions"
-3. Download your agent from [pantheon/exports/chatgpt/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports/chatgpt)
+3. Download your agent from [pantheon/exports/chatgpt/](https://github.com/Holley-Studio/thesmos-governance/tree/main/pantheon/exports/chatgpt)
 4. Paste the contents into the Instructions field
 5. Save as private or share with your team
 
 **Or via CLI:**
 ```bash
-prometheus pantheon:export --target=chatgpt --agent=ares-sales-agent
+thesmos pantheon:export --target=chatgpt --agent=ares-sales-agent
 # Outputs: ares-sales-agent-chatgpt.txt
 ```
 
@@ -142,7 +142,7 @@ prometheus pantheon:export --target=chatgpt --agent=ares-sales-agent
 
 **OpenAI Assistants API (no character limit):**
 ```bash
-prometheus pantheon:export --target=openai-assistant --agent=zeus-executive-agent
+thesmos pantheon:export --target=openai-assistant --agent=zeus-executive-agent
 # Outputs: zeus-executive-agent-openai-assistant.json
 # Use with the Assistants API instructions field
 ```
@@ -152,12 +152,12 @@ prometheus pantheon:export --target=openai-assistant --agent=zeus-executive-agen
 ### Gemini Gems
 
 1. Go to [gemini.google.com](https://gemini.google.com) → Gems → New Gem
-2. Download your agent from [pantheon/exports/gemini/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports/gemini)
+2. Download your agent from [pantheon/exports/gemini/](https://github.com/Holley-Studio/thesmos-governance/tree/main/pantheon/exports/gemini)
 3. Paste contents into the Gem instructions field
 4. Save and use
 
 ```bash
-prometheus pantheon:export --target=gemini --agent=apollo-content-agent
+thesmos pantheon:export --target=gemini --agent=apollo-content-agent
 # Outputs: apollo-content-agent-gemini.txt
 ```
 
@@ -168,22 +168,22 @@ prometheus pantheon:export --target=gemini --agent=apollo-content-agent
 Prometheus exports Cursor-compatible `.mdc` files with the correct YAML frontmatter.
 
 ```bash
-prometheus pantheon:export --target=cursor
+thesmos pantheon:export --target=cursor
 # Creates: .cursor/rules/hermes-marketing-agent.mdc (and 20 more)
 ```
 
-Cursor will automatically offer the agent when your prompt matches the agent's description. Or download directly from [pantheon/exports/cursor/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports/cursor).
+Cursor will automatically offer the agent when your prompt matches the agent's description. Or download directly from [pantheon/exports/cursor/](https://github.com/Holley-Studio/thesmos-governance/tree/main/pantheon/exports/cursor).
 
 ---
 
 ### GitHub Copilot
 
 ```bash
-prometheus pantheon:export --target=copilot
+thesmos pantheon:export --target=copilot
 # Creates: .github/instructions/hermes-marketing-agent.instructions.md (and 20 more)
 ```
 
-Or download from [pantheon/exports/copilot/](https://github.com/Holley-Studio/prometheus-governance/tree/main/pantheon/exports/copilot).
+Or download from [pantheon/exports/copilot/](https://github.com/Holley-Studio/thesmos-governance/tree/main/pantheon/exports/copilot).
 
 ---
 
@@ -230,7 +230,7 @@ assistant = client.beta.assistants.create(
 Zeus automatically routes complex multi-domain tasks to the right team of specialists.
 
 ```bash
-prometheus pantheon:orchestrate "launch our new developer tool to CTOs at fintech companies"
+thesmos pantheon:orchestrate "launch our new developer tool to CTOs at fintech companies"
 ```
 
 Zeus will output a structured brief like:
@@ -251,7 +251,7 @@ Sub-task: Landing page copy and email sequence targeting fintech CTOs...
 
 **Save the brief to a file:**
 ```bash
-prometheus pantheon:orchestrate "launch new feature X" --out=launch-brief.md
+thesmos pantheon:orchestrate "launch new feature X" --out=launch-brief.md
 ```
 
 ---
@@ -262,19 +262,19 @@ Agents remember context across sessions when you use the memory system.
 
 ```bash
 # Save a preference for Hermes
-prometheus pantheon:memory save --agent hermes "Client prefers bold, direct copy. Avoid corporate language."
+thesmos pantheon:memory save --agent hermes "Client prefers bold, direct copy. Avoid corporate language."
 
 # Save target audience context
-prometheus pantheon:memory save --agent ares "Deal target is VP Engineering at 50-200 person B2B SaaS company."
+thesmos pantheon:memory save --agent ares "Deal target is VP Engineering at 50-200 person B2B SaaS company."
 
 # Review what Hermes remembers
-prometheus pantheon:memory show --agent hermes
+thesmos pantheon:memory show --agent hermes
 
 # Clear stale memory
-prometheus pantheon:memory clear --agent hermes
+thesmos pantheon:memory clear --agent hermes
 ```
 
-Memory files are stored at `.prometheus/pantheon/memory/<agent-id>.md` and read automatically when an agent is invoked via Claude Code.
+Memory files are stored at `.thesmos/pantheon/memory/<agent-id>.md` and read automatically when an agent is invoked via Claude Code.
 
 For ChatGPT/Gemini, paste the memory file content at the start of your conversation:
 > "Before we begin, here is my context for you: [paste memory file]"
@@ -292,10 +292,10 @@ prometheus validate campaign-brief.md
 # Checks: GDPR_002 (analytics consent), GDPR_004 (PII in URLs), etc.
 
 # Generate a governance certificate for the output
-prometheus certificate:generate
+thesmos certificate:generate
 ```
 
-Each agent's `## Governance scope` section tells you exactly which Prometheus rules apply to that agent's domain.
+Each agent's `## Governance scope` section tells you exactly which Thesmos rules apply to that agent's domain.
 
 ---
 
@@ -311,7 +311,7 @@ Each agent's `## Governance scope` section tells you exactly which Prometheus ru
 - "Help me prioritise these 5 initiatives"
 - "Who should handle [task]?"
 
-**Do NOT use Zeus for:** Writing copy (Apollo), designing (Hephaestus), writing code (Prometheus rules already cover this)
+**Do NOT use Zeus for:** Writing copy (Apollo), designing (Hephaestus), writing code (Thesmos rules already cover this)
 
 ---
 
@@ -561,13 +561,13 @@ Each agent's `## Governance scope` section tells you exactly which Prometheus ru
 
 ```bash
 # Check for newer agent versions
-prometheus pantheon:upgrade
+thesmos pantheon:upgrade
 
 # Update the npm package to get new agent versions
-npm update -g prometheus-governance
+npm update -g thesmos-governance
 
 # Re-export after updating
-prometheus pantheon:export --target=claude-code
+thesmos pantheon:export --target=claude-code
 ```
 
 ---
@@ -576,10 +576,10 @@ prometheus pantheon:export --target=claude-code
 
 1. Find the master agent file: `prometheus/catalog/agents/pantheon/<id>.md`
 2. Edit the body (below the `---` YAML frontmatter)
-3. Re-run the export: `prometheus pantheon:export --target=claude-code --agent=<id>`
+3. Re-run the export: `thesmos pantheon:export --target=claude-code --agent=<id>`
 4. Your customised version is now live
 
-> Note: Customised agents will be overwritten by `prometheus pantheon:upgrade` if you run it. Copy customised agents to `.prometheus/agents/` to preserve them through upgrades.
+> Note: Customised agents will be overwritten by `thesmos pantheon:upgrade` if you run it. Copy customised agents to `.thesmos/agents/` to preserve them through upgrades.
 
 ---
 
@@ -595,7 +595,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to propose a new Greek-god-named 
 A: The agent `.md` files are free and open source. Download them directly from the GitHub repo — no npm install required.
 
 **Q: Can I use multiple agents in the same session?**
-A: Yes. In Claude Code, you can switch agents per message or run `prometheus pantheon:orchestrate` to have Zeus coordinate multiple agents on a single task.
+A: Yes. In Claude Code, you can switch agents per message or run `thesmos pantheon:orchestrate` to have Zeus coordinate multiple agents on a single task.
 
 **Q: My agent output doesn't sound right — how do I customise the persona?**
 A: Edit the agent's `.md` file body section. The YAML frontmatter stays the same; the personality and instructions are in the Markdown body below.
@@ -607,4 +607,4 @@ A: Yes. The agents are licensed under the same terms as Prometheus (MIT). You ca
 A: Use the OpenAI Assistants API format instead of the Custom GPT format. The Assistants API supports 256,000 characters vs. the ~8,000 character limit in the GPT Builder UI.
 
 **Q: How do I know which agent to use?**
-A: Run `prometheus pantheon:orchestrate "[your task]"` and Zeus will route it for you. Or check the Agent Reference section above for each agent's trigger phrases.
+A: Run `thesmos pantheon:orchestrate "[your task]"` and Zeus will route it for you. Or check the Agent Reference section above for each agent's trigger phrases.

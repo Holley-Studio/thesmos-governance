@@ -1,8 +1,8 @@
-# The Prometheus Pantheon
+# The Thesmos Pantheon
 
 **21 governed AI business agents. Every function. Every platform.**
 
-Named after Greek gods. Built on Prometheus governance. Downloadable for Claude, ChatGPT, Gemini, Cursor, and GitHub Copilot — with no install required.
+Named after Greek gods. Built on Thesmos governance. Downloadable for Claude, ChatGPT, Gemini, Cursor, and GitHub Copilot — with no install required.
 
 ---
 
@@ -39,9 +39,9 @@ Named after Greek gods. Built on Prometheus governance. Downloadable for Claude,
 ### Install all 21 agents (developers)
 
 ```bash
-npm install -g prometheus-governance
-prometheus pantheon:install --all
-prometheus pantheon:export --target=claude-code
+npm install -g thesmos-governance
+thesmos pantheon:install --all
+thesmos pantheon:export --target=claude-code
 ```
 
 ### Download without installing
@@ -60,14 +60,14 @@ Pick any agent from the platform-specific export directories:
 ### Use Claude Code native agents
 
 ```bash
-prometheus pantheon:export --target=claude-code
+thesmos pantheon:export --target=claude-code
 claude --agent=hermes-marketing-agent "Write a campaign brief for our product launch"
 ```
 
 ### Orchestrate the full team
 
 ```bash
-prometheus pantheon:orchestrate "launch our developer tool to fintech CTOs"
+thesmos pantheon:orchestrate "launch our developer tool to fintech CTOs"
 ```
 
 Zeus automatically routes the task to the right specialists and outputs a structured brief.
@@ -78,24 +78,24 @@ Zeus automatically routes the task to the right specialists and outputs a struct
 
 **From generic AI prompts:**
 - Each agent embeds a real professional methodology (SPIN Selling, MEDDPICC, OWASP Top 10, AIDA, Shape Up, etc.)
-- Every agent knows which Prometheus governance rules apply to its domain
+- Every agent knows which Thesmos governance rules apply to its domain
 - Agents know who to delegate to and who they report to — they are a team
-- Persistent memory via `prometheus pantheon:memory` — context survives between sessions
+- Persistent memory via `thesmos pantheon:memory` — context survives between sessions
 
 **From GPT Store agents:**
 - Single source of truth → 7 platform exports from one file
 - Zeus orchestration routes complex multi-domain tasks automatically
-- Versioned and upgradeable via `prometheus pantheon:upgrade`
-- Every output can be governance-certified via `prometheus certificate:generate`
+- Versioned and upgradeable via `thesmos pantheon:upgrade`
+- Every output can be governance-certified via `thesmos certificate:generate`
 
 ---
 
 ## Zeus Orchestration
 
-`prometheus pantheon:orchestrate` decomposes any business task and routes it to the right agents:
+`thesmos pantheon:orchestrate` decomposes any business task and routes it to the right agents:
 
 ```
-$ prometheus pantheon:orchestrate "launch our new developer tool to CTOs at fintech companies"
+$ thesmos pantheon:orchestrate "launch our new developer tool to CTOs at fintech companies"
 
 # Zeus Orchestration Brief
 Task: launch our new developer tool to CTOs at fintech companies
@@ -119,9 +119,9 @@ No LLM call. No API cost. Static routing in under 500ms.
 Agents remember context across sessions:
 
 ```bash
-prometheus pantheon:memory save --agent hermes "Client prefers direct, no-jargon copy"
-prometheus pantheon:memory save --agent ares "Target buyer: VP Engineering, 50-200 person SaaS"
-prometheus pantheon:memory show --agent hermes
+thesmos pantheon:memory save --agent hermes "Client prefers direct, no-jargon copy"
+thesmos pantheon:memory save --agent ares "Target buyer: VP Engineering, 50-200 person SaaS"
+thesmos pantheon:memory show --agent hermes
 ```
 
 ---
@@ -129,13 +129,13 @@ prometheus pantheon:memory show --agent hermes
 ## Platform Commands
 
 ```bash
-prometheus pantheon:list                          # Show all 21 agents
-prometheus pantheon:status                        # Show which agents are installed
-prometheus pantheon:export --target=all           # Generate exports for all 7 platforms
-prometheus pantheon:export --target=claude-code   # Generate .claude/agents/ files only
-prometheus pantheon:orchestrate "<task>"          # Zeus routes task to agents
-prometheus pantheon:memory save --agent <id> "<note>"
-prometheus pantheon:upgrade                       # Check for newer agent versions
+thesmos pantheon:list                          # Show all 21 agents
+thesmos pantheon:status                        # Show which agents are installed
+thesmos pantheon:export --target=all           # Generate exports for all 7 platforms
+thesmos pantheon:export --target=claude-code   # Generate .claude/agents/ files only
+thesmos pantheon:orchestrate "<task>"          # Zeus routes task to agents
+thesmos pantheon:memory save --agent <id> "<note>"
+thesmos pantheon:upgrade                       # Check for newer agent versions
 ```
 
 ---
@@ -173,4 +173,4 @@ prometheus/catalog/agents/pantheon/
 
 ---
 
-Built on [Prometheus Governance](../prometheus/README.md) — the AI code governance package with 911 rules.
+Built on [Prometheus Governance](../thesmos/README.md) — the AI code governance package with 911 rules.

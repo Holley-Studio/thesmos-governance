@@ -1,16 +1,16 @@
-# Prometheus Governance
+# Thesmos Governance
 
 **1035 rules. Zero config. Built for the AI-assisted engineering era.**
 
-Prometheus is an open-source code governance toolkit that watches AI-generated code for security holes, broken patterns, and architectural mistakes — before they reach production.
+Thesmos is an open-source code governance toolkit that watches AI-generated code for security holes, broken patterns, and architectural mistakes — before they reach production.
 
 ---
 
-## Why Prometheus
+## Why Thesmos
 
 AI tools write code faster than humans can review it. Copilot, Cursor, and Claude can ship working features in minutes — but they also hallucinate Prisma clients outside module scope, concatenate user input directly into LLM prompts, and create N+1 query waterfalls without a second thought.
 
-Prometheus closes that gap. 1035 governance rules covering AI safety, security, performance, and correctness — active the moment you install.
+Thesmos closes that gap. 1035 governance rules covering AI safety, security, performance, and correctness — active the moment you install.
 
 ---
 
@@ -21,26 +21,26 @@ Prometheus closes that gap. 1035 governance rules covering AI safety, security, 
 Scan your whole codebase and get a health grade:
 
 ```bash
-npm install prometheus-governance
-npx prometheus scan
+npm install thesmos-governance
+npx thesmos scan
 ```
 
 Review only staged changes before committing:
 
 ```bash
-npx prometheus review
+npx thesmos review
 ```
 
-Run `prometheus audit` for a detailed JSON + HTML report, or `prometheus init` to walk through setup interactively.
+Run `thesmos audit` for a detailed JSON + HTML report, or `thesmos init` to walk through setup interactively.
 
 ### 2. GitHub Action
 
 Adds governance review to every pull request. BLOCKER findings block the merge. Inline comments appear on the exact line.
 
-Copy this to `.github/workflows/prometheus-pr.yml`:
+Copy this to `.github/workflows/thesmos-pr.yml`:
 
 ```yaml
-name: Prometheus Governance
+name: Thesmos Governance
 
 on:
   pull_request:
@@ -60,8 +60,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Prometheus PR Review
-        uses: Holley-Studio/prometheus-governance/actions/pr-review@v1
+      - name: Thesmos PR Review
+        uses: Holley-Studio/thesmos-governance/actions/pr-review@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-severity: BLOCKER
@@ -121,7 +121,7 @@ Rules are organized into 17 categories:
 
 ## Configuration
 
-No config file is required. To customize, create `.prometheus/config.json`:
+No config file is required. To customize, create `.thesmos/config.json`:
 
 ```json
 {
@@ -138,17 +138,17 @@ No config file is required. To customize, create `.prometheus/config.json`:
 
 ## Community Rule Packs
 
-Drop any `.json` rule pack into `.prometheus/packs/` — they load at runtime without a rebuild. See `CONTRIBUTING.md` for the schema.
+Drop any `.json` rule pack into `.thesmos/packs/` — they load at runtime without a rebuild. See `CONTRIBUTING.md` for the schema.
 
 ---
 
 ## Repository Structure
 
 ```
-prometheus-governance/
+thesmos-governance/
 ├── website/              Marketing site (deployed to Vercel)
 │   └── index.html
-├── prometheus/           npm package — CLI + core engine
+├── thesmos/           npm package — CLI + core engine
 │   ├── bin/             CLI entry points (scan, review, audit, init, watch)
 │   ├── catalog/         1035 rules organized by category
 │   ├── index.ts         Public API
@@ -165,9 +165,9 @@ prometheus-governance/
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Rule contributions are especially welcome — the catalog is the heart of Prometheus.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Rule contributions are especially welcome — the catalog is the heart of Thesmos.
 
-Issues and feature requests: [GitHub Issues](https://github.com/Holley-Studio/prometheus-governance/issues)
+Issues and feature requests: [GitHub Issues](https://github.com/Holley-Studio/thesmos-governance/issues)
 
 ---
 

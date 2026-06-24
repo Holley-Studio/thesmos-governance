@@ -1,5 +1,5 @@
 /**
- * Prometheus Governance PR Review — GitHub Action entry point.
+ * Thesmos Governance PR Review — GitHub Action entry point.
  * by Holley Studios
  *
  * Flow:
@@ -18,13 +18,13 @@ import * as gh from '@actions/github';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// prometheus-governance is bundled into dist/index.js by esbuild
+// thesmos-governance is bundled into dist/index.js by esbuild
 import {
   runScanner,
   runReview,
   CONFIG_DEFAULTS,
   loadConfig,
-} from 'prometheus-governance';
+} from 'thesmos-governance';
 
 import type { ActionInputs, Severity } from './types.js';
 import {
@@ -72,14 +72,14 @@ function parseInputs(): ActionInputs {
 
 // ── Config loading ────────────────────────────────────────────────────────────
 
-function loadPrometheusConfig(workspace: string) {
-  const configPath = join(workspace, '.prometheus', 'config.json');
+function loadThesmosConfig(workspace: string) {
+  const configPath = join(workspace, '.thesmos', 'config.json');
   if (existsSync(configPath)) {
     try {
       return loadConfig(workspace);
     } catch {
       core.warning(
-        '.prometheus/config.json found but could not be parsed — using defaults.',
+        '.thesmos/config.json found but could not be parsed — using defaults.',
       );
     }
   }
@@ -90,7 +90,7 @@ function loadPrometheusConfig(workspace: string) {
 
 async function run(): Promise<void> {
   try {
-    core.info('🔱 Prometheus Governance PR Review — by Holley Studios');
+    core.info('🔱 Thesmos Governance PR Review — by Holley Studios');
 
     // ── 1. Inputs ──────────────────────────────────────────────────────────
 
@@ -125,7 +125,7 @@ async function run(): Promise<void> {
     // ── 4. Scan workspace ──────────────────────────────────────────────────
 
     core.info('Scanning workspace…');
-    const config = loadPrometheusConfig(workspace);
+    const config = loadThesmosConfig(workspace);
     const scan = runScanner(workspace, config);
     core.debug(`Scan complete: ${scan.componentCount} components, ${scan.apiRoutes.length} API routes`);
 
@@ -190,7 +190,7 @@ async function run(): Promise<void> {
     core.setOutput('blocker-count', String(blockerCount));
 
     // Try to read health grade from report.json if it exists
-    const reportPath = join(workspace, '.prometheus', 'report.json');
+    const reportPath = join(workspace, '.thesmos', 'report.json');
     if (existsSync(reportPath)) {
       try {
         const report = JSON.parse(readFileSync(reportPath, 'utf8')) as Record<string, unknown>;
@@ -215,19 +215,19 @@ async function run(): Promise<void> {
       if (rest > 0) parts.push(`${rest} other`);
 
       core.setFailed(
-        `🔱 Prometheus Governance: ${parts.join(', ')} finding(s) found. ` +
+        `🔱 Thesmos Governance: ${parts.join(', ')} finding(s) found. ` +
           `Resolve or baseline these before merging.`,
       );
     } else if (findings.length > 0) {
       core.info(
-        `🔱 Prometheus Governance: ${findings.length} finding(s) noted (below fail threshold).`,
+        `🔱 Thesmos Governance: ${findings.length} finding(s) noted (below fail threshold).`,
       );
     } else {
-      core.info('🔱 Prometheus Governance: All checks passed.');
+      core.info('🔱 Thesmos Governance: All checks passed.');
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    core.setFailed(`Prometheus Governance action failed: ${message}`);
+    core.setFailed(`Thesmos Governance action failed: ${message}`);
   }
 }
 

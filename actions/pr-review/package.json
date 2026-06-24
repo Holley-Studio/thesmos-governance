@@ -1,8 +1,8 @@
 {
-  "name": "@prometheus-governance/pr-review",
+  "name": "@thesmos-governance/pr-review",
   "version": "1.0.0",
   "private": true,
-  "description": "Prometheus Governance — GitHub PR Review Action",
+  "description": "Thesmos Governance — GitHub PR Review Action",
   "scripts": {
     "build": "node esbuild.mjs",
     "typecheck": "tsc --noEmit",
@@ -11,7 +11,7 @@
   "dependencies": {
     "@actions/core": "^3.0.1",
     "@actions/github": "^9.1.1",
-    "prometheus-governance": "file:../../prometheus"
+    "thesmos-governance": "file:../../thesmos"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",

@@ -5,12 +5,12 @@
  * extension can cleanly tear them down on deactivation.
  *
  * Commands:
- *   prometheus.scan          — run `prometheus scan`, then refresh all findings
- *   prometheus.reviewFile    — review the currently open file
- *   prometheus.health        — open the health dashboard webview
- *   prometheus.adapters      — regenerate all AI adapter files
- *   prometheus.openConfig    — open .prometheus/config.json in the editor
- *   prometheus.refreshFindings — re-run full review and refresh the tree
+ *   thesmos.scan          — run `prometheus scan`, then refresh all findings
+ *   thesmos.reviewFile    — review the currently open file
+ *   thesmos.health        — open the health dashboard webview
+ *   thesmos.adapters      — regenerate all AI adapter files
+ *   thesmos.openConfig    — open .thesmos/config.json in the editor
+ *   thesmos.refreshFindings — re-run full review and refresh the tree
  */
 
 import * as vscode from 'vscode';
@@ -23,7 +23,7 @@ import {
   runAdapters,
   runPrometheus,
   PrometheusNotFoundError,
-  PrometheusReportMissingError,
+  ThesmosReportMissingError,
 } from './runner.js';
 import { HealthPanel } from './panel.js';
 import type { ExtensionConfig } from './types.js';
@@ -62,20 +62,20 @@ function handleError(err: unknown): void {
     ).then((choice) => {
       if (choice === 'Install now') {
         const terminal = vscode.window.createTerminal('Prometheus');
-        terminal.sendText('npm install --save-dev prometheus-governance');
+        terminal.sendText('npm install --save-dev thesmos-governance');
         terminal.show();
       }
     });
     return;
   }
 
-  if (err instanceof PrometheusReportMissingError) {
+  if (err instanceof ThesmosReportMissingError) {
     void vscode.window.showWarningMessage(
       `Prometheus Governance: ${err.message}`,
       'Scan now',
     ).then((choice) => {
       if (choice === 'Scan now') {
-        void vscode.commands.executeCommand('prometheus.scan');
+        void vscode.commands.executeCommand('thesmos.scan');
       }
     });
     return;
@@ -97,10 +97,10 @@ export function registerCommands(
 ): vscode.Disposable {
   const disposables: vscode.Disposable[] = [];
 
-  // ── prometheus.scan ────────────────────────────────────────────────────────
+  // ── thesmos.scan ────────────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.scan', async () => {
+    vscode.commands.registerCommand('thesmos.scan', async () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -125,10 +125,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.reviewFile ──────────────────────────────────────────────────
+  // ── thesmos.reviewFile ──────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.reviewFile', async () => {
+    vscode.commands.registerCommand('thesmos.reviewFile', async () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -151,10 +151,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.health ──────────────────────────────────────────────────────
+  // ── thesmos.health ──────────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.health', async () => {
+    vscode.commands.registerCommand('thesmos.health', async () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -179,10 +179,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.adapters ────────────────────────────────────────────────────
+  // ── thesmos.adapters ────────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.adapters', async () => {
+    vscode.commands.registerCommand('thesmos.adapters', async () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -206,14 +206,14 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.openConfig ──────────────────────────────────────────────────
+  // ── thesmos.openConfig ──────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.openConfig', async () => {
+    vscode.commands.registerCommand('thesmos.openConfig', async () => {
       const configPath = join(workspaceRoot, '.prometheus', 'config.json');
       if (!existsSync(configPath)) {
         void vscode.window.showWarningMessage(
-          'Prometheus: .prometheus/config.json not found. Run "Prometheus: Scan Repository" first.',
+          'Prometheus: .thesmos/config.json not found. Run "Prometheus: Scan Repository" first.',
         );
         return;
       }
@@ -224,10 +224,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.refreshFindings ─────────────────────────────────────────────
+  // ── thesmos.refreshFindings ─────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.refreshFindings', async () => {
+    vscode.commands.registerCommand('thesmos.refreshFindings', async () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -239,10 +239,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.autopilot.generate ──────────────────────────────────────────
+  // ── thesmos.autopilot.generate ──────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.autopilot.generate', async () => {
+    vscode.commands.registerCommand('thesmos.autopilot.generate', async () => {
       const goal = await vscode.window.showInputBox({
         prompt: 'Describe what you want to build',
         placeHolder: 'e.g. add Stripe checkout to the Express app',
@@ -263,10 +263,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.autopilot.cancel ────────────────────────────────────────────
+  // ── thesmos.autopilot.cancel ────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.autopilot.cancel', async () => {
+    vscode.commands.registerCommand('thesmos.autopilot.cancel', async () => {
       const session = getAutopilotWatcher().session;
       if (!session) {
         void vscode.window.showWarningMessage('Prometheus Autopilot: No active session to cancel.');
@@ -294,10 +294,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.autopilot.review ────────────────────────────────────────────
+  // ── thesmos.autopilot.review ────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.autopilot.review', async () => {
+    vscode.commands.registerCommand('thesmos.autopilot.review', async () => {
       const session = getAutopilotWatcher().session;
       if (!session) {
         void vscode.window.showWarningMessage(
@@ -320,10 +320,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.autopilot.openPR ────────────────────────────────────────────
+  // ── thesmos.autopilot.openPR ────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.autopilot.openPR', async () => {
+    vscode.commands.registerCommand('thesmos.autopilot.openPR', async () => {
       const session = getAutopilotWatcher().session;
       if (!session) {
         void vscode.window.showWarningMessage('Prometheus Autopilot: No active session.');
@@ -339,10 +339,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.autopilot.viewJournal ──────────────────────────────────────
+  // ── thesmos.autopilot.viewJournal ──────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.autopilot.viewJournal', async () => {
+    vscode.commands.registerCommand('thesmos.autopilot.viewJournal', async () => {
       const session = getAutopilotWatcher().session;
       if (!session) {
         void vscode.window.showWarningMessage('Prometheus Autopilot: No active session.');
@@ -363,10 +363,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.autopilot.revert ────────────────────────────────────────────
+  // ── thesmos.autopilot.revert ────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.autopilot.revert', async () => {
+    vscode.commands.registerCommand('thesmos.autopilot.revert', async () => {
       const session = getAutopilotWatcher().session;
       if (!session) {
         void vscode.window.showWarningMessage('Prometheus Autopilot: No active session to revert.');
@@ -392,10 +392,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.importScan ──────────────────────────────────────────────────
+  // ── thesmos.importScan ──────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.importScan', () => {
+    vscode.commands.registerCommand('thesmos.importScan', () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -408,10 +408,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.debtScan ────────────────────────────────────────────────────
+  // ── thesmos.debtScan ────────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.debtScan', () => {
+    vscode.commands.registerCommand('thesmos.debtScan', () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -424,10 +424,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.contextSnapshot ─────────────────────────────────────────────
+  // ── thesmos.contextSnapshot ─────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.contextSnapshot', async () => {
+    vscode.commands.registerCommand('thesmos.contextSnapshot', async () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -441,7 +441,7 @@ export function registerCommands(
           try {
             await runPrometheus(workspaceRoot, ['context:snapshot'], cfg.binaryPath || undefined);
             void vscode.window.showInformationMessage(
-              'Prometheus: Context snapshot written to .prometheus/context.md',
+              'Prometheus: Context snapshot written to .thesmos/context.md',
             );
           } catch (err) {
             handleError(err);
@@ -451,10 +451,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.contextHealth ───────────────────────────────────────────────
+  // ── thesmos.contextHealth ───────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.contextHealth', async () => {
+    vscode.commands.registerCommand('thesmos.contextHealth', async () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -482,10 +482,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.scopeInit ───────────────────────────────────────────────────
+  // ── thesmos.scopeInit ───────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.scopeInit', () => {
+    vscode.commands.registerCommand('thesmos.scopeInit', () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -498,10 +498,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.scopeStatus ─────────────────────────────────────────────────
+  // ── thesmos.scopeStatus ─────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.scopeStatus', () => {
+    vscode.commands.registerCommand('thesmos.scopeStatus', () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -514,10 +514,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.scopeCheck ──────────────────────────────────────────────────
+  // ── thesmos.scopeCheck ──────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.scopeCheck', async () => {
+    vscode.commands.registerCommand('thesmos.scopeCheck', async () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -537,10 +537,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.tokensReport ────────────────────────────────────────────────
+  // ── thesmos.tokensReport ────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.tokensReport', () => {
+    vscode.commands.registerCommand('thesmos.tokensReport', () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -553,10 +553,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.tokensReset ─────────────────────────────────────────────────
+  // ── thesmos.tokensReset ─────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.tokensReset', async () => {
+    vscode.commands.registerCommand('thesmos.tokensReset', async () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -576,10 +576,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.tokensBudget ────────────────────────────────────────────────
+  // ── thesmos.tokensBudget ────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.tokensBudget', () => {
+    vscode.commands.registerCommand('thesmos.tokensBudget', () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -592,10 +592,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.commitLint ──────────────────────────────────────────────────
+  // ── thesmos.commitLint ──────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.commitLint', async () => {
+    vscode.commands.registerCommand('thesmos.commitLint', async () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -617,10 +617,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.commitCreate ────────────────────────────────────────────────
+  // ── thesmos.commitCreate ────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.commitCreate', () => {
+    vscode.commands.registerCommand('thesmos.commitCreate', () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 
@@ -633,10 +633,10 @@ export function registerCommands(
     }),
   );
 
-  // ── prometheus.vercelLint ──────────────────────────────────────────────────
+  // ── thesmos.vercelLint ──────────────────────────────────────────────────
 
   disposables.push(
-    vscode.commands.registerCommand('prometheus.vercelLint', () => {
+    vscode.commands.registerCommand('thesmos.vercelLint', () => {
       const cfg = getConfig();
       if (!cfg.enable) return;
 

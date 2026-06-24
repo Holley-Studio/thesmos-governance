@@ -1,0 +1,34 @@
+{
+  "id": "package",
+  "name": "Package Profile",
+  "description": "Governance profile for npm package development. Focuses on public API quality, bundle size, TypeScript types, documentation completeness, and publishing readiness.",
+  "version": "1.0.0",
+  "owner": "prometheus",
+  "agents": [
+    "security-reviewer",
+    "code-quality-reviewer",
+    "testing-reviewer",
+    "typescript-reviewer",
+    "architecture-reviewer",
+    "documentation-reviewer",
+    "dependency-reviewer",
+    "package-publishing-reviewer",
+    "governance-reviewer"
+  ],
+  "skills": [
+    "pr-review",
+    "staged-change-review",
+    "add-tests",
+    "final-hardening-pass",
+    "security-scan",
+    "typescript-strict-mode",
+    "test-coverage-report",
+    "dependency-audit",
+    "build-optimization",
+    "documentation-audit",
+    "adapter-sync"
+  ],
+  "rulePacks": [
+    "@thesmos/core"
+  ]
+}

@@ -1,4 +1,4 @@
-# Prometheus Pantheon — Agent Directory
+# Thesmos Pantheon — Agent Directory
 
 21 governed AI business agents. Every function covered.
 
@@ -89,7 +89,7 @@
 
 ## Zeus Routing Table
 
-When you run `prometheus pantheon:orchestrate "<task>"`, Zeus uses this routing table to assign work:
+When you run `thesmos pantheon:orchestrate "<task>"`, Zeus uses this routing table to assign work:
 
 | Task keywords | Primary agents |
 |---|---|

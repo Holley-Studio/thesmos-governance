@@ -181,7 +181,7 @@ export class FindingsTreeProvider
     }
 
     if (this.state === 'not-installed') {
-      return [new EmptyItem('prometheus-governance not installed')];
+      return [new EmptyItem('thesmos-governance not installed')];
     }
 
     if (this.state === 'idle') {

@@ -1,5 +1,5 @@
 /**
- * GitHub API interactions for the Prometheus Governance PR Review Action.
+ * GitHub API interactions for the Thesmos Governance PR Review Action.
  *
  * Responsibilities:
  *   - Read PR metadata and changed files (with content + diff)
@@ -36,7 +36,7 @@ export function getPullRequestContext(): PullRequestContext {
 
   if (eventName !== 'pull_request' && eventName !== 'pull_request_target') {
     throw new Error(
-      `Prometheus PR Review must run on a pull_request event (got: ${eventName})`,
+      `Thesmos PR Review must run on a pull_request event (got: ${eventName})`,
     );
   }
 
@@ -108,7 +108,7 @@ export async function getChangedFiles(
 // ── Summary comment (upsert) ──────────────────────────────────────────────────
 
 /**
- * Posts or updates the Prometheus summary comment on the PR.
+ * Posts or updates the Thesmos summary comment on the PR.
  *
  * Searches existing comments for one containing SUMMARY_MARKER.
  * Updates it in-place if found; creates a new one otherwise.
@@ -144,7 +144,7 @@ export async function upsertSummaryComment(
       comment_id: existingCommentId,
       body,
     });
-    core.info(`Updated existing Prometheus summary comment (#${existingCommentId})`);
+    core.info(`Updated existing Thesmos summary comment (#${existingCommentId})`);
   } else {
     await octokit.rest.issues.createComment({
       owner,
@@ -152,7 +152,7 @@ export async function upsertSummaryComment(
       issue_number: pullNumber,
       body,
     });
-    core.info('Created Prometheus summary comment');
+    core.info('Created Thesmos summary comment');
   }
 }
 

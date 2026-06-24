@@ -3,7 +3,7 @@
   "redirects": [
     {
       "source": "/(.*)",
-      "destination": "https://holley.studio/prometheus",
+      "destination": "https://holley.studio/thesmos",
       "permanent": true
     }
   ]

@@ -8,7 +8,7 @@
  *   // prometheus-disable-next-line <category> -- reason: TODO
  *
  * The user then replaces "TODO" with the actual justification. The format is
- * parsed by prometheus-governance's suppress.ts — it requires a reason clause
+ * parsed by thesmos-governance's suppress.ts — it requires a reason clause
  * to avoid a missing-reason audit finding.
  */
 

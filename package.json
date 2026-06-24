@@ -1,20 +1,20 @@
 {
-  "name": "prometheus-helper",
+  "name": "thesmos-helper",
   "private": true,
-  "description": "Monorepo for prometheus-governance: npm package, GitHub Action, and VS Code extension.",
+  "description": "Monorepo for thesmos-governance: npm package, GitHub Action, and VS Code extension.",
   "scripts": {
-    "build": "npm run build --workspace=prometheus && npm run build --workspace=actions/pr-review && npm run build --workspace=extensions/vscode",
-    "build:lib": "npm run build --workspace=prometheus",
+    "build": "npm run build --workspace=thesmos && npm run build --workspace=actions/pr-review && npm run build --workspace=extensions/vscode",
+    "build:lib": "npm run build --workspace=thesmos",
     "build:action": "npm run build --workspace=actions/pr-review",
     "build:ext": "npm run build --workspace=extensions/vscode",
-    "typecheck": "npm run typecheck --workspace=prometheus && npm run typecheck --workspace=actions/pr-review && npm run typecheck --workspace=extensions/vscode",
-    "test": "npm test --workspace=prometheus",
+    "typecheck": "npm run typecheck --workspace=thesmos && npm run typecheck --workspace=actions/pr-review && npm run typecheck --workspace=extensions/vscode",
+    "test": "npm test --workspace=thesmos",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "npm run build:lib && changeset publish"
   },
   "workspaces": [
-    "prometheus",
+    "thesmos",
     "actions/pr-review",
     "extensions/vscode"
   ]

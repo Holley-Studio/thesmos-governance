@@ -1,5 +1,5 @@
 ---
-"prometheus-governance": minor
+"thesmos-governance": minor
 ---
 
 Expand built-in rule registry from 142 to 737 rules, add language packs, IaC security rules, pack authoring toolchain, and HTML report improvements.
@@ -27,14 +27,14 @@ Expand built-in rule registry from 142 to 737 rules, add language packs, IaC sec
 **Pack runtime loading:**
 
 - `loadPackRulesFromEntry(entry)` — dynamically imports `rules/index.js` from a single pack directory
-- `loadPackRules(root)` — discovers all packs under `.prometheus/packs/` and `node_modules/@prometheus/` and loads their rules
+- `loadPackRules(root)` — discovers all packs under `.thesmos/packs/` and `node_modules/@thesmos/` and loads their rules
 - `getActiveRules(root)` — returns built-in rules merged with pack rules; pass to `runReview()` as second argument
-- `prometheus review` and `prometheus validate` CLI commands now automatically load pack rules at startup
+- `thesmos review` and `thesmos validate` CLI commands now automatically load pack rules at startup
 
 **Pack authoring toolchain:**
 
-- `prometheus pack:create @scope/name` — scaffolds a complete pack directory with pack.json, rules/index.ts, agents/, skills/
-- `prometheus pack:publish @scope/name` — compiles TypeScript rules to JS via tsup, validates pack.json schema, runs npm publish
+- `thesmos pack:create @scope/name` — scaffolds a complete pack directory with pack.json, rules/index.ts, agents/, skills/
+- `thesmos pack:publish @scope/name` — compiles TypeScript rules to JS via tsup, validates pack.json schema, runs npm publish
 
 **HTML report improvements:**
 
@@ -46,4 +46,4 @@ Expand built-in rule registry from 142 to 737 rules, add language packs, IaC sec
 
 - `computeLanguageStats()` — counts files and lines per language/extension
 - `detectStacks()` — infers frameworks (Laravel, Django, Rails, Go modules, etc.) from file patterns
-- `prometheus scan` now shows a "Languages detected" table and "Detected stacks" in console output
+- `thesmos scan` now shows a "Languages detected" table and "Detected stacks" in console output

@@ -1,7 +1,7 @@
 /**
- * Shared types for the Prometheus Governance PR Review Action.
+ * Shared types for the Thesmos Governance PR Review Action.
  *
- * The Finding / ChangedFile shapes mirror prometheus-governance's public API
+ * The Finding / ChangedFile shapes mirror thesmos-governance's public API
  * and are declared here to avoid importing from the bundled library at the
  * type level — the real imports happen in index.ts where esbuild resolves them.
  */

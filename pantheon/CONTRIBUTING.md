@@ -1,4 +1,4 @@
-# Contributing to the Prometheus Pantheon
+# Contributing to the Thesmos Pantheon
 
 The Pantheon is open to community contributions. New agents go through a review process to maintain the quality bar that makes the team useful in production.
 
@@ -37,7 +37,7 @@ Every agent body must contain all of the following sections:
 | Trigger phrases | Exact keywords that should route a task to this agent |
 | Output contract | "Always deliver: [A] + [B] + [C]" — non-negotiable structure |
 | Execution path | Mandatory deliberation step before generating output |
-| Governance scope | Prometheus rules that apply, in plain English |
+| Governance scope | Thesmos rules that apply, in plain English |
 | Delegation map | When to hand off and to whom (specific agent IDs) |
 | Constraints | What this agent will NOT do |
 | Embedded example | One concrete input → output demonstration |

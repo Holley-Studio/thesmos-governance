@@ -54,7 +54,7 @@ const techDebt: Finding = {
 
 describe('SUMMARY_MARKER', () => {
   it('is the expected HTML comment string', () => {
-    expect(SUMMARY_MARKER).toBe('<!-- prometheus-governance:summary -->');
+    expect(SUMMARY_MARKER).toBe('<!-- thesmos-governance:summary -->');
   });
 });
 
@@ -215,9 +215,9 @@ describe('formatInlineComment', () => {
     expect(out).not.toContain('Suggestion:');
   });
 
-  it('contains the Prometheus footer', () => {
+  it('contains the Thesmos footer', () => {
     const out = formatInlineComment(medium);
-    expect(out).toContain('Prometheus Governance');
+    expect(out).toContain('Thesmos Governance');
   });
 
   it('includes correct emoji for TECH_DEBT', () => {

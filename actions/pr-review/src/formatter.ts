@@ -1,11 +1,11 @@
 /**
- * Comment formatters for the Prometheus Governance PR Review Action.
+ * Comment formatters for the Thesmos Governance PR Review Action.
  *
  * Produces:
  *   - A rich Markdown summary comment (posted/updated on the PR)
  *   - Short inline comments (posted on individual diff lines)
  *
- * Hidden marker <!-- prometheus-governance:summary --> is embedded so the
+ * Hidden marker <!-- thesmos-governance:summary --> is embedded so the
  * upsert logic can find and update the comment on re-runs.
  */
 
@@ -13,7 +13,7 @@ import type { Finding, InlineComment, Severity } from './types.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-export const SUMMARY_MARKER = '<!-- prometheus-governance:summary -->';
+export const SUMMARY_MARKER = '<!-- thesmos-governance:summary -->';
 
 const SEVERITY_EMOJI: Record<Severity, string> = {
   BLOCKER: '🔴',
@@ -96,7 +96,7 @@ export function formatSummaryComment(
 
   return [
     SUMMARY_MARKER,
-    `## 🔱 Prometheus Governance Review`,
+    `## 🔱 Thesmos Governance Review`,
     ``,
     status,
     ``,
@@ -109,7 +109,7 @@ export function formatSummaryComment(
     findingSections,
     ``,
     `---`,
-    `<sub>🔱 **Prometheus Governance** by Holley Studios · PR #${prNumber} in \`${repoName}\`</sub>`,
+    `<sub>🔱 **Thesmos Governance** by Holley Studios · PR #${prNumber} in \`${repoName}\`</sub>`,
   ]
     .filter((l) => l !== undefined)
     .join('\n');
@@ -131,7 +131,7 @@ export function formatInlineComment(finding: Finding): string {
 
   lines.push(
     ``,
-    `<sub>🔱 Prometheus Governance by Holley Studios</sub>`,
+    `<sub>🔱 Thesmos Governance by Holley Studios</sub>`,
   );
 
   return lines.join('\n');

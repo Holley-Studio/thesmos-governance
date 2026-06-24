@@ -1,4 +1,4 @@
-# Contributing to prometheus-governance
+# Contributing to thesmos-governance
 
 Thank you for helping make this better. This guide covers everything you need to go from idea to merged PR.
 
@@ -21,33 +21,33 @@ Thank you for helping make this better. This guide covers everything you need to
 ## Development setup
 
 ```bash
-git clone https://github.com/Holley-Studio/prometheus-governance.git
-cd prometheus-helper
+git clone https://github.com/Holley-Studio/thesmos-governance.git
+cd thesmos-helper
 npm install
 ```
 
-This is an npm workspaces monorepo. **Always run `npm install` from the repo root** — this populates the root `package-lock.json` and hoists shared dependencies. All source code lives in `prometheus/`; the publishable package is entirely self-contained there.
+This is an npm workspaces monorepo. **Always run `npm install` from the repo root** — this populates the root `package-lock.json` and hoists shared dependencies. All source code lives in `thesmos/`; the publishable package is entirely self-contained there.
 
 ### Available scripts
 
-Run these from the **repo root** using the `-w prometheus-governance` workspace flag, or `cd prometheus` and run them directly.
+Run these from the **repo root** using the `-w thesmos-governance` workspace flag, or `cd thesmos` and run them directly.
 
 | Command (from root) | What it does |
 | ------------------- | ------------ |
-| `npm test -w prometheus-governance` | Run all tests once |
-| `npm run test:watch -w prometheus-governance` | Run tests in watch mode |
-| `npm run test:coverage -w prometheus-governance` | Run tests with V8 coverage report |
-| `npm run typecheck -w prometheus-governance` | TypeScript type-check (no emit) |
-| `npm run build -w prometheus-governance` | Build `dist/` via tsup |
-| `npm run prometheus:scan -w prometheus-governance` | Run the CLI scan command against this repo |
-| `npm run prometheus:doctor -w prometheus-governance` | Run the CLI doctor command against this repo |
+| `npm test -w thesmos-governance` | Run all tests once |
+| `npm run test:watch -w thesmos-governance` | Run tests in watch mode |
+| `npm run test:coverage -w thesmos-governance` | Run tests with V8 coverage report |
+| `npm run typecheck -w thesmos-governance` | TypeScript type-check (no emit) |
+| `npm run build -w thesmos-governance` | Build `dist/` via tsup |
+| `npm run thesmos:scan -w thesmos-governance` | Run the CLI scan command against this repo |
+| `npm run thesmos:doctor -w thesmos-governance` | Run the CLI doctor command against this repo |
 
 ---
 
 ## Running tests
 
 ```bash
-cd prometheus
+cd thesmos
 
 # All tests
 npm test
@@ -68,7 +68,7 @@ Tests use [Vitest](https://vitest.dev/) with a Node environment. Pure-function t
 ## Project structure
 
 ```
-prometheus/
+thesmos/
 ├── bin/
 │   ├── cli.ts              # CLI dispatcher — maps commands to handlers
 │   ├── commands/           # One file per CLI command
@@ -97,12 +97,12 @@ prometheus/
 
 1. **Decide the category.** Pick an existing file in `rules/` (e.g. `security.ts`) or create a new one for a new domain.
 
-2. **Write the rule.** Every rule must implement `PrometheusRule`:
+2. **Write the rule.** Every rule must implement `ThesmosRule`:
 
 ```typescript
-import type { PrometheusRule, Finding } from '../types';
+import type { ThesmosRule, Finding } from '../types';
 
-export const MY_NEW_RULE: PrometheusRule = {
+export const MY_NEW_RULE: ThesmosRule = {
   id: 'SEC_010',                    // Unique ID within the category prefix
   category: 'my_category',          // snake_case, stable across versions
   description: 'Short description', // Shown in findings output
@@ -192,7 +192,7 @@ version: "1.0.0"
 ---
 ```
 
-Run `npm run prometheus:catalog:validate` to check that the frontmatter is valid before opening a PR.
+Run `npm run thesmos:catalog:validate` to check that the frontmatter is valid before opening a PR.
 
 ---
 
@@ -204,10 +204,10 @@ Rule packs let you ship extra rules as a standalone npm package without modifyin
 
 ```bash
 cd your-project
-prometheus pack:create @myorg/my-pack
+thesmos pack:create @myorg/my-pack
 ```
 
-This creates `.prometheus/packs/my-pack/` with:
+This creates `.thesmos/packs/my-pack/` with:
 
 ```
 pack.json           — manifest (id, version, author, provides)
@@ -221,12 +221,12 @@ README.md           — authoring and publishing guide
 
 ### Write your rules
 
-Edit `rules/index.ts`. Every rule must export a `PrometheusRule` object:
+Edit `rules/index.ts`. Every rule must export a `ThesmosRule` object:
 
 ```typescript
-import type { PrometheusRule, Finding } from 'prometheus-governance';
+import type { ThesmosRule, Finding } from 'thesmos-governance';
 
-export const PACK_RULES: PrometheusRule[] = [
+export const PACK_RULES: ThesmosRule[] = [
   {
     id: 'MY_001',
     category: 'my_violation',
@@ -260,13 +260,13 @@ Rule IDs must be unique across all installed packs. Use a prefix matching your p
 npx tsup rules/index.ts --format esm --outDir rules
 
 # Verify discovery
-prometheus pack:list
+thesmos pack:list
 
 # Validate manifest
-prometheus pack:validate
+thesmos pack:validate
 
 # Run rules alongside built-ins
-prometheus review
+thesmos review
 ```
 
 ### Publish to npm
@@ -288,7 +288,7 @@ After publishing, users install your pack with:
 npm install @myorg/my-pack
 ```
 
-Prometheus auto-discovers packs under `node_modules/@prometheus/` and any scoped package whose `pack.json` has `schemaVersion: "1"`.
+Thesmos auto-discovers packs under `node_modules/@thesmos/` and any scoped package whose `pack.json` has `schemaVersion: "1"`.
 
 ---
 
@@ -323,9 +323,9 @@ PRs that lower test coverage thresholds or break the registry integrity test wil
 
 ## Reporting bugs
 
-Open an issue at https://github.com/Holley-Studio/prometheus-governance/issues with:
+Open an issue at https://github.com/Holley-Studio/thesmos-governance/issues with:
 
 - The command you ran
 - Expected vs. actual output
 - Node version (`node -v`) and OS
-- Relevant snippets of `.prometheus/config.json` (redact secrets)
+- Relevant snippets of `.thesmos/config.json` (redact secrets)

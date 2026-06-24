@@ -1,6 +1,6 @@
 {
-  "name": "prometheus-governance-vscode",
-  "displayName": "Prometheus Governance",
+  "name": "thesmos-governance-vscode",
+  "displayName": "Thesmos Governance",
   "description": "Real-time AI repo governance — inline findings, health scores, and adapter sync for Claude, Gemini, Cursor, Copilot, and Codex.",
   "version": "1.3.0",
   "publisher": "holley-studios",
@@ -10,7 +10,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Holley-Studio/prometheus-governance.git",
+    "url": "https://github.com/Holley-Studio/thesmos-governance.git",
     "directory": "extensions/vscode"
   },
   "engines": {
@@ -32,300 +32,300 @@
     "Copilot"
   ],
   "activationEvents": [
-    "workspaceContains:.prometheus/config.json",
+    "workspaceContains:.thesmos/config.json",
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "prometheus.scan",
+        "command": "thesmos.scan",
         "title": "Scan Repository",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(search)"
       },
       {
-        "command": "prometheus.reviewFile",
+        "command": "thesmos.reviewFile",
         "title": "Review Current File",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(eye)"
       },
       {
-        "command": "prometheus.health",
+        "command": "thesmos.health",
         "title": "Show Health Score",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(pulse)"
       },
       {
-        "command": "prometheus.adapters",
+        "command": "thesmos.adapters",
         "title": "Regenerate AI Adapters",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(sync)"
       },
       {
-        "command": "prometheus.openConfig",
+        "command": "thesmos.openConfig",
         "title": "Open Config",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(settings-gear)"
       },
       {
-        "command": "prometheus.refreshFindings",
+        "command": "thesmos.refreshFindings",
         "title": "Refresh Findings",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(refresh)"
       },
       {
-        "command": "prometheus.autopilot.generate",
+        "command": "thesmos.autopilot.generate",
         "title": "Generate Autopilot Plan",
-        "category": "Prometheus Autopilot",
+        "category": "Thesmos Autopilot",
         "icon": "$(wand)"
       },
       {
-        "command": "prometheus.autopilot.cancel",
+        "command": "thesmos.autopilot.cancel",
         "title": "Cancel Running Session",
-        "category": "Prometheus Autopilot",
+        "category": "Thesmos Autopilot",
         "icon": "$(stop-circle)"
       },
       {
-        "command": "prometheus.autopilot.review",
+        "command": "thesmos.autopilot.review",
         "title": "Review Session Diff (AI)",
-        "category": "Prometheus Autopilot",
+        "category": "Thesmos Autopilot",
         "icon": "$(eye)"
       },
       {
-        "command": "prometheus.autopilot.openPR",
+        "command": "thesmos.autopilot.openPR",
         "title": "Open Draft PR",
-        "category": "Prometheus Autopilot",
+        "category": "Thesmos Autopilot",
         "icon": "$(git-pull-request)"
       },
       {
-        "command": "prometheus.autopilot.viewJournal",
+        "command": "thesmos.autopilot.viewJournal",
         "title": "View Session Journal",
-        "category": "Prometheus Autopilot",
+        "category": "Thesmos Autopilot",
         "icon": "$(notebook)"
       },
       {
-        "command": "prometheus.autopilot.revert",
+        "command": "thesmos.autopilot.revert",
         "title": "Revert Session (Delete Branch)",
-        "category": "Prometheus Autopilot",
+        "category": "Thesmos Autopilot",
         "icon": "$(discard)"
       },
       {
-        "command": "prometheus.importScan",
+        "command": "thesmos.importScan",
         "title": "Scan Imports (Supply Chain Check)",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(package)"
       },
       {
-        "command": "prometheus.debtScan",
+        "command": "thesmos.debtScan",
         "title": "Scan AI Debt",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(graph)"
       },
       {
-        "command": "prometheus.contextSnapshot",
+        "command": "thesmos.contextSnapshot",
         "title": "Snapshot Project Context",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(bookmark)"
       },
       {
-        "command": "prometheus.contextHealth",
+        "command": "thesmos.contextHealth",
         "title": "Show Context Health",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(history)"
       },
       {
-        "command": "prometheus.scopeInit",
+        "command": "thesmos.scopeInit",
         "title": "Initialize Agent Scope",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(shield)"
       },
       {
-        "command": "prometheus.scopeStatus",
+        "command": "thesmos.scopeStatus",
         "title": "Show Agent Scope",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(lock)"
       },
       {
-        "command": "prometheus.scopeCheck",
+        "command": "thesmos.scopeCheck",
         "title": "Check Path or Command Against Scope",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(question)"
       },
       {
-        "command": "prometheus.tokensReport",
+        "command": "thesmos.tokensReport",
         "title": "Show Token Usage Report",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(symbol-number)"
       },
       {
-        "command": "prometheus.tokensReset",
+        "command": "thesmos.tokensReset",
         "title": "Reset Session Token Budget",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(debug-restart)"
       },
       {
-        "command": "prometheus.tokensBudget",
+        "command": "thesmos.tokensBudget",
         "title": "Show Token Budget Config",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(credit-card)"
       },
       {
-        "command": "prometheus.commitLint",
+        "command": "thesmos.commitLint",
         "title": "Lint Last Commit Message",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(git-commit)"
       },
       {
-        "command": "prometheus.commitCreate",
+        "command": "thesmos.commitCreate",
         "title": "Create Commit (Guided Wizard)",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(add)"
       },
       {
-        "command": "prometheus.vercelLint",
+        "command": "thesmos.vercelLint",
         "title": "Lint Vercel Deployment Config",
-        "category": "Prometheus",
+        "category": "Thesmos",
         "icon": "$(cloud)"
       }
     ],
     "views": {
       "explorer": [
         {
-          "id": "prometheus.findingsView",
-          "name": "Prometheus Findings",
+          "id": "thesmos.findingsView",
+          "name": "Thesmos Findings",
           "icon": "$(shield)",
-          "contextualTitle": "Prometheus Governance",
-          "when": "prometheus.active"
+          "contextualTitle": "Thesmos Governance",
+          "when": "thesmos.active"
         },
         {
-          "id": "prometheus.autopilotView",
-          "name": "Prometheus Autopilot",
+          "id": "thesmos.autopilotView",
+          "name": "Thesmos Autopilot",
           "icon": "$(rocket)",
-          "contextualTitle": "Prometheus Autopilot",
-          "when": "prometheus.active"
+          "contextualTitle": "Thesmos Autopilot",
+          "when": "thesmos.active"
         }
       ]
     },
     "menus": {
       "view/title": [
         {
-          "command": "prometheus.refreshFindings",
-          "when": "view == prometheus.findingsView",
+          "command": "thesmos.refreshFindings",
+          "when": "view == thesmos.findingsView",
           "group": "navigation"
         },
         {
-          "command": "prometheus.health",
-          "when": "view == prometheus.findingsView",
+          "command": "thesmos.health",
+          "when": "view == thesmos.findingsView",
           "group": "navigation"
         },
         {
-          "command": "prometheus.debtScan",
-          "when": "view == prometheus.findingsView",
+          "command": "thesmos.debtScan",
+          "when": "view == thesmos.findingsView",
           "group": "navigation"
         },
         {
-          "command": "prometheus.importScan",
-          "when": "view == prometheus.findingsView",
+          "command": "thesmos.importScan",
+          "when": "view == thesmos.findingsView",
           "group": "navigation"
         },
         {
-          "command": "prometheus.autopilot.generate",
-          "when": "view == prometheus.autopilotView",
+          "command": "thesmos.autopilot.generate",
+          "when": "view == thesmos.autopilotView",
           "group": "navigation"
         },
         {
-          "command": "prometheus.autopilot.cancel",
-          "when": "view == prometheus.autopilotView && prometheus.autopilotActive",
+          "command": "thesmos.autopilot.cancel",
+          "when": "view == thesmos.autopilotView && thesmos.autopilotActive",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "prometheus.autopilot.cancel",
-          "when": "view == prometheus.autopilotView && viewItem == autopilotHeader",
+          "command": "thesmos.autopilot.cancel",
+          "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
           "group": "autopilot@1"
         },
         {
-          "command": "prometheus.autopilot.viewJournal",
-          "when": "view == prometheus.autopilotView && viewItem == autopilotHeader",
+          "command": "thesmos.autopilot.viewJournal",
+          "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
           "group": "autopilot@2"
         },
         {
-          "command": "prometheus.autopilot.review",
-          "when": "view == prometheus.autopilotView && viewItem == autopilotHeader",
+          "command": "thesmos.autopilot.review",
+          "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
           "group": "autopilot@3"
         },
         {
-          "command": "prometheus.autopilot.openPR",
-          "when": "view == prometheus.autopilotView && viewItem == autopilotHeader",
+          "command": "thesmos.autopilot.openPR",
+          "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
           "group": "autopilot@4"
         },
         {
-          "command": "prometheus.autopilot.revert",
-          "when": "view == prometheus.autopilotView && viewItem == autopilotHeader",
+          "command": "thesmos.autopilot.revert",
+          "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
           "group": "autopilot@5"
         }
       ],
       "commandPalette": [
         {
-          "command": "prometheus.reviewFile",
+          "command": "thesmos.reviewFile",
           "when": "editorIsOpen"
         },
         {
-          "command": "prometheus.autopilot.cancel",
-          "when": "prometheus.autopilotActive"
+          "command": "thesmos.autopilot.cancel",
+          "when": "thesmos.autopilotActive"
         },
         {
-          "command": "prometheus.autopilot.review",
-          "when": "prometheus.autopilotActive"
+          "command": "thesmos.autopilot.review",
+          "when": "thesmos.autopilotActive"
         },
         {
-          "command": "prometheus.autopilot.openPR",
-          "when": "prometheus.autopilotActive"
+          "command": "thesmos.autopilot.openPR",
+          "when": "thesmos.autopilotActive"
         },
         {
-          "command": "prometheus.autopilot.revert",
-          "when": "prometheus.autopilotActive"
+          "command": "thesmos.autopilot.revert",
+          "when": "thesmos.autopilotActive"
         }
       ]
     },
     "configuration": {
-      "title": "Prometheus Governance",
+      "title": "Thesmos Governance",
       "properties": {
-        "prometheus.enable": {
+        "thesmos.enable": {
           "type": "boolean",
           "default": true,
-          "description": "Enable Prometheus Governance."
+          "description": "Enable Thesmos Governance."
         },
-        "prometheus.runOnSave": {
+        "thesmos.runOnSave": {
           "type": "boolean",
           "default": true,
           "description": "Re-run review on every file save."
         },
-        "prometheus.debounceMs": {
+        "thesmos.debounceMs": {
           "type": "number",
           "default": 1000,
           "minimum": 200,
           "maximum": 10000,
           "description": "Milliseconds to debounce before re-analysing after a file save."
         },
-        "prometheus.showStatusBar": {
+        "thesmos.showStatusBar": {
           "type": "boolean",
           "default": true,
           "description": "Show governance health in the status bar."
         },
-        "prometheus.binaryPath": {
+        "thesmos.binaryPath": {
           "type": "string",
           "default": "",
-          "description": "Absolute path to the prometheus binary. Leave empty to auto-detect from node_modules/.bin or PATH."
+          "description": "Absolute path to the thesmos binary. Leave empty to auto-detect from node_modules/.bin or PATH."
         },
-        "prometheus.autoScan": {
+        "thesmos.autoScan": {
           "type": "boolean",
           "default": false,
           "description": "Automatically run 'prometheus scan' on activation when report.json is missing."
         },
-        "prometheus.autopilot.baseBranch": {
+        "thesmos.autopilot.baseBranch": {
           "type": "string",
           "default": "main",
           "description": "Base branch to diff against when reviewing an autopilot session."

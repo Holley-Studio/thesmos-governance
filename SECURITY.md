@@ -10,7 +10,7 @@
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
-Report vulnerabilities privately by emailing the maintainer or using [GitHub's private vulnerability reporting](https://github.com/Holley-Studio/prometheus-governance/security/advisories/new).
+Report vulnerabilities privately by emailing the maintainer or using [GitHub's private vulnerability reporting](https://github.com/Holley-Studio/thesmos-governance/security/advisories/new).
 
 Include:
 
@@ -29,7 +29,7 @@ Security issues in scope:
 - Secret patterns that can be bypassed by an attacker controlling file content
 - Path traversal in the file walker
 - Command injection via CLI arguments or config values
-- Unsafe deserialization of `.prometheus/config.json` or `report.json`
+- Unsafe deserialization of `.thesmos/config.json` or `report.json`
 
 Out of scope:
 - Vulnerabilities in development-only dependencies (vitest, tsup, typescript)
