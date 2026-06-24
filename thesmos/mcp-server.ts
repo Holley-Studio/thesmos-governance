@@ -32,6 +32,7 @@ import { COMMIT_RULES } from './rules/commits.js';
 import type { Finding, ScanResult, DetectInput } from './types.js';
 import { makeLogger } from './logger.js';
 import { buildBudgetReport, calcCost, getCurrentSessionId, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
+import { logMcpBlock, logMcpPass, logRuleFire } from './governance-log.js';
 
 const log = makeLogger('mcp');
 
@@ -138,6 +139,20 @@ const TOOL_DEFINITIONS = [
       required: ['tokens'],
     },
   },
+  {
+    name: 'check_path',
+    description:
+      'Validate a file path BEFORE writing, editing, or deleting. Returns { allowed: true } if safe, or { allowed: false, rule, message } if blocked by governance policy. Call this before every file-system mutation. Result is logged to .thesmos/governance.log.jsonl.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tool:    { type: 'string', description: 'The tool you are about to invoke (e.g. "Write", "Edit", "Bash")' },
+        path:    { type: 'string', description: 'Absolute or project-relative path of the target file' },
+        session: { type: 'string', description: 'Optional session ID for audit correlation' },
+      },
+      required: ['tool', 'path'],
+    },
+  },
 ];
 
 const RESOURCE_DEFINITIONS = [
@@ -177,9 +192,48 @@ function makeEmptyScan(): ScanResult {
   };
 }
 
+// ── Enforcement: forbidden path patterns ──────────────────────────────────────
+
+interface ForbiddenPattern {
+  pattern: RegExp;
+  rule: string;
+  message: string;
+}
+
+const FORBIDDEN_PATTERNS: ForbiddenPattern[] = [
+  { pattern: /\.(env|env\..*)$/i,            rule: 'SEC_001', message: 'Writing to .env files risks leaking secrets into AI context or logs.' },
+  { pattern: /credentials\.(json|yaml|yml|toml|ini)$/i, rule: 'SEC_001', message: 'Credentials file detected — do not write API keys or secrets here.' },
+  { pattern: /\.(pem|key|p12|pfx|crt|cer)$/i, rule: 'SEC_002', message: 'TLS/private key file — writing prohibited to prevent accidental key exposure.' },
+  { pattern: /(^|\/)(id_rsa|id_ed25519|id_ecdsa|id_dsa)$/i, rule: 'SEC_002', message: 'SSH private key file — writing prohibited.' },
+  { pattern: /\.npmrc$/i,                    rule: 'SEC_003', message: '.npmrc may contain registry tokens — writing requires explicit review.' },
+  { pattern: /\.pypirc$/i,                   rule: 'SEC_003', message: '.pypirc may contain PyPI credentials.' },
+  { pattern: /service[-_]?account(s)?\.json$/i, rule: 'SEC_001', message: 'Service account key file — writing prohibited.' },
+  { pattern: /\.git\/config$/i,              rule: 'SC_001',  message: '.git/config may contain embedded credentials — do not modify.' },
+  { pattern: /\/\.ssh\//i,                   rule: 'SEC_002', message: 'SSH directory is off-limits for writes.' },
+];
+
+function checkPathEnforcement(
+  root: string,
+  tool: string,
+  path: string,
+  session?: string,
+): { allowed: boolean; rule?: string; message?: string } {
+  const normalised = path.replace(/\\/g, '/');
+
+  for (const fp of FORBIDDEN_PATTERNS) {
+    if (fp.pattern.test(normalised)) {
+      logMcpBlock(root, tool, path, fp.rule, fp.message, session);
+      return { allowed: false, rule: fp.rule, message: fp.message };
+    }
+  }
+
+  logMcpPass(root, tool, path, session);
+  return { allowed: true };
+}
+
 function handleScanFile(
   root: string,
-  params: { path: string; content: string },
+  params: { path: string; content: string; session?: string },
 ): { findings: Finding[]; summary: string } {
   const config = (() => { try { return loadConfig(root); } catch { return CONFIG_DEFAULTS; } })();
   const changedFiles: DetectInput['changedFiles'] = [
@@ -189,6 +243,11 @@ function handleScanFile(
   const findings = runReview({ scan: makeEmptyScan(), config, changedFiles });
   const blockers = findings.filter((f) => f.severity === 'BLOCKER').length;
   const highs = findings.filter((f) => f.severity === 'HIGH').length;
+
+  for (const f of findings) {
+    const outcome = f.severity === 'BLOCKER' ? 'BLOCKED' : f.severity === 'HIGH' ? 'WARN' : 'PASS';
+    logRuleFire(root, f.rule ?? f.category, params.path, outcome, 'mcp', params.session, f.message);
+  }
 
   const summary =
     findings.length === 0
@@ -380,7 +439,7 @@ function dispatch(root: string, request: JsonRpcRequest): JsonRpcResponse {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(handleScanFile(root, toolInput as { path: string; content: string }), null, 2),
+                  text: JSON.stringify(handleScanFile(root, toolInput as { path: string; content: string; session?: string }), null, 2),
                 },
               ],
             });
@@ -412,6 +471,11 @@ function dispatch(root: string, request: JsonRpcRequest): JsonRpcResponse {
             return respond({
               content: [{ type: 'text', text: JSON.stringify(handleCheckModelCost(toolInput as unknown as { tokens: number }), null, 2) }],
             });
+          case 'check_path': {
+            const cp = toolInput as { tool: string; path: string; session?: string };
+            const result = checkPathEnforcement(root, cp.tool, cp.path, cp.session);
+            return respond({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
+          }
           default:
             return error(-32601, `Unknown tool: ${name}`);
         }

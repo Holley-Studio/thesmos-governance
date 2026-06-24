@@ -236,6 +236,51 @@ function exportCopilot(agent: PantheonAgent): string {
   return `# ${agent.name}\n\n${agent.body}`;
 }
 
+function exportAgentsMd(agents: PantheonAgent[]): string {
+  const lines: string[] = [
+    '# AGENTS.md',
+    '',
+    '> This repository uses the **Thesmos Pantheon** — a team of governed AI specialists.',
+    '> Each agent below has a defined domain, trigger phrases, and governance rules.',
+    '> Install via: `npx thesmos-governance pantheon:install --all`',
+    '',
+    '---',
+    '',
+    `## Available agents (${agents.length})`,
+    '',
+  ];
+
+  for (const agent of agents) {
+    lines.push(`### ${agent.god} — ${agent.role}`);
+    lines.push('');
+    if (agent.mythology) {
+      lines.push(`> ${agent.mythology.slice(0, 160).replace(/\n/g, ' ')}`);
+      lines.push('');
+    }
+    lines.push(`**Agent ID:** \`${agent.id}\``);
+    if (agent.tags.length > 0) {
+      lines.push(`**Tags:** ${agent.tags.map(t => `\`${t}\``).join(', ')}`);
+    }
+    const triggerMatch = agent.body.match(/## Trigger phrases[^#]*?((?:^- ".+"\n)+)/ms);
+    if (triggerMatch) {
+      lines.push('**Trigger phrases:**');
+      const phrases = triggerMatch[1].trim().split('\n').slice(0, 4);
+      for (const p of phrases) lines.push(p);
+    }
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+  }
+
+  lines.push('## Governance');
+  lines.push('');
+  lines.push('All agents operate under Thesmos governance rules.');
+  lines.push('Run `thesmos eval` after any session to view compliance report.');
+  lines.push('');
+
+  return lines.join('\n');
+}
+
 // ── pantheon:list ──────────────────────────────────────────────────────────────
 
 function cmdList(agents: PantheonAgent[]): void {
@@ -320,7 +365,7 @@ function cmdExport(agents: PantheonAgent[], argv: string[], root: string): void 
   }
 
   const targets = target === 'all'
-    ? ['claude-code', 'claude-project', 'chatgpt', 'openai-assistant', 'cursor', 'gemini', 'copilot']
+    ? ['claude-code', 'claude-project', 'chatgpt', 'openai-assistant', 'cursor', 'gemini', 'copilot', 'agents-md']
     : [target];
 
   let totalWritten = 0;
@@ -358,12 +403,23 @@ function cmdExport(agents: PantheonAgent[], argv: string[], root: string): void 
         dir = outDir ?? join(root, 'pantheon/exports/copilot');
         ext = '.instructions.md';
         break;
+      case 'agents-md':
+        dir = outDir ?? root;
+        ext = '';
+        break;
       default:
-        console.error(`  Unknown target: ${t}. Valid: claude-code, claude-project, chatgpt, openai-assistant, cursor, gemini, copilot, all`);
+        console.error(`  Unknown target: ${t}. Valid: claude-code, claude-project, chatgpt, openai-assistant, cursor, gemini, copilot, agents-md, all`);
         process.exit(1);
     }
 
     mkdirSync(dir, { recursive: true });
+
+    if (t === 'agents-md') {
+      const content = exportAgentsMd(toExport);
+      writeFileSync(join(dir, 'AGENTS.md'), content, 'utf8');
+      totalWritten++;
+      continue;
+    }
 
     for (const agent of toExport) {
       let content: string;

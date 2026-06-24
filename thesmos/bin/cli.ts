@@ -55,6 +55,9 @@ import { cmdSelf } from './commands/self.ts';
 import { cmdBrain } from './commands/brain.ts';
 import { cmdPrompt } from './commands/prompt.ts';
 import { cmdBuild } from './commands/build.ts';
+import { cmdEval } from './commands/eval.ts';
+import { cmdScore } from './commands/score.ts';
+import { cmdCompile } from './commands/compile.ts';
 import { startLspServer } from '../lang-server.ts';
 import { makeLogger } from '../logger.ts';
 
@@ -181,6 +184,9 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'build:mcp-tool':         (argv) => cmdBuild(['mcp-tool', ...argv]),
   'build:automation':       (argv) => cmdBuild(['automation', ...argv]),
   'lsp':                    async () => { startLspServer(); },
+  eval:                     (argv) => cmdEval(argv),
+  score:                    (argv) => cmdScore(argv),
+  compile:                  (argv) => cmdCompile(argv),
 };
 
 const argv = process.argv.slice(2); // ['command', ...flags]
@@ -215,6 +221,14 @@ MCP SERVER  (governance-before-writing — AI calls scan_file before generating 
   mcp:serve                Start the MCP server (stdio JSON-RPC 2.0 — used by mcp:install)
   mcp:status               Show whether MCP server is configured
   mcp:uninstall            Remove MCP server from ~/.claude/settings.json
+
+  MCP tools (called by AI agents during sessions):
+    scan_file(path, content)    Scan file for violations before Write/Edit — logs to governance.log
+    check_path(tool, path)      Validate path before write/delete — blocks .env, keys, credentials
+    explain_rule(ruleId)        Rule metadata + fix examples
+    get_context()               .thesmos/context.md contents
+    get_token_budget()          Session/daily/project token spend vs. configured limits
+    check_model_cost(tokens)    Haiku/Sonnet/Opus cost comparison for a token count
 
 CLAUDE CODE AUTO MODE  (real-time governance when Claude Code runs autonomously)
   claude:govern install    Install PreToolUse + Stop hooks into .claude/settings.json
@@ -298,6 +312,29 @@ DRIFT DETECTION
   drift                    Detect stale adapters and missing required files
   drift --json
 
+GOVERNANCE EVALUATION
+  eval                     Governance visibility report — compliance score + blocked actions
+    --since=<duration>       Time window: 24h (default), 7d, 30d
+    --json                   Machine-readable JSON
+    --markdown               Markdown (for PR comments, docs)
+    --all                    Full log — all recorded events
+    Exit 1 if any blocked or bypassed events exist (use in CI)
+
+  score                    Governance maturity score (0–100) + shields.io badge URL
+    --badge                  Print only the Markdown badge snippet
+    --json                   Machine-readable JSON
+    Paste badge into README: [![Thesmos Score](url)](https://holley.studio/thesmos)
+
+  compile                  Compile rules to provider-specific instruction format
+    --provider anthropic     System prompt block for Claude / Claude Code (default)
+    --provider openai        System instructions for GPT-4 / Assistants API
+    --provider google        System instructions for Gemini / Gemini CLI
+    --provider all           All three → .thesmos/compiled/
+    --categories <csv>       Only include rules from these categories (e.g. sec,auth)
+    --severity <level>       Minimum severity: BLOCKER, HIGH, MEDIUM, LOW
+    --out <dir>              Write to custom directory
+    --json                   Machine-readable JSON
+
 GOVERNANCE HEALTH
   health                   Governance score 0–100 with grade and priority actions
     --fail --threshold=<n>   Exit 1 if score is below n (default 60)
@@ -337,7 +374,8 @@ PROMETHEUS PANTHEON  (governed AI business team — 21 agents, 6 platforms)
     --target cursor                     .cursor/rules/*.mdc
     --target copilot                    .github/instructions/*.instructions.md
     --target gemini                     Paste-ready text for Gemini Gems
-    --target all                        All formats → pantheon/exports/
+    --target agents-md                  AGENTS.md (Linux Foundation standard — Codex, Copilot, Windsurf, Zed, Aider)
+    --target all                        All 8 formats → pantheon/exports/ + AGENTS.md at repo root
     --agent <id>                        Export a single agent only
     --out <dir>                         Custom output directory
   pantheon:orchestrate "<task>"       Zeus routes your task to the right agents
