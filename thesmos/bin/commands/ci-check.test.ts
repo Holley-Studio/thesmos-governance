@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { CONFIG_DEFAULTS } from '../../config';
 import {
-  PROMETHEUS_RULES,
+  THESMOS_RULES,
   ADAPTER_OUTPUT_PATHS,
   buildAdapterContent,
   writeAllAdapters,
@@ -56,7 +56,7 @@ function writeFullFixture(root: string): void {
   writeThesmosDir(root, CONFIG_DEFAULTS);
 
   // Adapter files
-  writeAllAdapters(root, PROMETHEUS_RULES, CONFIG_DEFAULTS);
+  writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS);
 
   // The workflow file is written by writeThesmosDir (init template)
 }
@@ -99,7 +99,7 @@ describe('runCiCheckForRoot — missing adapter', () => {
     const root = trackTmp(makeTmpDir());
     // Initialise .thesmos/ + workflow but only write 5 of 6 adapters
     writeThesmosDir(root, CONFIG_DEFAULTS);
-    writeAllAdapters(root, PROMETHEUS_RULES, CONFIG_DEFAULTS, ['gemini', 'cursor', 'copilot', 'codex', 'agents']);
+    writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS, ['gemini', 'cursor', 'copilot', 'codex', 'agents']);
     // CLAUDE.md was never written — ci-check should flag it
 
     const checks = runCiCheckForRoot(root, CONFIG_DEFAULTS);
@@ -117,7 +117,7 @@ describe('runCiCheckForRoot — stale adapter', () => {
     writeFullFixture(root);
 
     // Overwrite gemini adapter with content built from only 5 rules
-    const staleContent = buildAdapterContent('gemini', '', PROMETHEUS_RULES.slice(0, 5), CONFIG_DEFAULTS);
+    const staleContent = buildAdapterContent('gemini', '', THESMOS_RULES.slice(0, 5), CONFIG_DEFAULTS);
     writeFileSync(join(root, ADAPTER_OUTPUT_PATHS.gemini), staleContent, 'utf8');
 
     const checks = runCiCheckForRoot(root, CONFIG_DEFAULTS);
@@ -130,13 +130,13 @@ describe('runCiCheckForRoot — stale adapter', () => {
     const root = trackTmp(makeTmpDir());
     writeFullFixture(root);
 
-    // Write a legacy adapter without PROMETHEUS:META comment
+    // Write a legacy adapter without THESMOS:META comment
     const legacyContent = [
       '# My Project — Codex Instructions',
       '',
-      '<!-- PROMETHEUS:GENERATED START rules -->',
+      '<!-- THESMOS:GENERATED START rules -->',
       'Some old rules content with no meta comment.',
-      '<!-- PROMETHEUS:GENERATED END rules -->',
+      '<!-- THESMOS:GENERATED END rules -->',
     ].join('\n');
     writeFileSync(join(root, ADAPTER_OUTPUT_PATHS.codex), legacyContent, 'utf8');
 
@@ -146,13 +146,13 @@ describe('runCiCheckForRoot — stale adapter', () => {
     expect(freshCheck?.message).toContain('no metadata');
   });
 
-  it('fails marker check when PROMETHEUS:GENERATED markers are stripped', () => {
+  it('fails marker check when THESMOS:GENERATED markers are stripped', () => {
     const root = trackTmp(makeTmpDir());
     writeFullFixture(root);
 
     // Write an agents adapter with markers removed
-    const raw = buildAdapterContent('agents', '', PROMETHEUS_RULES, CONFIG_DEFAULTS);
-    const noMarkers = raw.replace(/<!-- PROMETHEUS:GENERATED[^>]+-->/g, '');
+    const raw = buildAdapterContent('agents', '', THESMOS_RULES, CONFIG_DEFAULTS);
+    const noMarkers = raw.replace(/<!-- THESMOS:GENERATED[^>]+-->/g, '');
     writeFileSync(join(root, ADAPTER_OUTPUT_PATHS.agents), noMarkers, 'utf8');
 
     const checks = runCiCheckForRoot(root, CONFIG_DEFAULTS);
@@ -167,7 +167,7 @@ describe('runCiCheckForRoot — missing governance files', () => {
   it('fails when .thesmos/ has not been initialised', () => {
     const root = trackTmp(makeTmpDir());
     // Only write adapters — no .thesmos/ or workflow
-    writeAllAdapters(root, PROMETHEUS_RULES, CONFIG_DEFAULTS);
+    writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS);
 
     const checks = runCiCheckForRoot(root, CONFIG_DEFAULTS);
     const readmeCheck = checks.find((c) => c.name === '.thesmos/README.md');
@@ -204,14 +204,14 @@ describe('runCiCheckForRoot — idempotency', () => {
     writeFullFixture(root);
 
     // Introduce staleness
-    const stale = buildAdapterContent('claude', '', PROMETHEUS_RULES.slice(0, 3), CONFIG_DEFAULTS);
+    const stale = buildAdapterContent('claude', '', THESMOS_RULES.slice(0, 3), CONFIG_DEFAULTS);
     writeFileSync(join(root, ADAPTER_OUTPUT_PATHS.claude), stale, 'utf8');
 
     const before = runCiCheckForRoot(root, CONFIG_DEFAULTS);
     expect(before.find((c) => c.name === 'adapter:claude:fresh')?.pass).toBe(false);
 
     // Fix: re-run adapters
-    writeAllAdapters(root, PROMETHEUS_RULES, CONFIG_DEFAULTS, ['claude']);
+    writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS, ['claude']);
 
     const after = runCiCheckForRoot(root, CONFIG_DEFAULTS);
     expect(after.find((c) => c.name === 'adapter:claude:fresh')?.pass).toBe(true);

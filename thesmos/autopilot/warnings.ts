@@ -206,7 +206,7 @@ export function displayWarningScreen(
   const hooks = detectPreCommitHooks(root);
 
   process.stdout.write('\n' + DIVIDER + '\n');
-  process.stdout.write('  ⚠  PROMETHEUS AUTOPILOT — PRE-FLIGHT WARNING\n');
+  process.stdout.write('  ⚠  THESMOS AUTOPILOT — PRE-FLIGHT WARNING\n');
   process.stdout.write('  Read every item. This session will run unattended.\n');
   process.stdout.write(DIVIDER + '\n\n');
 

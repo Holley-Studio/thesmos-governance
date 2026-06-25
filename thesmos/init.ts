@@ -2,7 +2,7 @@
  * Thesmos init — generates and updates the .thesmos/ folder contract.
  *
  * Design rules:
- * 1. Content inside PROMETHEUS:GENERATED markers is always overwritten.
+ * 1. Content inside THESMOS:GENERATED markers is always overwritten.
  * 2. Content outside those markers is never touched.
  * 3. Running twice with the same inputs produces byte-for-byte identical output.
  * 4. New files are created with a manual skeleton + injected generated sections.
@@ -12,7 +12,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { ThesmosConfig, ScanResult } from './types';
-import { PROMETHEUS_RULES, getRulesBySeverity, type Rule } from './adapters';
+import { THESMOS_RULES, getRulesBySeverity, type Rule } from './adapters';
 import { injectGeneratedSection } from './output';
 import { SEVERITY_EMOJI } from './severity';
 
@@ -80,8 +80,8 @@ function genOverview(config: ThesmosConfig): string {
 }
 
 function genGuardrailsRules(_config: ThesmosConfig): string {
-  const blockers = getRulesBySeverity(PROMETHEUS_RULES, 'BLOCKER');
-  const highs = getRulesBySeverity(PROMETHEUS_RULES, 'HIGH');
+  const blockers = getRulesBySeverity(THESMOS_RULES, 'BLOCKER');
+  const highs = getRulesBySeverity(THESMOS_RULES, 'HIGH');
   return [
     '### Active Rules',
     '',
@@ -100,9 +100,9 @@ function genGuardrailsRules(_config: ThesmosConfig): string {
 }
 
 function genRulesReference(_config: ThesmosConfig): string {
-  const blockers = getRulesBySeverity(PROMETHEUS_RULES, 'BLOCKER');
-  const highs = getRulesBySeverity(PROMETHEUS_RULES, 'HIGH');
-  const rest = PROMETHEUS_RULES.filter(
+  const blockers = getRulesBySeverity(THESMOS_RULES, 'BLOCKER');
+  const highs = getRulesBySeverity(THESMOS_RULES, 'HIGH');
+  const rest = THESMOS_RULES.filter(
     (r) => r.severity !== 'BLOCKER' && r.severity !== 'HIGH'
   );
 
@@ -115,7 +115,7 @@ function genRulesReference(_config: ThesmosConfig): string {
   return [
     '## All Rules',
     '',
-    rulesTable(PROMETHEUS_RULES),
+    rulesTable(THESMOS_RULES),
     '',
     '---',
     '',
@@ -134,9 +134,9 @@ function genRulesReference(_config: ThesmosConfig): string {
 }
 
 function genCodeReviewChecklist(_config: ThesmosConfig): string {
-  const blockers = getRulesBySeverity(PROMETHEUS_RULES, 'BLOCKER');
-  const highs = getRulesBySeverity(PROMETHEUS_RULES, 'HIGH');
-  const rest = PROMETHEUS_RULES.filter(
+  const blockers = getRulesBySeverity(THESMOS_RULES, 'BLOCKER');
+  const highs = getRulesBySeverity(THESMOS_RULES, 'HIGH');
+  const rest = THESMOS_RULES.filter(
     (r) => r.severity !== 'BLOCKER' && r.severity !== 'HIGH'
   );
   return [
@@ -159,8 +159,8 @@ function genCodeReviewChecklist(_config: ThesmosConfig): string {
 }
 
 function genReviewAgentInstructions(_config: ThesmosConfig): string {
-  const blockers = getRulesBySeverity(PROMETHEUS_RULES, 'BLOCKER');
-  const highs = getRulesBySeverity(PROMETHEUS_RULES, 'HIGH');
+  const blockers = getRulesBySeverity(THESMOS_RULES, 'BLOCKER');
+  const highs = getRulesBySeverity(THESMOS_RULES, 'HIGH');
   return [
     '### Instructions',
     '',
@@ -193,7 +193,7 @@ function genSeverityTable(_config: ThesmosConfig): string {
     '',
     '### Rule Assignments',
     '',
-    rulesTable(PROMETHEUS_RULES),
+    rulesTable(THESMOS_RULES),
   ].join('\n');
 }
 

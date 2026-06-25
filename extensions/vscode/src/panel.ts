@@ -9,6 +9,8 @@
 import * as vscode from 'vscode';
 import type { HealthScore } from './types.js';
 
+export interface HealthEntry { score: number; grade: string; ts: number }
+
 export class HealthPanel implements vscode.Disposable {
   private static instance: HealthPanel | undefined;
 
@@ -32,14 +34,14 @@ export class HealthPanel implements vscode.Disposable {
     });
   }
 
-  static show(extensionUri: vscode.Uri, health: HealthScore): HealthPanel {
+  static show(extensionUri: vscode.Uri, health: HealthScore, history: HealthEntry[] = []): HealthPanel {
     if (!HealthPanel.instance) {
       HealthPanel.instance = new HealthPanel(extensionUri);
     }
 
     const panel = HealthPanel.instance;
     panel.lastHealth = health;
-    panel.panel.webview.html = buildHtml(health);
+    panel.panel.webview.html = buildHtml(health, history);
     panel.panel.reveal(vscode.ViewColumn.Beside, true);
     return panel;
   }
@@ -120,7 +122,59 @@ function escHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function buildHtml(health: HealthScore): string {
+function trendChart(history: HealthEntry[]): string {
+  if (history.length < 2) return '';
+
+  const W = 220, H = 44, P = 6;
+  const scores = history.map((h) => h.score);
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  const range = Math.max(max - min, 1);
+  const n = scores.length;
+
+  const pts = scores
+    .map((s, i) => {
+      const x = (P + (i / (n - 1)) * (W - P * 2)).toFixed(1);
+      const y = (H - P - ((s - min) / range) * (H - P * 2)).toFixed(1);
+      return `${x},${y}`;
+    })
+    .join(' ');
+
+  const last = scores[n - 1];
+  const lx = (W - P).toFixed(1);
+  const ly = (H - P - ((last - min) / range) * (H - P * 2)).toFixed(1);
+  const up = last >= scores[0];
+  const arrow = up ? '↑' : '↓';
+  const arrowColor = up ? 'var(--vscode-charts-green,#73c991)' : 'var(--vscode-charts-red,#f48771)';
+
+  return `
+  <section class="card">
+    <h2>Health Trend <span style="color:${arrowColor}">${arrow}</span><span class="muted"> · last ${n} scans</span></h2>
+    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;overflow:visible;margin-bottom:4px">
+      <polyline points="${escHtml(pts)}"
+        fill="none" stroke="var(--vscode-charts-blue,#4daafc)"
+        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${lx}" cy="${ly}" r="3" fill="var(--vscode-charts-blue,#4daafc)"/>
+    </svg>
+    <p class="muted" style="font-size:11px">${escHtml(String(scores[0]))} → ${escHtml(String(last))}</p>
+  </section>`;
+}
+
+function reachAPlus(health: HealthScore): string {
+  if (health.grade === 'A+' || health.priorityActions.length === 0) return '';
+  const needed = Math.max(0, 95 - health.score);
+  if (needed <= 0) return '';
+
+  return `
+  <section class="card" style="border-color:var(--vscode-charts-blue,#4daafc)">
+    <h2>Reach A+ <span class="muted">(+${needed} pts needed)</span></h2>
+    <ol class="action-list">
+      ${health.priorityActions.slice(0, 3).map((a) => `<li>${escHtml(a)}</li>`).join('\n      ')}
+    </ol>
+  </section>`;
+}
+
+function buildHtml(health: HealthScore, history: HealthEntry[] = []): string {
   const { score, grade } = health;
   const gColor = gradeColor(grade);
 
@@ -332,10 +386,14 @@ function buildHtml(health: HealthScore): string {
     </div>
   </div>
 
+  ${reachAPlus(health)}
+
   <section class="card">
     <h2>Priority Actions</h2>
     ${actionList(health)}
   </section>
+
+  ${trendChart(history)}
 
   <section class="card">
     <h2>Deductions</h2>
@@ -357,7 +415,7 @@ function buildHtml(health: HealthScore): string {
     </table>
   </section>
 
-  <p class="footer">Thesmos Governance by Holley Studios</p>
+  <p class="footer">Thesmos Governance by Holley Studios · as of ${escHtml(new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }))}</p>
 </body>
 </html>`;
 }

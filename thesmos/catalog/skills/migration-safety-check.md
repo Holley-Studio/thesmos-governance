@@ -3,7 +3,7 @@ id: migration-safety-check
 name: Migration Safety Check
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - migration
   - database

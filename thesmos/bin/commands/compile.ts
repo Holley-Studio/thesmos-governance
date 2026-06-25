@@ -18,7 +18,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs, flag, flagVal } from '../lib/args.ts';
-import { PROMETHEUS_RULES } from '../../rules/registry.js';
+import { THESMOS_RULES } from '../../rules/registry.js';
 import type { ThesmosRule as Rule } from '../../types.js';
 
 type Provider = 'anthropic' | 'openai' | 'google';
@@ -152,7 +152,7 @@ export async function cmdCompile(argv: string[]): Promise<void> {
   }
 
   const cats = categoriesFlag ? categoriesFlag.split(',').map((c) => c.trim()) : undefined;
-  const rules = filterRules(PROMETHEUS_RULES as unknown as Rule[], { categories: cats, minSeverity: severityFlag });
+  const rules = filterRules(THESMOS_RULES as unknown as Rule[], { categories: cats, minSeverity: severityFlag });
 
   if (rules.length === 0) {
     process.stderr.write('thesmos compile: no rules matched the given filters\n');

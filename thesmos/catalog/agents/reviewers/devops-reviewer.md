@@ -44,7 +44,7 @@ Workflow-level findings identifying the job, step, and specific line. For hardco
 
 ## What not to do
 
-- Do not flag `process.env` access in `scripts/` files — those are explicitly allow-listed by Prometheus
+- Do not flag `process.env` access in `scripts/` files — those are explicitly allow-listed by Thesmos
 - Do not flag environment variable references in workflow `env:` blocks that use `${{ secrets.* }}` syntax
 - Do not flag `.env.example` as a secrets leak
 

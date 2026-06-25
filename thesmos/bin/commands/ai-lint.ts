@@ -1,10 +1,10 @@
 /**
- * prometheus ai-lint — lint AI behavior files for governance gaps.
+ * thesmos ai-lint — lint AI behavior files for governance gaps.
  *
  * Reads CLAUDE.md, .cursorrules, GEMINI.md, AGENTS.md, and other AI
  * behavior files and reports governance issues: missing security guidance,
  * anti-patterns (skip tests, permit force push), and divergence from
- * the active Prometheus config.
+ * the active Thesmos config.
  *
  * Flags:
  *   --json      output findings as JSON

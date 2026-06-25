@@ -83,6 +83,30 @@ export async function getChangedFiles(
       // Skip deleted files — nothing to review
       if (file.status === 'removed') continue;
 
+      // Skip generated/compiled files — dist/, build/, .map files contain vendor code
+      if (/(?:^|[\\/])(?:node_modules|\.git|vendor|dist|build)(?:[\\/]|$)/.test(file.filename)) {
+        core.debug(`Skipping generated file: ${file.filename}`);
+        continue;
+      }
+      if (file.filename.endsWith('.js.map') || file.filename.endsWith('.ts.map')) {
+        core.debug(`Skipping source map: ${file.filename}`);
+        continue;
+      }
+      // Skip rule detection source and catalog docs — they contain intentional
+      // bad-pattern examples and regex strings that self-trigger the very rules
+      // they implement, producing false BLOCKER annotations.
+      if (/(?:^|[\\/])thesmos\/(?:rules|catalog)(?:[\\/]|$)/.test(file.filename)) {
+        core.debug(`Skipping internal tooling file: ${file.filename}`);
+        continue;
+      }
+      // Skip agent/governance config dirs — .cursor/rules/, .claude/agents/, .thesmos/
+      // contain generated rule files that intentionally describe bad patterns and
+      // will self-trigger mcp_cursor_rules_injection and mcp_readme_injection.
+      if (/(?:^|[\\/])(?:\.cursor|\.claude|\.thesmos|pantheon\/exports)(?:[\\/]|$)/.test(file.filename)) {
+        core.debug(`Skipping governance config file: ${file.filename}`);
+        continue;
+      }
+
       const absPath = join(workspace, file.filename);
       if (!existsSync(absPath)) continue;
 
@@ -114,12 +138,22 @@ export async function getChangedFiles(
  * Updates it in-place if found; creates a new one otherwise.
  * This prevents duplicate comment spam on re-runs.
  */
+// GitHub issue comment body limit is 65536 characters.
+const GH_COMMENT_MAX = 65_000;
+
 export async function upsertSummaryComment(
   octokit: Octokit,
   ctx: PullRequestContext,
   body: string,
 ): Promise<void> {
   const { owner, repo, pullNumber } = ctx;
+
+  if (body.length > GH_COMMENT_MAX) {
+    const notice =
+      '\n\n---\n_⚠️ Comment truncated — too many findings to display in full. ' +
+      'Run `thesmos scan` locally for the complete report._';
+    body = body.slice(0, GH_COMMENT_MAX - notice.length) + notice;
+  }
 
   // Find existing summary comment
   let existingCommentId: number | undefined;

@@ -1,5 +1,5 @@
 /**
- * prometheus github:comment — post or update a governance summary comment on a GitHub PR.
+ * thesmos github:comment — post or update a governance summary comment on a GitHub PR.
  *
  * Uses GITHUB_TOKEN + native fetch (Node 18+). No @octokit/rest dependency.
  * Idempotent: finds the existing bot comment by marker and patches it rather than

@@ -9,7 +9,7 @@ import {
   type DriftFinding,
 } from './drift';
 import { CONFIG_DEFAULTS } from './config';
-import { PROMETHEUS_RULES, buildAdapterContent, ADAPTER_OUTPUT_PATHS } from './adapters';
+import { THESMOS_RULES, buildAdapterContent, ADAPTER_OUTPUT_PATHS } from './adapters';
 import { injectGeneratedSection, extractGeneratedSection } from './output';
 import { buildInitFiles } from './init';
 
@@ -18,24 +18,24 @@ import { buildInitFiles } from './init';
 const CFG = { ...CONFIG_DEFAULTS, project: 'test-project', version: '2.0.0' };
 
 /** Build a meta comment for the given target so tests can embed it inline. */
-function makeMetaComment(target: string, ruleCount = PROMETHEUS_RULES.length): string {
-  return `<!-- PROMETHEUS:META ${JSON.stringify({ version: CFG.version, target, ruleCount })} -->`;
+function makeMetaComment(target: string, ruleCount = THESMOS_RULES.length): string {
+  return `<!-- THESMOS:META ${JSON.stringify({ version: CFG.version, target, ruleCount })} -->`;
 }
 
 /** Build the exact generated section for a target. */
 function buildSection(target: keyof typeof ADAPTER_OUTPUT_PATHS): string {
-  const full = buildAdapterContent(target, '', PROMETHEUS_RULES, CFG);
+  const full = buildAdapterContent(target, '', THESMOS_RULES, CFG);
   return extractGeneratedSection(full, 'rules') ?? '';
 }
 
-/** Wrap section content in the PROMETHEUS:GENERATED markers. */
+/** Wrap section content in the THESMOS:GENERATED markers. */
 function wrapSection(id: string, content: string): string {
-  return `<!-- PROMETHEUS:GENERATED START ${id} -->\n${content}\n<!-- PROMETHEUS:GENERATED END ${id} -->`;
+  return `<!-- THESMOS:GENERATED START ${id} -->\n${content}\n<!-- THESMOS:GENERATED END ${id} -->`;
 }
 
 /** Build a fresh adapter file for a target (preamble + generated section). */
 function freshAdapter(target: keyof typeof ADAPTER_OUTPUT_PATHS): string {
-  return buildAdapterContent(target, '', PROMETHEUS_RULES, CFG);
+  return buildAdapterContent(target, '', THESMOS_RULES, CFG);
 }
 
 /** Build fresh governance expected content (no scan). */
@@ -69,7 +69,7 @@ function makeCleanInput(overrides: Partial<DriftInput> = {}): DriftInput {
 
   return {
     config: CFG,
-    rules: PROMETHEUS_RULES,
+    rules: THESMOS_RULES,
     fileExists: (rel) => rel in allFiles,
     readFileSafe: (rel) => allFiles[rel] ?? null,
     readJsonSafe: (rel) => {
@@ -154,10 +154,10 @@ describe('checkMissingFiles — governance.missing', () => {
 // ── checkAdapterMetadata ──────────────────────────────────────────────────────
 
 describe('checkAdapterMetadata — no-metadata', () => {
-  it('flags HIGH when PROMETHEUS:META comment is absent', () => {
+  it('flags HIGH when THESMOS:META comment is absent', () => {
     const base = freshAdapter('claude');
     // Strip the meta comment
-    const stripped = base.replace(/<!--\s*PROMETHEUS:META[^>]+-->/g, '');
+    const stripped = base.replace(/<!--\s*THESMOS:META[^>]+-->/g, '');
     const files: Record<string, string> = {};
     for (const [t, p] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
       files[p] = t === 'claude' ? stripped : freshAdapter(t as keyof typeof ADAPTER_OUTPUT_PATHS);
@@ -248,8 +248,8 @@ describe('checkManualEdits — adapter.manual-edit', () => {
     const base = freshAdapter('copilot');
     // Inject rogue text inside the generated section
     const tampered = base.replace(
-      '<!-- PROMETHEUS:GENERATED END rules -->',
-      'MANUAL INJECTION\n<!-- PROMETHEUS:GENERATED END rules -->'
+      '<!-- THESMOS:GENERATED END rules -->',
+      'MANUAL INJECTION\n<!-- THESMOS:GENERATED END rules -->'
     );
     const files: Record<string, string> = {};
     for (const [t, p] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
@@ -277,8 +277,8 @@ describe('checkManualEdits — adapter.manual-edit', () => {
     const base = freshAdapter('agents');
     // Append catalog context inside the generated section (before END marker)
     const withCatalog = base.replace(
-      '<!-- PROMETHEUS:GENERATED END rules -->',
-      `${catalogCtx}\n<!-- PROMETHEUS:GENERATED END rules -->`
+      '<!-- THESMOS:GENERATED END rules -->',
+      `${catalogCtx}\n<!-- THESMOS:GENERATED END rules -->`
     );
     const files: Record<string, string> = {};
     for (const [t, p] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
@@ -305,8 +305,8 @@ describe('checkManualEdits — adapter.manual-edit', () => {
     const patched = base.replace(/("ruleCount":)\s*\d+/, '$1 999');
     // Also inject text that would normally trigger manual-edit
     const tampered = patched.replace(
-      '<!-- PROMETHEUS:GENERATED END rules -->',
-      'ROGUE TEXT\n<!-- PROMETHEUS:GENERATED END rules -->'
+      '<!-- THESMOS:GENERATED END rules -->',
+      'ROGUE TEXT\n<!-- THESMOS:GENERATED END rules -->'
     );
     const files: Record<string, string> = {};
     for (const [t, p] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
@@ -340,8 +340,8 @@ describe('checkGovernanceDocs — governance.stale', () => {
     const guardrailsFresh = initContent['.thesmos/GUARDRAILS.md'] ?? '';
     // Strip markers from the file
     const stripped = guardrailsFresh
-      .replace(/<!--\s*PROMETHEUS:GENERATED START[^>]+-->/g, '')
-      .replace(/<!--\s*PROMETHEUS:GENERATED END[^>]+-->/g, '');
+      .replace(/<!--\s*THESMOS:GENERATED START[^>]+-->/g, '')
+      .replace(/<!--\s*THESMOS:GENERATED END[^>]+-->/g, '');
 
     const files: Record<string, string> = {};
     for (const [t, p] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
@@ -369,8 +369,8 @@ describe('checkGovernanceDocs — governance.stale', () => {
     const original = initContent['.thesmos/governance/CODE_REVIEW.md'] ?? '';
     // Tamper with the generated section content
     const tampered = original.replace(
-      '<!-- PROMETHEUS:GENERATED END checklist -->',
-      'EXTRA LINE\n<!-- PROMETHEUS:GENERATED END checklist -->'
+      '<!-- THESMOS:GENERATED END checklist -->',
+      'EXTRA LINE\n<!-- THESMOS:GENERATED END checklist -->'
     );
     const files: Record<string, string> = {};
     for (const [t, p] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
@@ -407,8 +407,8 @@ describe('checkRegistryPropagation — registry.not-propagated', () => {
     for (const [t, p] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
       const base = freshAdapter(t as keyof typeof ADAPTER_OUTPUT_PATHS);
       files[p] = base.replace(
-        '<!-- PROMETHEUS:GENERATED END rules -->',
-        `${catalogCtx}\n<!-- PROMETHEUS:GENERATED END rules -->`
+        '<!-- THESMOS:GENERATED END rules -->',
+        `${catalogCtx}\n<!-- THESMOS:GENERATED END rules -->`
       );
     }
     Object.assign(files, freshInitContent());

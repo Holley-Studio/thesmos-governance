@@ -1,0 +1,563 @@
+{
+  "_generatedSections": [
+    "_generatedSections",
+    "apiRoutes",
+    "clientBoundaryRisks",
+    "componentCount",
+    "designSystemFiles",
+    "detectedStacks",
+    "detector",
+    "envFiles",
+    "generatedAt",
+    "languages",
+    "largeFiles",
+    "pages",
+    "riskyFiles",
+    "scanVersion",
+    "scriptFiles",
+    "sharedUiFiles",
+    "storeFiles",
+    "testFiles"
+  ],
+  "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
+  "generatedAt": "2026-06-25T04:10:16.845Z",
+  "scanVersion": "2.0.0",
+  "pages": [],
+  "apiRoutes": [],
+  "componentCount": 0,
+  "sharedUiFiles": [],
+  "designSystemFiles": [
+    "catalog/agents/reviewers/design-system-reviewer.md",
+    "catalog/skills/design-token-audit.md"
+  ],
+  "storeFiles": [
+    "brain-store.ts"
+  ],
+  "testFiles": [
+    "adapters.test.ts",
+    "ai-lint.test.ts",
+    "autopilot/calibration.test.ts",
+    "autopilot/conventions.test.ts",
+    "autopilot/plan-parser.test.ts",
+    "autopilot/recon.test.ts",
+    "baseline.test.ts",
+    "bin/commands/audit.test.ts",
+    "bin/commands/ci-check.test.ts",
+    "bin/commands/diff.test.ts",
+    "bin/commands/pack-create.test.ts",
+    "bin/commands/pack-publish.test.ts",
+    "bin/commands/review.test.ts",
+    "bin/commands/scan.test.ts",
+    "bin/lib/args.test.ts",
+    "catalog.test.ts",
+    "ci-check.test.ts",
+    "config.test.ts",
+    "context-capsule.test.ts",
+    "detector.test.ts",
+    "doctor.test.ts",
+    "drift.test.ts",
+    "explain.test.ts",
+    "fix.test.ts",
+    "hardening.test.ts",
+    "health.test.ts",
+    "hooks.test.ts",
+    "import-scan.test.ts",
+    "init.test.ts",
+    "interactive.test.ts",
+    "metrics.test.ts",
+    "output.test.ts",
+    "packs.test.ts",
+    "registry.test.ts",
+    "report.test.ts",
+    "review.test.ts",
+    "rules/commits.test.ts",
+    "rules/csharp.test.ts",
+    "rules/dast.test.ts",
+    "rules/debt.test.ts",
+    "rules/design.test.ts",
+    "rules/django.test.ts",
+    "rules/dockerfile.test.ts",
+    "rules/github-actions.test.ts",
+    "rules/go.test.ts",
+    "rules/java.test.ts",
+    "rules/jwt.test.ts",
+    "rules/k8s.test.ts",
+    "rules/mcp.test.ts",
+    "rules/php.test.ts",
+    "rules/prototype.test.ts",
+    "rules/python.test.ts",
+    "rules/rag.test.ts",
+    "rules/registry.test.ts",
+    "rules/ruby.test.ts",
+    "rules/rust.test.ts",
+    "rules/self.test.ts",
+    "rules/supply-chain.test.ts",
+    "rules/terraform.test.ts",
+    "rules/vercel.test.ts",
+    "rules/websocket.test.ts",
+    "scanner/files.test.ts",
+    "scanner/routes.test.ts",
+    "scanner/walker.test.ts",
+    "scope.test.ts",
+    "secrets.test.ts",
+    "severity.test.ts",
+    "suppress.test.ts",
+    "token-budget.test.ts",
+    "watcher.test.ts"
+  ],
+  "largeFiles": [
+    {
+      "file": "rules/python.ts",
+      "lines": 1736
+    },
+    {
+      "file": "rules/security.ts",
+      "lines": 1697
+    },
+    {
+      "file": "rules/nextjs.ts",
+      "lines": 1605
+    },
+    {
+      "file": "rules/vibe-coding.ts",
+      "lines": 1402
+    },
+    {
+      "file": "rules/database.ts",
+      "lines": 1349
+    },
+    {
+      "file": "rules/ai.ts",
+      "lines": 1332
+    },
+    {
+      "file": "rules/typescript.ts",
+      "lines": 1219
+    },
+    {
+      "file": "fix.test.ts",
+      "lines": 1187
+    },
+    {
+      "file": "rules/debt.ts",
+      "lines": 1152
+    },
+    {
+      "file": "fix.ts",
+      "lines": 1128
+    },
+    {
+      "file": "rules/java.test.ts",
+      "lines": 1126
+    },
+    {
+      "file": "rules/react.ts",
+      "lines": 1121
+    },
+    {
+      "file": "rules/node.ts",
+      "lines": 1100
+    },
+    {
+      "file": "rules/performance.ts",
+      "lines": 1088
+    },
+    {
+      "file": "rules/prisma.ts",
+      "lines": 1085
+    },
+    {
+      "file": "rules/zod.ts",
+      "lines": 1077
+    },
+    {
+      "file": "rules/terraform.ts",
+      "lines": 1001
+    },
+    {
+      "file": "rules/slopsquatting.ts",
+      "lines": 997
+    },
+    {
+      "file": "bin/commands/build.ts",
+      "lines": 989
+    },
+    {
+      "file": "rules/design.test.ts",
+      "lines": 961
+    },
+    {
+      "file": "rules/ruby.test.ts",
+      "lines": 951
+    },
+    {
+      "file": "rules/csharp.ts",
+      "lines": 946
+    },
+    {
+      "file": "rules/graphql.ts",
+      "lines": 942
+    },
+    {
+      "file": "rules/go.test.ts",
+      "lines": 938
+    },
+    {
+      "file": "rules/mcp.ts",
+      "lines": 938
+    },
+    {
+      "file": "drift.test.ts",
+      "lines": 933
+    },
+    {
+      "file": "rules/errors.ts",
+      "lines": 915
+    },
+    {
+      "file": "init.ts",
+      "lines": 905
+    },
+    {
+      "file": "rules/go.ts",
+      "lines": 870
+    },
+    {
+      "file": "rules/trpc.ts",
+      "lines": 869
+    },
+    {
+      "file": "rules/rust.ts",
+      "lines": 855
+    },
+    {
+      "file": "rules/design.ts",
+      "lines": 854
+    },
+    {
+      "file": "rules/ruby.ts",
+      "lines": 851
+    },
+    {
+      "file": "rules/agents.ts",
+      "lines": 844
+    },
+    {
+      "file": "rules/java.ts",
+      "lines": 841
+    },
+    {
+      "file": "rules/django.ts",
+      "lines": 827
+    },
+    {
+      "file": "rules/php.ts",
+      "lines": 827
+    },
+    {
+      "file": "rules/rust.test.ts",
+      "lines": 818
+    },
+    {
+      "file": "rules/php.test.ts",
+      "lines": 810
+    },
+    {
+      "file": "rules/csharp.test.ts",
+      "lines": 805
+    },
+    {
+      "file": "rules/quality.ts",
+      "lines": 746
+    },
+    {
+      "file": "bin/commands/autopilot.ts",
+      "lines": 744
+    },
+    {
+      "file": "rules/github-actions.test.ts",
+      "lines": 739
+    },
+    {
+      "file": "rules/state.ts",
+      "lines": 723
+    },
+    {
+      "file": "rules/forms.ts",
+      "lines": 710
+    },
+    {
+      "file": "bin/commands/pack-publish.test.ts",
+      "lines": 709
+    },
+    {
+      "file": "rules/css.ts",
+      "lines": 707
+    },
+    {
+      "file": "rules/dockerfile.test.ts",
+      "lines": 699
+    },
+    {
+      "file": "rules/imports.ts",
+      "lines": 699
+    },
+    {
+      "file": "rules/logging.ts",
+      "lines": 690
+    },
+    {
+      "file": "rules/terraform.test.ts",
+      "lines": 688
+    },
+    {
+      "file": "drift.ts",
+      "lines": 681
+    },
+    {
+      "file": "rules/dockerfile.ts",
+      "lines": 681
+    },
+    {
+      "file": "rules/registry.ts",
+      "lines": 681
+    },
+    {
+      "file": "catalog.test.ts",
+      "lines": 677
+    },
+    {
+      "file": "bin/commands/pantheon.ts",
+      "lines": 656
+    },
+    {
+      "file": "rules/rag.ts",
+      "lines": 649
+    },
+    {
+      "file": "rules/mcp.test.ts",
+      "lines": 624
+    },
+    {
+      "file": "rules/gdpr.ts",
+      "lines": 619
+    },
+    {
+      "file": "rules/django.test.ts",
+      "lines": 592
+    },
+    {
+      "file": "adapters.test.ts",
+      "lines": 589
+    },
+    {
+      "file": "bin/commands/report.ts",
+      "lines": 582
+    },
+    {
+      "file": "mcp-server.ts",
+      "lines": 553
+    },
+    {
+      "file": "rules/debt.test.ts",
+      "lines": 553
+    },
+    {
+      "file": "rules/jwt.ts",
+      "lines": 553
+    },
+    {
+      "file": "doctor.test.ts",
+      "lines": 544
+    },
+    {
+      "file": "autopilot/executor.ts",
+      "lines": 536
+    },
+    {
+      "file": "baseline.test.ts",
+      "lines": 530
+    },
+    {
+      "file": "rules/jwt.test.ts",
+      "lines": 515
+    },
+    {
+      "file": "bin/commands/brain.ts",
+      "lines": 514
+    },
+    {
+      "file": "baseline.ts",
+      "lines": 512
+    },
+    {
+      "file": "rules/python.test.ts",
+      "lines": 511
+    },
+    {
+      "file": "rules/vercel.ts",
+      "lines": 511
+    },
+    {
+      "file": "bin/cli.ts",
+      "lines": 504
+    }
+  ],
+  "riskyFiles": [],
+  "scriptFiles": [],
+  "envFiles": [],
+  "clientBoundaryRisks": [
+    {
+      "file": "review.test.ts",
+      "risk": "admin-client"
+    },
+    {
+      "file": "rules/ai.ts",
+      "risk": "server-only-import"
+    },
+    {
+      "file": "rules/database.ts",
+      "risk": "direct-env-access"
+    },
+    {
+      "file": "rules/imports.ts",
+      "risk": "server-only-import"
+    },
+    {
+      "file": "rules/jwt.test.ts",
+      "risk": "direct-env-access"
+    },
+    {
+      "file": "rules/jwt.ts",
+      "risk": "direct-env-access"
+    },
+    {
+      "file": "rules/nextjs.ts",
+      "risk": "server-only-import"
+    },
+    {
+      "file": "rules/registry.ts",
+      "risk": "server-only-import"
+    },
+    {
+      "file": "rules/state.ts",
+      "risk": "server-only-import"
+    },
+    {
+      "file": "scanner/files.test.ts",
+      "risk": "admin-client"
+    },
+    {
+      "file": "scanner/files.ts",
+      "risk": "admin-client"
+    },
+    {
+      "file": "secrets.test.ts",
+      "risk": "admin-client"
+    },
+    {
+      "file": "secrets.ts",
+      "risk": "admin-client"
+    },
+    {
+      "file": "types.ts",
+      "risk": "server-only-import"
+    }
+  ],
+  "languages": [
+    {
+      "language": "Other",
+      "extension": "",
+      "fileCount": 402,
+      "lineCount": 50416
+    },
+    {
+      "language": "TypeScript",
+      "extension": ".ts",
+      "fileCount": 251,
+      "lineCount": 105339
+    }
+  ],
+  "detectedStacks": [
+    "Node.js"
+  ],
+  "detector": {
+    "framework": "unknown",
+    "auth": "none",
+    "envVars": [
+      "${match[1]}",
+      "ADMIN_PASSWORD",
+      "AI_MODEL",
+      "ALLOWED_ORIGIN",
+      "ALLOWED_ORIGINS",
+      "ANTHROPIC_API_KEY",
+      "ANTHROPIC_KEY",
+      "API_BASE_URL",
+      "API_KEY",
+      "API_SECRET",
+      "APP_URL",
+      "ASSEMBLYAI_API_KEY",
+      "ASSISTANT_SYSTEM_PROMPT",
+      "A_VAR",
+      "BASE_URL",
+      "BRACKET_VAR",
+      "CI",
+      "CRON_SECRET",
+      "DATABASE_URL",
+      "DEEPGRAM_API_KEY",
+      "DOT_VAR",
+      "ELEVENLABS_API_KEY",
+      "FOO",
+      "INTERNAL_API_URL",
+      "JWT_KEY",
+      "JWT_SECRET",
+      "LOG_LEVEL",
+      "MCP_RESTRICTED_KEY",
+      "MCP_SECRET",
+      "MY_KEY",
+      "MY_URL",
+      "MY_VAR",
+      "NEXTAUTH_SECRET",
+      "NEXT_PUBLIC_API_KEY",
+      "NEXT_PUBLIC_API_SECRET",
+      "NEXT_PUBLIC_API_URL",
+      "NEXT_PUBLIC_APP_NAME",
+      "NEXT_PUBLIC_DATABASE_PASSWORD",
+      "NEXT_PUBLIC_OPENAI_KEY",
+      "NEXT_PUBLIC_SERVICE_ROLE_KEY",
+      "NEXT_PUBLIC_SITE_URL",
+      "NEXT_PUBLIC_STRIPE_SECRET_KEY",
+      "NEXT_PUBLIC_SYSTEM_PROMPT",
+      "NEXT_PUBLIC_URL",
+      "NODE_ENV",
+      "OPENAI_API_KEY",
+      "OPENAI_KEY",
+      "OPENAI_MODEL",
+      "PORT",
+      "REVALIDATE_SECRET",
+      "SECRET",
+      "SHARED",
+      "SHARED_KEY",
+      "STRIPE_SECRET",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "VAR",
+      "VAR_A",
+      "VAR_B",
+      "VAR_NAME",
+      "VITE_API_KEY",
+      "VITE_VAR",
+      "YOUR_API_KEY",
+      "Z_VAR",
+      "npm_package_version"
+    ],
+    "testingFramework": "vitest",
+    "deployment": "unknown",
+    "apiConvention": "unknown",
+    "typescript": true,
+    "packageManager": "npm",
+    "cssFramework": "none",
+    "uiLibrary": "none"
+  }
+}

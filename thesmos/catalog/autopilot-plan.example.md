@@ -108,8 +108,8 @@ no-grep:src/file.ts:pattern       # File must NOT contain pattern
 ---CHECKPOINT---
 ```
 
-Pauses the session. Prometheus prints the branch and journal, then exits cleanly.
-Resume with: `prometheus autopilot resume MASTER_PLAN.md`
+Pauses the session. Thesmos prints the branch and journal, then exits cleanly.
+Resume with: `thesmos autopilot resume MASTER_PLAN.md`
 
 ## Adapter options
 
@@ -134,7 +134,7 @@ Set in `.thesmos/config.json`.
 ```sh
 touch .thesmos/autopilot/.cancel
 # or
-prometheus autopilot cancel
+thesmos autopilot cancel
 ```
 
 The session stops cleanly after the current task completes.

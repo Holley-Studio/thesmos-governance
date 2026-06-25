@@ -1,7 +1,7 @@
 /**
  * thesmos build:agent / build:skill / build:dashboard / build:workflow / build:rag / build:voice / build:mcp-tool / build:automation
  *
- * Interactive wizard for creating Prometheus-governed artifacts.
+ * Interactive wizard for creating Thesmos-governed artifacts.
  * Each wizard asks 5-8 world-class engineering questions, then
  * generates complete, governance-scanned artifacts.
  *

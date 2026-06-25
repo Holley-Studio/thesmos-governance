@@ -1,6 +1,6 @@
 # Zeus Orchestration Guide
 
-God Agent Zeus is the executive orchestrator of the Prometheus Pantheon. He does not do the work — he routes it to the right specialist, ensures every initiative has a clear owner, and aligns output to your business's North Star.
+God Agent Zeus is the executive orchestrator of the Thesmos Pantheon. He does not do the work — he routes it to the right specialist, ensures every initiative has a clear owner, and aligns output to your business's North Star.
 
 This guide tells you exactly which agent to invoke for every type of task.
 
@@ -155,9 +155,9 @@ Zeus will sequence the session, compile the outputs, and deliver a unified brief
 1. **Context is everything.** The more you tell an agent about your company, audience, and constraints, the sharper the output.
 2. **One task per agent.** Don't ask Ares to write a sales pitch AND a marketing strategy. Route to Ares for sales, Hermes for marketing.
 3. **Trust the judgment, not just the output.** Each agent's `What makes my judgment different` section explains the non-obvious insights they apply. Read it once per agent.
-4. **Prometheus governs everything.** If you're using Claude Code, every agent output is checked against 1,075 governance rules before it reaches you.
+4. **Thesmos governs everything.** If you're using Claude Code, every agent output is checked against 1,075 governance rules before it reaches you.
 5. **Zeus doesn't do the work.** If Zeus gives you content, he's cheating. He should route — not produce.
 
 ---
 
-Pantheon Pro · Prometheus v3.6.0 · [holley.studio/prometheus](https://holley.studio/prometheus)
+Pantheon Pro · Thesmos v3.6.0 · [holley.studio/thesmos](https://holley.studio/thesmos)

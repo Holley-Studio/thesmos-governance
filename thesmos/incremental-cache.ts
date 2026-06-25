@@ -1,5 +1,5 @@
 /**
- * Incremental scan cache for Prometheus.
+ * Incremental scan cache for Thesmos.
  *
  * Keyed by sha256(file content) + rules version. On re-scan, unchanged files
  * return their cached findings instantly. Any version bump invalidates all entries.
@@ -20,7 +20,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import type { Finding, ThesmosConfig, ScanResult, ChangedFile } from './types.js';
-import { PROMETHEUS_RULES } from './rules/registry.js';
+import { THESMOS_RULES } from './rules/registry.js';
 import { makeLogger } from './logger.js';
 
 const log = makeLogger('cache');
@@ -128,7 +128,7 @@ export interface CachedReviewOptions {
  */
 export function runReviewCached(opts: CachedReviewOptions): Finding[] {
   const { scan, config, changedFiles = [], root, noCache = false } = opts;
-  const version = opts.rulesVersion ?? PROMETHEUS_RULES.length.toString();
+  const version = opts.rulesVersion ?? THESMOS_RULES.length.toString();
 
   if (noCache || changedFiles.length === 0) {
     const { runReview } = require('./review.js') as typeof import('./review.js');

@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Tests for prometheus diff command — pure logic only (no fs or process side-effects).
+ * Tests for thesmos diff command — pure logic only (no fs or process side-effects).
  *
  * We test:
  *   - loadBaselineFindings  — JSON parsing variations

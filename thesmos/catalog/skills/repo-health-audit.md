@@ -3,7 +3,7 @@ id: repo-health-audit
 name: Repo Health Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - audit
   - health
@@ -19,10 +19,10 @@ Provides a comprehensive health snapshot of a repository: governance coverage, r
 
 ## When to use
 
-- Onboarding a new repo to Prometheus governance
+- Onboarding a new repo to Thesmos governance
 - Quarterly health reviews
 - After a major refactor or team change
-- When `prometheus doctor` reports issues
+- When `thesmos doctor` reports issues
 
 ## Required inputs
 
@@ -35,7 +35,7 @@ Provides a comprehensive health snapshot of a repository: governance coverage, r
 1. Run `npm run thesmos:doctor` to check installation health
 2. Run `npm run thesmos:scan` to refresh the architecture snapshot
 3. Run `npm run thesmos:validate` to check rule configuration
-4. Run `npm run prometheus:ci-check` to verify adapter freshness
+4. Run `npm run thesmos:ci-check` to verify adapter freshness
 5. Summarise findings across all checks into a health scorecard
 
 ## Thesmos commands
@@ -44,7 +44,7 @@ Provides a comprehensive health snapshot of a repository: governance coverage, r
 npm run thesmos:doctor
 npm run thesmos:scan
 npm run thesmos:validate
-npm run prometheus:ci-check
+npm run thesmos:ci-check
 ```
 
 ## Expected output

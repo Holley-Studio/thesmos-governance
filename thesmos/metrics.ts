@@ -1,7 +1,7 @@
 /**
  * Thesmos Metrics Engine — local-first, privacy-safe governance analytics.
  *
- * All metrics are derived from existing Prometheus artifacts:
+ * All metrics are derived from existing Thesmos artifacts:
  *   - .thesmos/report.json   (scan results)
  *   - .thesmos/baseline.json (known debt)
  *   - current findings (from runReview)
@@ -23,7 +23,7 @@ import type { Baseline, BaselinePartition } from './baseline.js';
 import type { DriftFinding } from './drift.js';
 import type { ResolvedRegistry } from './registry.js';
 import { SEVERITY_ORDER } from './severity.js';
-import { PROMETHEUS_RULES } from './adapters.js';
+import { THESMOS_RULES } from './adapters.js';
 import { partitionFindings, loadBaseline } from './baseline.js';
 import { runDriftForRoot } from './drift.js';
 import { loadAndResolveRegistry } from './registry.js';
@@ -140,7 +140,7 @@ export function computeMetrics(input: MetricsInput): ThesmosMetrics {
   for (const f of findings) {
     countByCategory.set(f.category, (countByCategory.get(f.category) ?? 0) + 1);
   }
-  const findingsByRule: MetricsByRule[] = PROMETHEUS_RULES.map((r) => ({
+  const findingsByRule: MetricsByRule[] = THESMOS_RULES.map((r) => ({
     ruleId: r.id,
     category: r.category,
     count: countByCategory.get(r.category) ?? 0,
@@ -203,7 +203,7 @@ export function computeMetrics(input: MetricsInput): ThesmosMetrics {
     driftEvents: driftFindings.length,
     driftByType,
     activeRuleCount: findingsByRule.length,
-    totalRuleCount: PROMETHEUS_RULES.length,
+    totalRuleCount: THESMOS_RULES.length,
     agentUsage,
     skillUsage,
     baselineEntryCount,

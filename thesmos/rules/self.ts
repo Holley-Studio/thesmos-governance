@@ -1,7 +1,7 @@
 /**
- * Prometheus Self-Governance rules (SELF_001–010).
+ * Thesmos Self-Governance rules (SELF_001–010).
  *
- * Prometheus governs itself — these rules detect when the Prometheus
+ * Thesmos governs itself — these rules detect when the Thesmos
  * installation has drifted: outdated version, broken hooks, stale adapters,
  * stale context snapshots, and missing lockfile pins.
  *

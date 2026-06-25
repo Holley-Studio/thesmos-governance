@@ -1,5 +1,5 @@
 /**
- * MCP tool generator — creates a new Prometheus MCP server tool from wizard answers.
+ * MCP tool generator — creates a new Thesmos MCP server tool from wizard answers.
  *
  * Outputs (scaffold mode):
  *   - thesmos/mcp-tools/<name>.ts  — tool implementation
@@ -44,7 +44,7 @@ function buildMcpToolFile(answers: WizardAnswers): string {
     : '// Side effect: this tool calls an external API. Use BYOK key from env vars only.';
 
   return `/**
- * ${name} — Prometheus MCP tool
+ * ${name} — Thesmos MCP tool
  * Purpose: ${job}
  * Side effects: ${sideEffects}
  *

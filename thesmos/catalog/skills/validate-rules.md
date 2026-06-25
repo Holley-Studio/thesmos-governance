@@ -3,7 +3,7 @@ id: validate-rules
 name: Validate Rules
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - validate
   - rules
@@ -16,34 +16,34 @@ enabled: true
 
 ## Purpose
 
-Validates the Prometheus rule configuration against the canonical rule registry, checking for unknown rule IDs, severity level consistency, and configuration drift between `.thesmos/config.json` and the adapter files.
+Validates the Thesmos rule configuration against the canonical rule registry, checking for unknown rule IDs, severity level consistency, and configuration drift between `.thesmos/config.json` and the adapter files.
 
 ## When to use
 
 - After modifying `.thesmos/config.json`
-- When `prometheus ci-check` reports configuration drift
+- When `thesmos ci-check` reports configuration drift
 - Before merging a PR that changes severity overrides
 - Governance audit reviews
 
 ## Required inputs
 
 - `.thesmos/config.json`
-- Canonical rule registry (built into Prometheus)
+- Canonical rule registry (built into Thesmos)
 
 ## Workflow steps
 
 1. Run `npm run thesmos:validate` to validate the configuration
 2. Check for unknown rule IDs in the severity overrides
 3. Verify adapter files reflect the current rule config (freshness check)
-4. Run `npm run prometheus:ci-check` for the full CI gate check
-5. If adapters are stale, run `npm run prometheus:adapters` to refresh them
+4. Run `npm run thesmos:ci-check` for the full CI gate check
+5. If adapters are stale, run `npm run thesmos:adapters` to refresh them
 
 ## Thesmos commands
 
 ```bash
 npm run thesmos:validate
-npm run prometheus:ci-check
-npm run prometheus:adapters
+npm run thesmos:ci-check
+npm run thesmos:adapters
 ```
 
 ## Expected output

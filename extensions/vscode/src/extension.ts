@@ -27,7 +27,12 @@ import { StatusBarManager } from './statusBar.js';
 import { FindingsTreeProvider } from './treeView.js';
 import { AutopilotWatcher } from './autopilotWatcher.js';
 import { AutopilotTreeProvider } from './autopilotView.js';
+import { AgentsTreeProvider, invokeAgentCommand } from './agentsPanel.js';
+import { AutoModeGovernor } from './autoModeGovernor.js';
+import { ThesmosCodeLensProvider } from './codeLens.js';
+import { InlineDiagnosticsManager } from './inlineDiagnostics.js';
 import { registerCommands } from './commands.js';
+import type { HealthEntry } from './panel.js';
 import { ThesmosHoverProvider } from './hover.js';
 import { ThesmosCodeActionProvider } from './codeAction.js';
 import {
@@ -64,6 +69,11 @@ class ThesmosExtension implements vscode.Disposable {
   private readonly treeProvider: FindingsTreeProvider;
   private readonly autopilotWatcher: AutopilotWatcher;
   private readonly autopilotView: AutopilotTreeProvider;
+  private readonly agentsView: AgentsTreeProvider;
+  private readonly autoModeGovernor: AutoModeGovernor;
+  private readonly codeLensProvider: ThesmosCodeLensProvider;
+  private readonly inlineDiagnostics: InlineDiagnosticsManager;
+  private updateBadge: (count: number) => void = () => {};
 
   private workspaceRoot: string;
   private allFindings: Finding[] = [];
@@ -80,6 +90,10 @@ class ThesmosExtension implements vscode.Disposable {
     this.treeProvider = new FindingsTreeProvider();
     this.autopilotWatcher = new AutopilotWatcher(workspaceRoot);
     this.autopilotView = new AutopilotTreeProvider(workspaceRoot, this.autopilotWatcher);
+    this.agentsView = new AgentsTreeProvider();
+    this.autoModeGovernor = new AutoModeGovernor(workspaceRoot);
+    this.codeLensProvider = new ThesmosCodeLensProvider();
+    this.inlineDiagnostics = new InlineDiagnosticsManager();
 
     this.disposables.push(
       this.diagnostics,
@@ -87,6 +101,10 @@ class ThesmosExtension implements vscode.Disposable {
       this.treeProvider,
       this.autopilotWatcher,
       this.autopilotView,
+      this.agentsView,
+      this.autoModeGovernor,
+      this.codeLensProvider,
+      this.inlineDiagnostics,
     );
 
     // Update status bar when autopilot session state changes
@@ -100,6 +118,27 @@ class ThesmosExtension implements vscode.Disposable {
       const taskLabel = `${completed}/${total > 0 ? total : '?'} tasks`;
       this.statusBar.showAutopilotSession(taskLabel, this.autopilotWatcher.isCancelling);
     });
+
+    // Surface governance status when .claude/settings.json changes
+    this.autoModeGovernor.onDidChange((state) => {
+      if (state.governed) {
+        this.statusBar.showGoverningAutoMode();
+      } else if (state.hooksInstalled === false) {
+        this.statusBar.clearGoverningAutoMode();
+      } else {
+        this.statusBar.showAutoModeUngoverned();
+      }
+    });
+
+    // Apply initial governance state
+    const initialState = this.autoModeGovernor.state;
+    if (initialState.governed) {
+      this.statusBar.showGoverningAutoMode();
+    } else if (!initialState.hooksInstalled) {
+      // No hooks and no .claude/settings.json — silently do nothing (common for new projects)
+    } else {
+      this.statusBar.showAutoModeUngoverned();
+    }
   }
 
   async activate(): Promise<void> {
@@ -113,12 +152,31 @@ class ThesmosExtension implements vscode.Disposable {
     });
     this.disposables.push(treeView);
 
+    // Badge on the activity bar icon: shows BLOCKER + HIGH count
+    this.updateBadge = (count) => {
+      treeView.badge = count > 0
+        ? { value: count, tooltip: `${count} BLOCKER/HIGH finding${count === 1 ? '' : 's'}` }
+        : undefined;
+    };
+
     // Register autopilot tree view
     const autopilotTreeView = vscode.window.createTreeView('thesmos.autopilotView', {
       treeDataProvider: this.autopilotView,
       showCollapseAll: false,
     });
     this.disposables.push(autopilotTreeView);
+
+    // Register agents tree view
+    const agentsTreeView = vscode.window.createTreeView('thesmos.agentsView', {
+      treeDataProvider: this.agentsView,
+      showCollapseAll: true,
+    });
+    this.disposables.push(agentsTreeView);
+
+    // Agents invoke command
+    this.disposables.push(
+      vscode.commands.registerCommand('thesmos.agents.invoke', invokeAgentCommand),
+    );
 
     // Set context flag so tree view & menus are visible
     await vscode.commands.executeCommand(
@@ -152,6 +210,27 @@ class ThesmosExtension implements vscode.Disposable {
       { providedCodeActionKinds: ThesmosCodeActionProvider.providedCodeActionKinds },
     );
     this.disposables.push(codeActionProvider);
+
+    // CodeLens provider — BLOCKER/HIGH annotation above each affected line
+    const codeLensProvider = vscode.languages.registerCodeLensProvider(
+      [
+        { scheme: 'file', language: 'typescript' },
+        { scheme: 'file', language: 'typescriptreact' },
+        { scheme: 'file', language: 'javascript' },
+        { scheme: 'file', language: 'javascriptreact' },
+        { scheme: 'file', language: 'python' },
+      ],
+      this.codeLensProvider,
+    );
+    this.disposables.push(codeLensProvider);
+
+    // Inline diagnostics — re-apply when the user switches editor tabs
+    const editorWatcher = vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (editor) {
+        this.inlineDiagnostics.applyToEditor(editor, this.allFindings, this.workspaceRoot);
+      }
+    });
+    this.disposables.push(editorWatcher);
 
     // File save watcher (debounced)
     const saveWatcher = vscode.workspace.onDidSaveTextDocument((doc) => {
@@ -250,6 +329,15 @@ class ThesmosExtension implements vscode.Disposable {
       // Update tree view
       this.treeProvider.refresh(this.allFindings, this.workspaceRoot);
 
+      // Update CodeLens, inline decorations, and activity bar badge
+      this.codeLensProvider.update(this.allFindings, this.workspaceRoot);
+      for (const editor of vscode.window.visibleTextEditors) {
+        this.inlineDiagnostics.applyToEditor(editor, this.allFindings, this.workspaceRoot);
+      }
+      this.updateBadge(
+        this.allFindings.filter((f) => f.severity === 'BLOCKER' || f.severity === 'HIGH').length,
+      );
+
       // Update status bar with health score
       await this.refreshStatusBar(cfg);
     } catch (err) {
@@ -280,6 +368,13 @@ class ThesmosExtension implements vscode.Disposable {
 
       this.diagnostics.setForFile(uri, output.findings);
       this.treeProvider.refresh(this.allFindings, this.workspaceRoot);
+      this.codeLensProvider.update(this.allFindings, this.workspaceRoot);
+      for (const editor of vscode.window.visibleTextEditors) {
+        this.inlineDiagnostics.applyToEditor(editor, this.allFindings, this.workspaceRoot);
+      }
+      this.updateBadge(
+        this.allFindings.filter((f) => f.severity === 'BLOCKER' || f.severity === 'HIGH').length,
+      );
 
       await this.refreshStatusBar(cfg);
     } catch (err) {
@@ -298,6 +393,12 @@ class ThesmosExtension implements vscode.Disposable {
         cfg.binaryPath || undefined,
       );
       this.statusBar.showHealth(health, this.allFindings.length);
+
+      // Persist for trend chart (capped at 30 entries per workspace)
+      const hist = this.context.workspaceState.get<HealthEntry[]>('thesmos.healthHistory', []);
+      hist.push({ score: health.score, grade: health.grade, ts: Date.now() });
+      if (hist.length > 30) hist.splice(0, hist.length - 30);
+      void this.context.workspaceState.update('thesmos.healthHistory', hist);
     } catch {
       // Health score is a nice-to-have; don't surface the error
       this.statusBar.showInactive();
@@ -383,16 +484,32 @@ async function startLspClient(
     const { LanguageClient, TransportKind } = await import('vscode-languageclient/node');
 
     // Resolve the thesmos binary to use as the LSP server.
-    // Prefer a local project install, fall back to the global CLI.
+    // VS Code launched from the Dock doesn't inherit nvm PATH, so extend it
+    // with common node version manager locations before spawning the server.
+    const home = process['env']['HOME'] ?? process['env']['USERPROFILE'] ?? '';
+    const extraPaths = [
+      `${home}/.nvm/versions/node/v20.20.2/bin`,
+      `${home}/.nvm/versions/node/v22.0.0/bin`,
+      `${home}/.nvm/versions/node/v24.0.0/bin`,
+      `${home}/.nvm/versions/node/v18.0.0/bin`,
+      `${home}/.volta/bin`,
+      `${home}/.fnm/aliases/default/bin`,
+      '/opt/homebrew/bin',
+      '/usr/local/bin',
+    ];
+    const enhancedPath = [...extraPaths, process['env']['PATH'] ?? ''].join(process.platform === 'win32' ? ';' : ':');
+    const serverEnv = { ...process['env'], PATH: enhancedPath };
+
     const serverCommand = 'npx';
     const serverArgs = ['thesmos', 'lsp', '--root', workspaceRoot];
+    const serverOpts = { env: serverEnv };
 
     lspClient = new LanguageClient(
       'thesmos-lsp',
       'Thesmos Language Server',
       {
-        run:   { command: serverCommand, args: serverArgs, transport: TransportKind.stdio },
-        debug: { command: serverCommand, args: [...serverArgs, '--debug'], transport: TransportKind.stdio },
+        run:   { command: serverCommand, args: serverArgs, transport: TransportKind.stdio, options: serverOpts },
+        debug: { command: serverCommand, args: [...serverArgs, '--debug'], transport: TransportKind.stdio, options: serverOpts },
       },
       {
         documentSelector: [

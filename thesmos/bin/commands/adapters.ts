@@ -1,5 +1,5 @@
 /**
- * thesmos adapters — generate AI adapter files from canonical Prometheus rules.
+ * thesmos adapters — generate AI adapter files from canonical Thesmos rules.
  * Safe to run repeatedly: generated sections are updated, manual content preserved.
  *
  * Flags:
@@ -10,7 +10,7 @@
 import { createContext } from '../lib/context.ts';
 import { parseArgs, flag, flagVal } from '../lib/args.ts';
 import {
-  PROMETHEUS_RULES,
+  THESMOS_RULES,
   writeAllAdapters,
   ADAPTER_OUTPUT_PATHS,
   type AdapterTarget,
@@ -50,10 +50,10 @@ export async function cmdAdapters(argv: string[]): Promise<void> {
         }
       : undefined;
 
-  const manifests = writeAllAdapters(root, PROMETHEUS_RULES, config, targets, catalog);
+  const manifests = writeAllAdapters(root, THESMOS_RULES, config, targets, catalog);
 
   if (json) {
-    process.stdout.write(JSON.stringify({ rules: PROMETHEUS_RULES.length, targets: manifests }, null, 2) + '\n');
+    process.stdout.write(JSON.stringify({ rules: THESMOS_RULES.length, targets: manifests }, null, 2) + '\n');
     return;
   }
 
@@ -64,15 +64,15 @@ export async function cmdAdapters(argv: string[]): Promise<void> {
     for (const m of manifests) {
       lines.push(`| ${m.target} | \`${m.outputPath}\` | generated |`);
     }
-    lines.push(`\n_${PROMETHEUS_RULES.length} canonical rules applied to ${manifests.length} adapter${manifests.length === 1 ? '' : 's'}._`);
+    lines.push(`\n_${THESMOS_RULES.length} canonical rules applied to ${manifests.length} adapter${manifests.length === 1 ? '' : 's'}._`);
     process.stdout.write(lines.join('\n') + '\n');
     return;
   }
 
   console.log(`Thesmos Adapters — ${config.project}`);
-  console.log(`Generating ${targets.length} adapter${targets.length === 1 ? '' : 's'} from ${PROMETHEUS_RULES.length} canonical rules...\n`);
+  console.log(`Generating ${targets.length} adapter${targets.length === 1 ? '' : 's'} from ${THESMOS_RULES.length} canonical rules...\n`);
   for (const m of manifests) {
     console.log(`  ✓  ${m.outputPath}  (${m.target})`);
   }
-  console.log(`\n${manifests.length} adapter${manifests.length === 1 ? '' : 's'} written. Manual content outside PROMETHEUS:GENERATED markers was preserved.`);
+  console.log(`\n${manifests.length} adapter${manifests.length === 1 ? '' : 's'} written. Manual content outside THESMOS:GENERATED markers was preserved.`);
 }

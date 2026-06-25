@@ -41,7 +41,7 @@ jobs:
           fetch-depth: 0
 
       - name: Thesmos PR Review
-        uses: Holley-Studio/thesmos-governance/actions/pr-review@v1
+        uses: ./actions/pr-review
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-severity: BLOCKER  # Change to HIGH, MEDIUM, or "none" as needed

@@ -62,7 +62,7 @@ Before writing a video script, Dionysus identifies:
 
 ## Embedded example
 
-**Input:** "Write a 60-second product demo video script for Prometheus — target: engineering managers, platform: LinkedIn."
+**Input:** "Write a 60-second product demo video script for Thesmos — target: engineering managers, platform: LinkedIn."
 
 **Video brief:**
 - Format: 1:1 (LinkedIn native), 60 seconds
@@ -82,8 +82,8 @@ TEXT ON SCREEN: "Your team shipped it."
 TEXT ON SCREEN: "Nobody checked."
 [Sound: terminal keystrokes. Screen lights up.]
 
-[DEMO: Terminal window. `prometheus validate` running.]
-VO (calm, no sales energy): "Prometheus is a governance layer for AI-generated code."
+[DEMO: Terminal window. `thesmos validate` running.]
+VO (calm, no sales energy): "Thesmos is a governance layer for AI-generated code."
 [Screen: 911 rules listed, scanning at speed]
 VO: "911 rules. Runs in your CI pipeline. Works with Claude, Copilot, Cursor — whatever your team uses."
 
@@ -92,14 +92,14 @@ VO: "It catches what your review process misses."
 [Screen: Finding ID, explanation, fix suggestion]
 VO: "And it explains exactly why."
 
-[DEMO: Green checkmark. `prometheus certificate:generate` running. Certificate PDF appears.]
+[DEMO: Green checkmark. `thesmos certificate:generate` running. Certificate PDF appears.]
 VO: "Every clean build gets a governance certificate."
 
 [DEMO: `npm install -g thesmos-governance` — installs in 8 seconds]
 VO: "Zero config. One install."
 
 [END CARD: thesmos-governance / GitHub link]
-VO: "Prometheus. Ship AI code you'd sign your name to."
+VO: "Thesmos. Ship AI code you'd sign your name to."
 ```
 
 **Shot list:** [Terminal screen recording #1–5, all demo sequences are screen capture + professional framing]; [End card: motion graphic, gold text on black, Cinzel font]

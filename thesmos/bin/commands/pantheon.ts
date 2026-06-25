@@ -284,7 +284,7 @@ function exportAgentsMd(agents: PantheonAgent[]): string {
 // ── pantheon:list ──────────────────────────────────────────────────────────────
 
 function cmdList(agents: PantheonAgent[]): void {
-  console.log('\n  THE PROMETHEUS PANTHEON — 21 Governed AI Business Agents\n');
+  console.log('\n  THE THESMOS PANTHEON — 40 Governed AI Business Agents\n');
   console.log(`  ${'GOD'.padEnd(16)} ${'ROLE'.padEnd(36)} VERSION`);
   console.log(`  ${''.padEnd(16, '─')} ${''.padEnd(36, '─')} ${''.padEnd(7, '─')}`);
   for (const a of agents) {
@@ -470,6 +470,110 @@ function cmdExport(agents: PantheonAgent[], argv: string[], root: string): void 
   }
 }
 
+// ── pantheon:council ──────────────────────────────────────────────────────────
+
+const AGENT_VOICES: Record<string, string> = {
+  'athena-strategy-agent':    'Frame the strategic angle: positioning, timing, competitive moats, and the one assumption that, if wrong, changes everything.',
+  'hermes-marketing-agent':   'Surface the go-to-market hook, channel priorities, and the single-sentence positioning statement that makes this land.',
+  'ares-sales-agent':         'Identify the deal-closing argument, the most likely objection, and the close sequence.',
+  'aphrodite-creative-agent': 'Define the visual language, tone, and the emotional hook that makes this memorable.',
+  'hephaestus-design-agent':  'Specify the UX flows, component patterns, and the design decision with the biggest user-experience impact.',
+  'themis-legal-agent':       'Flag the legal risk surface, required disclosures, and the one clause that could void the whole thing.',
+  'argus-security-agent':     'Enumerate the threat vectors, the highest-severity exposure, and the first three controls to implement.',
+  'tyche-analytics-agent':    'Define the north-star metric, the leading indicators, and the measurement cadence.',
+  'plutus-finance-agent':     'Model the unit economics, the break-even scenario, and the pricing lever with the most leverage.',
+  'pheme-pr-agent':           'Craft the earned-media angle, the spokesperson message, and the crisis-mitigation pre-plan.',
+  'apollo-content-agent':     'Write the headline, the three supporting proof points, and the call-to-action.',
+  'daedalus-product-agent':   'Define the MVP scope, the first cut-line decision, and the feature that unlocks the next cohort.',
+  'hera-operations-agent':    'Identify the process bottleneck, the SOP that needs writing, and the hiring unblock.',
+  'nike-leadgen-agent':       'Describe the ICP, the top-of-funnel hook, and the qualification signal that separates buyers from browsers.',
+  'heracles-bd-agent':        'Name the partner category with the highest leverage, the integration unlock, and the deal structure.',
+  'mnemosyne-knowledge-agent':'Synthesize what institutional knowledge already exists, what the knowledge gap is, and what to document first.',
+  'hestia-cx-agent':          'Define the moment of truth in the customer journey, the churn signal to watch, and the retention intervention.',
+  'demeter-cs-agent':         'Outline the success milestone framework, the QBR agenda, and the expansion signal.',
+  'psyche-research-agent':    'Propose the research method, the key interview question, and the insight most likely to invalidate the assumption.',
+  'nemesis-compliance-agent': 'Surface the regulatory regime, the audit gap, and the policy that needs drafting before launch.',
+  'pythia-data-agent':        'Describe the data pipeline, the SQL query that answers the core question, and the anomaly to investigate.',
+  'dionysus-video-agent':     'Define the video format, the narrative arc, and the first 5 seconds that stop the scroll.',
+  'morpheus-animation-agent': 'Specify the motion principle, the micro-interaction that communicates value, and the easing curve.',
+  'artemis-photography-agent':'Define the shot list, the lighting direction, and the hero image concept.',
+  'zeus-executive-agent':     'Arbitrate the priorities, assign ownership, and state the irreversible decision that must be made first.',
+  'aether-ai-strategy-agent': 'Map the AI capability leverage points, the data flywheel, and the model selection rationale.',
+  'calliope-email-agent':     'Write the subject line, the three-line preview, and the CTA that drives the click.',
+  'cassandra-qa-agent':       'Identify the test coverage gaps, the regression risk, and the first automated check to add.',
+  'chiron-architecture-agent':'Define the component boundaries, the data flow, and the architectural decision record.',
+  'clio-case-study-agent':    'Select the proof story, the measurable outcome, and the narrative structure.',
+  'eos-automation-agent':     'Identify the highest-ROI automation target, the trigger condition, and the error-handling strategy.',
+  'erato-brand-voice-agent':  'Define the tone spectrum, the vocabulary list, and the three phrases to avoid.',
+  'kratos-devops-agent':      'Specify the deployment strategy, the rollback procedure, and the observability gap.',
+  'metis-pm-agent':           'Produce the sprint plan, the stakeholder alignment summary, and the dependency to unblock.',
+  'momus-challenger-agent':   'Surface the strongest counterargument, the hidden assumption, and the alternative frame.',
+  'polyhymnia-docs-agent':    'Outline the documentation structure, the gap between what exists and what is needed, and the first doc to write.',
+  'proteus-drift-agent':      'Detect the scope creep signals, the misalignment between intent and implementation, and the course-correction.',
+  'talos-web-dev-agent':      'Define the component architecture, the performance budget, and the accessibility gap.',
+};
+
+function cmdCouncil(agents: PantheonAgent[], argv: string[]): void {
+  const { positionals, flags } = parseArgs(argv);
+  const task = positionals.join(' ');
+  const outFile = flags['out'] as string | undefined;
+  const maxAgents = typeof flags['max'] === 'string' ? parseInt(flags['max'], 10) : 4;
+
+  if (!task) {
+    console.error('  Usage: thesmos pantheon:council "<question or task>" [--max=N] [--out=<file>]');
+    console.error('  Example: thesmos pantheon:council "What is our go-to-market strategy?"');
+    process.exit(1);
+  }
+
+  const agentIds = routeTask(task).slice(0, Math.max(2, Math.min(maxAgents, 6)));
+
+  const lines: string[] = [];
+  const ruler = (label: string) => `${'━'.repeat(4)} ${label} ${'━'.repeat(Math.max(2, 50 - label.length))}`;
+
+  lines.push('');
+  lines.push(`🔱 Thesmos Pantheon Council — "${task}"`);
+  lines.push('');
+
+  if (agentIds.length === 0) {
+    lines.push('  Zeus could not route this task confidently.');
+    lines.push('  Run `thesmos pantheon:list` to browse all agents and invoke directly.');
+    lines.push('');
+    console.log(lines.join('\n'));
+    return;
+  }
+
+  for (const id of agentIds) {
+    const agent = agents.find(a => a.id === id);
+    if (!agent) continue;
+
+    const voice = AGENT_VOICES[id] ?? `Apply your ${agent.role.toLowerCase()} expertise to: ${task}`;
+    const label = `${agent.god} — ${agent.role}`;
+
+    lines.push(ruler(label));
+    lines.push('');
+    lines.push(`  Task: ${task}`);
+    lines.push('');
+    lines.push(`  ${voice}`);
+    lines.push('');
+    lines.push(`  Invoke: Agent({ subagent_type: "${agent.id}", prompt: "${task.replace(/"/g, "'")}" })`);
+    lines.push('');
+  }
+
+  lines.push(`${'─'.repeat(58)}`);
+  lines.push(`  Council convened: ${agentIds.length} agents · Run each invocation above for full deliberation.`);
+  lines.push(`  Governance: thesmos validate before merging any council output.`);
+  lines.push('');
+
+  const output = lines.join('\n');
+
+  if (outFile) {
+    writeFileSync(outFile, output, 'utf8');
+    console.log(`\n  ✓ Council brief written to ${outFile}\n`);
+  } else {
+    process.stdout.write(output);
+  }
+}
+
 // ── pantheon:orchestrate ───────────────────────────────────────────────────────
 
 function cmdOrchestrate(agents: PantheonAgent[], argv: string[]): void {
@@ -489,7 +593,7 @@ function cmdOrchestrate(agents: PantheonAgent[], argv: string[]): void {
   brief += `**Delegated to:** ${agentIds.length} agent${agentIds.length !== 1 ? 's' : ''}\n\n---\n\n`;
 
   if (agentIds.length === 0) {
-    brief += `Zeus could not confidently route this task. Run \`thesmos pantheon:list\` to browse all 21 agents and invoke the most relevant one directly.\n`;
+    brief += `Zeus could not confidently route this task. Run \`thesmos pantheon:list\` to browse all 40 agents and invoke the most relevant one directly.\n`;
   } else {
     for (const id of agentIds) {
       const a = agents.find(x => x.id === id);
@@ -635,6 +739,9 @@ export async function cmdPantheon(argv: string[]): Promise<void> {
     case 'export':
       cmdExport(agents, rest, root);
       break;
+    case 'council':
+      cmdCouncil(agents, rest);
+      break;
     case 'orchestrate':
       cmdOrchestrate(agents, rest);
       break;
@@ -649,7 +756,7 @@ export async function cmdPantheon(argv: string[]): Promise<void> {
       break;
     default:
       console.error(`  Unknown pantheon subcommand: ${sub}`);
-      console.error('  Available: list, install, status, export, orchestrate, memory, remove, upgrade');
+      console.error('  Available: list, install, status, export, council, orchestrate, memory, remove, upgrade');
       process.exit(1);
   }
 }

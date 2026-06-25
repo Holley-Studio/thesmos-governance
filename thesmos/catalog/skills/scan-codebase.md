@@ -3,7 +3,7 @@ id: scan-codebase
 name: Scan Codebase
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - scan
   - architecture
@@ -15,7 +15,7 @@ enabled: true
 
 ## Purpose
 
-Runs the Prometheus scanner to discover the repository's structure: pages, API routes, components, stores, test files, large files, and risky files. Outputs a structured scan result used by other skills and the init command.
+Runs the Thesmos scanner to discover the repository's structure: pages, API routes, components, stores, test files, large files, and risky files. Outputs a structured scan result used by other skills and the init command.
 
 ## When to use
 
@@ -27,7 +27,7 @@ Runs the Prometheus scanner to discover the repository's structure: pages, API r
 ## Required inputs
 
 - Repository root directory
-- Active Prometheus config for threshold settings (large file line limit)
+- Active Thesmos config for threshold settings (large file line limit)
 
 ## Workflow steps
 

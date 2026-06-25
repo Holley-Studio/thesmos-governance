@@ -1,5 +1,5 @@
 /**
- * Prometheus Rule Packs — installable bundles of rules, agents, skills, playbooks, and profiles.
+ * Thesmos Rule Packs — installable bundles of rules, agents, skills, playbooks, and profiles.
  *
  * A pack is a directory (local or future: npm package) with a pack.json manifest:
  *
@@ -424,8 +424,8 @@ export async function getActiveRules(
   root: string,
   builtinRules?: ThesmosRule[]
 ): Promise<ThesmosRule[]> {
-  const { PROMETHEUS_RULES } = await import('./rules/registry.js');
-  const base = builtinRules ?? PROMETHEUS_RULES;
+  const { THESMOS_RULES } = await import('./rules/registry.js');
+  const base = builtinRules ?? THESMOS_RULES;
   const packRules = await loadPackRules(root);
   return [...base, ...packRules];
 }

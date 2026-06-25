@@ -9,7 +9,7 @@ import {
 import type { MetricsInput, ThesmosMetrics } from './metrics.ts';
 import type { Finding } from './types.ts';
 import type { Baseline } from './baseline.ts';
-import { PROMETHEUS_RULES } from './adapters.ts';
+import { THESMOS_RULES } from './adapters.ts';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -95,7 +95,7 @@ describe('computeMetrics', () => {
 
   it('reports total rule count from registry', () => {
     const m = computeMetrics(makeInput());
-    expect(m.totalRuleCount).toBe(PROMETHEUS_RULES.length);
+    expect(m.totalRuleCount).toBe(THESMOS_RULES.length);
   });
 
   it('computes activeRuleCount as rules with at least one finding', () => {

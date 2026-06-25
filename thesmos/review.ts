@@ -1,5 +1,5 @@
 /**
- * Prometheus review engine.
+ * Thesmos review engine.
  * Pure functions: scan + config + changed files → Finding[].
  * No fs access — all data passed in as arguments.
  *
@@ -9,7 +9,7 @@
  */
 
 import type { Finding, ThesmosConfig, ScanResult } from './types';
-import { PROMETHEUS_RULES } from './rules/registry';
+import { THESMOS_RULES } from './rules/registry';
 import { sortFindings, SEVERITY_EMOJI } from './severity';
 import { toSarif } from './sarif.js';
 import { makeLogger } from './logger.js';
@@ -24,11 +24,13 @@ export interface ReviewInput {
   scan: ScanResult;
   config: ThesmosConfig;
   changedFiles?: import('./types').ChangedFile[];
+  /** Workspace root passed through to rules that need filesystem checks. */
+  root?: string;
 }
 
 // ── Category list — derived from registry, never manually maintained ──────────
 
-export const REVIEW_CATEGORIES = PROMETHEUS_RULES.map((r) => r.category);
+export const REVIEW_CATEGORIES = THESMOS_RULES.map((r) => r.category);
 export type ReviewCategory = string;
 
 // ── Review engine ──────────────────────────────────────────────────────────────
@@ -40,7 +42,7 @@ export type ReviewCategory = string;
  */
 export function runReview(
   input: ReviewInput,
-  registry = PROMETHEUS_RULES
+  registry = THESMOS_RULES
 ): Finding[] {
   const disabled = new Set(
     (input.config.disabledRules ?? []).map((s) => s.toLowerCase())
@@ -171,5 +173,5 @@ export function formatFindingsJson(findings: Finding[]): string {
  * Spec: https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
  */
 export function formatFindingsSarif(findings: Finding[], version = '1.0.0'): string {
-  return JSON.stringify(toSarif(PROMETHEUS_RULES, findings, version), null, 2) + '\n';
+  return JSON.stringify(toSarif(THESMOS_RULES, findings, version), null, 2) + '\n';
 }

@@ -1,5 +1,5 @@
 /**
- * Build script for the Prometheus Governance VS Code extension.
+ * Build script for the Thesmos Governance VS Code extension.
  *
  * Bundles src/extension.ts → dist/extension.js (CommonJS, Node 18+).
  * The `vscode` module is external — it's injected by the VS Code runtime.
@@ -27,7 +27,7 @@ const options = {
 if (watching) {
   const ctx = await esbuild.context(options);
   await ctx.watch();
-  console.log('[prometheus-vscode] watching for changes…');
+  console.log('[thesmos-vscode] watching for changes…');
 } else {
   const result = await esbuild.build(options);
   if (result.errors.length > 0) {

@@ -3,7 +3,7 @@ id: refactor-impact-analysis
 name: Refactor Impact Analysis
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - refactor
   - impact

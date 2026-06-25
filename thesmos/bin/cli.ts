@@ -1,5 +1,5 @@
 /**
- * Prometheus CLI entry point.
+ * Thesmos CLI entry point.
  * Dispatches to command handlers; each handler is a thin wrapper over core modules.
  *
  * Usage:  vite-node bin/cli.ts <command> [flags] [files...]
@@ -50,6 +50,7 @@ import { cmdDeps } from './commands/deps.ts';
 import { cmdCompliance } from './commands/compliance.ts';
 import { cmdAiFingerprint } from './commands/ai-fingerprint.ts';
 import { cmdPantheon } from './commands/pantheon.ts';
+import { cmdNotify } from './commands/notify.ts';
 import { cmdGithubComment } from './commands/github-comment.ts';
 import { cmdSelf } from './commands/self.ts';
 import { cmdBrain } from './commands/brain.ts';
@@ -187,6 +188,8 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   eval:                     (argv) => cmdEval(argv),
   score:                    (argv) => cmdScore(argv),
   compile:                  (argv) => cmdCompile(argv),
+  notify:                   (argv) => cmdNotify(argv),
+  'pantheon:council':       (argv) => cmdPantheon(['council', ...argv]),
 };
 
 const argv = process.argv.slice(2); // ['command', ...flags]
@@ -361,8 +364,8 @@ GDPR COMPLIANCE
     --write                              Write to .thesmos/compliance-gdpr.md
     --output=<path>                      Write to custom path
 
-PROMETHEUS PANTHEON  (governed AI business team — 21 agents, 6 platforms)
-  pantheon:list                       List all 21 agents with roles and mythology
+THESMOS PANTHEON  (governed AI business team — 40 agents, 6 platforms)
+  pantheon:list                       List all 40 agents with roles and mythology
   pantheon:install --all              Add all agents to .thesmos/registry.json
   pantheon:install <id> [id...]       Install specific agents
   pantheon:status                     Show active Pantheon agents in this project

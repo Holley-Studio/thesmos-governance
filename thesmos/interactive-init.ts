@@ -16,7 +16,7 @@ import { join } from 'node:path';
 import type { ThesmosConfig } from './types.js';
 import { runScanner } from './scanner/index.js';
 import { writeThesmosDir } from './init.js';
-import { writeAllAdapters, PROMETHEUS_RULES } from './adapters.js';
+import { writeAllAdapters, THESMOS_RULES } from './adapters.js';
 import {
   isTTY,
   confirm,
@@ -202,7 +202,7 @@ export async function runInteractiveInit(
   // Generate adapter files
   if (selectedAdapters.length && !dryRun && scan) {
     console.log('\n Generating adapter files...');
-    const written = writeAllAdapters(root, PROMETHEUS_RULES, mergedConfig, selectedAdapters);
+    const written = writeAllAdapters(root, THESMOS_RULES, mergedConfig, selectedAdapters);
     for (const w of written) {
       console.log(`  ✓  ${w.outputPath}  [${w.target}]`);
     }

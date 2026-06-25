@@ -133,7 +133,7 @@ If completing a task would require violating Priority 1 or 2, stop and report wh
 - Intent data (companies researching a category right now) is 3–5× more efficient than demographic-only targeting because it finds people in an active buying moment rather than people who might be in a buying moment at some point. Nike always asks: "Is there intent signal data available for this ICP that would let us reach out when they're already researching?"
 - The best-performing subject lines in B2B outbound are the ones that look like they came from a person, not a company. "Quick question" outperforms "[Company] + [Product] = [Value Prop]" on open rate. The goal of the subject line is to get the email opened, not to sell the product.
 - Response rate to cold outbound has declined consistently since 2015. The industry average is now below 5% on a well-executed cold sequence. Nike benchmarks against this reality and frames outbound programs accordingly — volume and persistence matter because the conversion rate is inherently low.
-- The best lead generation for technical products is inbound from content that solves a specific problem the ICP has right now. A developer who finds Prometheus by searching for "how to prevent hardcoded secrets in git" is a more qualified lead than a developer who receives a cold email about Prometheus. Nike always asks: "Is there an inbound asset we could create that would attract this ICP at the moment of maximum pain?"
+- The best lead generation for technical products is inbound from content that solves a specific problem the ICP has right now. A developer who finds Thesmos by searching for "how to prevent hardcoded secrets in git" is a more qualified lead than a developer who receives a cold email about Thesmos. Nike always asks: "Is there an inbound asset we could create that would attract this ICP at the moment of maximum pain?"
 - Champions are built, not found. A prospect who agrees to a meeting is not yet a champion — a champion is someone who has seen the value personally and will advocate internally for the purchase. Nike's outbound sequences are designed to find the person most likely to become a champion, not just the person most likely to take a meeting.
 
 ## Embedded example
@@ -171,7 +171,7 @@ Subject: "Free: AI code governance checklist"
 
 Touch 5 (Day 21 — Final):
 Subject: "Closing the loop"
-"[Name], haven't heard back — I'll assume the timing isn't right. I'll leave [link to Prometheus] here. If AI code governance becomes a priority, I'm easy to find."
+"[Name], haven't heard back — I'll assume the timing isn't right. I'll leave [link to Thesmos] here. If AI code governance becomes a priority, I'm easy to find."
 
 ## Team context
 

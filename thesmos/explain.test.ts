@@ -9,7 +9,7 @@ import {
   formatExplainJson,
   formatExplainListConsole,
 } from './explain.ts';
-import { PROMETHEUS_RULES } from './adapters.ts';
+import { THESMOS_RULES } from './adapters.ts';
 import { fingerprintFinding } from './baseline.ts';
 import type { Finding } from './types.ts';
 
@@ -58,7 +58,7 @@ describe('findRule', () => {
   });
 
   it('finds each of the 12 registered rules by ID', () => {
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       const found = findRule(rule.id);
       expect(found).not.toBeNull();
       expect(found!.id).toBe(rule.id);
@@ -131,7 +131,7 @@ describe('findRuleForFingerprint', () => {
 
 describe('listRules', () => {
   it('returns all 12 rules', () => {
-    expect(listRules()).toHaveLength(PROMETHEUS_RULES.length);
+    expect(listRules()).toHaveLength(THESMOS_RULES.length);
   });
 
   it('sorts by severity: BLOCKER before HIGH before MEDIUM before LOW before TECH_DEBT', () => {
@@ -157,19 +157,19 @@ describe('listRules', () => {
 
 describe('rule explain coverage', () => {
   it('every rule has an explain block', () => {
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       expect(rule.explain, `${rule.id} is missing explain`).toBeDefined();
     }
   });
 
   it('every explain block has non-empty why', () => {
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       expect(rule.explain?.why?.length, `${rule.id}.explain.why is empty`).toBeGreaterThan(10);
     }
   });
 
   it('every explain block has at least one common violation', () => {
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       expect(
         rule.explain?.commonViolations?.length,
         `${rule.id}.explain.commonViolations is empty`
@@ -178,7 +178,7 @@ describe('rule explain coverage', () => {
   });
 
   it('every explain block has a goodExample and badExample', () => {
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       expect(rule.explain?.goodExample?.length, `${rule.id}.explain.goodExample is empty`).toBeGreaterThan(0);
       expect(rule.explain?.badExample?.length, `${rule.id}.explain.badExample is empty`).toBeGreaterThan(0);
     }
@@ -277,13 +277,13 @@ describe('formatExplainJson', () => {
 describe('formatExplainListConsole', () => {
   it('includes all rule IDs', () => {
     const output = formatExplainListConsole(listRules());
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       expect(output).toContain(rule.id);
     }
   });
 
   it('shows rule count', () => {
     const output = formatExplainListConsole(listRules());
-    expect(output).toContain(`${PROMETHEUS_RULES.length} rules`);
+    expect(output).toContain(`${THESMOS_RULES.length} rules`);
   });
 });

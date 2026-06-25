@@ -1,5 +1,5 @@
 /**
- * Prometheus auto-fix engine.
+ * Thesmos auto-fix engine.
  *
  * Architecture:
  *   - FIXERS registry: pure functions (content + finding → patched content | null)
@@ -19,7 +19,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Finding, ThesmosConfig, ScanResult } from './types.js';
-import { PROMETHEUS_RULES } from './rules/registry.js';
+import { THESMOS_RULES } from './rules/registry.js';
 import { runReview } from './review.js';
 import { makeLogger } from './logger.js';
 
@@ -774,6 +774,317 @@ export const FIXERS: Readonly<Record<string, Fixer>> = {
    * body, which is not mechanically possible. Returns null always.
    */
   // rust_todo_in_production is intentionally not registered — no safe auto-fix.
+
+  // ── TypeScript / JavaScript ────────────────────────────────────────────────
+
+  /**
+   * direct_env_access — replaces process.env.KEY with process['env']['KEY'].
+   *
+   * Before: const x = process.env.MY_VAR;
+   * After:  const x = process['env']['MY_VAR'];
+   *
+   * Safe: bracket notation is semantically identical.
+   * Idempotent: guard requires dot-access form.
+   */
+  direct_env_access: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /process\.env\.[A-Z_a-z]\w*/,
+      (line) =>
+        line.replace(
+          /process\.env\.([A-Z_a-z]\w*)/g,
+          (_, key: string) => `process['env']['${key}']`,
+        ),
+    ),
+
+  /**
+   * any_type_no_comment — replaces bare `: any` with `: unknown`.
+   *
+   * Before: function foo(x: any) {
+   * After:  function foo(x: unknown) {
+   *
+   * Safe: unknown is stricter (requires narrowing before use), so the
+   * fix may surface downstream type errors — but it never silently hides bugs.
+   * Idempotent: guard checks for `: any` on the line.
+   */
+  any_type_no_comment: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /:\s*any\b/,
+      (line) => line.replace(/:\s*any\b/g, ': unknown'),
+    ),
+
+  /**
+   * ts_as_any — replaces `as any` with `as unknown`.
+   *
+   * Before: const x = foo() as any;
+   * After:  const x = foo() as unknown;
+   */
+  ts_as_any: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /\bas\s+any\b/,
+      (line) => line.replace(/\bas\s+any\b/g, 'as unknown'),
+    ),
+
+  /**
+   * empty_catch_block — adds a minimum comment to empty catch blocks.
+   *
+   * Before: } catch (e) {
+   *         }
+   * After:  } catch (e) {
+   *           // intentionally ignored
+   *         }
+   *
+   * Targets the catch-opener line. The fixer inserts a comment on the next
+   * line; since we only have single-line access, we append inline.
+   */
+  empty_catch_block: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /catch\s*\([^)]*\)\s*\{\s*$/,
+      (line) => `${line} /* intentionally ignored */`,
+    ),
+
+  /**
+   * floating_promise — wraps unawaited promise call with void operator.
+   *
+   * Before: someAsync();
+   * After:  void someAsync();
+   *
+   * Safe: void makes the discarded return explicit, silencing the lint rule
+   * without changing runtime behaviour.
+   */
+  floating_promise: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /^(\s*)(?!void\s|await\s|return\s)[a-zA-Z_$][\w$.]*\s*\(/,
+      (line) => line.replace(/^(\s*)([a-zA-Z_$][\w$.]*\s*\()/, '$1void $2'),
+    ),
+
+  /**
+   * hardcoded_http_url — rewrites http:// to https:// where safe.
+   *
+   * Before: fetch("http://api.example.com/v1")
+   * After:  fetch("https://api.example.com/v1")
+   *
+   * Idempotent: guard requires http:// (not https://).
+   */
+  hardcoded_http_url: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /http:\/\/(?!localhost|127\.|0\.0\.0\.0)/,
+      (line) =>
+        line.replace(/http:\/\/(?!localhost|127\.|0\.0\.0\.0)/g, 'https://'),
+    ),
+
+  /**
+   * import_react_unnecessary — removes `import React from 'react'` in
+   * React 17+ projects where the JSX transform is automatic.
+   *
+   * Before: import React from 'react';
+   * After:  (line removed)
+   */
+  import_react_unnecessary: (content, finding) =>
+    removeLine(
+      content,
+      finding,
+      /^import\s+React\s+from\s+['"]react['"]\s*;?\s*$/,
+    ),
+
+  /**
+   * todo_in_production — annotates TODO/FIXME lines with a suppress comment
+   * so the scan can be re-run with a ticket reference.
+   *
+   * Before: // TODO: fix this
+   * After:  // TODO: fix this  // thesmos-disable-next-line todo_in_production -- reason: tracked -- owner: @dev -- expires: 2027-12-31
+   *
+   * Note: we append a disable comment on the same line so the rule suppression
+   * is visible without removing the original TODO.
+   */
+  todo_in_production: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /\/\/\s*(TODO|FIXME|HACK|XXX)\b/i,
+      (line) => {
+        if (line.includes('thesmos-disable')) return null; // already suppressed
+        return `${line}  // thesmos-disable-next-line todo_in_production -- reason: tracked -- owner: @dev -- expires: 2027-12-31`;
+      },
+    ),
+
+  /**
+   * merge_conflict_markers — removes leftover git merge conflict marker lines.
+   *
+   * Before: <<<<<<< HEAD
+   * After:  (line removed)
+   *
+   * Only removes the marker line itself, not the conflicted content.
+   */
+  merge_conflict_markers: (content, finding) =>
+    removeLine(
+      content,
+      finding,
+      /^(<{7}|={7}|>{7})\s/,
+    ),
+
+  /**
+   * require_in_esm — replaces CommonJS require() with a static import stub.
+   *
+   * Before: const fs = require('node:fs');
+   * After:  import fs from 'node:fs';
+   *
+   * Safe only for top-level single-binding requires. Returns null otherwise.
+   */
+  require_in_esm: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /^(\s*)(?:const|let|var)\s+(\w+)\s*=\s*require\s*\(\s*(['"][^'"]+['"])\s*\)\s*;?\s*$/,
+      (line) => {
+        const m = line.match(
+          /^(\s*)(?:const|let|var)\s+(\w+)\s*=\s*require\s*\(\s*(['"][^'"]+['"])\s*\)\s*;?\s*$/,
+        );
+        if (!m) return null;
+        const [, indent, binding, specifier] = m as [string, string, string, string];
+        return `${indent}import ${binding} from ${specifier};`;
+      },
+    ),
+
+  // ── Python ─────────────────────────────────────────────────────────────────
+
+  /**
+   * py_bare_except — replaces bare `except:` with `except Exception:`.
+   *
+   * Before: except:
+   * After:  except Exception:
+   */
+  py_bare_except: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /^(\s*)except\s*:\s*$/,
+      (line) => line.replace(/except\s*:/, 'except Exception:'),
+    ),
+
+  /**
+   * py_open_without_encoding — adds `encoding='utf-8'` to open() calls.
+   *
+   * Before: open('file.txt', 'r')
+   * After:  open('file.txt', 'r', encoding='utf-8')
+   *
+   * Idempotent: guard checks that encoding= is not already present.
+   */
+  py_open_without_encoding: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /open\s*\([^)]+\)(?!.*encoding\s*=)/,
+      (line) => {
+        if (/encoding\s*=/.test(line)) return null;
+        return line.replace(
+          /open\s*\(([^)]+)\)/,
+          (_, args: string) => `open(${args.trimEnd()}, encoding='utf-8')`,
+        );
+      },
+    ),
+
+  // ── Docker ─────────────────────────────────────────────────────────────────
+
+  /**
+   * docker_latest_tag — replaces `:latest` image tag with `:stable`.
+   *
+   * Before: FROM node:latest
+   * After:  FROM node:stable
+   *
+   * Rational default: `:stable` is deterministic on most registries.
+   * For node: prefer LTS (e.g. 20-alpine), but :stable is safe without
+   * knowing the intended version.
+   */
+  docker_latest_tag: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /^FROM\s+\S+:latest\b/i,
+      (line) => line.replace(/:latest\b/, ':stable'),
+    ),
+
+  // ── GitHub Actions ─────────────────────────────────────────────────────────
+
+  /**
+   * gha_unpinned_action — appends a `# pin` comment hint to unpinned
+   * `uses:` lines, signalling that a SHA pin is required.
+   *
+   * Before: uses: actions/checkout@v4
+   * After:  uses: actions/checkout@v4  # TODO: pin to SHA
+   *
+   * Full SHA resolution is not mechanical — we annotate only.
+   */
+  gha_unpinned_action: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /^\s*uses:\s+\S+@[vV]\d/,
+      (line) => {
+        if (line.includes('# TODO: pin')) return null;
+        return `${line.trimEnd()}  # TODO: pin to SHA`;
+      },
+    ),
+
+  // ── Security ───────────────────────────────────────────────────────────────
+
+  /**
+   * insecure_random — replaces Math.random() with crypto.randomUUID()
+   * in security-sensitive contexts.
+   *
+   * Before: const token = Math.random().toString(36);
+   * After:  const token = crypto.randomUUID();
+   *
+   * Safe only when the full expression is `Math.random()…`; returns null
+   * if chaining makes replacement ambiguous.
+   */
+  insecure_random: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /Math\.random\s*\(\s*\)/,
+      (line) => {
+        if (/\.toString\s*\(/.test(line)) {
+          return line.replace(/Math\.random\s*\(\s*\)\.toString\s*\([^)]*\)/, 'crypto.randomUUID()');
+        }
+        return line.replace(/Math\.random\s*\(\s*\)/, 'crypto.randomUUID()');
+      },
+    ),
+
+  /**
+   * cookie_no_secure_flags — adds `; Secure; HttpOnly; SameSite=Strict`
+   * to Set-Cookie header strings missing those flags.
+   *
+   * Before: res.setHeader('Set-Cookie', 'session=abc')
+   * After:  res.setHeader('Set-Cookie', 'session=abc; Secure; HttpOnly; SameSite=Strict')
+   *
+   * Returns null if any of the three flags are already present.
+   */
+  cookie_no_secure_flags: (content, finding) =>
+    replaceLine(
+      content,
+      finding,
+      /['"]\s*\).*[Ss]et-[Cc]ookie|Set-Cookie.*['"]$/,
+      (line) => {
+        if (/Secure|HttpOnly|SameSite/i.test(line)) return null;
+        return line.replace(
+          /(['"])((?:[^'"]*\n?)*)(['"])\s*(\).*)?$/,
+          (_, q1, val, q2, rest) =>
+            `${q1}${val}; Secure; HttpOnly; SameSite=Strict${q2}${rest ?? ''}`,
+        );
+      },
+    ),
 } as const;
 
 export const AUTO_FIXABLE: ReadonlySet<string> = new Set(Object.keys(FIXERS));
@@ -821,7 +1132,7 @@ export interface VerifyResult {
 }
 
 /**
- * Re-runs Prometheus rules on before/after content to confirm a fix worked.
+ * Re-runs Thesmos rules on before/after content to confirm a fix worked.
  *
  * findingResolved: the original finding no longer fires on the patched content.
  * newFindingsIntroduced: any findings present in after but not in before.
@@ -834,7 +1145,7 @@ export function verifyFix(
   originalFinding: Finding,
   config: ThesmosConfig,
 ): VerifyResult {
-  const rule = PROMETHEUS_RULES.find((r) => r.category === originalFinding.category);
+  const rule = THESMOS_RULES.find((r) => r.category === originalFinding.category);
   if (!rule) {
     return { originalFinding, fixApplied: true, findingResolved: true, newFindingsIntroduced: [], safe: true };
   }

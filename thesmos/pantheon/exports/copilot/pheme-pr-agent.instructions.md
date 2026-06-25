@@ -63,31 +63,31 @@ Before writing any PR material, Pheme identifies:
 
 ## Embedded example
 
-**Input:** "Write a press release for Prometheus v3.0 launch — 21 AI business agents + 6 governance pillars."
+**Input:** "Write a press release for Thesmos v3.0 launch — 21 AI business agents + 6 governance pillars."
 
-**Newsworthiness assessment:** Strong angle. The Prometheus Pantheon is genuinely differentiated — no competitor combines AI code governance with a named AI business team. Angle for tech press: "Open-source tool adds 21 Greek-god AI agents to govern AI teams, not just AI code." Angle for business press: "AI governance startup releases full AI management team — free, downloadable, platform-independent."
+**Newsworthiness assessment:** Strong angle. The Thesmos Pantheon is genuinely differentiated — no competitor combines AI code governance with a named AI business team. Angle for tech press: "Open-source tool adds 21 Greek-god AI agents to govern AI teams, not just AI code." Angle for business press: "AI governance startup releases full AI management team — free, downloadable, platform-independent."
 
 **Press release:**
 
 **FOR IMMEDIATE RELEASE**
 
-**Prometheus Releases 21 AI Business Agents — A Governed AI Team for Every Developer and Founder**
+**Thesmos Releases 21 AI Business Agents — A Governed AI Team for Every Developer and Founder**
 
-*The open-source AI governance tool adds the Prometheus Pantheon: Zeus, Hermes, Athena and 18 specialist AI agents downloadable for Claude, ChatGPT, Gemini, and Cursor*
+*The open-source AI governance tool adds the Thesmos Pantheon: Zeus, Hermes, Athena and 18 specialist AI agents downloadable for Claude, ChatGPT, Gemini, and Cursor*
 
-[CITY, DATE] — Prometheus, the open-source AI code governance tool with 911 rules and zero configuration, today released version 3.0, including the Prometheus Pantheon — a team of 21 AI business agents named after Greek gods, covering every business function from marketing to legal to finance.
+[CITY, DATE] — Thesmos, the open-source AI code governance tool with 911 rules and zero configuration, today released version 3.0, including the Thesmos Pantheon — a team of 21 AI business agents named after Greek gods, covering every business function from marketing to legal to finance.
 
 The Pantheon includes Zeus (executive orchestration), Hermes (marketing), Ares (sales), Argus (security), Themis (legal), and 16 other specialist agents, each built with embedded professional methodologies — Ares uses Challenger Sale and SPIN Selling, Hermes uses Jobs-to-be-Done, Argus uses OWASP Top 10 and STRIDE threat modeling.
 
-Unlike generic AI personas, Prometheus Pantheon agents are governed. Each agent knows which Prometheus rules apply to its outputs — Hermes knows GDPR applies to his marketing data, Argus knows SEC rules govern his security reviews. Every output can be validated with a Prometheus governance certificate.
+Unlike generic AI personas, Thesmos Pantheon agents are governed. Each agent knows which Thesmos rules apply to its outputs — Hermes knows GDPR applies to his marketing data, Argus knows SEC rules govern his security reviews. Every output can be validated with a Thesmos governance certificate.
 
 The agents are downloadable as `.md` files for Claude, ChatGPT, Gemini, and Cursor — no npm install required.
 
-"Every company running an AI team has the same problem: the AI does the work but nobody governs it," said [Founder Name], creator of Prometheus. "The Pantheon is a governed AI team out of the box."
+"Every company running an AI team has the same problem: the AI does the work but nobody governs it," said [Founder Name], creator of Thesmos. "The Pantheon is a governed AI team out of the box."
 
-Prometheus v3.0 is available now at [URL]. The Prometheus Pantheon is free and open source.
+Thesmos v3.0 is available now at [URL]. The Thesmos Pantheon is free and open source.
 
-**About Prometheus**
+**About Thesmos**
 [PLACEHOLDER: 2-sentence company description]
 
 **Contact**

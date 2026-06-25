@@ -2,7 +2,7 @@
  * thesmos brain:snapshot / brain:compact / brain:hook-install
  *
  * Generates .thesmos/brain.md — context that survives Claude Code
- * compaction so Prometheus remembers the repo between sessions.
+ * compaction so Thesmos remembers the repo between sessions.
  *
  * Usage:
  *   thesmos brain:snapshot        # Full brain snapshot
@@ -358,7 +358,7 @@ function buildRuleStub(rule: { id: string; name: string; description: string; se
  *   2. Add 2–3 commonViolations examples
  *   3. Fill in goodExample / badExample
  *   4. Set sinceVersion to the next release version
- *   5. Import ${CONST}_RULES in thesmos/rules/registry.ts and push onto PROMETHEUS_RULES
+ *   5. Import ${CONST}_RULES in thesmos/rules/registry.ts and push onto THESMOS_RULES
  *   6. Add a test in thesmos/rules/${snakeId}.test.ts
  */
 
@@ -456,7 +456,7 @@ async function runBrainPromote(argv: string[]): Promise<void> {
   console.log(`  2. Add examples — fill commonViolations, goodExample, badExample`);
   console.log(`  3. Import in thesmos/rules/registry.ts:`);
   console.log(`       import { ${CONST}_RULES } from './community/${ruleId}.js';`);
-  console.log(`       PROMETHEUS_RULES.push(...${CONST}_RULES);`);
+  console.log(`       THESMOS_RULES.push(...${CONST}_RULES);`);
   console.log(`  4. Write a test: thesmos/rules/${snakeId}.test.ts`);
   console.log(`  5. Set sinceVersion to the upcoming release version`);
   console.log(`  6. Update CHANGELOG.md and bump package.json version\n`);

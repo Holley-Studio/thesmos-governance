@@ -1,5 +1,5 @@
 /**
- * Prometheus Watch Mode — real-time governance feedback during development.
+ * Thesmos Watch Mode — real-time governance feedback during development.
  *
  * Uses Node.js native fs.watch (no external dependencies).
  * Debounces rapid file changes (default 400ms) then re-runs review on changed files.

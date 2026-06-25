@@ -1,5 +1,5 @@
 /**
- * prometheus certificate:generate — produce a signed governance certificate
+ * thesmos certificate:generate — produce a signed governance certificate
  * for the current project delivery.
  *
  * The certificate is a sha256-hashed JSON artifact that records governance
@@ -7,9 +7,9 @@
  * to source code. Agencies can include it in every delivery package.
  *
  * Usage:
- *   prometheus certificate:generate            print JSON to stdout
- *   prometheus certificate:generate --write    write to .thesmos/certificate.json
- *   prometheus certificate:generate --verify   verify an existing certificate's hash
+ *   thesmos certificate:generate            print JSON to stdout
+ *   thesmos certificate:generate --write    write to .thesmos/certificate.json
+ *   thesmos certificate:generate --verify   verify an existing certificate's hash
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -19,7 +19,7 @@ import { parseArgs, flag } from '../lib/args.ts';
 import { computeHealthForRoot } from '../../health.ts';
 import { loadReport } from '../lib/report.ts';
 import { runReview } from '../../review.ts';
-import { PROMETHEUS_RULES } from '../../rules/registry.ts';
+import { THESMOS_RULES } from '../../rules/registry.ts';
 
 export interface GovernanceCertificate {
   tool: string;
@@ -56,7 +56,7 @@ function buildCertificate(
   const stable = JSON.stringify({
     project,
     timestamp,
-    rulesChecked: PROMETHEUS_RULES.length,
+    rulesChecked: THESMOS_RULES.length,
     blockers,
     highFindings,
     mediumFindings,
@@ -70,7 +70,7 @@ function buildCertificate(
     version,
     project,
     timestamp,
-    rulesChecked: PROMETHEUS_RULES.length,
+    rulesChecked: THESMOS_RULES.length,
     blockers,
     highFindings,
     mediumFindings,

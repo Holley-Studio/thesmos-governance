@@ -14,7 +14,7 @@
  *   Severity  — CI exit-code helpers
  *   Doctor    — installation health checks
  *   CI Check  — lightweight CI-gate checks (adapter freshness, required files)
- *   Output    — PROMETHEUS:GENERATED section markers
+ *   Output    — THESMOS:GENERATED section markers
  *   Report    — report.json merge utilities
  */
 
@@ -48,7 +48,7 @@ export { CONFIG_DEFAULTS, loadConfig, validateConfig } from './config.js';
 // ── Rules & Adapters ──────────────────────────────────────────────────────────
 
 export {
-  PROMETHEUS_RULES,
+  THESMOS_RULES,
   ADAPTER_OUTPUT_PATHS,
   getRulesByTag,
   getRulesBySeverity,

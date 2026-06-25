@@ -3,7 +3,7 @@
  *
  * Detects 10 categories of drift:
  *   1.  adapter.missing           — adapter file not generated
- *   2.  adapter.no-metadata       — generated section has no PROMETHEUS:META comment
+ *   2.  adapter.no-metadata       — generated section has no THESMOS:META comment
  *   3.  adapter.rule-count-mismatch — META ruleCount != current registry
  *   4.  adapter.version-mismatch  — META version != current config
  *   5.  adapter.manual-edit       — content inside generated section was edited by hand
@@ -25,7 +25,7 @@ import { join } from 'node:path';
 import type { ThesmosConfig } from './types';
 import {
   ADAPTER_OUTPUT_PATHS,
-  PROMETHEUS_RULES,
+  THESMOS_RULES,
   buildAdapterContent,
   parseAdapterMeta,
   type Rule,
@@ -159,7 +159,7 @@ function checkAdapterMetadata(input: DriftInput): DriftFinding[] {
         type: 'adapter.no-metadata',
         severity: 'HIGH',
         file: relPath,
-        message: `${relPath} is missing the PROMETHEUS:META comment — cannot verify freshness`,
+        message: `${relPath} is missing the THESMOS:META comment — cannot verify freshness`,
         fixSuggestion: 'Run thesmos adapters to regenerate with embedded metadata',
       });
       continue;
@@ -228,8 +228,8 @@ function checkManualEdits(input: DriftInput): DriftFinding[] {
         type: 'adapter.manual-edit',
         severity: 'HIGH',
         file: relPath,
-        message: `${relPath} (${target}) has manual edits inside the PROMETHEUS:GENERATED section — content does not match the canonical generator output`,
-        fixSuggestion: 'Remove edits inside the PROMETHEUS:GENERATED markers and run thesmos adapters, or move content outside the markers',
+        message: `${relPath} (${target}) has manual edits inside the THESMOS:GENERATED section — content does not match the canonical generator output`,
+        fixSuggestion: 'Remove edits inside the THESMOS:GENERATED markers and run thesmos adapters, or move content outside the markers',
       });
     }
   }
@@ -255,7 +255,7 @@ function checkGovernanceDocs(input: DriftInput): DriftFinding[] {
         type: 'governance.stale',
         severity: 'MEDIUM',
         file: relPath,
-        message: `${relPath} is missing the PROMETHEUS:GENERATED markers for section "${sectionId}"`,
+        message: `${relPath} is missing the THESMOS:GENERATED markers for section "${sectionId}"`,
         fixSuggestion: 'Run thesmos init to regenerate governance files',
       });
       continue;
@@ -546,7 +546,7 @@ export function runDriftForRoot(root: string, config: ThesmosConfig): DriftFindi
 
   return runDrift({
     config,
-    rules: PROMETHEUS_RULES,
+    rules: THESMOS_RULES,
     fileExists: (rel) => existsSync(join(root, rel)),
     readFileSafe,
     readJsonSafe,

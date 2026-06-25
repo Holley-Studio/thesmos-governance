@@ -1,5 +1,5 @@
 /**
- * Prometheus Agent Audit Trail — tamper-evident log of AI agent actions.
+ * Thesmos Agent Audit Trail — tamper-evident log of AI agent actions.
  *
  * Each entry records what tool an agent called, which file it touched,
  * what governance findings existed at that moment, and the final status
@@ -95,7 +95,7 @@ export function appendAuditEntry(
   file: string,
   status: AuditStatus,
   findings: string[] = [],
-  session = process.env['PROMETHEUS_SESSION_ID'] ?? 'unknown',
+  session = process.env['THESMOS_SESSION_ID'] ?? 'unknown',
 ): AuditEntry {
   const dir = join(root, '.thesmos');
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });

@@ -1,5 +1,5 @@
 /**
- * AI / LLM governance rules — the category that makes Prometheus unique.
+ * AI / LLM governance rules — the category that makes Thesmos unique.
  *
  * These rules specifically target the patterns that emerge when AI coding
  * assistants help write AI-powered features: prompt injection, key leakage,

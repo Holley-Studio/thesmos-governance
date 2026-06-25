@@ -3,7 +3,7 @@
  *
  * Reads AI behavior files (CLAUDE.md, .cursorrules, GEMINI.md, etc.) and
  * checks them for governance gaps: missing security guidance, anti-patterns,
- * and divergence from the active Prometheus config.
+ * and divergence from the active Thesmos config.
  *
  * Also provides initFromAiConfig() for `thesmos init --from-ai-config`,
  * which reads these files and generates a starter .thesmos/config.json

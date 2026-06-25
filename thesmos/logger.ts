@@ -1,8 +1,8 @@
 /**
- * Prometheus internal logger — zero dependencies, NDJSON to stderr.
+ * Thesmos internal logger — zero dependencies, NDJSON to stderr.
  *
  * Level resolution (highest priority first):
- *   1. PROMETHEUS_LOG_LEVEL env var  (error|warn|info|debug)
+ *   1. THESMOS_LOG_LEVEL env var  (error|warn|info|debug)
  *   2. CI=true                       → error only
  *   3. default                       → warn
  *
@@ -15,7 +15,7 @@ type Level = 'error' | 'warn' | 'info' | 'debug';
 const LEVEL_RANK: Record<Level, number> = { error: 0, warn: 1, info: 2, debug: 3 };
 
 function resolveLevel(): Level {
-  const env = process.env['PROMETHEUS_LOG_LEVEL']?.toLowerCase();
+  const env = process.env['THESMOS_LOG_LEVEL']?.toLowerCase();
   if (env === 'error' || env === 'warn' || env === 'info' || env === 'debug') return env;
   if (process.env['CI'] === 'true') return 'error';
   return 'warn';

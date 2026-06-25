@@ -15,6 +15,7 @@ import type { HealthScore } from './types.js';
 
 export class StatusBarManager implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;
+  private readonly governanceItem: vscode.StatusBarItem;
 
   constructor() {
     this.item = vscode.window.createStatusBarItem(
@@ -25,6 +26,13 @@ export class StatusBarManager implements vscode.Disposable {
     this.item.tooltip = 'Thesmos Governance — click to view health score';
     this.showInactive();
     this.item.show();
+
+    this.governanceItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      99,
+    );
+    this.governanceItem.command = 'thesmos.governance.status';
+    this.governanceItem.hide();
   }
 
   showLoading(): void {
@@ -102,6 +110,33 @@ export class StatusBarManager implements vscode.Disposable {
     this.item.backgroundColor = undefined;
   }
 
+  showGoverningAutoMode(): void {
+    this.governanceItem.text = '$(eye) Governing Auto Mode';
+    this.governanceItem.tooltip = new vscode.MarkdownString(
+      '**Thesmos is governing this Auto Mode session**\n\n' +
+      'PreToolUse hooks block violations before every Write, Edit, and Bash.\n\n' +
+      '_Click to view governance status_',
+    );
+    this.governanceItem.backgroundColor = undefined;
+    this.governanceItem.show();
+  }
+
+  showAutoModeUngoverned(): void {
+    this.governanceItem.text = '$(warning) Auto Mode: no governance';
+    this.governanceItem.tooltip = new vscode.MarkdownString(
+      '**Auto Mode detected but governance hooks are not installed**\n\n' +
+      'Run `thesmos claude:govern install` to protect this session.\n\n' +
+      '_Click to install hooks_',
+    );
+    this.governanceItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+    this.governanceItem.command = 'thesmos.governance.install';
+    this.governanceItem.show();
+  }
+
+  clearGoverningAutoMode(): void {
+    this.governanceItem.hide();
+  }
+
   showInactive(): void {
     this.item.text = '$(shield) Thesmos';
     this.item.tooltip = 'Thesmos Governance';
@@ -118,5 +153,6 @@ export class StatusBarManager implements vscode.Disposable {
 
   dispose(): void {
     this.item.dispose();
+    this.governanceItem.dispose();
   }
 }

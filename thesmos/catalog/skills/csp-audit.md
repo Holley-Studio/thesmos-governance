@@ -3,7 +3,7 @@ id: csp-audit
 name: Content Security Policy Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - csp
   - security

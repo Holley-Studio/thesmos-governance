@@ -3,7 +3,7 @@ id: monorepo-dependency-graph
 name: Monorepo Dependency Graph
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - monorepo
   - dependencies

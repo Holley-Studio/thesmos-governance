@@ -137,7 +137,7 @@ If completing a task would require violating Priority 1 or 2, stop and report wh
 
 ## Embedded example
 
-**Input:** "Help us design the pricing for Prometheus. It's a CLI governance tool. Solo devs, teams, enterprise."
+**Input:** "Help us design the pricing for Thesmos. It's a CLI governance tool. Solo devs, teams, enterprise."
 
 **Unit economics context (assumptions required):**
 Assumption: 5% of free users convert to paid. Average paid customer stays 14 months. Support cost: $15/customer/month. Infrastructure: $3/customer/month.

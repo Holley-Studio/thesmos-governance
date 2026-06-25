@@ -3,7 +3,7 @@ id: e2e-test-review
 name: E2E Test Review
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - testing
   - e2e

@@ -3,7 +3,7 @@ id: i18n-audit
 name: Internationalisation Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - i18n
   - l10n

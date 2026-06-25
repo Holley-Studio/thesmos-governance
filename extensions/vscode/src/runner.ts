@@ -14,6 +14,26 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { Finding, HealthScore, ReviewOutput } from './types.js';
 
+// VS Code launched from the Dock doesn't inherit nvm/volta PATH — extend it
+// so node_modules/.bin scripts can resolve their `node` shebang.
+function buildEnv(): NodeJS.ProcessEnv {
+  const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
+  const sep = process.platform === 'win32' ? ';' : ':';
+  const extra = [
+    `${home}/.nvm/versions/node/v20.20.2/bin`,
+    `${home}/.nvm/versions/node/v22.0.0/bin`,
+    `${home}/.nvm/versions/node/v24.0.0/bin`,
+    `${home}/.nvm/versions/node/v18.0.0/bin`,
+    `${home}/.volta/bin`,
+    `${home}/.fnm/aliases/default/bin`,
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+  ].join(sep);
+  return { ...process.env, PATH: `${extra}${sep}${process.env.PATH ?? ''}`, FORCE_COLOR: '0' };
+}
+
+const RUNNER_ENV = buildEnv();
+
 const execFileAsync = promisify(execFile);
 
 const TIMEOUT_MS = 45_000;
@@ -95,7 +115,7 @@ async function exec(
     cwd,
     timeout: TIMEOUT_MS,
     maxBuffer: MAX_BUFFER,
-    env: { ...process.env, FORCE_COLOR: '0' },
+    env: RUNNER_ENV,
   });
   return stdout;
 }

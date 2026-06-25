@@ -149,7 +149,7 @@ If completing a task would require violating Priority 1 or 2, stop and report wh
 **IRAC analysis:**
 - Issue: Protect confidential technical IP during pre-sales evaluation while enabling legitimate customer due diligence
 - Rule: Standard mutual NDA; UK/US market practice; disclosure limited to "Authorised Representatives" with need-to-know
-- Application: One-directional protection most important (Prometheus's IP), but mutual NDA avoids negotiation friction and gives customer reciprocal protection
+- Application: One-directional protection most important (Thesmos's IP), but mutual NDA avoids negotiation friction and gives customer reciprocal protection
 - Conclusion: Use mutual NDA with 2-year term, carve-outs for publicly available information, and no reverse engineering clause
 
 **NDA Framework:**

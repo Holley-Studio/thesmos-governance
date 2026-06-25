@@ -15,7 +15,7 @@
  */
 
 import * as vscode from 'vscode';
-import { join, basename } from 'node:path';
+import { join } from 'node:path';
 import type { Finding, Severity } from './types.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ class FindingItem extends vscode.TreeItem {
   ) {
     super(finding.message, vscode.TreeItemCollapsibleState.None);
 
-    this.description = basename(finding.file);
+    this.description = finding.file;
     this.tooltip = new vscode.MarkdownString(
       `**${finding.severity}** · \`${finding.category}\`\n\n` +
         `${finding.message}` +

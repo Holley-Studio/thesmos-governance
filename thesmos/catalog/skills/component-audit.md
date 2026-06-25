@@ -3,7 +3,7 @@ id: component-audit
 name: Component Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - components
   - ui

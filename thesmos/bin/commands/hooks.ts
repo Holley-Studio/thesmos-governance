@@ -1,5 +1,5 @@
 /**
- * prometheus hooks — install/uninstall/status of governance git hooks.
+ * thesmos hooks — install/uninstall/status of governance git hooks.
  *
  * Subcommands:
  *   hooks install              Write hooks to .git/hooks/ (local, default)

@@ -10,7 +10,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DoctorCheck, ThesmosConfig } from './types';
-import { ADAPTER_OUTPUT_PATHS, PROMETHEUS_RULES, isAdapterFresh } from './adapters';
+import { ADAPTER_OUTPUT_PATHS, THESMOS_RULES, isAdapterFresh } from './adapters';
 import { validateConfig } from './config';
 
 // ── Injectable input ──────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ export interface DoctorInput {
   /** Parses a repo-relative JSON file; returns null on any error. */
   readJsonSafe: (relativePath: string) => Record<string, unknown> | null;
   /** Reads a repo-relative file as text; returns null on any error. When provided,
-   *  adapter checks also verify freshness via embedded PROMETHEUS:META metadata. */
+   *  adapter checks also verify freshness via embedded THESMOS:META metadata. */
   readFileSafe?: (relativePath: string) => string | null;
   /** Contents of package.json "scripts" block; empty object when absent. */
   packageScripts: Record<string, string>;
@@ -96,7 +96,7 @@ function checkAdapterFiles(input: DoctorInput): DoctorCheck[] {
     if (input.readFileSafe) {
       const content = input.readFileSafe(relPath);
       if (content !== null) {
-        const { fresh, reason } = isAdapterFresh(content, PROMETHEUS_RULES, input.config);
+        const { fresh, reason } = isAdapterFresh(content, THESMOS_RULES, input.config);
         return {
           name: `adapter:${target}`,
           group: DOCTOR_GROUPS.ADAPTERS,

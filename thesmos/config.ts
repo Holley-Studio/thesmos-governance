@@ -3,7 +3,7 @@ import { join, dirname, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import type { ThesmosConfig } from './types';
-import { PROMETHEUS_RULES } from './rules/registry';
+import { THESMOS_RULES } from './rules/registry';
 
 // Resolve built-in preset JSON files shipped with the package
 const _require = createRequire(import.meta.url ?? 'file://' + __filename);
@@ -66,11 +66,18 @@ export const CONFIG_DEFAULTS: ThesmosConfig = {
 
   failOnSeverity: ['BLOCKER'],
   warnOnSeverity: ['HIGH'],
-  severityRules: PROMETHEUS_RULES.map((r) => ({ category: r.category, severity: r.severity })),
+  severityRules: THESMOS_RULES.map((r) => ({ category: r.category, severity: r.severity })),
   disabledRules: [],
 
   reportMaxAgeDays: 30,
   protectedBranches: ['main'],
+
+  autoMode: {
+    enabled: true,
+    strictMode: true,
+    blockOn: 'HIGH' as const,
+    notifyOnBlock: true,
+  },
 
   doctor: {
     reportMaxAgeDays: 7,

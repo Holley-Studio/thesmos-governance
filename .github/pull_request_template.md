@@ -17,4 +17,4 @@
 - [ ] New skills/agents follow the catalog schema (`thesmos catalog:validate`)
 - [ ] CHANGELOG.md updated (for user-facing changes)
 - [ ] README updated if applicable
-- [ ] No new `prometheus` references introduced (use `thesmos` everywhere)
+- [ ] No new `thesmos` references introduced (use `thesmos` everywhere)

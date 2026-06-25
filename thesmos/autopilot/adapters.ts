@@ -6,7 +6,7 @@
  * HTTP adapter:   POSTs to a configurable endpoint (generic/custom LLM servers)
  *
  * The --dangerously-skip-permissions flag bypasses Claude Code's own permission
- * prompts inside the subprocess — separate from Prometheus's permission profile
+ * prompts inside the subprocess — separate from Thesmos's permission profile
  * which handles the parent VSCode extension's permission system.
  */
 import { spawn } from 'node:child_process';

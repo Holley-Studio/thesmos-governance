@@ -1,5 +1,5 @@
 /**
- * Lightweight interactive prompts for the Prometheus CLI.
+ * Lightweight interactive prompts for the Thesmos CLI.
  *
  * Uses Node.js built-in readline — no external dependencies.
  * All prompts write to process.stdout and read from process.stdin by default,

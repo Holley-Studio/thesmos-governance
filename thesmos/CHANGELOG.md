@@ -15,7 +15,7 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 
 **3 New God Agents (catalog: 70 → 73, Pantheon: 31 → 34):**
 
-- **God Agent Proteus** (`proteus-drift-agent`) — Drift & Alignment Monitor. Detects product drift, prompt drift, architecture drift, brand drift, strategy drift, and governance drift. Compares the current state against documented baselines; surfaces findings by domain with severity (BLOCKER/HIGH/MEDIUM/LOW) and delegates corrections to domain specialists. Integrates with `prometheus drift` (infrastructure) and `.prometheus/brain.md` (context baseline). Governed by AGNT_001, MCP_001.
+- **God Agent Proteus** (`proteus-drift-agent`) — Drift & Alignment Monitor. Detects product drift, prompt drift, architecture drift, brand drift, strategy drift, and governance drift. Compares the current state against documented baselines; surfaces findings by domain with severity (BLOCKER/HIGH/MEDIUM/LOW) and delegates corrections to domain specialists. Integrates with `thesmos drift` (infrastructure) and `.thesmos/brain.md` (context baseline). Governed by AGNT_001, MCP_001.
 - **God Agent Momus** (`momus-challenger-agent`) — Challenger & Clarity Enforcer. Challenges plans, ideas, and research before they execute using Socratic method, Gary Klein's Pre-mortem, Charlie Munger's Inversion, Red Team thinking, and Five Whys. Delivers: premise check, 3 weakest assumptions, 5 unasked questions, 3 failure scenarios, specificity demands, and unrepresented interests. Auto-invoked by Zeus before irreversible decisions. Governed by AGNT_001, LIC_001.
 - **God Agent Metis** (`metis-pm-agent`) — Project Manager & Execution Planner. Converts plans into executable phases with entry/exit criteria, critical path (CPM), RACI ownership tables, risk registers, definitions of done, and status templates. Auto-invoked by Zeus before plans longer than 4 weeks and by Daedalus after PRD approval. Governed by AGNT_001, SC_002.
 
@@ -32,15 +32,15 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 
 ### Changed
 
-- **`prometheus/package.json`** — version `3.5.0` → `3.6.0`
-- **`prometheus/catalog.test.ts`** — agent count assertion `70` → `73`
-- **`prometheus/bin/commands/compliance.ts`** — footer version `v3.5.0` → `v3.6.0`
-- **`prometheus/adapters.ts`** — added `generatePantheonProtocol()` function; `generateClaudeRules` now appends Universal Protocol to every CLAUDE.md output
+- **`thesmos/package.json`** — version `3.5.0` → `3.6.0`
+- **`thesmos/catalog.test.ts`** — agent count assertion `70` → `73`
+- **`thesmos/bin/commands/compliance.ts`** — footer version `v3.5.0` → `v3.6.0`
+- **`thesmos/adapters.ts`** — added `generatePantheonProtocol()` function; `generateClaudeRules` now appends Universal Protocol to every CLAUDE.md output
 
 ### Website & Documentation
 
-- **`holley.studio/prometheus`** — version badge `v3.5.0` → `v3.6.0`, Pantheon count `31` → `34`, 3 new Pantheon cards (Proteus, Momus, Metis), new "Why Prometheus is Different" section with 4-card comparison and competitive table
-- **`prometheus/README.md`** — new "Why Prometheus is different" section with 7 key selling points and feature comparison table
+- **`holley.studio/thesmos`** — version badge `v3.5.0` → `v3.6.0`, Pantheon count `31` → `34`, 3 new Pantheon cards (Proteus, Momus, Metis), new "Why Thesmos is Different" section with 4-card comparison and competitive table
+- **`thesmos/README.md`** — new "Why Thesmos is different" section with 7 key selling points and feature comparison table
 
 ---
 
@@ -51,7 +51,7 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 **10 New Pantheon Agents — Creative, Business, and Developer Workflow:**
 
 - **Calliope** (`calliope-email-agent`) — Email Design & HTML/MJML Agent. MJML source code, compiled HTML email templates, responsive cross-client design, deliverability checklists, A/B variant specs. Governed by GDPR_004 (no PII in email URLs), SEC_008 (no secrets in templates), GDPR_001 (consent gate awareness).
-- **Talos** (`talos-web-dev-agent`) — Web Dev & Implementation Agent. Production-ready Next.js/React/TypeScript components, API routes, database queries, and test scaffolds. Runs a mental Prometheus governance scan on every file before delivery. Governed by SEC_004, AUTH_002, NEXT_003, MCP_001.
+- **Talos** (`talos-web-dev-agent`) — Web Dev & Implementation Agent. Production-ready Next.js/React/TypeScript components, API routes, database queries, and test scaffolds. Runs a mental Thesmos governance scan on every file before delivery. Governed by SEC_004, AUTH_002, NEXT_003, MCP_001.
 - **Clio** (`clio-case-study-agent`) — Case Study & Social Proof Agent. Customer interview frameworks (STAR structure), first draft with [VERIFY] placeholders, ROI calculation worksheets, testimonial pull quotes, LinkedIn post versions, and PDF design briefs for Hephaestus. Governed by LIC_001 (no fabricated quotes), GDPR_013 (client consent required).
 - **Eos** (`eos-automation-agent`) — Automation & Workflow Engineering Agent. n8n/Zapier/Make workflow JSON, GitHub Actions YAML, shell scripts, webhook handler code, and runbooks. All API keys BYOK. Governed by SC_007 (no script injection), SC_001 (pinned actions), SEC_007 (no hardcoded credentials).
 - **Erato** (`erato-brand-voice-agent`) — Brand Voice & Messaging Architecture Agent. Brand voice guides, messaging architecture (hero message → pillars → proof points), tagline options with rationale, boilerplate copy at 4 lengths, competitor voice differentiation matrix. The guide that Apollo executes within.
@@ -71,16 +71,16 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 
 **`brain:promote` — Community Rule Promotion:**
 
-- New command `prometheus brain:promote --rule=<ID>` scaffolds an approved `ProposedRule` from `brain.json` into a TypeScript rule stub at `prometheus/rules/community/<ID>.ts`
+- New command `thesmos brain:promote --rule=<ID>` scaffolds an approved `ProposedRule` from `brain.json` into a TypeScript rule stub at `thesmos/rules/community/<ID>.ts`
 - Generated stubs follow the exact `ThesmosRule` pattern used throughout the core rules (exported `*_RULES` array, externalized regex constant, `.js` imports)
 - Printed step-by-step wiring instructions guide the developer to import the stub into `registry.ts`, add a test, and set the release version
 - `brain:evolve --approve` now stamps `approvedAt` timestamp on approved proposals
-- New `prometheus/rules/community/` directory with README documenting the promotion workflow
+- New `thesmos/rules/community/` directory with README documenting the promotion workflow
 - Route registered in CLI: `brain:promote`
 
 **MCP_001 — Expanded Injection Pattern Detection:**
 
-- `INJECTION_RE` in `prometheus/rules/mcp.ts` expanded from 6 patterns to 25+ across 6 attack categories
+- `INJECTION_RE` in `thesmos/rules/mcp.ts` expanded from 6 patterns to 25+ across 6 attack categories
 - System prompt overrides: `ignore/disregard/forget/override previous instructions`, `your new instructions are`
 - Role-play escapes: `you are now a`, `act as if`, `pretend to be`, `roleplay as`
 - Delimiter injection: `<system>`, `[INST]`, `<|im_start|>`, `### System`
@@ -111,29 +111,29 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 
 **Complete Builder Wizard — 6 New Generators:**
 
-- **`prometheus build:dashboard`** — 5-question wizard that creates a monitoring/analytics dashboard. Supports Next.js React components and plain HTML + Chart.js. Pre-wires Prometheus governance metrics as default data source. Outputs to `src/components/dashboards/<name>.tsx` or `public/dashboards/<name>.html`.
+- **`thesmos build:dashboard`** — 5-question wizard that creates a monitoring/analytics dashboard. Supports Next.js React components and plain HTML + Chart.js. Pre-wires Thesmos governance metrics as default data source. Outputs to `src/components/dashboards/<name>.tsx` or `public/dashboards/<name>.html`.
 
-- **`prometheus build:workflow`** — 7-question wizard that creates GitHub Actions CI/CD workflows. Covers all trigger types (PR, push, scheduled, manual, release), all common step groups (test+lint, build+deploy, full CI with Prometheus scan), and all major deploy targets (Vercel, AWS, GCP). Manual approval gates wired via `trstringer/manual-approval`.
+- **`thesmos build:workflow`** — 7-question wizard that creates GitHub Actions CI/CD workflows. Covers all trigger types (PR, push, scheduled, manual, release), all common step groups (test+lint, build+deploy, full CI with Thesmos scan), and all major deploy targets (Vercel, AWS, GCP). Manual approval gates wired via `trstringer/manual-approval`.
 
-- **`prometheus build:rag`** — 9-question wizard for Retrieval-Augmented Generation pipelines. Generates `chunker.ts`, `retriever.ts`, and `pipeline.ts`. Supports OpenAI, Cohere, Anthropic, and local embeddings (all BYOK). Vector stores: Supabase pgvector, Pinecone, Weaviate, in-memory. Retrieval strategies: similarity, MMR (diverse), hybrid keyword+vector. Optional MCP tool wrapper to expose the pipeline to AI agents. Security note included in generated code: sanitize retrieved content to prevent prompt injection via documents.
+- **`thesmos build:rag`** — 9-question wizard for Retrieval-Augmented Generation pipelines. Generates `chunker.ts`, `retriever.ts`, and `pipeline.ts`. Supports OpenAI, Cohere, Anthropic, and local embeddings (all BYOK). Vector stores: Supabase pgvector, Pinecone, Weaviate, in-memory. Retrieval strategies: similarity, MMR (diverse), hybrid keyword+vector. Optional MCP tool wrapper to expose the pipeline to AI agents. Security note included in generated code: sanitize retrieved content to prevent prompt injection via documents.
 
-- **`prometheus build:voice`** — 8-question wizard for real-time voice AI agents. Generates `session.ts`, `transport.ts`, and `pipeline.ts`. Supports WebRTC, Twilio Media Streams, and browser SpeechAPI transports. STT providers: Deepgram, AssemblyAI, OpenAI Whisper, browser native. TTS: ElevenLabs, Deepgram, browser native. LLM: Claude, OpenAI, local (all BYOK). Security warnings for audio PII and session isolation included in generated code.
+- **`thesmos build:voice`** — 8-question wizard for real-time voice AI agents. Generates `session.ts`, `transport.ts`, and `pipeline.ts`. Supports WebRTC, Twilio Media Streams, and browser SpeechAPI transports. STT providers: Deepgram, AssemblyAI, OpenAI Whisper, browser native. TTS: ElevenLabs, Deepgram, browser native. LLM: Claude, OpenAI, local (all BYOK). Security warnings for audio PII and session isolation included in generated code.
 
-- **`prometheus build:mcp-tool`** — 5-question wizard that creates a new custom tool for the Prometheus MCP server. Generates `prometheus/mcp-tools/<name>.ts` with full type-safe handler and registration instructions for `mcp-server.ts`. Supports read-only, file-writing, and external-API side-effect profiles. Return types: text, JSON, file list, Prometheus findings.
+- **`thesmos build:mcp-tool`** — 5-question wizard that creates a new custom tool for the Thesmos MCP server. Generates `thesmos/mcp-tools/<name>.ts` with full type-safe handler and registration instructions for `mcp-server.ts`. Supports read-only, file-writing, and external-API side-effect profiles. Return types: text, JSON, file list, Thesmos findings.
 
-- **`prometheus build:automation`** — 6-question wizard for CI/CD automations. For GitHub-hosted triggers (cron, webhook, file-change, event) generates `.github/workflows/<name>.yml`. For local triggers generates `.prometheus/automation/<name>.sh` with retry logic and dry-run support. Covers all common step groups (tests, build, deploy, notification, custom) and failure modes (fail+alert, retry×3+alert, log+continue).
+- **`thesmos build:automation`** — 6-question wizard for CI/CD automations. For GitHub-hosted triggers (cron, webhook, file-change, event) generates `.github/workflows/<name>.yml`. For local triggers generates `.thesmos/automation/<name>.sh` with retry logic and dry-run support. Covers all common step groups (tests, build, deploy, notification, custom) and failure modes (fail+alert, retry×3+alert, log+continue).
 
 **Builder Wizard Infrastructure:**
 
 - Generic `runBuilderWizard()` runner shared by all 6 builders — eliminates 200+ lines of duplicated wizard-loop code
 - All 6 builders support `--plan` (outputs Markdown plan + design decisions), `--scaffold` (writes code), and `--yes` (skips confirmation)
-- All scaffold outputs are immediately scanned by the Prometheus governance engine before reporting
-- All API keys are BYOK — Prometheus never stores, caches, or proxies credentials
+- All scaffold outputs are immediately scanned by the Thesmos governance engine before reporting
+- All API keys are BYOK — Thesmos never stores, caches, or proxies credentials
 
 ### Changed
 
-- `prometheus/package.json`: version `3.2.0` → `3.3.0`; added keywords: `ai-safety`, `owasp`, `mcp-server`, `brain`, `builder`
-- `prometheus/bin/commands/build.ts`: replaced 6 `runBuildStub` stubs with real implementations; added 6 question arrays (40 total questions); imported 6 generator modules
+- `thesmos/package.json`: version `3.2.0` → `3.3.0`; added keywords: `ai-safety`, `owasp`, `mcp-server`, `brain`, `builder`
+- `thesmos/bin/commands/build.ts`: replaced 6 `runBuildStub` stubs with real implementations; added 6 question arrays (40 total questions); imported 6 generator modules
 
 ---
 
@@ -143,15 +143,15 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 
 **5 Innovation Features:**
 
-- **F1 — `debug_finding` MCP Tool** — New MCP tool on the existing `prometheus mcp:serve` server. Call `debug_finding(rule_id, file_content, line?)` to get a `true_positive` / `likely_false_positive` verdict, the full rule explanation, exact fix suggestion, and suppression command. Closes the "why did this fire?" loop without leaving the AI assistant session.
+- **F1 — `debug_finding` MCP Tool** — New MCP tool on the existing `thesmos mcp:serve` server. Call `debug_finding(rule_id, file_content, line?)` to get a `true_positive` / `likely_false_positive` verdict, the full rule explanation, exact fix suggestion, and suppression command. Closes the "why did this fire?" loop without leaving the AI assistant session.
 
-- **F2 — Post-Fix Verification (`prometheus fix --verify`)** — After applying a fixer, Prometheus immediately re-runs `detect()` on the patched content to confirm the finding is resolved. New exports: `verifyFix(filePath, beforeContent, afterContent, finding, config): VerifyResult` and `VerifyResult` interface. Reports: ✅ verified / ❌ unresolved / ⚠️ regression introduced. Zero external dependencies — uses Prometheus's own rules engine.
+- **F2 — Post-Fix Verification (`thesmos fix --verify`)** — After applying a fixer, Thesmos immediately re-runs `detect()` on the patched content to confirm the finding is resolved. New exports: `verifyFix(filePath, beforeContent, afterContent, finding, config): VerifyResult` and `VerifyResult` interface. Reports: ✅ verified / ❌ unresolved / ⚠️ regression introduced. Zero external dependencies — uses Thesmos's own rules engine.
 
-- **F3 — GitHub PR Comment Bot (`prometheus github:comment`)** — Posts or updates a single governance summary comment on a GitHub PR. Uses `GITHUB_TOKEN` + native Node 18 `fetch()` — no `@octokit/rest` dependency. Idempotent via an HTML marker (`<!-- thesmos-governance-bot -->`). Includes auto-detection of repo from `git remote`. `--print-workflow` prints a copy-paste GitHub Actions snippet. New file: `prometheus/bin/commands/github-comment.ts`.
+- **F3 — GitHub PR Comment Bot (`thesmos github:comment`)** — Posts or updates a single governance summary comment on a GitHub PR. Uses `GITHUB_TOKEN` + native Node 18 `fetch()` — no `@octokit/rest` dependency. Idempotent via an HTML marker (`<!-- thesmos-governance-bot -->`). Includes auto-detection of repo from `git remote`. `--print-workflow` prints a copy-paste GitHub Actions snippet. New file: `thesmos/bin/commands/github-comment.ts`.
 
-- **F4 — Incremental Scan Cache** — sha256-keyed per-file finding cache in `.prometheus/.scan-cache.json`. Unchanged files return cached findings instantly; any rules-version bump invalidates all entries. New exports: `loadCache`, `saveCache`, `getCachedFindings`, `setCachedFindings`, `invalidateCache`, `runReviewCached`. Expected speedup: 70–90% on second scan when most files are unchanged. New file: `prometheus/incremental-cache.ts`.
+- **F4 — Incremental Scan Cache** — sha256-keyed per-file finding cache in `.thesmos/.scan-cache.json`. Unchanged files return cached findings instantly; any rules-version bump invalidates all entries. New exports: `loadCache`, `saveCache`, `getCachedFindings`, `setCachedFindings`, `invalidateCache`, `runReviewCached`. Expected speedup: 70–90% on second scan when most files are unchanged. New file: `thesmos/incremental-cache.ts`.
 
-- **F5 — LSP Real-Time Feedback Server (`thesmos lsp`)** — Standalone LSP 3.17 server over stdio. Surfaces governance findings as real-time squiggles in any LSP-compatible editor (VS Code, Cursor, Neovim, Emacs). Capabilities: `textDocument/didOpen`, `textDocument/didChange` (debounced 500ms), `textDocument/didSave`, hover tooltips with rule explanation, code actions (suppress / explain). VS Code extension now launches the LSP client alongside its existing on-save analysis via `vscode-languageclient`. New file: `prometheus/lang-server.ts`.
+- **F5 — LSP Real-Time Feedback Server (`thesmos lsp`)** — Standalone LSP 3.17 server over stdio. Surfaces governance findings as real-time squiggles in any LSP-compatible editor (VS Code, Cursor, Neovim, Emacs). Capabilities: `textDocument/didOpen`, `textDocument/didChange` (debounced 500ms), `textDocument/didSave`, hover tooltips with rule explanation, code actions (suppress / explain). VS Code extension now launches the LSP client alongside its existing on-save analysis via `vscode-languageclient`. New file: `thesmos/lang-server.ts`.
 
 **5 Bug Fixes:**
 
@@ -172,8 +172,8 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 
 ### Changed
 
-- `prometheus/fix.ts` now imports `PROMETHEUS_RULES` and `runReview` to power `verifyFix()`.
-- `prometheus/bin/commands/fix.ts` gains `--verify` flag.
+- `thesmos/fix.ts` now imports `THESMOS_RULES` and `runReview` to power `verifyFix()`.
+- `thesmos/bin/commands/fix.ts` gains `--verify` flag.
 - `extensions/vscode/src/extension.ts` now lazily starts an LSP client (requires `vscode-languageclient` installed).
 - `extensions/vscode/package.json` adds `vscode-languageclient ^9.0.1` as a runtime dependency.
 
@@ -185,32 +185,32 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 
 **6 New Governance Pillars:**
 
-- **Pillar 1 — MCP Server** (`prometheus mcp:serve`, `prometheus mcp:install`) — Prometheus becomes a Model Context Protocol server. AI assistants call `scan_file`, `explain_rule`, `get_health`, `lint_commit`, and `get_context` *before* generating code. `mcp:install` writes the server entry into `~/.claude/settings.json`. New files: `prometheus/mcp-server.ts`, `prometheus/bin/commands/mcp.ts`.
+- **Pillar 1 — MCP Server** (`thesmos mcp:serve`, `thesmos mcp:install`) — Thesmos becomes a Model Context Protocol server. AI assistants call `scan_file`, `explain_rule`, `get_health`, `lint_commit`, and `get_context` *before* generating code. `mcp:install` writes the server entry into `~/.claude/settings.json`. New files: `thesmos/mcp-server.ts`, `thesmos/bin/commands/mcp.ts`.
 
-- **Pillar 2 — Dependency Security** (`prometheus deps:audit`) — Async CVE scanning via OSV.dev (`api.osv.dev/v1/querybatch`). Results cached in `.prometheus/dep-cache.json` (24h TTL) and consumed synchronously by 10 new DEP_001–010 rules: critical CVE (BLOCKER), high/medium CVE, abandoned-with-CVE, no integrity hash, git dependency, major drift, prerelease in prod, deprecated package, stale cache. SBOM export via `--sbom` flag in CycloneDX 1.4 format. New files: `prometheus/osv-client.ts`, `prometheus/rules/deps.ts`, `prometheus/bin/commands/deps.ts`.
+- **Pillar 2 — Dependency Security** (`thesmos deps:audit`) — Async CVE scanning via OSV.dev (`api.osv.dev/v1/querybatch`). Results cached in `.thesmos/dep-cache.json` (24h TTL) and consumed synchronously by 10 new DEP_001–010 rules: critical CVE (BLOCKER), high/medium CVE, abandoned-with-CVE, no integrity hash, git dependency, major drift, prerelease in prod, deprecated package, stale cache. SBOM export via `--sbom` flag in CycloneDX 1.4 format. New files: `thesmos/osv-client.ts`, `thesmos/rules/deps.ts`, `thesmos/bin/commands/deps.ts`.
 
-- **Pillar 3 — Agent Governance** — 12 new AGNT_001–012 rules detecting missing scope declarations, unconstrained Bash, ungoverned MCP servers, absent hooks, no token budget, no audit trail, and unrestricted network access. Dual-directory guard (`.claude/` AND `.prometheus/` must both exist) prevents false positives in dev environments. Plus tamper-evident **Agent Audit Trail** (`prometheus agent:audit:log|verify|report|export|rotate`) — append-only `.prometheus/audit.jsonl` with sha256 hash-chained entries using `node:crypto`. `verify` detects tampering by recomputing the entire chain. New files: `prometheus/agent-audit.ts`, `prometheus/rules/agents.ts`, `prometheus/bin/commands/agent-audit.ts`.
+- **Pillar 3 — Agent Governance** — 12 new AGNT_001–012 rules detecting missing scope declarations, unconstrained Bash, ungoverned MCP servers, absent hooks, no token budget, no audit trail, and unrestricted network access. Dual-directory guard (`.claude/` AND `.thesmos/` must both exist) prevents false positives in dev environments. Plus tamper-evident **Agent Audit Trail** (`thesmos agent:audit:log|verify|report|export|rotate`) — append-only `.thesmos/audit.jsonl` with sha256 hash-chained entries using `node:crypto`. `verify` detects tampering by recomputing the entire chain. New files: `thesmos/agent-audit.ts`, `thesmos/rules/agents.ts`, `thesmos/bin/commands/agent-audit.ts`.
 
-- **Pillar 4 — SARIF Output** (`prometheus validate --sarif`) — SARIF 2.1.0 JSON for GitHub Security tab, VS Code Problems panel, Azure DevOps. All 911 rules emit full `reportingDescriptor` metadata. `prometheus ci:github-security` generates a GitHub Actions workflow that uploads `prometheus.sarif` to `github/codeql-action/upload-sarif@v3`. New file: `prometheus/sarif.ts`.
+- **Pillar 4 — SARIF Output** (`thesmos validate --sarif`) — SARIF 2.1.0 JSON for GitHub Security tab, VS Code Problems panel, Azure DevOps. All 911 rules emit full `reportingDescriptor` metadata. `thesmos ci:github-security` generates a GitHub Actions workflow that uploads `thesmos.sarif` to `github/codeql-action/upload-sarif@v3`. New file: `thesmos/sarif.ts`.
 
-- **Pillar 5 — License Compliance** — 10 new LIC_001–010 rules: GPL in commercial projects (BLOCKER), unknown/UNLICENSED deps, LGPL copyleft, missing LICENSE file, proprietary dep, invalid SPDX, dual-license ambiguity, AI training restriction, GPL/Apache incompatibility (BLOCKER), missing NOTICE file. All rules use the `changedFiles !== undefined` filesystem guard to avoid false positives in changed-files mode. New file: `prometheus/rules/license.ts`.
+- **Pillar 5 — License Compliance** — 10 new LIC_001–010 rules: GPL in commercial projects (BLOCKER), unknown/UNLICENSED deps, LGPL copyleft, missing LICENSE file, proprietary dep, invalid SPDX, dual-license ambiguity, AI training restriction, GPL/Apache incompatibility (BLOCKER), missing NOTICE file. All rules use the `changedFiles !== undefined` filesystem guard to avoid false positives in changed-files mode. New file: `thesmos/rules/license.ts`.
 
-- **Pillar 6 — GDPR Compliance Pack** (`prometheus compliance:report --standard gdpr`) — 15 new GDPR_001–015 rules covering: PII in console.log, analytics without consent, cookie without consent banner, PII in URL params, PII in localStorage, missing data deletion endpoint, PII in external logging (BLOCKER), unencrypted PII in Prisma schema, missing privacy policy link, third-party tracking without consent, PII in API error responses (BLOCKER), missing retention policy, session without expiry, real PII in test fixtures, and IP storage without consent. `compliance:report --standard gdpr` generates an audit-ready Markdown evidence report mapping each finding to its GDPR article. New files: `prometheus/rules/gdpr.ts`, `prometheus/bin/commands/compliance.ts`.
+- **Pillar 6 — GDPR Compliance Pack** (`thesmos compliance:report --standard gdpr`) — 15 new GDPR_001–015 rules covering: PII in console.log, analytics without consent, cookie without consent banner, PII in URL params, PII in localStorage, missing data deletion endpoint, PII in external logging (BLOCKER), unencrypted PII in Prisma schema, missing privacy policy link, third-party tracking without consent, PII in API error responses (BLOCKER), missing retention policy, session without expiry, real PII in test fixtures, and IP storage without consent. `compliance:report --standard gdpr` generates an audit-ready Markdown evidence report mapping each finding to its GDPR article. New files: `thesmos/rules/gdpr.ts`, `thesmos/bin/commands/compliance.ts`.
 
 **3 Quick Wins:**
 
-- **Governance Certificate** (`prometheus certificate:generate`, `prometheus certificate:verify`) — Signed JSON artifact per delivery with sha256 hash chain for tamper detection. Fields: `rulesChecked`, `blockers`, `healthScore`, `healthGrade`, `hash`, `chain`. Agencies include in every delivery. New file: `prometheus/bin/commands/certificate.ts`.
+- **Governance Certificate** (`thesmos certificate:generate`, `thesmos certificate:verify`) — Signed JSON artifact per delivery with sha256 hash chain for tamper detection. Fields: `rulesChecked`, `blockers`, `healthScore`, `healthGrade`, `hash`, `chain`. Agencies include in every delivery. New file: `thesmos/bin/commands/certificate.ts`.
 
-- **Health Badge** (`prometheus health --badge`) — Prints shield.io badge markdown to stdout. Color ranges: ≥80 brightgreen, ≥70 green, ≥60 yellowgreen, ≥50 yellow, ≥40 orange, <40 red.
+- **Health Badge** (`thesmos health --badge`) — Prints shield.io badge markdown to stdout. Color ranges: ≥80 brightgreen, ≥70 green, ≥60 yellowgreen, ≥50 yellow, ≥40 orange, <40 red.
 
-- **AI Code Fingerprinting** (`prometheus ai:fingerprint`) — Detects AI-generated files using git Co-Authored-By commit markers and static content heuristics (over-explained comments, step-numbered blocks, AI docstring patterns, boilerplate try/catch). Reports `aiGeneratedEstimate`, `topTool`, and per-file confidence scores. `--format json` for machine-readable output. New file: `prometheus/bin/commands/ai-fingerprint.ts`.
+- **AI Code Fingerprinting** (`thesmos ai:fingerprint`) — Detects AI-generated files using git Co-Authored-By commit markers and static content heuristics (over-explained comments, step-numbered blocks, AI docstring patterns, boilerplate try/catch). Reports `aiGeneratedEstimate`, `topTool`, and per-file confidence scores. `--format json` for machine-readable output. New file: `thesmos/bin/commands/ai-fingerprint.ts`.
 
 - Total rule count: **911** (864 previous + 12 AGNT + 10 DEP + 10 LIC + 15 GDPR).
 
 ### Changed
 
 - `formatFindingsSarif()` in `review.ts` now delegates to `sarif.ts` for full rule metadata emission — all 911 rules appear in SARIF output regardless of whether they have findings.
-- `prometheus health --badge` added as a new flag to the existing `health` command.
+- `thesmos health --badge` added as a new flag to the existing `health` command.
 - README rule counts updated from 864 → 911.
 
 ---
@@ -219,10 +219,10 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 
 ### Added
 
-- **Conventional Commits Governance** (`prometheus commit:lint`, `prometheus commit:create`) — 10 new COMMIT_001–010 rules validate commit messages against the Conventional Commits specification using the standard `detect()` sentinel pattern (path `.git/COMMIT_EDITMSG`). Rules integrate with `explain`, `baseline`, and `suppressions:audit` automatically. `commit:lint` validates messages from the `commit-msg` hook, `--last`, or `--message "..."`. `commit:create` is an interactive wizard for building valid commit messages step-by-step.
-- **Vercel Deployment Governance** (`prometheus vercel:lint`) — 10 new VERCEL_001–010 rules covering: literal secrets in `vercel.json` (BLOCKER), server secrets with `NEXT_PUBLIC_` prefix (BLOCKER), cron routes missing `CRON_SECRET` check (HIGH), env vars not documented in `.env.example` (HIGH), missing `.env.example` when env vars are used (HIGH), missing `maxDuration` in function config (MEDIUM), middleware missing edge runtime export (MEDIUM), missing security headers (MEDIUM), `maxDuration` exceeding plan limit (LOW), and open redirect patterns in redirects config (HIGH).
-- **`commit-msg` git hook enforcement** — `prometheus hooks install --commit-msg` now writes a real enforcement block calling `prometheus commit:lint "$1"`. Previously a no-op placeholder.
-- **`commitLint` and `vercel` config sections** in `ThesmosConfig` — customise allowed commit types, max subject length, ticket patterns, Vercel plan limits, and cron auth requirements via `.prometheus/config.json`.
+- **Conventional Commits Governance** (`thesmos commit:lint`, `thesmos commit:create`) — 10 new COMMIT_001–010 rules validate commit messages against the Conventional Commits specification using the standard `detect()` sentinel pattern (path `.git/COMMIT_EDITMSG`). Rules integrate with `explain`, `baseline`, and `suppressions:audit` automatically. `commit:lint` validates messages from the `commit-msg` hook, `--last`, or `--message "..."`. `commit:create` is an interactive wizard for building valid commit messages step-by-step.
+- **Vercel Deployment Governance** (`thesmos vercel:lint`) — 10 new VERCEL_001–010 rules covering: literal secrets in `vercel.json` (BLOCKER), server secrets with `NEXT_PUBLIC_` prefix (BLOCKER), cron routes missing `CRON_SECRET` check (HIGH), env vars not documented in `.env.example` (HIGH), missing `.env.example` when env vars are used (HIGH), missing `maxDuration` in function config (MEDIUM), middleware missing edge runtime export (MEDIUM), missing security headers (MEDIUM), `maxDuration` exceeding plan limit (LOW), and open redirect patterns in redirects config (HIGH).
+- **`commit-msg` git hook enforcement** — `thesmos hooks install --commit-msg` now writes a real enforcement block calling `thesmos commit:lint "$1"`. Previously a no-op placeholder.
+- **`commitLint` and `vercel` config sections** in `ThesmosConfig` — customise allowed commit types, max subject length, ticket patterns, Vercel plan limits, and cron auth requirements via `.thesmos/config.json`.
 - Total rule count: **864** (844 previous + 10 COMMIT + 10 VERCEL).
 
 ### Changed
@@ -236,14 +236,14 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 
 ### Added
 
-- **Slopsquatting Guard** (`prometheus import:scan`) — validates every npm/PyPI package in changed files against live registry APIs. Flags phantom packages (404), newly-registered packages (< 30 days old), and typosquat candidates (edit distance ≤ 2 from top packages). Works offline with graceful degradation. 10 new rules: SLOP_006–015.
-- **Agent Scope Enforcement** (`prometheus scope:*`) — `.prometheus/scope.json` defines workspace boundaries and operation limits. PreToolUse hook intercepts every Write/Edit/Bash call and exits 2 on scope violations. Commands: `scope:init`, `scope:status`, `scope:check`.
-- **Token Budget Governance** (`prometheus tokens:*`) — PostToolUse hook logs token usage per tool call to `.prometheus/token-usage.jsonl`. Enforces configurable session, daily, and project cost caps with alert and hard-stop thresholds. Commands: `tokens:report`, `tokens:reset`, `tokens:budget`.
-- **AI Debt Fingerprinting** (`prometheus debt:scan`) — 20 new DEBT_001–020 rules that detect AI-specific code debt patterns traditional linters miss: duplicate function bodies, swallowed errors, magic numbers, O(n²) nested loops, vague variable names, commented-out blocks, missing `finally`, and more. Outputs a 0–100 debt score with A–F grade.
-- **Context Health + Session Handoff** (`prometheus context:*`) — generates `.prometheus/context.md` from the live codebase (stack, established patterns, active constraints). `thesmos adapters` now auto-updates the snapshot. CLAUDE.md preamble now references `context.md` as step 1. Commands: `context:snapshot`, `context:health`.
+- **Slopsquatting Guard** (`thesmos import:scan`) — validates every npm/PyPI package in changed files against live registry APIs. Flags phantom packages (404), newly-registered packages (< 30 days old), and typosquat candidates (edit distance ≤ 2 from top packages). Works offline with graceful degradation. 10 new rules: SLOP_006–015.
+- **Agent Scope Enforcement** (`thesmos scope:*`) — `.thesmos/scope.json` defines workspace boundaries and operation limits. PreToolUse hook intercepts every Write/Edit/Bash call and exits 2 on scope violations. Commands: `scope:init`, `scope:status`, `scope:check`.
+- **Token Budget Governance** (`thesmos tokens:*`) — PostToolUse hook logs token usage per tool call to `.thesmos/token-usage.jsonl`. Enforces configurable session, daily, and project cost caps with alert and hard-stop thresholds. Commands: `tokens:report`, `tokens:reset`, `tokens:budget`.
+- **AI Debt Fingerprinting** (`thesmos debt:scan`) — 20 new DEBT_001–020 rules that detect AI-specific code debt patterns traditional linters miss: duplicate function bodies, swallowed errors, magic numbers, O(n²) nested loops, vague variable names, commented-out blocks, missing `finally`, and more. Outputs a 0–100 debt score with A–F grade.
+- **Context Health + Session Handoff** (`thesmos context:*`) — generates `.thesmos/context.md` from the live codebase (stack, established patterns, active constraints). `thesmos adapters` now auto-updates the snapshot. CLAUDE.md preamble now references `context.md` as step 1. Commands: `context:snapshot`, `context:health`.
 - **Bash tool governance** — `claude:govern` PreToolUse hook now intercepts `Bash(npm install *)` / `Bash(pip install *)` calls and validates package names before they execute.
 - **PostToolUse budget hook** — added to `.claude/settings.json` alongside existing PreToolUse and Stop hooks.
-- **`tokenBudget` in `ThesmosConfig`** — configure token budgets directly in `.prometheus/config.json`.
+- **`tokenBudget` in `ThesmosConfig`** — configure token budgets directly in `.thesmos/config.json`.
 
 ### Fixed
 
@@ -257,8 +257,8 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 
 ### Changed
 
-- `thesmos adapters` now auto-generates `.prometheus/context.md` on every run.
-- CLAUDE.md "Before Each Task" checklist renumbered 1–12; step 1 now reads `.prometheus/context.md`.
+- `thesmos adapters` now auto-generates `.thesmos/context.md` on every run.
+- CLAUDE.md "Before Each Task" checklist renumbered 1–12; step 1 now reads `.thesmos/context.md`.
 - Token budget model cost table expanded with legacy date-suffixed model IDs (`claude-3-5-sonnet-20241022`, etc.) reported by older Claude Code versions.
 
 ---
@@ -271,11 +271,11 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
   - **Python** (19 rules, PY_026–PY_045): async/await pitfalls, shell injection, `pickle`/`marshal` RCE, FastAPI/Django security patterns, Pydantic v2 migration, blocking I/O in async context, and more.
   - **GraphQL** (25 rules, GQL_001–GQL_025): query depth/complexity limits, resolver auth enforcement, N+1 without DataLoader, introspection disabled in production, type correctness, and production hardening.
   - **Terraform** (13 rules, TF_013–TF_025): sensitive IAM wildcards, open security groups (0.0.0.0/0), RDS deletion protection, KMS key rotation, secrets in `user_data`, `prevent_destroy` on critical resources, and S3 versioning.
-- **3 new catalog agents**: `python-reviewer`, `graphql-reviewer`, `infrastructure-reviewer` — available via `prometheus catalog:enable`.
-- **`prometheus claude:govern`** — installs Claude Code hooks into `.claude/settings.json` for real-time governance in Auto Mode:
+- **3 new catalog agents**: `python-reviewer`, `graphql-reviewer`, `infrastructure-reviewer` — available via `thesmos catalog:enable`.
+- **`thesmos claude:govern`** — installs Claude Code hooks into `.claude/settings.json` for real-time governance in Auto Mode:
   - `PreToolUse` (Write/Edit): blocks tool call (exit 2) if content contains any BLOCKER finding.
-  - `Stop`: runs `prometheus drift` after each session to detect adapter staleness.
-  - Install is idempotent; a `_prometheus_governance` marker prevents duplicate hook entries.
+  - `Stop`: runs `thesmos drift` after each session to detect adapter staleness.
+  - Install is idempotent; a `_thesmos_governance` marker prevents duplicate hook entries.
   - Autopilot permission profiles now preserve governance hooks when written/restored.
 
 ### Fixed
@@ -290,19 +290,19 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 ### Added
 
 - **142 governance rules** across 8 categories: security, TypeScript, React, Next.js, AI/LLM, performance, database, and code quality
-- **6 AI adapter targets**: Claude (`CLAUDE.md`), Gemini (`GEMINI.md`), Cursor (`.cursor/rules/prometheus.mdc`), Copilot (`.github/copilot-instructions.md`), Codex (`.codex/prometheus.md`), and `AGENTS.md` — all generated from a single canonical rule registry with zero duplication
+- **6 AI adapter targets**: Claude (`CLAUDE.md`), Gemini (`GEMINI.md`), Cursor (`.cursor/rules/thesmos.mdc`), Copilot (`.github/copilot-instructions.md`), Codex (`.codex/thesmos.md`), and `AGENTS.md` — all generated from a single canonical rule registry with zero duplication
 - **CLI commands**: `init`, `scan`, `review`, `validate`, `audit`, `doctor`, `ci-check`, `adapters`, `drift`, `baseline:*`, `explain`, `suppressions:audit`, `metrics`, `pack:*`, `health`, `ci`, `fix`, `update`, `catalog:*`, `agent:create`, `skill:create`
-- **Governance folder** (`.prometheus/`): README, config, GUARDRAILS, RULES, governance docs, architecture docs, and a GitHub Actions workflow — all scaffolded by `prometheus init`
+- **Governance folder** (`.thesmos/`): README, config, GUARDRAILS, RULES, governance docs, architecture docs, and a GitHub Actions workflow — all scaffolded by `thesmos init`
 - **Baseline system**: snapshot known technical debt so new violations are caught without blocking existing codebases
-- **Inline suppressions**: `// prometheus-disable-next-line <id> -- reason: <text>` with expiry dates and audit trail
+- **Inline suppressions**: `// thesmos-disable-next-line <id> -- reason: <text>` with expiry dates and audit trail
 - **Health score** (0–100 with letter grade): synthesises findings, drift, suppressions, and baseline into a single governance grade
 - **Metrics engine**: local-first, privacy-safe governance analytics with history tracking
 - **Drift detection**: 12 categories of stale/missing governance artifacts
-- **Rule explanation engine**: `prometheus explain <rule-id>` shows why a rule exists, good/bad examples, and related playbooks
+- **Rule explanation engine**: `thesmos explain <rule-id>` shows why a rule exists, good/bad examples, and related playbooks
 - **Catalog system**: 50+ built-in agents and 50+ built-in skills; 5 composable profiles (base, web, next-supabase, enterprise)
 - **Pack system**: extensible rule bundles for third-party frameworks
 - **Zero runtime dependencies**: the entire tool ships without a single production dependency
-- **JSON Schema** for `.prometheus/config.json`: add `$schema` for full editor autocomplete and validation
+- **JSON Schema** for `.thesmos/config.json`: add `$schema` for full editor autocomplete and validation
 - **GitHub Actions CI/CD**: workflows for continuous integration (Node 18/20/22 matrix) and npm publishing on version tags
 
 [1.0.0]: https://github.com/Holley-Studio/thesmos-governance/releases/tag/v1.0.0

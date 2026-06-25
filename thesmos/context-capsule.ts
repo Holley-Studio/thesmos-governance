@@ -224,7 +224,7 @@ function detectGovernance(root: string): ContextCapsule['governance'] {
     }
   } catch { /* */ }
 
-  // Count rules from PROMETHEUS_RULES import
+  // Count rules from THESMOS_RULES import
   try {
     // We approximate from the report if available
     const reportPath = join(root, REPORT_FILE);

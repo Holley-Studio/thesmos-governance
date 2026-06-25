@@ -120,7 +120,7 @@ Before writing, Polyhymnia identifies:
 - Code examples in documentation must be complete, runnable, and realistic. A code example that requires the reader to substitute placeholder values without telling them what valid values look like is useless. Polyhymnia uses realistic examples with real-looking (but safe) values, not `YOUR_API_KEY_HERE`.
 - Documentation rot is the invisible tax on developer experience. A codebase that moves fast without a documentation review process accumulates incorrect docs that destroy developer trust faster than having no docs at all. Polyhymnia always designates a review trigger for each document she writes (version bump, API change, quarterly review).
 - The best technical documentation is written at the moment a developer is most confused — immediately after they figured something out. The freshly-solved confusion creates the most accurate map of where others will get lost. Polyhymnia captures post-debug insights as documentation immediately, while the confusion is still vivid.
-- Error messages are documentation. An error message that says "Error: 403" is documentation failure. An error message that says "Error: API key missing — set PROMETHEUS_API_KEY in your environment. See configuration guide: [link]" is documentation that prevents a support ticket. Polyhymnia reviews error messages as part of every documentation audit.
+- Error messages are documentation. An error message that says "Error: 403" is documentation failure. An error message that says "Error: API key missing — set THESMOS_API_KEY in your environment. See configuration guide: [link]" is documentation that prevents a support ticket. Polyhymnia reviews error messages as part of every documentation audit.
 
 ## Embedded example
 

@@ -1,0 +1,607 @@
+{
+  "version": "1",
+  "createdAt": "2026-06-25T04:10:23.221Z",
+  "updatedAt": "2026-06-25T04:10:23.221Z",
+  "entries": [
+    {
+      "fingerprint": "01b4e8a8eb57c631",
+      "ruleCategory": "agent_no_audit_trail",
+      "severity": "MEDIUM",
+      "file": ".thesmos/audit.jsonl",
+      "message": "No .thesmos/audit.jsonl — agent actions are not being logged.",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "645879472373f0ca",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "adapters.test.ts",
+      "message": "File has 589 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "e2ee35a27db5dba5",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "autopilot/executor.ts",
+      "message": "File has 536 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "d0d79f882a684706",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "baseline.test.ts",
+      "message": "File has 530 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "decc829e7c9f4b41",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "baseline.ts",
+      "message": "File has 512 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "e0748ff44de9e7cd",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "bin/cli.ts",
+      "message": "File has 504 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "a407bd98a71d0df3",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "bin/commands/autopilot.ts",
+      "message": "File has 744 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "aedc864cfaa278d7",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "bin/commands/brain.ts",
+      "message": "File has 514 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "b2e6b3278b943a14",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "bin/commands/build.ts",
+      "message": "File has 989 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "a4bb171549603031",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "bin/commands/pack-publish.test.ts",
+      "message": "File has 709 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "03827245f5ec5e7d",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "bin/commands/pantheon.ts",
+      "message": "File has 656 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "c126e60954096b81",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "bin/commands/report.ts",
+      "message": "File has 582 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "5de66af23ca88761",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "catalog.test.ts",
+      "message": "File has 677 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "98f9559b993ec94f",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "doctor.test.ts",
+      "message": "File has 544 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "5ac6f267929b72a7",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "drift.test.ts",
+      "message": "File has 933 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "d3ba3f320c47ba0b",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "drift.ts",
+      "message": "File has 681 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "3f98444d1c38577e",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "fix.test.ts",
+      "message": "File has 1187 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "11ecf85eed174453",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "fix.ts",
+      "message": "File has 1128 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "8c6dda6a7f7bb804",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "init.ts",
+      "message": "File has 905 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "462e2cfe4e1b6a00",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "mcp-server.ts",
+      "message": "File has 553 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "96f7a6f29c598519",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/agents.ts",
+      "message": "File has 844 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "8227ced5337c053a",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/ai.ts",
+      "message": "File has 1332 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "800e0a5bdb3ca2ba",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/csharp.test.ts",
+      "message": "File has 805 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "51d7b1f503af98e3",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/csharp.ts",
+      "message": "File has 946 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "798a0bb5e92558b5",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/css.ts",
+      "message": "File has 707 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "35581ce09e4a0d08",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/database.ts",
+      "message": "File has 1349 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "4922348b93376ee3",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/debt.test.ts",
+      "message": "File has 553 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "5cbfd12767306456",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/debt.ts",
+      "message": "File has 1152 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "a2bd455570d7faf9",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/design.test.ts",
+      "message": "File has 961 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "9b35cfe2e020ad4c",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/design.ts",
+      "message": "File has 854 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "bd410afa83efae69",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/django.test.ts",
+      "message": "File has 592 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "5d93313dd4da45a8",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/django.ts",
+      "message": "File has 827 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "9b2f28a83faa41c3",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/dockerfile.test.ts",
+      "message": "File has 699 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "84397afd73370377",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/dockerfile.ts",
+      "message": "File has 681 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "b009677307d1297b",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/errors.ts",
+      "message": "File has 915 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "563674f1b5e67bcf",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/forms.ts",
+      "message": "File has 710 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "25718892bfe37b03",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/gdpr.ts",
+      "message": "File has 619 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "9ec3b93bdde870e7",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/github-actions.test.ts",
+      "message": "File has 739 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "a859905ec7f1051e",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/go.test.ts",
+      "message": "File has 938 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "98a3561fbd7bbe22",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/go.ts",
+      "message": "File has 870 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "a7ab43e61d0615b8",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/graphql.ts",
+      "message": "File has 942 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "6d0adb38ece0144a",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/imports.ts",
+      "message": "File has 699 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "bb593164ff6eb6dd",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/java.test.ts",
+      "message": "File has 1126 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "a4b3552b04d2352b",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/java.ts",
+      "message": "File has 841 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "2ee1cf380304d7e5",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/jwt.test.ts",
+      "message": "File has 515 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "8dc62bf9d8153686",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/jwt.ts",
+      "message": "File has 553 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "a1b13d4a1bca74e8",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/logging.ts",
+      "message": "File has 690 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "1851394248bc70a3",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/mcp.test.ts",
+      "message": "File has 624 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "0332465bf8ac8726",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/mcp.ts",
+      "message": "File has 938 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "27bd837ced8d6450",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/nextjs.ts",
+      "message": "File has 1605 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "effca65544b189bc",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/node.ts",
+      "message": "File has 1100 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "bd24702e66555b5e",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/performance.ts",
+      "message": "File has 1088 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "f7858f54cb097d14",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/php.test.ts",
+      "message": "File has 810 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "5e14c2efd88c9036",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/php.ts",
+      "message": "File has 827 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "4b07045ea6f4daa3",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/prisma.ts",
+      "message": "File has 1085 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "effbc409e7877a66",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/python.test.ts",
+      "message": "File has 511 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "e2d136fcefb2430e",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/python.ts",
+      "message": "File has 1736 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "a6cfe23667e41fde",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/quality.ts",
+      "message": "File has 746 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "37fdb7cefd243eac",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/rag.ts",
+      "message": "File has 649 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "415d8d2c2a350503",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/react.ts",
+      "message": "File has 1121 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "ea81e285b561fcbe",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/registry.ts",
+      "message": "File has 681 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "1b5e63f108c194a5",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/ruby.test.ts",
+      "message": "File has 951 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "aa1b40c2e7d1a347",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/ruby.ts",
+      "message": "File has 851 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "2d0792ec14e835c4",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/rust.test.ts",
+      "message": "File has 818 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "838301d393a15bf5",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/rust.ts",
+      "message": "File has 855 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "d938eda566991e12",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/security.ts",
+      "message": "File has 1697 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "f4d4f31b4fe62849",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/slopsquatting.ts",
+      "message": "File has 997 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "04374893dc84b2ab",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/state.ts",
+      "message": "File has 723 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "4c5aae3c174289c3",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/terraform.test.ts",
+      "message": "File has 688 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "949654b2fa88c66d",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/terraform.ts",
+      "message": "File has 1001 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "162980f2f686830d",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/trpc.ts",
+      "message": "File has 869 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "ca230e5972a7a70d",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/typescript.ts",
+      "message": "File has 1219 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "669b055a6b225ba2",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/vercel.ts",
+      "message": "File has 511 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "5cdfc85d0a71be72",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/vibe-coding.ts",
+      "message": "File has 1402 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "47544a2381d127e0",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/zod.ts",
+      "message": "File has 1077 lines (threshold: 500).",
+      "recordedAt": "2026-06-25T04:10:23.221Z"
+    }
+  ]
+}

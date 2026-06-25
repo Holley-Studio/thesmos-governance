@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { PROMETHEUS_RULES } from './registry';
+import { THESMOS_RULES } from './registry';
 import { REVIEW_CATEGORIES, runReview } from '../review';
 import { CONFIG_DEFAULTS } from '../config';
 import { buildAdapterContent } from '../adapters';
@@ -41,51 +41,51 @@ const EMPTY_SCAN: ScanResult = {
 
 describe('registry structure', () => {
   it('every rule has a unique ID', () => {
-    const ids = PROMETHEUS_RULES.map((r) => r.id);
+    const ids = THESMOS_RULES.map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('every rule has a sinceVersion string', () => {
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       expect(typeof rule.sinceVersion, `[${rule.id}] sinceVersion`).toBe('string');
       expect(rule.sinceVersion.length, `[${rule.id}] sinceVersion is empty`).toBeGreaterThan(0);
     }
   });
 
   it('every rule has a detect() function', () => {
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       expect(typeof rule.detect, `[${rule.id}] detect`).toBe('function');
     }
   });
 
   it('every rule has a non-empty description', () => {
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       expect(rule.description.length, `[${rule.id}] description`).toBeGreaterThan(0);
     }
   });
 
   it('has exactly 1075 rules (update this when adding new rules)', () => {
-    expect(PROMETHEUS_RULES).toHaveLength(1075);
+    expect(THESMOS_RULES).toHaveLength(1075);
   });
 });
 
 // ── Derivation proofs ─────────────────────────────────────────────────────────
 
 describe('downstream derivation from registry', () => {
-  it('REVIEW_CATEGORIES equals PROMETHEUS_RULES.map(r => r.category)', () => {
-    expect(REVIEW_CATEGORIES).toEqual(PROMETHEUS_RULES.map((r) => r.category));
+  it('REVIEW_CATEGORIES equals THESMOS_RULES.map(r => r.category)', () => {
+    expect(REVIEW_CATEGORIES).toEqual(THESMOS_RULES.map((r) => r.category));
   });
 
   it('CONFIG_DEFAULTS.severityRules matches registry severity for every rule', () => {
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       const sr = CONFIG_DEFAULTS.severityRules.find((s) => s.category === rule.category);
       expect(sr, `[${rule.id}] missing from severityRules`).toBeDefined();
       expect(sr!.severity, `[${rule.id}] severity mismatch`).toBe(rule.severity);
     }
   });
 
-  it('CONFIG_DEFAULTS.severityRules has exactly the same length as PROMETHEUS_RULES', () => {
-    expect(CONFIG_DEFAULTS.severityRules).toHaveLength(PROMETHEUS_RULES.length);
+  it('CONFIG_DEFAULTS.severityRules has exactly the same length as THESMOS_RULES', () => {
+    expect(CONFIG_DEFAULTS.severityRules).toHaveLength(THESMOS_RULES.length);
   });
 });
 
@@ -96,8 +96,8 @@ describe('adapters derive from registry', () => {
 
   it('every adapter target contains all registry rule IDs', () => {
     for (const target of ALL_TARGETS) {
-      const out = buildAdapterContent(target, '', PROMETHEUS_RULES, CONFIG_DEFAULTS);
-      for (const rule of PROMETHEUS_RULES) {
+      const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
+      for (const rule of THESMOS_RULES) {
         expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);
       }
     }
@@ -128,7 +128,7 @@ describe('mock rule extensibility', () => {
 
   it('a mock rule passed to runReview produces its findings — no other code changes needed', () => {
     const input = { scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: [] };
-    const testRegistry = [...PROMETHEUS_RULES, mockRule];
+    const testRegistry = [...THESMOS_RULES, mockRule];
     const findings = runReview(input, testRegistry);
     const mockFinding = findings.find((f) => f.category === 'mock_violation');
     expect(mockFinding).toBeDefined();
@@ -137,12 +137,12 @@ describe('mock rule extensibility', () => {
 
   it('mock rule detect() is isolated — does not affect the global registry output', () => {
     const input = { scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: [] };
-    const baseline = runReview(input); // uses global PROMETHEUS_RULES
+    const baseline = runReview(input); // uses global THESMOS_RULES
     expect(baseline.find((f) => f.category === 'mock_violation')).toBeUndefined();
   });
 
   it('mock rule appears in adapter output when included in the rules list', () => {
-    const rulesWithMock = [...PROMETHEUS_RULES, mockRule];
+    const rulesWithMock = [...THESMOS_RULES, mockRule];
     const out = buildAdapterContent('claude', '', rulesWithMock, CONFIG_DEFAULTS);
     expect(out).toContain('[MOCK_001]');
   });
@@ -152,7 +152,7 @@ describe('mock rule extensibility', () => {
 
 describe('detect() returns correct category on each rule', () => {
   it('ENV_001 detect() produces direct_env_access findings', () => {
-    const rule = PROMETHEUS_RULES.find((r) => r.id === 'ENV_001')!;
+    const rule = THESMOS_RULES.find((r) => r.id === 'ENV_001')!;
     const findings = rule.detect({
       scan: EMPTY_SCAN,
       config: CONFIG_DEFAULTS,
@@ -163,7 +163,7 @@ describe('detect() returns correct category on each rule', () => {
   });
 
   it('QUAL_002 detect() produces large_file findings from scan data', () => {
-    const rule = PROMETHEUS_RULES.find((r) => r.id === 'QUAL_002')!;
+    const rule = THESMOS_RULES.find((r) => r.id === 'QUAL_002')!;
     const scan = { ...EMPTY_SCAN, largeFiles: [{ file: 'big.ts', lines: 600 }] };
     const findings = rule.detect({ scan, config: CONFIG_DEFAULTS, changedFiles: [] });
     expect(findings[0]?.category).toBe('large_file');
@@ -172,7 +172,7 @@ describe('detect() returns correct category on each rule', () => {
 
   it('every rule detect() returns an array (not undefined)', () => {
     const input: DetectInput = { scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: [] };
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       const result = rule.detect(input);
       expect(Array.isArray(result), `[${rule.id}] detect() did not return an array`).toBe(true);
     }
@@ -190,7 +190,7 @@ describe('detect() returns correct category on each rule', () => {
     const changedFiles = [
       { path: 'lib/x.ts', content: 'process.env.FOO' },
     ];
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       const findings = rule.detect({ scan, config: CONFIG_DEFAULTS, changedFiles });
       for (const f of findings) {
         expect(

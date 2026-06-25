@@ -3,7 +3,7 @@ id: test-coverage-report
 name: Test Coverage Report
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - testing
   - coverage
@@ -29,13 +29,13 @@ Generates a test coverage report for the project, identifies risky files with lo
 
 - Vitest or Jest coverage configuration
 - Coverage threshold settings
-- List of risky files from Prometheus scan
+- List of risky files from Thesmos scan
 
 ## Workflow steps
 
 1. Run `npm test -- --coverage` to generate a coverage report
 2. Filter results to files below the configured threshold
-3. Cross-reference with Prometheus's risky file list
+3. Cross-reference with Thesmos's risky file list
 4. Prioritise coverage gaps in risky files (auth, payments, migrations) first
 5. Generate test stubs for the top 5 uncovered risky files
 6. Report coverage delta vs. the previous baseline

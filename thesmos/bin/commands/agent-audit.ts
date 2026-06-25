@@ -38,7 +38,7 @@ export async function cmdAgentAudit(argv: string[]): Promise<void> {
       const status: AuditStatus = VALID_STATUSES.includes(statusRaw) ? statusRaw : 'INFO';
       const findingsRaw = flagVal(flags, 'findings') ?? '';
       const findings = findingsRaw ? findingsRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
-      const session = flagVal(flags, 'session') ?? process.env['PROMETHEUS_SESSION_ID'] ?? 'unknown';
+      const session = flagVal(flags, 'session') ?? process.env['THESMOS_SESSION_ID'] ?? 'unknown';
 
       const entry = appendAuditEntry(root, tool, file, status, findings, session);
       process.stdout.write(`${entry.status}  ${entry.tool}  ${entry.file}  ${entry.hash.slice(0, 20)}...\n`);

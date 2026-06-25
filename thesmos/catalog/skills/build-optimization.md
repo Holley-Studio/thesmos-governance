@@ -3,7 +3,7 @@ id: build-optimization
 name: Build Optimization
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - build
   - bundle

@@ -3,7 +3,7 @@ id: add-tests
 name: Add Tests
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - testing
   - vitest
@@ -30,7 +30,7 @@ Adds missing test files for changed or risky files identified by the testing-rev
 - The file(s) requiring tests
 - The project's testing framework (Vitest, Jest)
 - Existing test files for pattern reference
-- The active Prometheus config for risky-file classification
+- The active Thesmos config for risky-file classification
 
 ## Workflow steps
 

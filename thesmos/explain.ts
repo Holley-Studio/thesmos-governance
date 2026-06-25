@@ -1,5 +1,5 @@
 /**
- * Prometheus Explain Engine — makes every rule self-documenting.
+ * Thesmos Explain Engine — makes every rule self-documenting.
  *
  * All explanation content lives in the rule registry (registry.ts).
  * This module provides lookup, formatting, and CLI-ready outputs.
@@ -13,7 +13,7 @@
 
 import type { ThesmosRule, RuleExplanation } from './types.js';
 import type { Finding } from './types.js';
-import { PROMETHEUS_RULES } from './adapters.js';
+import { THESMOS_RULES } from './adapters.js';
 import { SEVERITY_EMOJI } from './severity.js';
 import { fingerprintFinding } from './baseline.js';
 
@@ -23,7 +23,7 @@ import { fingerprintFinding } from './baseline.js';
 export function findRule(idOrCategory: string): ThesmosRule | null {
   const needle = idOrCategory.trim().toLowerCase();
   return (
-    PROMETHEUS_RULES.find(
+    THESMOS_RULES.find(
       (r) => r.id.toLowerCase() === needle || r.category.toLowerCase() === needle
     ) ?? null
   );
@@ -34,7 +34,7 @@ export function findRulesForFile(file: string, findings: Finding[]): ThesmosRule
   const categories = new Set(
     findings.filter((f) => f.file === file).map((f) => f.category)
   );
-  return PROMETHEUS_RULES.filter((r) => categories.has(r.category));
+  return THESMOS_RULES.filter((r) => categories.has(r.category));
 }
 
 /**
@@ -51,7 +51,7 @@ export function findRuleForFingerprint(prefix: string, findings: Finding[]): The
 /** Return all rules, sorted by severity rank then ID. */
 export function listRules(): ThesmosRule[] {
   const severityOrder = ['BLOCKER', 'HIGH', 'MEDIUM', 'LOW', 'TECH_DEBT'];
-  return [...PROMETHEUS_RULES].sort((a, b) => {
+  return [...THESMOS_RULES].sort((a, b) => {
     const sa = severityOrder.indexOf(a.severity);
     const sb = severityOrder.indexOf(b.severity);
     if (sa !== sb) return sa - sb;

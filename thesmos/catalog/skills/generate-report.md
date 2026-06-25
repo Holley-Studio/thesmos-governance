@@ -3,7 +3,7 @@ id: generate-report
 name: Generate Report
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - report
   - output
@@ -16,7 +16,7 @@ enabled: true
 
 ## Purpose
 
-Generates a Prometheus review report in the chosen output format (Markdown, JSON, or console) and optionally saves it to `.thesmos/report.json` for CI integration and trend tracking.
+Generates a Thesmos review report in the chosen output format (Markdown, JSON, or console) and optionally saves it to `.thesmos/report.json` for CI integration and trend tracking.
 
 ## When to use
 

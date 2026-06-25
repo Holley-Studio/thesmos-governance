@@ -1,0 +1,8 @@
+{
+  "rules": [
+    "@thesmos/core"
+  ],
+  "agents": [],
+  "skills": [],
+  "profiles": []
+}

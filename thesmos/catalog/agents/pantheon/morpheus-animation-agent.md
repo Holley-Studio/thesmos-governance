@@ -134,7 +134,7 @@ If completing a task would require violating Priority 1 or 2, stop and report wh
 
 ## Embedded example
 
-**Input:** "Write the micro-interaction spec for Prometheus's scan-running state — a progress indicator in the CLI-style UI."
+**Input:** "Write the micro-interaction spec for Thesmos's scan-running state — a progress indicator in the CLI-style UI."
 
 **Motion philosophy:** Functional over decorative. Every animation in a developer tool should communicate state, not entertain. Timing should feel fast and precise — never sluggish.
 

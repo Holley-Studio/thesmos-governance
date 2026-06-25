@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { CONFIG_DEFAULTS } from './config';
-import { PROMETHEUS_RULES } from './adapters';
+import { THESMOS_RULES } from './adapters';
 import {
   buildInitFiles,
   writeThesmosDir,
@@ -152,7 +152,7 @@ describe('buildInitFiles output shape', () => {
     expect(Array.isArray(report['_generatedSections'])).toBe(true);
   });
 
-  it('every dynamic markdown file has PROMETHEUS:GENERATED markers', () => {
+  it('every dynamic markdown file has THESMOS:GENERATED markers', () => {
     // Static directory READMEs (agents/, skills/, profiles/, rules/) have no
     // generated sections — they are documentation stubs, not generated files.
     const STATIC_READMES = new Set([
@@ -164,7 +164,7 @@ describe('buildInitFiles output shape', () => {
     const result = buildInitFiles(CONFIG);
     const mdPaths = Object.keys(result).filter((p) => p.endsWith('.md') && !STATIC_READMES.has(p));
     for (const p of mdPaths) {
-      expect(result[p], `${p} should have markers`).toContain('PROMETHEUS:GENERATED');
+      expect(result[p], `${p} should have markers`).toContain('THESMOS:GENERATED');
     }
   });
 });
@@ -179,7 +179,7 @@ describe('buildInitFiles generated content', () => {
 
   it('RULES.md contains all rule IDs', () => {
     const result = buildInitFiles(CONFIG);
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       expect(result['.thesmos/RULES.md']).toContain(rule.id);
     }
   });

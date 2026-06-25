@@ -3,7 +3,7 @@ id: secret-scan
 name: Secret Scan
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - security
   - secrets
@@ -29,7 +29,7 @@ Scans diff text and file content for committed secrets: API keys, tokens, connec
 
 - Git diff text for the changes being reviewed
 - Full file content for new files added to the repository
-- Known secret patterns (configured in Prometheus)
+- Known secret patterns (configured in Thesmos)
 
 ## Workflow steps
 

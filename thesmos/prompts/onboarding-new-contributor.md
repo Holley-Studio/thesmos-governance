@@ -16,27 +16,27 @@ variables:
 
 # Welcome to {{repoName}} — Governance Guide
 
-This repo uses [Prometheus Governance](https://github.com/thesmos-governance/prometheus) to enforce security, quality, and architecture rules automatically.
+This repo uses [Thesmos](https://github.com/thesmos-governance/thesmos) to enforce security, quality, and architecture rules automatically.
 
 ## Stack
 {{detectedStack}}
 
 ## How governance works here
 
-Every PR is scanned by Prometheus ({{rulesVersion}}). Findings block merge if they are BLOCKER severity. HIGH findings require acknowledgment.
+Every PR is scanned by Thesmos ({{rulesVersion}}). Findings block merge if they are BLOCKER severity. HIGH findings require acknowledgment.
 
 ### Quick commands
 ```bash
-prometheus review              # Scan changed files
-prometheus review src/         # Scan a directory
-prometheus explain JWT_001     # Explain a specific finding
-prometheus fix --apply         # Auto-fix supported findings
+thesmos review              # Scan changed files
+thesmos review src/         # Scan a directory
+thesmos explain JWT_001     # Explain a specific finding
+thesmos fix --apply         # Auto-fix supported findings
 ```
 
 ### If you see a finding
-1. Read the explanation: `prometheus explain <rule-id>`
+1. Read the explanation: `thesmos explain <rule-id>`
 2. Fix the issue (most findings have a one-line fix)
-3. If it's a false positive: `prometheus suppress --rule=<id> --file=<file> --reason="<why>"`
+3. If it's a false positive: `thesmos suppress --rule=<id> --file=<file> --reason="<why>"`
 
 ### Active suppressions (intentional exceptions)
 {{activeSuppressions}}
@@ -46,4 +46,4 @@ prometheus fix --apply         # Auto-fix supported findings
 - Use `--force` to bypass CI gates without team review
 - Ignore BLOCKER findings
 
-Questions? Run `prometheus doctor` to check your setup, or ask in #engineering.
+Questions? Run `thesmos doctor` to check your setup, or ask in #engineering.

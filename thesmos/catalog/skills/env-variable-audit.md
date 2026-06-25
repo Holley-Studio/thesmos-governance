@@ -3,7 +3,7 @@ id: env-variable-audit
 name: Environment Variable Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - env
   - security
@@ -29,7 +29,7 @@ Audits environment variable usage: undocumented variables, variables accessible 
 
 - All source files referencing `process.env`
 - `.env.example` for documentation reference
-- Prometheus config for allow-listed access patterns
+- Thesmos config for allow-listed access patterns
 
 ## Workflow steps
 

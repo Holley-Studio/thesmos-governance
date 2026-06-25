@@ -3,7 +3,7 @@ id: python-async-audit
 name: Python Async Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - python
   - async
@@ -28,7 +28,7 @@ Audits Python async/await usage for correctness: blocking calls inside async fun
 ## Required inputs
 
 - Changed `.py` files with full content
-- Active Prometheus config
+- Active Thesmos config
 - File list indicating which files contain `async def` functions
 
 ## Workflow steps

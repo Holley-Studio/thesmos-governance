@@ -3,7 +3,7 @@ id: analytics-compliance
 name: Analytics Compliance
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - analytics
   - gdpr

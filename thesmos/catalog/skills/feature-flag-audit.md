@@ -3,7 +3,7 @@ id: feature-flag-audit
 name: Feature Flag Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - feature-flags
   - monday

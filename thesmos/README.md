@@ -320,7 +320,7 @@ npx thesmos validate --base=origin/$GITHUB_BASE_REF
 
 ### `thesmos adapters`
 
-Generates AI assistant instruction files from the canonical rule registry. Preserves any content you have written outside `<!-- PROMETHEUS:GENERATED -->` markers.
+Generates AI assistant instruction files from the canonical rule registry. Preserves any content you have written outside `<!-- THESMOS:GENERATED -->` markers.
 
 ```bash
 npx thesmos adapters
@@ -559,7 +559,7 @@ Use rule IDs (`ENV_001`) or category names (`direct_env_access`). Both are shown
 
 ## Adapter targets
 
-Every adapter is generated from the same `PROMETHEUS_RULES` array. You never write rules twice.
+Every adapter is generated from the same `THESMOS_RULES` array. You never write rules twice.
 
 | Target | Output path | Used by |
 | --- | --- | --- |
@@ -570,9 +570,9 @@ Every adapter is generated from the same `PROMETHEUS_RULES` array. You never wri
 | `codex` | `.codex/thesmos.md` | OpenAI Codex CLI |
 | `agents` | `AGENTS.md` | OpenAI Agents, generic agents |
 
-Adapters embed a `<!-- PROMETHEUS:META -->` comment with `version`, `target`, and `ruleCount`. `thesmos ci-check` reads this metadata to detect drift without re-running the generator — fully deterministic, no timestamps.
+Adapters embed a `<!-- THESMOS:META -->` comment with `version`, `target`, and `ruleCount`. `thesmos ci-check` reads this metadata to detect drift without re-running the generator — fully deterministic, no timestamps.
 
-Manual content you write outside `<!-- PROMETHEUS:GENERATED START -->` / `<!-- PROMETHEUS:GENERATED END -->` markers is **always preserved** across regenerations.
+Manual content you write outside `<!-- THESMOS:GENERATED START -->` / `<!-- THESMOS:GENERATED END -->` markers is **always preserved** across regenerations.
 
 ---
 
@@ -656,7 +656,7 @@ import {
   runDoctorForRoot,
   runCiCheckForRoot,
   exitCodeFor,
-  PROMETHEUS_RULES,
+  THESMOS_RULES,
 } from 'thesmos-governance';
 
 // Load config from .thesmos/config.json
@@ -676,14 +676,14 @@ const checks = await runDoctorForRoot(root, config);
 
 // Generate adapter content for any target
 import { buildAdapterContent } from 'thesmos-governance';
-const content = buildAdapterContent('claude', existing, PROMETHEUS_RULES, config);
+const content = buildAdapterContent('claude', existing, THESMOS_RULES, config);
 ```
 
 ### Key exports
 
 ```typescript
 // Rules
-PROMETHEUS_RULES           // ThesmosRule[] — all 911 built-in rules
+THESMOS_RULES           // ThesmosRule[] — all 911 built-in rules
 getRulesByTag(tag)         // filter by tag
 getRulesBySeverity(sev)    // filter by severity
 getRulesByCategory(cat)    // filter by category
@@ -729,7 +729,7 @@ import type {
 ## How it works
 
 ```text
-PROMETHEUS_RULES             ← single source of truth (911 built-in rules + pack rules at runtime)
+THESMOS_RULES             ← single source of truth (911 built-in rules + pack rules at runtime)
         │
         ├── adapters.ts      → CLAUDE.md · GEMINI.md · .cursor/ · .github/ · .codex/ · AGENTS.md
         ├── init.ts          → .thesmos/ governance folder

@@ -74,7 +74,7 @@ thesmos/
 │   ├── commands/           # One file per CLI command
 │   └── lib/                # CLI utilities (arg parser, git helpers)
 ├── rules/
-│   ├── registry.ts         # PROMETHEUS_RULES — single source of truth
+│   ├── registry.ts         # THESMOS_RULES — single source of truth
 │   ├── security.ts         # Security rules
 │   ├── typescript.ts       # TypeScript rules
 │   ├── react.ts            # React rules
@@ -113,6 +113,7 @@ export const MY_NEW_RULE: ThesmosRule = {
     why: 'Why this rule exists — the risk if violated',
     commonViolations: ['Example of what gets flagged'],
     goodExample: '// Correct pattern\nconst val = getEnv("MY_VAR");',
+    // thesmos-disable-next-line direct_env_access -- reason: documentation example of flagged pattern -- owner: @thesmos -- expires: 2027-12-31
     badExample: '// Flagged\nconst val = process.env.MY_VAR;',
     relatedPlaybooks: [],
     relatedAgents: [],
@@ -137,7 +138,7 @@ export const MY_NEW_RULE: ThesmosRule = {
 };
 ```
 
-3. **Export it from the category file** and add it to the `PROMETHEUS_RULES` array in `rules/registry.ts`.
+3. **Export it from the category file** and add it to the `THESMOS_RULES` array in `rules/registry.ts`.
 
 4. **Write a test.** Add a case in the relevant `*.test.ts` file:
 
@@ -146,6 +147,7 @@ it('flags the bad pattern', () => {
   const findings = MY_NEW_RULE.detect({
     scan: minimalScan,
     config: defaultConfig,
+    // thesmos-disable-next-line direct_env_access -- reason: documentation example of flagged pattern -- owner: @thesmos -- expires: 2027-12-31
     changedFiles: [{ path: 'src/foo.ts', content: 'process.env.MY_VAR' }],
   });
   expect(findings).toHaveLength(1);

@@ -122,7 +122,7 @@ Before writing, Erato identifies:
 
 ## Embedded example
 
-**Input:** "Define the brand voice for Prometheus — a code governance tool for AI developer teams. Competitors: SonarQube (corporate, enterprise), CodeClimate (friendly, startup). Target audience: senior engineers who distrust hype."
+**Input:** "Define the brand voice for Thesmos — a code governance tool for AI developer teams. Competitors: SonarQube (corporate, enterprise), CodeClimate (friendly, startup). Target audience: senior engineers who distrust hype."
 
 **Brand voice guide:**
 
@@ -155,8 +155,8 @@ Before writing, Erato identifies:
 **Recommendation:** Option 3 or 4. Option 3 owns the "AI gap" frame. Option 4 is the most memorable and most shareable.
 
 **Competitor differentiation:**
-- SonarQube: Enterprise-speak, feature-list-heavy, screenshot-forward → Prometheus: terse, rule-specific, result-oriented
-- CodeClimate: Friendly, green metrics, developer-positive → Prometheus: realistic, risk-forward, direct about what it catches
+- SonarQube: Enterprise-speak, feature-list-heavy, screenshot-forward → Thesmos: terse, rule-specific, result-oriented
+- CodeClimate: Friendly, green metrics, developer-positive → Thesmos: realistic, risk-forward, direct about what it catches
 
 **Voice available to own:** Technical authority with dry confidence. Nobody in this category sounds like they've actually shipped production AI code.
 

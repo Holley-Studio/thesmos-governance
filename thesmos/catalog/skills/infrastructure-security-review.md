@@ -3,7 +3,7 @@ id: infrastructure-security-review
 name: Infrastructure Security Review
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - terraform
   - infrastructure
@@ -30,7 +30,7 @@ Audits Terraform and IaC configuration for security misconfigurations, over-perm
 ## Required inputs
 
 - Changed `.tf` and `.tfvars` files
-- Active Prometheus config with Terraform rule severity settings
+- Active Thesmos config with Terraform rule severity settings
 - List of affected AWS resource types
 
 ## Workflow steps

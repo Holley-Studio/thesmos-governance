@@ -25,7 +25,7 @@
 
 import { createInterface } from 'node:readline';
 import type { Finding, ThesmosConfig, ScanResult } from './types.js';
-import { PROMETHEUS_RULES } from './rules/registry.js';
+import { THESMOS_RULES } from './rules/registry.js';
 import { loadConfig, CONFIG_DEFAULTS } from './config.js';
 import { makeLogger } from './logger.js';
 
@@ -95,7 +95,7 @@ function makeEmptyScan(): ScanResult {
 function scanFile(filePath: string, content: string, config: ThesmosConfig): Finding[] {
   const scan = makeEmptyScan();
   const changedFiles = [{ path: filePath, content }];
-  return PROMETHEUS_RULES.flatMap((rule) =>
+  return THESMOS_RULES.flatMap((rule) =>
     rule.detect({ scan, config, changedFiles }),
   );
 }
@@ -214,7 +214,7 @@ function handleHover(
     return;
   }
 
-  const rule = PROMETHEUS_RULES.find((r) => r.category === finding.category);
+  const rule = THESMOS_RULES.find((r) => r.category === finding.category);
   const why = rule?.explain?.why ?? finding.message;
   const fix = finding.suggestion ?? rule?.explain?.goodExample ?? '';
 
@@ -356,7 +356,7 @@ function dispatch(msg: LspRequest): void {
 // ── stdio transport (header-framed) ──────────────────────────────────────────
 
 export function startLspServer(): void {
-  log.info('server started', { rules: PROMETHEUS_RULES.length });
+  log.info('server started', { rules: THESMOS_RULES.length });
 
   let buffer = '';
 

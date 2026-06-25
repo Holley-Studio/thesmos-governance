@@ -1,6 +1,6 @@
 /**
  * thesmos mcp:serve   — start the MCP server (stdio JSON-RPC 2.0)
- * thesmos mcp:install — add prometheus to ~/.claude/settings.json as an MCP server
+ * thesmos mcp:install — add thesmos to ~/.claude/settings.json as an MCP server
  * thesmos mcp:status  — show whether MCP server is configured in Claude settings
  *
  * After install, Claude Code automatically spawns the server and exposes

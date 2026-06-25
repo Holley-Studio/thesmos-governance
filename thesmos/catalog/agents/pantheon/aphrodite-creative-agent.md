@@ -143,7 +143,7 @@ If completing a task would require violating Priority 1 or 2, stop and report wh
 
 ## Embedded example
 
-**Input:** "Define the brand identity for Prometheus — a code governance tool for AI dev teams."
+**Input:** "Define the brand identity for Thesmos — a code governance tool for AI dev teams."
 
 **Brand archetype:** The Sage. Thesmos knows what others don't — the hidden risks in AI-generated code. The Sage is authoritative without being arrogant, precise without being cold. Secondary archetype: The Outlaw. Thesmos challenges the status quo (shipping ungoverned AI code is the norm; Thesmos rejects it).
 

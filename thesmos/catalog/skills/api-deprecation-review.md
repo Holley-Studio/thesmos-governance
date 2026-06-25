@@ -3,7 +3,7 @@ id: api-deprecation-review
 name: API Deprecation Review
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - api
   - deprecation

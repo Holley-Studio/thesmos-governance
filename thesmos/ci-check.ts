@@ -1,8 +1,8 @@
 /**
- * Prometheus ci-check — fast CI-critical health check.
+ * Thesmos ci-check — fast CI-critical health check.
  *
  * Verifies:
- *   1. Required Prometheus governance files exist
+ *   1. Required Thesmos governance files exist
  *   2. GitHub Actions workflow file exists
  *   3. All adapter files exist and carry current metadata (ruleCount + version)
  *   4. Generated section markers are present in each adapter
@@ -18,7 +18,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DoctorCheck, ThesmosConfig } from './types';
-import { ADAPTER_OUTPUT_PATHS, PROMETHEUS_RULES, isAdapterFresh, type Rule } from './adapters';
+import { ADAPTER_OUTPUT_PATHS, THESMOS_RULES, isAdapterFresh, type Rule } from './adapters';
 import { validateConfig } from './config';
 import {
   formatDoctorConsole,
@@ -47,7 +47,7 @@ export const CI_CHECK_GROUPS = {
 
 // ── Check functions (pure) ────────────────────────────────────────────────────
 
-const PROMETHEUS_REQUIRED_FILES = [
+const THESMOS_REQUIRED_FILES = [
   '.thesmos/README.md',
   '.thesmos/config.json',
   '.thesmos/GUARDRAILS.md',
@@ -59,7 +59,7 @@ const PROMETHEUS_REQUIRED_FILES = [
 function checkCiFiles(input: CiCheckInput): DoctorCheck[] {
   const workflowPath =
     input.config.github?.workflow ?? '.github/workflows/thesmos-review.yml';
-  const ciFiles = [...PROMETHEUS_REQUIRED_FILES, workflowPath];
+  const ciFiles = [...THESMOS_REQUIRED_FILES, workflowPath];
 
   return ciFiles.map((relPath) => {
     const pass = input.fileExists(relPath);
@@ -116,15 +116,15 @@ function checkAdapters(input: CiCheckInput): DoctorCheck[] {
       fixHint: fresh ? undefined : 'Run thesmos adapters to refresh AI adapter files',
     });
 
-    // Markers: PROMETHEUS:GENERATED boundaries must still be present
-    const hasMarkers = content.includes('<!-- PROMETHEUS:GENERATED START rules -->');
+    // Markers: THESMOS:GENERATED boundaries must still be present
+    const hasMarkers = content.includes('<!-- THESMOS:GENERATED START rules -->');
     checks.push({
       name: `adapter:${target}:markers`,
       group: CI_CHECK_GROUPS.ADAPTERS,
       pass: hasMarkers,
       message: hasMarkers
         ? `${relPath} has generated section markers`
-        : `${relPath} is missing PROMETHEUS:GENERATED markers — manual edit may have overwritten the generated section`,
+        : `${relPath} is missing THESMOS:GENERATED markers — manual edit may have overwritten the generated section`,
       fixHint: hasMarkers
         ? undefined
         : 'Run thesmos adapters to regenerate the file with proper section markers',
@@ -184,7 +184,7 @@ export function formatCiCheckJson(checks: DoctorCheck[]): string {
 export function runCiCheckForRoot(root: string, config: ThesmosConfig): DoctorCheck[] {
   return runCiCheck({
     config,
-    rules: PROMETHEUS_RULES,
+    rules: THESMOS_RULES,
     fileExists: (rel) => existsSync(join(root, rel)),
     readFileSafe: (rel) => {
       try {

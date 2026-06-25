@@ -3,7 +3,7 @@ id: logging-audit
 name: Logging Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - logging
   - observability

@@ -3,7 +3,7 @@ id: documentation-audit
 name: Documentation Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - documentation
   - readme

@@ -1,6 +1,6 @@
 /**
  * Claude Code governance hooks — intercepts Write/Edit/Bash tool calls in Auto Mode
- * and blocks BLOCKER-severity Prometheus violations before they land on disk.
+ * and blocks BLOCKER-severity Thesmos violations before they land on disk.
  *
  * Integration points:
  *   1. `thesmos claude:govern install` — writes hooks to .claude/settings.json
@@ -19,7 +19,7 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
-import { PROMETHEUS_RULES } from './rules/registry.js';
+import { THESMOS_RULES } from './rules/registry.js';
 import { loadConfig, CONFIG_DEFAULTS } from './config.js';
 import { extractInstallPackages, quickPhantomCheck } from './import-scan.js';
 import { checkScope } from './scope.js';
@@ -174,6 +174,37 @@ export function getGovernanceHooksStatus(root: string): GovernanceHookStatus {
     stopDrift:         hasStopDrift,
     settingsPath:      settingsPath(root),
   };
+}
+
+// ── Auto Mode governance info ─────────────────────────────────────────────────
+
+export interface AutoModeGovernanceInfo {
+  governed: boolean;
+  hooksInstalled: GovernanceHookStatus;
+  blockOn: string;
+  strictMode: boolean;
+  message: string;
+}
+
+/**
+ * Returns a summary of Auto Mode governance status for MCP / VS Code use.
+ * Called by the `get_governance_status` MCP tool and the VS Code autoModeGovernor.
+ */
+export function getAutoModeGovernanceInfo(root: string, config?: Record<string, unknown>): AutoModeGovernanceInfo {
+  const status = getGovernanceHooksStatus(root);
+  const autoModeCfg = (config?.['autoMode'] ?? {}) as Record<string, unknown>;
+  const enabled    = autoModeCfg['enabled']     !== false;
+  const strictMode = autoModeCfg['strictMode']  !== false;
+  const blockOn    = (autoModeCfg['blockOn'] as string | undefined) ?? (strictMode ? 'HIGH' : 'BLOCKER');
+  const governed   = enabled && status.installed;
+
+  const message = governed
+    ? `Auto Mode is governed — Thesmos blocks ${blockOn}+ violations before every Write/Edit/Bash.`
+    : status.installed
+      ? 'Hooks installed but autoMode.enabled is false — Auto Mode is not governed.'
+      : 'Auto Mode is NOT governed. Run: thesmos claude:govern install';
+
+  return { governed, hooksInstalled: status, blockOn, strictMode, message };
 }
 
 // ── Merge / extract (used by permissions.ts to preserve hooks) ────────────────
@@ -385,7 +416,7 @@ export async function runPreToolCheck(root: string): Promise<void> {
   }
 
   // Run only BLOCKER-severity rules
-  const blockerRules = PROMETHEUS_RULES.filter((r) => r.severity === 'BLOCKER');
+  const blockerRules = THESMOS_RULES.filter((r) => r.severity === 'BLOCKER');
 
   const detectInput: DetectInput = {
     scan: emptyScan(),

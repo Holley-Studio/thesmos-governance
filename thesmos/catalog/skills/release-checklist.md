@@ -3,7 +3,7 @@ id: release-checklist
 name: Release Checklist
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - release
   - checklist
@@ -35,7 +35,7 @@ Generates and validates a pre-release checklist covering governance, code qualit
 ## Workflow steps
 
 1. Run `npm run thesmos:review` — assert zero BLOCKER findings
-2. Run `npm run prometheus:ci-check` — assert all adapters are fresh
+2. Run `npm run thesmos:ci-check` — assert all adapters are fresh
 3. Check `supabase/migrations/` for unapplied migrations and their runbooks
 4. Verify CHANGELOG.md entry for the release version
 5. Verify feature flags are set to the correct rollout percentage
@@ -45,7 +45,7 @@ Generates and validates a pre-release checklist covering governance, code qualit
 
 ```bash
 npm run thesmos:review
-npm run prometheus:ci-check
+npm run thesmos:ci-check
 npm run thesmos:validate
 ```
 

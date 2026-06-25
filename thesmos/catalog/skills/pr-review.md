@@ -3,7 +3,7 @@ id: pr-review
 name: PR Review
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - review
   - pr
@@ -15,18 +15,18 @@ enabled: true
 
 ## Purpose
 
-Performs a complete Prometheus-governed review of a pull request: scans all changed files, applies all active rules, produces severity-ranked findings, and formats the output for inclusion in a GitHub PR comment.
+Performs a complete Thesmos-governed review of a pull request: scans all changed files, applies all active rules, produces severity-ranked findings, and formats the output for inclusion in a GitHub PR comment.
 
 ## When to use
 
-- As the default review skill for every PR on a Prometheus-governed repo
+- As the default review skill for every PR on a Thesmos-governed repo
 - When an AI agent is asked to "review this PR"
 - As the first step in a multi-agent review pipeline
 
 ## Required inputs
 
 - List of changed files with their content and diff
-- Active Prometheus config (`.thesmos/config.json`)
+- Active Thesmos config (`.thesmos/config.json`)
 - Target branch and PR description for context
 
 ## Workflow steps
@@ -35,13 +35,13 @@ Performs a complete Prometheus-governed review of a pull request: scans all chan
 2. Parse findings grouped by severity (BLOCKER → HIGH → MEDIUM → LOW → TECH_DEBT)
 3. Check for BLOCKER findings — if any, surface them immediately at the top
 4. Format findings as a GitHub-flavoured Markdown comment
-5. Append adapter freshness status (run `prometheus ci-check` to verify)
+5. Append adapter freshness status (run `thesmos ci-check` to verify)
 
 ## Thesmos commands
 
 ```bash
 npm run thesmos:review -- --base=main
-npm run prometheus:ci-check
+npm run thesmos:ci-check
 ```
 
 ## Expected output

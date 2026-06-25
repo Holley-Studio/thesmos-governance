@@ -85,7 +85,7 @@ export function applyOutputMode(
 
 /**
  * Inject a generated section into a markdown document, respecting
- * <!-- PROMETHEUS:GENERATED START id --> / <!-- PROMETHEUS:GENERATED END id --> markers.
+ * <!-- THESMOS:GENERATED START id --> / <!-- THESMOS:GENERATED END id --> markers.
  *
  * If markers do not exist, appends the section at the end.
  * Content outside markers is never modified.
@@ -95,8 +95,8 @@ export function injectGeneratedSection(
   id: string,
   content: string
 ): string {
-  const start = `<!-- PROMETHEUS:GENERATED START ${id} -->`;
-  const end = `<!-- PROMETHEUS:GENERATED END ${id} -->`;
+  const start = `<!-- THESMOS:GENERATED START ${id} -->`;
+  const end = `<!-- THESMOS:GENERATED END ${id} -->`;
   const generated = `${start}\n${content}\n${end}`;
 
   if (document.includes(start) && document.includes(end)) {
@@ -113,8 +113,8 @@ export function injectGeneratedSection(
  * Returns null if markers are not present.
  */
 export function extractGeneratedSection(document: string, id: string): string | null {
-  const start = `<!-- PROMETHEUS:GENERATED START ${id} -->`;
-  const end = `<!-- PROMETHEUS:GENERATED END ${id} -->`;
+  const start = `<!-- THESMOS:GENERATED START ${id} -->`;
+  const end = `<!-- THESMOS:GENERATED END ${id} -->`;
 
   const startIdx = document.indexOf(start);
   const endIdx = document.indexOf(end);

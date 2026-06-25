@@ -45,7 +45,7 @@ import type { DriftFinding } from './drift.js';
 import type { SuppressionAuditFinding } from './suppress.js';
 import type { Baseline } from './baseline.js';
 import { SEVERITY_ORDER } from './severity.js';
-import { PROMETHEUS_RULES } from './adapters.js';
+import { THESMOS_RULES } from './adapters.js';
 import { partitionFindings, loadBaseline } from './baseline.js';
 import { runDriftForRoot } from './drift.js';
 import { runReview } from './review.js';

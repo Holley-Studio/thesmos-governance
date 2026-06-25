@@ -8,7 +8,7 @@
  *
  * Security model:
  *   - API key resolved from: --api-key flag → ANTHROPIC_API_KEY env var → error
- *   - Key is NEVER stored by Prometheus — passed directly to SDK per invocation
+ *   - Key is NEVER stored by Thesmos — passed directly to SDK per invocation
  *   - Pre-flight cost estimate always shown before any API call
  *   - User must confirm (or pass --yes) before the API call is made
  *   - brain:learn is NEVER called automatically (no hooks, no cron)

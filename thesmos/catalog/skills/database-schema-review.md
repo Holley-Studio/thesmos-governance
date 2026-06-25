@@ -3,7 +3,7 @@ id: database-schema-review
 name: Database Schema Review
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - database
   - schema

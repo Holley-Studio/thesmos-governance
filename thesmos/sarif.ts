@@ -1,9 +1,9 @@
 /**
- * SARIF 2.1.0 serializer for Prometheus findings.
+ * SARIF 2.1.0 serializer for Thesmos findings.
  *
  * Static Analysis Results Interchange Format (SARIF) is the universal standard
  * consumed by GitHub's Security tab, VS Code's Problems panel, and Azure DevOps.
- * This lets Prometheus findings appear natively in enterprise toolchains without
+ * This lets Thesmos findings appear natively in enterprise toolchains without
  * any extra integration work.
  *
  * Usage:
@@ -91,9 +91,9 @@ export interface SarifDocument {
 // ── Serializer ────────────────────────────────────────────────────────────────
 
 /**
- * Converts Prometheus rules + findings to a SARIF 2.1.0 document.
+ * Converts Thesmos rules + findings to a SARIF 2.1.0 document.
  *
- * Pass the full PROMETHEUS_RULES array so rule metadata (descriptions, tags)
+ * Pass the full THESMOS_RULES array so rule metadata (descriptions, tags)
  * is included even for rules that produced no findings.
  */
 export function toSarif(

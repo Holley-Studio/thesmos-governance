@@ -11,7 +11,7 @@
 
 import { join, basename } from 'node:path';
 import { existsSync, writeFileSync, readFileSync } from 'node:fs';
-import { PROMETHEUS_RULES } from '../../rules/registry.js';
+import { THESMOS_RULES } from '../../rules/registry.js';
 import { runReview } from '../../review.js';
 import { loadConfig } from '../../config.js';
 import type { ScanResult } from '../../types.js';
@@ -128,7 +128,7 @@ function generateGdprReport(root: string): string {
   const allFindings = runReview({ scan, config, changedFiles: undefined });
   const gdprFindings = allFindings.filter((f) => f.category.startsWith('gdpr_'));
 
-  const gdprRules = PROMETHEUS_RULES.filter((r) => r.id.startsWith('GDPR_'));
+  const gdprRules = THESMOS_RULES.filter((r) => r.id.startsWith('GDPR_'));
   const passedRules = gdprRules.filter((r) => !gdprFindings.some((f) => f.category === r.category));
   const failedRules = gdprRules.filter((r) => gdprFindings.some((f) => f.category === r.category));
 

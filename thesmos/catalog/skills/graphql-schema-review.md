@@ -3,7 +3,7 @@ id: graphql-schema-review
 name: GraphQL Schema Review
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - graphql
   - api
@@ -30,7 +30,7 @@ Reviews GraphQL schemas and resolvers for depth/complexity limits, auth gaps, N+
 
 - Changed `.graphql`, `.gql`, and resolver TypeScript/JavaScript files
 - Server entry point (where Apollo Server or Yoga is configured)
-- Active Prometheus config
+- Active Thesmos config
 
 ## Workflow steps
 

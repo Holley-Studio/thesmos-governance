@@ -1,13 +1,13 @@
 # Commercial Licensing
 
-Prometheus Governance is released under the [Functional Source License 1.1 (FSL-1.1-MIT)](LICENSE).
+Thesmos is released under the [Functional Source License 1.1 (FSL-1.1-MIT)](LICENSE).
 
-FSL permits free use for personal projects, internal tooling, and open source work. It restricts offering Prometheus Governance itself (or a substantially similar product built on it) as a commercial service or product to third parties.
+FSL permits free use for personal projects, internal tooling, and open source work. It restricts offering Thesmos itself (or a substantially similar product built on it) as a commercial service or product to third parties.
 
 ## When you need a commercial license
 
-- You are building a SaaS product or hosted service powered by Prometheus Governance
-- You are reselling or white-labeling Prometheus Governance
+- You are building a SaaS product or hosted service powered by Thesmos
+- You are reselling or white-labeling Thesmos
 - You are bundling it into a commercial product sold to customers
 
 ## Contact

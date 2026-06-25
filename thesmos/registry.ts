@@ -1,5 +1,5 @@
 /**
- * Prometheus registry — loads, validates, and resolves .thesmos/registry.json.
+ * Thesmos registry — loads, validates, and resolves .thesmos/registry.json.
  *
  * The registry is the single declaration of what is active in a consumer repo:
  *   - which rule packs are enabled (phase 2: resolved to actual rules)

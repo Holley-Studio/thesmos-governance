@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cassandra — QA Agent · Thesmos Pantheon</title>
+  <meta name="description" content="Cassandra is the QA Agent of the Thesmos Pantheon. The agent who sees bugs before they ship, writes the tests that prove them, and documents the failure modes everyone else ignores.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #E74C3C; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
+    html { scroll-behavior: smooth; }
+    body { background: var(--navy); color: var(--t1); font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; min-height: 100vh; }
+    nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px,5vw,80px); height: 60px; background: rgba(5,4,8,.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: .16em; color: rgba(255,255,255,.7); }
+    .nav-brand svg { width: 28px; height: 32px; }
+    .nav-back { font-size: 13px; color: var(--t2); text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 180ms ease; }
+    .nav-back:hover { color: var(--t1); }
+    .agent-hero { padding: clamp(60px,8vw,120px) clamp(20px,5vw,80px) clamp(40px,6vw,80px); max-width: 960px; margin: 0 auto; }
+    .agent-breadcrumb { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); letter-spacing: .1em; margin-bottom: 32px; display: flex; align-items: center; gap: 8px; }
+    .agent-breadcrumb a { color: var(--t3); text-decoration: none; transition: color 180ms; }
+    .agent-breadcrumb a:hover { color: var(--gold); }
+    .agent-breadcrumb span { color: var(--agent); }
+    .agent-header { display: flex; gap: clamp(24px,4vw,56px); align-items: flex-start; margin-bottom: 40px; }
+    .agent-avatar-lg { flex-shrink: 0; width: clamp(72px,10vw,112px); height: clamp(72px,10vw,112px); }
+    .agent-avatar-lg svg { width: 100%; height: 100%; }
+    .agent-meta { flex: 1; }
+    .agent-name { font-family: 'Cinzel', serif; font-size: clamp(28px,5vw,52px); font-weight: 700; color: var(--agent); line-height: 1.1; margin-bottom: 6px; }
+    .agent-role-title { font-size: clamp(14px,2vw,18px); color: var(--t2); font-weight: 300; letter-spacing: .04em; margin-bottom: 16px; }
+    .agent-pantheon-tag { display: inline-block; padding: 4px 12px; background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 20px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); letter-spacing: .08em; }
+    .content { max-width: 960px; margin: 0 auto; padding: 0 clamp(20px,5vw,80px); }
+    .section { margin-bottom: clamp(48px,6vw,80px); }
+    .section-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .14em; color: var(--agent); text-transform: uppercase; margin-bottom: 16px; opacity: .8; }
+    .section-title { font-family: 'Cinzel', serif; font-size: clamp(18px,2.5vw,26px); font-weight: 400; color: var(--t1); margin-bottom: 20px; line-height: 1.3; }
+    .prose { font-size: 16px; line-height: 1.75; color: var(--t2); font-weight: 300; max-width: 680px; }
+    .lore-block { background: rgba(255,255,255,.02); border: 1px solid var(--border); border-left: 3px solid var(--agent); border-radius: 4px; padding: 24px 28px; margin-bottom: 20px; }
+    .lore-block p { font-size: 15px; line-height: 1.72; color: var(--t2); font-style: italic; }
+    .lore-channel { margin-top: 16px; font-style: normal !important; font-size: 14px !important; color: var(--t3) !important; }
+    .resp-list { list-style: none; display: flex; flex-direction: column; gap: 10px; max-width: 680px; }
+    .resp-list li { display: flex; gap: 12px; font-size: 15px; line-height: 1.6; color: var(--t2); }
+    .resp-list li::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--agent); flex-shrink: 0; margin-top: 8px; opacity: .7; }
+    .resume-card { background: rgba(255,255,255,.025); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .resume-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; }
+    .resume-avatar { width: 44px; height: 44px; }
+    .resume-name { font-family: 'Cinzel', serif; font-size: 16px; color: var(--agent); }
+    .resume-subtitle { font-size: 12px; color: var(--t3); margin-top: 2px; }
+    .resume-body { padding: 24px; display: flex; flex-direction: column; gap: 28px; }
+    .resume-section-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .12em; color: var(--t3); text-transform: uppercase; margin-bottom: 12px; }
+    .skills-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .skill-tag { display: inline-block; padding: 5px 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; font-size: 13px; color: var(--t2); }
+    .methodology-badge { display: inline-block; padding: 6px 14px; background: color-mix(in srgb, var(--agent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--agent) 30%, transparent); border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--agent); letter-spacing: .04em; }
+    .deliverables-list { display: flex; flex-direction: column; gap: 14px; }
+    .deliverable { padding: 14px 16px; background: rgba(255,255,255,.02); border: 1px solid var(--border); border-radius: 6px; }
+    .del-label { font-size: 13px; font-weight: 500; color: var(--t1); margin-bottom: 4px; }
+    .del-desc { font-size: 13px; color: var(--t3); line-height: 1.6; }
+    .invoke-block { background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 16px 18px; }
+    .invoke-block code { display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--parch); line-height: 2; white-space: pre; }
+    .paired-agents { display: flex; flex-wrap: wrap; gap: 10px; }
+    .pair-link { display: inline-block; padding: 6px 14px; background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 20px; font-size: 13px; color: var(--t2); text-decoration: none; transition: border-color 180ms, color 180ms; }
+    .pair-link:hover { border-color: var(--agent); color: var(--agent); }
+    .agent-nav { max-width: 960px; margin: 0 auto; padding: clamp(40px,5vw,64px) clamp(20px,5vw,80px); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); gap: 16px; }
+    .nav-arrow { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 13px; color: var(--t2); transition: color 180ms ease; }
+    .nav-arrow:hover { color: var(--gold); }
+    .nav-all { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .12em; color: var(--t3); text-decoration: none; transition: color 180ms; }
+    .nav-all:hover { color: var(--gold); }
+    .agent-counter { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); }
+    hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+    @media (max-width: 600px) { .agent-header { flex-direction: column; gap: 20px; } .agent-nav { flex-direction: column; text-align: center; gap: 20px; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-brand">
+    <svg viewBox="0 0 80 90" fill="none" aria-hidden="true">
+      <path d="M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linejoin="round"/>
+      <circle cx="40" cy="48" r="19" stroke="currentColor" stroke-width="2.5" fill="none"/>
+      <line x1="23" y1="48" x2="57" y2="48" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    THESMOS
+  </a>
+  <a href="../index.html#pantheon" class="nav-back">← All Agents</a>
+</nav>
+
+<div class="agent-hero">
+  <div class="agent-breadcrumb">
+    <a href="../index.html">Thesmos</a>
+    <span>·</span>
+    <a href="../index.html#pantheon">Pantheon</a>
+    <span>·</span>
+    <span>Cassandra</span>
+  </div>
+  <div class="agent-header">
+    <div class="agent-avatar-lg">
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="46" fill="#E74C3C15"/>
+        <path d="M50 22 L50 52" stroke="#E74C3C" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="50" cy="62" r="5" stroke="#E74C3C" stroke-width="2.2" fill="none"/>
+        <circle cx="50" cy="62" r="2" fill="#E74C3C"/>
+        <path d="M32 30 Q50 18 68 30" stroke="#E74C3C" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".5"/>
+      </svg>
+    </div>
+    <div class="agent-meta">
+      <div class="agent-name">Cassandra</div>
+      <div class="agent-role-title">QA Agent · Testing, Verification & Failure Mode Analysis</div>
+      <div class="agent-pantheon-tag">THESMOS PANTHEON</div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<div class="content">
+
+  <div class="section" style="margin-top:48px">
+    <div class="section-label">Mythology</div>
+    <div class="lore-block">
+      <p>Cassandra was gifted with prophecy by Apollo — she saw every disaster coming but was cursed so no one would believe her warnings. She foretold the fall of Troy with perfect accuracy; she was ignored with perfect consistency. Her tragedy was not ignorance, but clarity that arrived too early.</p>
+      <p class="lore-channel">Thesmos channels Cassandra as the agent who sees bugs before they ship, writes the tests that prove them, and documents the failure modes everyone else ignores. The curse is lifted here: when Cassandra flags a defect, the team acts on it.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Purpose</div>
+    <div class="section-title">What Cassandra does</div>
+    <p class="prose">Cassandra designs quality assurance systems that catch failures before users do. Test plans, edge case enumeration, regression suites, acceptance criteria — Cassandra applies Equivalence Partitioning to find the minimum set of test cases that cover maximum surface area, then uses Risk-Based Testing to prioritize effort where failure would hurt most.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Responsibilities</div>
+    <div class="section-title">Cassandra's domain</div>
+    <ul class="resp-list">
+      <li>Test plan design: scope, strategy, test types, entry/exit criteria</li>
+      <li>Edge case enumeration: boundary conditions, invalid inputs, race conditions</li>
+      <li>Regression test suites: organized by risk tier and component dependency</li>
+      <li>Bug reports with exact reproduction steps, environment, and expected vs. actual</li>
+      <li>Acceptance criteria writing: Given/When/Then scenarios for user stories</li>
+      <li>QA automation strategy: what to automate, at what layer, with which tools</li>
+      <li>Risk-based testing prioritization: highest-impact failures first</li>
+    </ul>
+  </div>
+
+  <hr style="margin-bottom:48px">
+
+  <div class="section">
+    <div class="section-label">Resume</div>
+    <div class="section-title">What Cassandra brings</div>
+    <div class="resume-card">
+      <div class="resume-header">
+        <div class="resume-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="46" fill="#E74C3C15"/>
+          <path d="M50 22 L50 52" stroke="#E74C3C" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="50" cy="62" r="5" stroke="#E74C3C" stroke-width="2.2" fill="none"/>
+          <circle cx="50" cy="62" r="2" fill="#E74C3C"/>
+        </svg></div>
+        <div>
+          <div class="resume-name">Cassandra</div>
+          <div class="resume-subtitle">QA Agent · Thesmos Pantheon</div>
+        </div>
+      </div>
+      <div class="resume-body">
+
+        <div>
+          <div class="resume-section-title">Core methodology</div>
+          <div class="methodology-badge">Equivalence Partitioning + Risk-Based Testing</div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Skills</div>
+          <div class="skills-grid">
+            <span class="skill-tag">Test planning</span>
+            <span class="skill-tag">Edge case analysis</span>
+            <span class="skill-tag">Regression testing</span>
+            <span class="skill-tag">Bug reproduction</span>
+            <span class="skill-tag">Acceptance criteria</span>
+            <span class="skill-tag">QA automation strategy</span>
+            <span class="skill-tag">Equivalence Partitioning</span>
+            <span class="skill-tag">Risk-Based Testing</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Example deliverables</div>
+          <div class="deliverables-list">
+            <div class="deliverable">
+              <div class="del-label">Test plan document</div>
+              <div class="del-desc">Scope, test strategy, test types (unit/integration/E2E), environment requirements, and clear entry/exit criteria for a feature or release.</div>
+            </div>
+            <div class="deliverable">
+              <div class="del-label">Regression suite spec</div>
+              <div class="del-desc">Organized set of regression test cases grouped by risk tier, with automation candidacy flags and dependency mapping.</div>
+            </div>
+            <div class="deliverable">
+              <div class="del-label">Bug report with reproduction steps</div>
+              <div class="del-desc">Structured defect report: summary, environment, exact steps to reproduce, expected behavior, actual behavior, and severity/priority classification.</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">How to invoke</div>
+          <div class="invoke-block">
+            <code>// Claude Code — sub-agent
+Agent({
+  subagent_type: "Cassandra",
+  prompt: "your task here"
+})
+
+// CLI
+npx thesmos pantheon:invoke cassandra --prompt "your task"</code>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Best paired with</div>
+          <div class="paired-agents">
+            <a href="talos.html" class="pair-link">Talos</a>
+            <a href="daedalus.html" class="pair-link">Daedalus</a>
+            <a href="chiron.html" class="pair-link">Chiron</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="agent-nav">
+  <a href="calliope.html" class="nav-arrow">← Calliope</a>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+    <a href="../index.html#pantheon" class="nav-all">ALL AGENTS</a>
+    <div class="agent-counter">30 / 40</div>
+  </div>
+  <a href="chiron.html" class="nav-arrow">Chiron →</a>
+</div>
+
+</body>
+</html>

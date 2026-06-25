@@ -81,9 +81,9 @@ describe('applyOutputMode', () => {
 describe('injectGeneratedSection', () => {
   it('appends markers when document has none', () => {
     const result = injectGeneratedSection('# Doc\n\nContent.', 'rules', 'generated text');
-    expect(result).toContain('<!-- PROMETHEUS:GENERATED START rules -->');
+    expect(result).toContain('<!-- THESMOS:GENERATED START rules -->');
     expect(result).toContain('generated text');
-    expect(result).toContain('<!-- PROMETHEUS:GENERATED END rules -->');
+    expect(result).toContain('<!-- THESMOS:GENERATED END rules -->');
     expect(result).toContain('# Doc');
   });
 
@@ -91,9 +91,9 @@ describe('injectGeneratedSection', () => {
     const doc = [
       '# Doc',
       '',
-      '<!-- PROMETHEUS:GENERATED START rules -->',
+      '<!-- THESMOS:GENERATED START rules -->',
       'old content',
-      '<!-- PROMETHEUS:GENERATED END rules -->',
+      '<!-- THESMOS:GENERATED END rules -->',
       '',
       'Footer.',
     ].join('\n');
@@ -113,15 +113,15 @@ describe('injectGeneratedSection', () => {
 
   it('uses the section id in the markers', () => {
     const result = injectGeneratedSection('', 'my-section', 'content');
-    expect(result).toContain('PROMETHEUS:GENERATED START my-section');
-    expect(result).toContain('PROMETHEUS:GENERATED END my-section');
+    expect(result).toContain('THESMOS:GENERATED START my-section');
+    expect(result).toContain('THESMOS:GENERATED END my-section');
   });
 
   it('preserves content after the end marker', () => {
     const doc = [
-      '<!-- PROMETHEUS:GENERATED START rules -->',
+      '<!-- THESMOS:GENERATED START rules -->',
       'old',
-      '<!-- PROMETHEUS:GENERATED END rules -->',
+      '<!-- THESMOS:GENERATED END rules -->',
       'after',
     ].join('\n');
     const result = injectGeneratedSection(doc, 'rules', 'new');
@@ -137,9 +137,9 @@ describe('extractGeneratedSection', () => {
   it('extracts content between markers', () => {
     const doc = [
       'before',
-      '<!-- PROMETHEUS:GENERATED START rules -->',
+      '<!-- THESMOS:GENERATED START rules -->',
       'extracted content',
-      '<!-- PROMETHEUS:GENERATED END rules -->',
+      '<!-- THESMOS:GENERATED END rules -->',
       'after',
     ].join('\n');
     expect(extractGeneratedSection(doc, 'rules')).toBe('extracted content');
@@ -153,7 +153,7 @@ describe('extractGeneratedSection', () => {
 
   it('returns null when only start marker is present', () => {
     expect(
-      extractGeneratedSection('<!-- PROMETHEUS:GENERATED START rules -->', 'rules')
+      extractGeneratedSection('<!-- THESMOS:GENERATED START rules -->', 'rules')
     ).toBeNull();
   });
 });

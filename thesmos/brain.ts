@@ -216,8 +216,8 @@ function countActiveRules(): number {
   // Dynamic import to avoid circular dependency
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { PROMETHEUS_RULES } = require('./rules/registry.js') as { PROMETHEUS_RULES: unknown[] };
-    return PROMETHEUS_RULES.length;
+    const { THESMOS_RULES } = require('./rules/registry.js') as { THESMOS_RULES: unknown[] };
+    return THESMOS_RULES.length;
   } catch {
     return 0;
   }

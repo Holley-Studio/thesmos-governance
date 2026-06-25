@@ -3,7 +3,7 @@ id: staged-change-review
 name: Staged Change Review
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - review
   - staged
@@ -28,7 +28,7 @@ Reviews only the files currently staged in git (via `git diff --staged`) before 
 ## Required inputs
 
 - Staged file content (from `git diff --staged` or `git show :path`)
-- Active Prometheus config from `.thesmos/config.json`
+- Active Thesmos config from `.thesmos/config.json`
 
 ## Workflow steps
 

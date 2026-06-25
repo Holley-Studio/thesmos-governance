@@ -1,5 +1,5 @@
 /**
- * prometheus ai:fingerprint
+ * thesmos ai:fingerprint
  *
  * Detects evidence that files were AI-generated using static heuristics:
  *   - Git log Co-Authored-By markers (Claude, GitHub Copilot, Cursor, Codex)
@@ -12,7 +12,7 @@
  *   { aiGeneratedEstimate: '72%', topTool: 'claude-code', byFile: [...] }
  *
  * Usage:
- *   prometheus ai:fingerprint [--format json|text] [--output FILE] [--min-confidence N]
+ *   thesmos ai:fingerprint [--format json|text] [--output FILE] [--min-confidence N]
  */
 
 import { join } from 'node:path';

@@ -28,7 +28,7 @@ cp claude-code/zeus-executive-agent.md .claude/agents/
 God Agent Zeus, I need to prioritize our Q3 roadmap.
 ```
 
-### Step 4: Verify the Prometheus governance
+### Step 4: Verify the Thesmos governance
 
 If you have `thesmos-governance` installed, every agent output is automatically governed:
 

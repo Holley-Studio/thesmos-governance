@@ -17,7 +17,7 @@ import type { ThesmosConfig, Severity } from './types';
 import { injectGeneratedSection } from './output';
 import { SEVERITY_EMOJI, SEVERITY_ORDER } from './severity';
 import { generateContextCapsule, saveContextCapsule } from './context-capsule.js';
-export { PROMETHEUS_RULES } from './rules/registry';
+export { THESMOS_RULES } from './rules/registry';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -292,7 +292,7 @@ const ADAPTER_PREAMBLES: Record<AdapterTarget, (config: ThesmosConfig) => string
     '## Behavioral Rules',
     '',
     '8. Never bypass severity rules — BLOCKER findings must be addressed before continuing.',
-    '9. Never overwrite content outside `<!-- PROMETHEUS:GENERATED START … -->` / `<!-- PROMETHEUS:GENERATED END … -->` markers.',
+    '9. Never overwrite content outside `<!-- THESMOS:GENERATED START … -->` / `<!-- THESMOS:GENERATED END … -->` markers.',
     '10. Prefer small, reversible, tested changes.',
     `11. After changes, run the relevant Thesmos command (\`npm run thesmos:scan\`, \`thesmos:review\`, \`thesmos:validate\`, or \`thesmos:doctor\`).`,
     '12. End each task by listing changed files and test results.',
@@ -350,11 +350,11 @@ function formatCatalogContext(catalog: AdapterCatalog): string {
 }
 
 /**
- * Parse the PROMETHEUS:META comment from an adapter file.
+ * Parse the THESMOS:META comment from an adapter file.
  * Returns null when the comment is absent or malformed.
  */
 export function parseAdapterMeta(content: string): AdapterMeta | null {
-  const match = content.match(/<!--\s*PROMETHEUS:META\s+(\{[^}]+\})\s*-->/);
+  const match = content.match(/<!--\s*THESMOS:META\s+(\{[^}]+\})\s*-->/);
   if (!match || !match[1]) return null;
   try {
     return JSON.parse(match[1]) as AdapterMeta;
@@ -398,7 +398,7 @@ export function isAdapterFresh(
  * If the document is empty, uses the target-specific preamble as the base.
  * Idempotent: calling twice with identical input produces identical output.
  *
- * The generated section always begins with a PROMETHEUS:META comment so that
+ * The generated section always begins with a THESMOS:META comment so that
  * isAdapterFresh() can verify the file without re-running the generator.
  */
 export function buildAdapterContent(
@@ -411,7 +411,7 @@ export function buildAdapterContent(
   const base =
     existing.trim() === '' ? ADAPTER_PREAMBLES[target](config) : existing;
   const meta: AdapterMeta = { version: config.version, target, ruleCount: rules.length };
-  const metaComment = `<!-- PROMETHEUS:META ${JSON.stringify(meta)} -->`;
+  const metaComment = `<!-- THESMOS:META ${JSON.stringify(meta)} -->`;
   const catalogCtx = catalog ? formatCatalogContext(catalog) : '';
   const generated = `${metaComment}\n${RULE_GENERATORS[target](rules, config)}${catalogCtx}`;
   return injectGeneratedSection(base, 'rules', generated);

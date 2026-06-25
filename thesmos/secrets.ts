@@ -20,7 +20,7 @@ export function matchesSecretPattern(line: string, patterns: string[]): string |
 }
 
 /**
- * Detect direct `process.env.VAR` dot-notation access (Prometheus Guard violation).
+ * Detect direct `process.env.VAR` dot-notation access (Thesmos Guard violation).
  * Returns the regex match (truthy) or null.
  * Ignores lines in scripts/ — those are operator tooling, not app code.
  */

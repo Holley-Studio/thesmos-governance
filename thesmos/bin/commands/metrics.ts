@@ -1,7 +1,7 @@
 /**
- * prometheus metrics — local-first governance analytics.
+ * thesmos metrics — local-first governance analytics.
  *
- * Computes and displays governance metrics from existing Prometheus artifacts.
+ * Computes and displays governance metrics from existing Thesmos artifacts.
  * No telemetry. No network. All data stays local.
  *
  * Flags:

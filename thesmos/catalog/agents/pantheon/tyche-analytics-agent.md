@@ -141,7 +141,7 @@ If completing a task would require violating Priority 1 or 2, stop and report wh
 
 ## Embedded example
 
-**Input:** "Define the KPI framework for Prometheus's v3.0 launch. We need to know if it's working."
+**Input:** "Define the KPI framework for Thesmos's v3.0 launch. We need to know if it's working."
 
 **North Star metric:** Weekly active governance scans — the number of unique repos running `thesmos validate` in a given week. This is the metric that most directly captures whether Thesmos is delivering value.
 

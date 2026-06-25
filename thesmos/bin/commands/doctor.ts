@@ -1,5 +1,5 @@
 /**
- * thesmos doctor — verify Prometheus installation health and show fix hints.
+ * thesmos doctor — verify Thesmos installation health and show fix hints.
  * Always exits 0 (informational, never blocks CI).
  *
  * Flags:

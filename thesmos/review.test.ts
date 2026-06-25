@@ -38,6 +38,7 @@ function makeInput(
     scan: EMPTY_SCAN,
     config: CONFIG_DEFAULTS,
     changedFiles,
+    root: '/tmp', // hermetic: no .claude or .thesmos here, prevents filesystem-dependent rules from firing
     ...overrides,
   };
 }

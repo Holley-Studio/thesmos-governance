@@ -3,7 +3,7 @@ id: final-hardening-pass
 name: Final Hardening Pass
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - hardening
   - pre-merge
@@ -29,14 +29,14 @@ The last review pass before merging: confirms all BLOCKER findings are resolved,
 
 - Final state of all changed files
 - Output from the most recent `thesmos:review` run
-- Adapter freshness status from `prometheus ci-check`
+- Adapter freshness status from `thesmos ci-check`
 
 ## Workflow steps
 
 1. Re-run `npm run thesmos:review` on the final file state
 2. Assert zero BLOCKER findings — any remaining blockers must be fixed
 3. Scan for debug artifacts: `console.log`, `TODO`, `FIXME`, `debugger`, commented-out code
-4. Verify adapter freshness: `npm run prometheus:ci-check`
+4. Verify adapter freshness: `npm run thesmos:ci-check`
 5. Check that test files exist for any risky files in the PR
 6. Verify the PR description is complete and references relevant tickets
 
@@ -44,7 +44,7 @@ The last review pass before merging: confirms all BLOCKER findings are resolved,
 
 ```bash
 npm run thesmos:review
-npm run prometheus:ci-check
+npm run thesmos:ci-check
 ```
 
 ## Expected output

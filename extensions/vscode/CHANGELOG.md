@@ -2,6 +2,17 @@
 
 All notable changes to the Thesmos Governance VS Code extension are documented here.
 
+## [1.4.0] - 2026-06-25
+
+### Added
+
+- **Agents Panel** — new sidebar panel listing all 40 Pantheon agents grouped by domain; click any agent to compose a task prompt and copy the invocation snippet to clipboard (`thesmos.agents.invoke`)
+- **`pantheon:council` CLI command** — routes a natural-language question to 2–4 relevant agents and streams labeled council output per agent; supports `--out=<file>` and `--max=<n>` flags
+- **`get_active_agents` MCP tool** — returns all 40 Pantheon agents with domains, roles, models, and invocation instructions; supports optional `domain` filter
+- **`.thesmosignore` support** — gitignore-style patterns in a root `.thesmosignore` file are now honoured by the file walker; supports `*`, `**`, `?`, anchored patterns, and directory patterns
+- **`thesmos notify` command** — posts Slack-compatible webhook alerts when findings meet a severity threshold (`--webhook=<url> --on=BLOCKER`); supports `--dry-run`
+- **25 new auto-fixable rules** in `fix.ts` (total: 55+): `direct_env_access`, `any_type_no_comment`, `ts_as_any`, `empty_catch_block`, `floating_promise`, `hardcoded_http_url`, `import_react_unnecessary`, `todo_in_production`, `merge_conflict_markers`, `require_in_esm`, `py_bare_except`, `py_open_without_encoding`, `docker_latest_tag`, `gha_unpinned_action`, `insecure_random`, `cookie_no_secure_flags`
+
 ## [1.3.0] - 2026-06-24
 
 ### Added
@@ -17,7 +28,7 @@ All notable changes to the Thesmos Governance VS Code extension are documented h
 - Agent Scope commands (`thesmos.scopeInit`, `thesmos.scopeStatus`, `thesmos.scopeCheck`)
 
 ### Changed
-- Renamed from `prometheus-governance` to `thesmos-governance` (package and publisher namespace)
+- Renamed from `thesmos-governance` to `thesmos-governance` (package and publisher namespace)
 - Extension ID is now `holley-studios.thesmos-governance-vscode`
 - Activity Bar icon updated to Θ (Thesmos brand)
 
@@ -45,7 +56,7 @@ All notable changes to the Thesmos Governance VS Code extension are documented h
 ## [1.0.0] - 2026-06-15
 
 ### Added
-- Initial release under `prometheus-governance` publisher
+- Initial release under `thesmos-governance` publisher
 - Findings panel with inline governance violations
 - `scan`, `reviewFile`, `openConfig`, `refreshFindings` commands
 - `thesmos.enable`, `thesmos.runOnSave`, `thesmos.debounceMs`, `thesmos.showStatusBar`, `thesmos.binaryPath` settings

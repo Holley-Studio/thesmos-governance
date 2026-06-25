@@ -257,7 +257,7 @@ function buildMcpTool(answers: WizardAnswers): string {
   const job = answers['job'] ?? 'answer questions about documents';
 
   return `/**
- * ${name}-rag — MCP tool for Prometheus MCP server
+ * ${name}-rag — MCP tool for Thesmos MCP server
  * Purpose: ${job}
  *
  * Register in thesmos/mcp-server.ts TOOL_DEFINITIONS array.

@@ -1,5 +1,5 @@
 {
-  "typescript.tsdk": "prometheus/node_modules/typescript/lib",
+  "typescript.tsdk": "thesmos/node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "github-actions.workflows.pinning.enabled": false
 }

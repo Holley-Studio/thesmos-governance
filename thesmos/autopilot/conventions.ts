@@ -7,7 +7,7 @@
  *
  * The more sessions you run, the richer this becomes. First session on a repo
  * uses generic context. Tenth session knows the repo's exact patterns, libraries,
- * naming conventions, and which Prometheus rules this AI tends to trip.
+ * naming conventions, and which Thesmos rules this AI tends to trip.
  */
 import {
   existsSync,

@@ -3,7 +3,7 @@ id: design-token-audit
 name: Design Token Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - design-system
   - tokens

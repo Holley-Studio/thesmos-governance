@@ -26,6 +26,7 @@ import {
   ThesmosReportMissingError,
 } from './runner.js';
 import { HealthPanel } from './panel.js';
+import type { HealthEntry } from './panel.js';
 import type { ExtensionConfig } from './types.js';
 import type { AutopilotWatcher } from './autopilotWatcher.js';
 
@@ -170,7 +171,8 @@ export function registerCommands(
               workspaceRoot,
               cfg.binaryPath || undefined,
             );
-            HealthPanel.show(context.extensionUri, health);
+            const hist = context.workspaceState.get<HealthEntry[]>('thesmos.healthHistory', []);
+            HealthPanel.show(context.extensionUri, health, hist);
           } catch (err) {
             handleError(err);
           }

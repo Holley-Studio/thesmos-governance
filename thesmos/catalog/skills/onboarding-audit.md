@@ -3,7 +3,7 @@ id: onboarding-audit
 name: Onboarding Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - onboarding
   - documentation

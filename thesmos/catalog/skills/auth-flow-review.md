@@ -3,7 +3,7 @@ id: auth-flow-review
 name: Auth Flow Review
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - auth
   - security

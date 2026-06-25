@@ -1,5 +1,5 @@
 /**
- * prometheus diff — compare stored findings baseline against current scan.
+ * thesmos diff — compare stored findings baseline against current scan.
  *
  * Loads findings from a previous scan (stored as a JSON file) and diffs them
  * against the current review output to show what's new vs. resolved.

@@ -1,7 +1,7 @@
 /**
  * thesmos fix — auto-fix safe violations.
  *
- * Delegates all logic to the prometheus/fix.ts library module.
+ * Delegates all logic to the thesmos/fix.ts library module.
  * This file is intentionally thin: parse args → load data → call library → print.
  *
  * Flags:

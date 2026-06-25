@@ -56,7 +56,7 @@ const AGNT_001: ThesmosRule = {
     badExample: '(no .thesmos/scope.json file exists)',
   },
   detect(input: DetectInput): Finding[] {
-    const root = process.cwd();
+    const root = input.root ?? process.cwd();
     // Only flag in projects that use BOTH Claude Code AND Thesmos (both dirs exist)
     if (!existsSync(join(root, '.claude')) || !existsSync(join(root, '.thesmos'))) return [];
     const scopePath = join(root, '.thesmos', 'scope.json');
@@ -385,7 +385,7 @@ const AGNT_010: ThesmosRule = {
     badExample: '(file does not exist)',
   },
   detect(input: DetectInput): Finding[] {
-    const root = process.cwd();
+    const root = input.root ?? process.cwd();
     // Only flag in projects that use BOTH Claude Code AND Thesmos
     if (!existsSync(join(root, '.claude')) || !existsSync(join(root, '.thesmos'))) return [];
     const auditPath = join(root, '.thesmos', 'audit.jsonl');

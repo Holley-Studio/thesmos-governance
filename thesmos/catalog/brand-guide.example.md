@@ -257,7 +257,7 @@ Every interactive component must have explicit dark mode classes. Test the follo
 
 ## Design Config (`.thesmos/config.json`)
 
-Prometheus design rules work out of the box for any stack, but you can customize the scales and library list in your `.thesmos/config.json`. All fields are optional — only set what differs from the defaults.
+Thesmos design rules work out of the box for any stack, but you can customize the scales and library list in your `.thesmos/config.json`. All fields are optional — only set what differs from the defaults.
 
 ```json
 {

@@ -3,7 +3,7 @@ id: rate-limit-audit
 name: Rate Limit Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - rate-limiting
   - api

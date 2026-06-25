@@ -138,7 +138,7 @@ If completing a task would require violating Priority 1 or 2, stop and report wh
 
 ## Embedded example
 
-**Input:** "Write a 60-second product demo video script for Prometheus — target: engineering managers, platform: LinkedIn."
+**Input:** "Write a 60-second product demo video script for Thesmos — target: engineering managers, platform: LinkedIn."
 
 **Video brief:**
 - Format: 1:1 (LinkedIn native), 60 seconds
@@ -175,7 +175,7 @@ VO: "Every clean build gets a governance certificate."
 VO: "Zero config. One install."
 
 [END CARD: thesmos-governance / GitHub link]
-VO: "Prometheus. Ship AI code you'd sign your name to."
+VO: "Thesmos. Ship AI code you'd sign your name to."
 ```
 
 **Shot list:** [Terminal screen recording #1–5, all demo sequences are screen capture + professional framing]; [End card: motion graphic, gold text on black, Cinzel font]

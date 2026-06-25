@@ -3,7 +3,7 @@ id: ci-pipeline-audit
 name: CI Pipeline Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - ci
   - github-actions

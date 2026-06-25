@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { CONFIG_DEFAULTS } from './config';
 import {
-  PROMETHEUS_RULES,
+  THESMOS_RULES,
   ADAPTER_OUTPUT_PATHS,
   buildAdapterContent,
   type Rule,
@@ -23,7 +23,7 @@ import type { ThesmosConfig } from './types';
 const FRESH_BY_PATH: Record<string, string> = Object.fromEntries(
   Object.entries(ADAPTER_OUTPUT_PATHS).map(([target, relPath]) => [
     relPath,
-    buildAdapterContent(target as keyof typeof ADAPTER_OUTPUT_PATHS, '', PROMETHEUS_RULES, CONFIG_DEFAULTS),
+    buildAdapterContent(target as keyof typeof ADAPTER_OUTPUT_PATHS, '', THESMOS_RULES, CONFIG_DEFAULTS),
   ])
 );
 
@@ -42,7 +42,7 @@ function makeFullInput(overrides: Partial<CiCheckInput> = {}): CiCheckInput {
 
   return {
     config: CONFIG_DEFAULTS,
-    rules: PROMETHEUS_RULES,
+    rules: THESMOS_RULES,
     fileExists: (rel) => allFiles.has(rel),
     readFileSafe: (rel) => FRESH_BY_PATH[rel] ?? null,
     readJsonSafe: (rel) => {
@@ -57,7 +57,7 @@ function makeFullInput(overrides: Partial<CiCheckInput> = {}): CiCheckInput {
 function makeEmptyInput(configOverride?: Partial<ThesmosConfig>): CiCheckInput {
   return {
     config: { ...CONFIG_DEFAULTS, ...configOverride },
-    rules: PROMETHEUS_RULES,
+    rules: THESMOS_RULES,
     fileExists: () => false,
     readFileSafe: () => null,
     readJsonSafe: () => null,
@@ -175,7 +175,7 @@ describe('runCiCheck — missing files', () => {
 
 describe('runCiCheck — stale adapters', () => {
   it('fails freshness check when adapter has no metadata (old format)', () => {
-    const staleContent = '# Old adapter\n\nSome content without meta comment.\n<!-- PROMETHEUS:GENERATED START rules -->\nrules\n<!-- PROMETHEUS:GENERATED END rules -->';
+    const staleContent = '# Old adapter\n\nSome content without meta comment.\n<!-- THESMOS:GENERATED START rules -->\nrules\n<!-- THESMOS:GENERATED END rules -->';
     const input = makeFullInput({
       readFileSafe: (rel) =>
         rel === ADAPTER_OUTPUT_PATHS.claude ? staleContent : (FRESH_BY_PATH[rel] ?? null),
@@ -187,8 +187,8 @@ describe('runCiCheck — stale adapters', () => {
   });
 
   it('fails freshness check when ruleCount is wrong', () => {
-    // Build adapter with a subset of rules so ruleCount < PROMETHEUS_RULES.length
-    const staleContent = buildAdapterContent('gemini', '', PROMETHEUS_RULES.slice(0, 5), CONFIG_DEFAULTS);
+    // Build adapter with a subset of rules so ruleCount < THESMOS_RULES.length
+    const staleContent = buildAdapterContent('gemini', '', THESMOS_RULES.slice(0, 5), CONFIG_DEFAULTS);
     const input = makeFullInput({
       readFileSafe: (rel) =>
         rel === ADAPTER_OUTPUT_PATHS.gemini ? staleContent : null,
@@ -201,7 +201,7 @@ describe('runCiCheck — stale adapters', () => {
 
   it('fails freshness check when version is wrong', () => {
     const oldConfig: ThesmosConfig = { ...CONFIG_DEFAULTS, version: '1.0.0' };
-    const staleContent = buildAdapterContent('cursor', '', PROMETHEUS_RULES, oldConfig);
+    const staleContent = buildAdapterContent('cursor', '', THESMOS_RULES, oldConfig);
     const input = makeFullInput({
       readFileSafe: (rel) =>
         rel === ADAPTER_OUTPUT_PATHS.cursor ? staleContent : (FRESH_BY_PATH[rel] ?? null),
@@ -212,8 +212,8 @@ describe('runCiCheck — stale adapters', () => {
     expect(freshCheck?.message).toContain('version mismatch');
   });
 
-  it('fails marker check when PROMETHEUS:GENERATED markers are stripped', () => {
-    const stripped = (FRESH_BY_PATH[ADAPTER_OUTPUT_PATHS.agents] ?? '').replace(/<!-- PROMETHEUS:GENERATED[^>]+-->/g, '');
+  it('fails marker check when THESMOS:GENERATED markers are stripped', () => {
+    const stripped = (FRESH_BY_PATH[ADAPTER_OUTPUT_PATHS.agents] ?? '').replace(/<!-- THESMOS:GENERATED[^>]+-->/g, '');
     const input = makeFullInput({
       readFileSafe: (rel) =>
         rel === ADAPTER_OUTPUT_PATHS.agents ? stripped : (FRESH_BY_PATH[rel] ?? null),
@@ -233,9 +233,9 @@ describe('runCiCheck — stale adapters', () => {
       severity: 'LOW',
       tags: ['test'],
     };
-    const expandedRules = [...PROMETHEUS_RULES, extraRule];
+    const expandedRules = [...THESMOS_RULES, extraRule];
     const input = makeFullInput({ rules: expandedRules });
-    // Adapter files were built with PROMETHEUS_RULES (12 rules), but ci-check sees 13
+    // Adapter files were built with THESMOS_RULES (12 rules), but ci-check sees 13
     const freshChecks = runCiCheck(input).filter((c) => c.name.endsWith(':fresh'));
     expect(freshChecks.every((c) => !c.pass)).toBe(true);
     expect(freshChecks[0].message).toContain('rule count mismatch');

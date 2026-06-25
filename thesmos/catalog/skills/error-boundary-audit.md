@@ -3,7 +3,7 @@ id: error-boundary-audit
 name: Error Boundary Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - errors
   - resilience

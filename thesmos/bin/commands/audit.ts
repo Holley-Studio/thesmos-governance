@@ -1,5 +1,5 @@
 /**
- * prometheus audit — combined doctor + scan-based review (no changed-file content).
+ * thesmos audit — combined doctor + scan-based review (no changed-file content).
  * Gives a full health snapshot: installation check + rule findings from the last scan.
  * Always exits 0 (informational). Use `validate` to gate CI.
  *

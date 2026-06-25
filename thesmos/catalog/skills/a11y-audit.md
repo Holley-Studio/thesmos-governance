@@ -3,7 +3,7 @@ id: a11y-audit
 name: Accessibility Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - accessibility
   - a11y

@@ -7,7 +7,7 @@
  *
  * On session end (normal, cancel, or crash), the original settings are restored.
  * Crash recovery: if _autopilot_restore is present in settings.json on next run,
- * Prometheus automatically restores the backup before doing anything else.
+ * Thesmos automatically restores the backup before doing anything else.
  */
 import {
   existsSync,

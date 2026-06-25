@@ -183,6 +183,17 @@ export interface ThesmosConfig {
     plan?: 'hobby' | 'pro' | 'enterprise';
     requireCronAuth?: boolean;
   };
+
+  autoMode?: {
+    /** Whether Thesmos actively governs Claude Code Auto Mode sessions (default: true when hooks installed). */
+    enabled?: boolean;
+    /** Strict mode: block on HIGH violations in addition to BLOCKER (default: true). */
+    strictMode?: boolean;
+    /** Minimum severity level to block on during Auto Mode sessions (default: "HIGH"). */
+    blockOn?: 'BLOCKER' | 'HIGH' | 'MEDIUM';
+    /** Show a VS Code notification when a write is blocked during Auto Mode (default: true). */
+    notifyOnBlock?: boolean;
+  };
 }
 
 export interface Finding {
@@ -294,6 +305,8 @@ export interface DetectInput {
   scan: ScanResult;
   config: ThesmosConfig;
   changedFiles?: ChangedFile[];
+  /** Workspace root — used by rules that need filesystem checks. Defaults to process.cwd() when not provided. */
+  root?: string;
 }
 
 export interface RuleExplanation {

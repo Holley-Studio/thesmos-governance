@@ -1,7 +1,7 @@
 /**
  * thesmos self:check / self:update / self:repair
  *
- * Prometheus governs itself — detects version drift, broken hooks,
+ * Thesmos governs itself — detects version drift, broken hooks,
  * stale adapters, and stale context snapshots.
  *
  * Usage:

@@ -3,7 +3,7 @@
  *
  * Subcommands:
  *   claude:govern install     Write PreToolUse + Stop hooks to .claude/settings.json
- *   claude:govern uninstall   Remove prometheus hooks from .claude/settings.json
+ *   claude:govern uninstall   Remove thesmos hooks from .claude/settings.json
  *   claude:govern status      Show current hook installation state
  *   claude:govern check       Internal: run by the PreToolUse hook — reads stdin, exits 0 or 2
  */

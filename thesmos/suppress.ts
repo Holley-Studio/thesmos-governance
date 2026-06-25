@@ -1,5 +1,5 @@
 /**
- * Prometheus Suppression System — inline governance exceptions.
+ * Thesmos Suppression System — inline governance exceptions.
  *
  * Supported syntax (on the line BEFORE the violation):
  *   // thesmos-disable-next-line <rule-id> -- reason: <text>
@@ -24,7 +24,7 @@
  */
 
 import type { Finding } from './types.js';
-import { PROMETHEUS_RULES } from './adapters.js';
+import { THESMOS_RULES } from './adapters.js';
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -133,7 +133,7 @@ export function extractSuppressions(content: string, filePath: string): Suppress
  */
 export function resolveCategory(idOrCategory: string): string {
   const lower = idOrCategory.toLowerCase();
-  const match = PROMETHEUS_RULES.find(
+  const match = THESMOS_RULES.find(
     (r) => r.id.toLowerCase() === lower || r.category.toLowerCase() === lower
   );
   return match?.category ?? idOrCategory;

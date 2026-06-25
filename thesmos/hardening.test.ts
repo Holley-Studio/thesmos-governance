@@ -2,7 +2,7 @@
 /**
  * Hardening tests — cross-cutting correctness properties that don't belong
  * to any single module:
- *   - PROMETHEUS_RULES covers every review category (no drift)
+ *   - THESMOS_RULES covers every review category (no drift)
  *   - injectable timestamps make all outputs deterministic
  *   - validate exits 1 only for failOnSeverity
  *   - HIGH warns but does not fail by default
@@ -11,7 +11,7 @@
  *   - report.json is idempotent when written twice with the same scan
  */
 import { describe, it, expect } from 'vitest';
-import { PROMETHEUS_RULES, buildAdapterContent } from './adapters';
+import { THESMOS_RULES, buildAdapterContent } from './adapters';
 import { REVIEW_CATEGORIES } from './review';
 import { CONFIG_DEFAULTS, loadConfig } from './config';
 import { exitCodeFor, shouldWarn, shouldFail } from './severity';
@@ -21,24 +21,24 @@ import type { Finding, Severity } from './types';
 // ── Rule registry — single source of truth proofs ────────────────────────────
 //
 // After the refactor, REVIEW_CATEGORIES and CONFIG_DEFAULTS.severityRules are
-// derived from PROMETHEUS_RULES. These tests document that derivation and prove
+// derived from THESMOS_RULES. These tests document that derivation and prove
 // the live wiring is correct (not just asserted once at write time).
 
 describe('rule registry completeness', () => {
-  const ruleIds = new Set(PROMETHEUS_RULES.map((r) => r.id));
-  const ruleCategories = new Set(PROMETHEUS_RULES.map((r) => r.category));
+  const ruleIds = new Set(THESMOS_RULES.map((r) => r.id));
+  const ruleCategories = new Set(THESMOS_RULES.map((r) => r.category));
 
-  it('REVIEW_CATEGORIES is derived from PROMETHEUS_RULES (same length, same order)', () => {
-    expect(REVIEW_CATEGORIES).toEqual(PROMETHEUS_RULES.map((r) => r.category));
+  it('REVIEW_CATEGORIES is derived from THESMOS_RULES (same length, same order)', () => {
+    expect(REVIEW_CATEGORIES).toEqual(THESMOS_RULES.map((r) => r.category));
   });
 
-  it('every PROMETHEUS_RULE has a unique ID', () => {
-    expect(ruleIds.size).toBe(PROMETHEUS_RULES.length);
+  it('every THESMOS_RULE has a unique ID', () => {
+    expect(ruleIds.size).toBe(THESMOS_RULES.length);
   });
 
-  it('CONFIG_DEFAULTS.severityRules is derived from PROMETHEUS_RULES (every rule has an entry)', () => {
+  it('CONFIG_DEFAULTS.severityRules is derived from THESMOS_RULES (every rule has an entry)', () => {
     const configCategories = new Set(CONFIG_DEFAULTS.severityRules.map((r) => r.category));
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       expect(
         configCategories.has(rule.category),
         `[${rule.id}] category "${rule.category}" missing from CONFIG_DEFAULTS.severityRules`
@@ -46,27 +46,27 @@ describe('rule registry completeness', () => {
     }
   });
 
-  it('CONFIG_DEFAULTS.severityRules has no entries outside PROMETHEUS_RULES', () => {
+  it('CONFIG_DEFAULTS.severityRules has no entries outside THESMOS_RULES', () => {
     for (const sr of CONFIG_DEFAULTS.severityRules) {
       expect(
         ruleCategories.has(sr.category),
-        `category "${sr.category}" is in severityRules but missing from PROMETHEUS_RULES`
+        `category "${sr.category}" is in severityRules but missing from THESMOS_RULES`
       ).toBe(true);
     }
   });
 
   it('CONFIG_DEFAULTS.severityRules severity matches registry severity for every rule', () => {
-    for (const rule of PROMETHEUS_RULES) {
+    for (const rule of THESMOS_RULES) {
       const sr = CONFIG_DEFAULTS.severityRules.find((s) => s.category === rule.category);
       expect(sr?.severity, `[${rule.id}] severity mismatch`).toBe(rule.severity);
     }
   });
 
-  it('new rules added to PROMETHEUS_RULES appear in all adapter outputs', () => {
+  it('new rules added to THESMOS_RULES appear in all adapter outputs', () => {
     const allTargets = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'] as const;
     for (const target of allTargets) {
-      const out = buildAdapterContent(target, '', PROMETHEUS_RULES, CONFIG_DEFAULTS);
-      for (const rule of PROMETHEUS_RULES) {
+      const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
+      for (const rule of THESMOS_RULES) {
         expect(out, `${target} is missing [${rule.id}]`).toContain(`[${rule.id}]`);
       }
     }
@@ -213,34 +213,34 @@ describe('adapter files are AI-stack-agnostic', () => {
   const TARGETS = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'] as const;
 
   it('Gemini adapter does not mention Claude', () => {
-    const out = buildAdapterContent('gemini', '', PROMETHEUS_RULES, CONFIG_DEFAULTS);
+    const out = buildAdapterContent('gemini', '', THESMOS_RULES, CONFIG_DEFAULTS);
     // The preamble should not instruct users to talk to a specific AI
     expect(out.toLowerCase()).not.toContain('ask claude');
     expect(out.toLowerCase()).not.toContain('claude code only');
   });
 
-  it('all adapters contain only rule IDs from PROMETHEUS_RULES', () => {
+  it('all adapters contain only rule IDs from THESMOS_RULES', () => {
     for (const target of TARGETS) {
-      const out = buildAdapterContent(target, '', PROMETHEUS_RULES, CONFIG_DEFAULTS);
-      for (const rule of PROMETHEUS_RULES) {
+      const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
+      for (const rule of THESMOS_RULES) {
         expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);
       }
     }
   });
 
-  it('all adapters are deterministic with the same PROMETHEUS_RULES', () => {
+  it('all adapters are deterministic with the same THESMOS_RULES', () => {
     for (const target of TARGETS) {
-      const r1 = buildAdapterContent(target, '', PROMETHEUS_RULES, CONFIG_DEFAULTS);
-      const r2 = buildAdapterContent(target, '', PROMETHEUS_RULES, CONFIG_DEFAULTS);
+      const r1 = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
+      const r2 = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
       expect(r1, `${target} is not deterministic`).toBe(r2);
     }
   });
 
   it('adding a new adapter target later does not change existing adapter content', () => {
-    const claudeOut = buildAdapterContent('claude', '', PROMETHEUS_RULES, CONFIG_DEFAULTS);
+    const claudeOut = buildAdapterContent('claude', '', THESMOS_RULES, CONFIG_DEFAULTS);
     // Simulate adding gemini later — should not change claude's content
-    buildAdapterContent('gemini', '', PROMETHEUS_RULES, CONFIG_DEFAULTS);
-    const claudeOut2 = buildAdapterContent('claude', '', PROMETHEUS_RULES, CONFIG_DEFAULTS);
+    buildAdapterContent('gemini', '', THESMOS_RULES, CONFIG_DEFAULTS);
+    const claudeOut2 = buildAdapterContent('claude', '', THESMOS_RULES, CONFIG_DEFAULTS);
     expect(claudeOut).toBe(claudeOut2);
   });
 });

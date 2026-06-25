@@ -3,7 +3,7 @@ id: ai-prompt-review
 name: AI Prompt Review
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - ai
   - prompts

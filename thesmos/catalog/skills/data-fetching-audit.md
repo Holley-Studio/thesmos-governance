@@ -3,7 +3,7 @@ id: data-fetching-audit
 name: Data Fetching Audit
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - data-fetching
   - react-query

@@ -138,7 +138,7 @@ If completing a task would require violating Priority 1 or 2, stop and report wh
 
 ## Embedded example
 
-**Input:** "Design the onboarding flow for Prometheus — a code governance CLI tool. Target: solo developer who just installed it."
+**Input:** "Design the onboarding flow for Thesmos — a code governance CLI tool. Target: solo developer who just installed it."
 
 **Activation milestone:** User completes their first successful `thesmos validate` run on their own codebase and sees at least one finding. This is the "aha moment" — they've seen Thesmos catch something real.
 

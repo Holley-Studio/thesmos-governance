@@ -1,5 +1,5 @@
 /**
- * Canonical rule registry — single source of truth for all Prometheus rules.
+ * Canonical rule registry — single source of truth for all Thesmos rules.
  *
  * Each rule carries its own metadata AND detection logic (detect()).
  * All downstream consumers derive from this registry:
@@ -97,7 +97,7 @@ const ANY_TYPE_RE = /(?::|\bas\b)\s+any\b/;
 
 // ── Rule registry ─────────────────────────────────────────────────────────────
 
-export const PROMETHEUS_RULES: ThesmosRule[] = [
+export const THESMOS_RULES: ThesmosRule[] = [
   {
     id: 'ENV_001',
     category: 'direct_env_access',

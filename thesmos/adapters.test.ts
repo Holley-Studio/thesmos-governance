@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { CONFIG_DEFAULTS } from './config';
 import {
-  PROMETHEUS_RULES,
+  THESMOS_RULES,
   ADAPTER_OUTPUT_PATHS,
   getRulesByTag,
   getRulesBySeverity,
@@ -35,11 +35,11 @@ function trackTmp(dir: string): string {
 }
 
 const CONFIG = CONFIG_DEFAULTS;
-const RULES = PROMETHEUS_RULES;
+const RULES = THESMOS_RULES;
 
-// ── PROMETHEUS_RULES integrity ────────────────────────────────────────────────
+// ── THESMOS_RULES integrity ────────────────────────────────────────────────
 
-describe('PROMETHEUS_RULES', () => {
+describe('THESMOS_RULES', () => {
   it('has no duplicate IDs', () => {
     const ids = RULES.map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -299,8 +299,8 @@ describe('generateAgentsRules', () => {
 describe('buildAdapterContent', () => {
   it('creates a new document when existing is empty — contains markers', () => {
     const result = buildAdapterContent('claude', '', RULES, CONFIG);
-    expect(result).toContain('<!-- PROMETHEUS:GENERATED START rules -->');
-    expect(result).toContain('<!-- PROMETHEUS:GENERATED END rules -->');
+    expect(result).toContain('<!-- THESMOS:GENERATED START rules -->');
+    expect(result).toContain('<!-- THESMOS:GENERATED END rules -->');
   });
 
   it('new claude document includes project name in preamble', () => {
@@ -319,7 +319,7 @@ describe('buildAdapterContent', () => {
     const result = buildAdapterContent('claude', existing, RULES, CONFIG);
     expect(result).toContain('My Project');
     expect(result).toContain('Some manual content.');
-    expect(result).toContain('<!-- PROMETHEUS:GENERATED START rules -->');
+    expect(result).toContain('<!-- THESMOS:GENERATED START rules -->');
   });
 
   it('replaces old generated content but preserves manual content', () => {
@@ -328,9 +328,9 @@ describe('buildAdapterContent', () => {
       '',
       'Manual top.',
       '',
-      '<!-- PROMETHEUS:GENERATED START rules -->',
+      '<!-- THESMOS:GENERATED START rules -->',
       'OLD RULES CONTENT',
-      '<!-- PROMETHEUS:GENERATED END rules -->',
+      '<!-- THESMOS:GENERATED END rules -->',
       '',
       'Manual footer.',
     ].join('\n');
@@ -356,7 +356,7 @@ describe('buildAdapterContent', () => {
       const result = buildAdapterContent(target, '', RULES, CONFIG);
       expect(result.length, `${target} should produce content`).toBeGreaterThan(0);
       expect(result, `${target} should have generated markers`).toContain(
-        'PROMETHEUS:GENERATED'
+        'THESMOS:GENERATED'
       );
     }
   });
@@ -429,8 +429,8 @@ describe('Claude adapter preamble (thin adapter contract)', () => {
     expect(claudeDoc).toContain('Never bypass severity rules');
   });
 
-  it('instructs to never overwrite outside PROMETHEUS:GENERATED markers', () => {
-    expect(claudeDoc).toContain('PROMETHEUS:GENERATED');
+  it('instructs to never overwrite outside THESMOS:GENERATED markers', () => {
+    expect(claudeDoc).toContain('THESMOS:GENERATED');
     expect(claudeDoc).toContain('Never overwrite');
   });
 
@@ -448,7 +448,7 @@ describe('Claude adapter preamble (thin adapter contract)', () => {
 
   it('does not duplicate full rule descriptions (stays thin)', () => {
     // Full descriptions are in CODE_REVIEW.md. Check that at least one long description
-    // from PROMETHEUS_RULES is NOT inlined verbatim.
+    // from THESMOS_RULES is NOT inlined verbatim.
     const longRule = RULES.find((r) => r.description.length > 80);
     if (longRule) {
       expect(claudeDoc).not.toContain(longRule.description);
@@ -475,7 +475,7 @@ afterEach(() => {
 describe('writeAllAdapters', () => {
   it('writes all six adapter files to a temp consumer directory', () => {
     const root = trackTmp(makeTmpDir());
-    const manifests = writeAllAdapters(root, PROMETHEUS_RULES, CONFIG_DEFAULTS);
+    const manifests = writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS);
 
     expect(manifests).toHaveLength(6);
     for (const m of manifests) {
@@ -488,7 +488,7 @@ describe('writeAllAdapters', () => {
 
   it('writes no files to the library source directory', () => {
     const root = trackTmp(makeTmpDir());
-    writeAllAdapters(root, PROMETHEUS_RULES, CONFIG_DEFAULTS);
+    writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS);
 
     // None of the adapter output paths should exist relative to the library root
     for (const relPath of Object.values(ADAPTER_OUTPUT_PATHS)) {
@@ -502,7 +502,7 @@ describe('writeAllAdapters', () => {
 
   it('is idempotent — running twice produces identical file contents', () => {
     const root = trackTmp(makeTmpDir());
-    writeAllAdapters(root, PROMETHEUS_RULES, CONFIG_DEFAULTS);
+    writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS);
 
     // Read all files after first run
     const first: Record<string, string> = {};
@@ -510,7 +510,7 @@ describe('writeAllAdapters', () => {
       first[target] = readFileSync(join(root, relPath), 'utf8');
     }
 
-    writeAllAdapters(root, PROMETHEUS_RULES, CONFIG_DEFAULTS);
+    writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS);
 
     // Contents should be byte-identical after second run
     for (const [target, relPath] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
@@ -521,7 +521,7 @@ describe('writeAllAdapters', () => {
 
   it('preserves manual content outside generated markers on second run', () => {
     const root = trackTmp(makeTmpDir());
-    writeAllAdapters(root, PROMETHEUS_RULES, CONFIG_DEFAULTS, ['claude']);
+    writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS, ['claude']);
 
     const claudePath = join(root, ADAPTER_OUTPUT_PATHS.claude);
     const original = readFileSync(claudePath, 'utf8');
@@ -531,16 +531,16 @@ describe('writeAllAdapters', () => {
     writeFileSync(claudePath, withManual, 'utf8');
 
     // Re-run adapters
-    writeAllAdapters(root, PROMETHEUS_RULES, CONFIG_DEFAULTS, ['claude']);
+    writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS, ['claude']);
 
     const after = readFileSync(claudePath, 'utf8');
     expect(after).toContain('Our custom instructions here.');
-    expect(after).toContain('<!-- PROMETHEUS:GENERATED START rules -->');
+    expect(after).toContain('<!-- THESMOS:GENERATED START rules -->');
   });
 
   it('a subset of targets writes only those adapter files', () => {
     const root = trackTmp(makeTmpDir());
-    writeAllAdapters(root, PROMETHEUS_RULES, CONFIG_DEFAULTS, ['claude', 'gemini']);
+    writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS, ['claude', 'gemini']);
 
     expect(existsSync(join(root, 'CLAUDE.md'))).toBe(true);
     expect(existsSync(join(root, 'GEMINI.md'))).toBe(true);
@@ -552,7 +552,7 @@ describe('writeAllAdapters', () => {
 // ── Adapter drift detection ───────────────────────────────────────────────────
 
 describe('adapter drift detection', () => {
-  it('every PROMETHEUS_RULES entry appears in every adapter output', () => {
+  it('every THESMOS_RULES entry appears in every adapter output', () => {
     const targets: AdapterTarget[] = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'];
     for (const target of targets) {
       const out = buildAdapterContent(target, '', RULES, CONFIG);

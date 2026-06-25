@@ -33,8 +33,8 @@ Chiron · Calliope · Talos · Clio · Eos · Erato · Kratos · Aether · Polyh
 
 Questions? Email [hello@holley.studio](mailto:hello@holley.studio)
 
-Re-download your kit at [holley.studio/prometheus/redownload](https://holley.studio/prometheus/redownload)
+Re-download your kit at [holley.studio/thesmos/redownload](https://holley.studio/thesmos/redownload)
 
 ---
 
-Pantheon Pro · Prometheus v3.6.0 · [holley.studio/prometheus](https://holley.studio/prometheus)
+Pantheon Pro · Thesmos v3.6.0 · [holley.studio/thesmos](https://holley.studio/thesmos)

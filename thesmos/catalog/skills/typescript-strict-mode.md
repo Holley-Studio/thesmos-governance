@@ -3,7 +3,7 @@ id: typescript-strict-mode
 name: TypeScript Strict Mode
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - typescript
   - strict
@@ -29,7 +29,7 @@ Incrementally enables TypeScript strict mode by identifying and fixing `any` typ
 
 - `tsconfig.json` current strict settings
 - TypeScript compiler output with `--strict` enabled
-- List of `any` usage sites from Prometheus review
+- List of `any` usage sites from Thesmos review
 
 ## Workflow steps
 

@@ -3,7 +3,7 @@ id: security-scan
 name: Security Scan
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - security
   - secrets
@@ -16,7 +16,7 @@ enabled: true
 
 ## Purpose
 
-Runs a focused security sweep across all changed files using Prometheus's security-related rules: secret detection, direct env access, missing API auth, RLS policy gaps, and admin client boundary violations.
+Runs a focused security sweep across all changed files using Thesmos's security-related rules: secret detection, direct env access, missing API auth, RLS policy gaps, and admin client boundary violations.
 
 ## When to use
 
@@ -28,7 +28,7 @@ Runs a focused security sweep across all changed files using Prometheus's securi
 ## Required inputs
 
 - Changed files with full content and diff text
-- Active Prometheus config with security rule severity settings
+- Active Thesmos config with security rule severity settings
 - `.thesmos/config.json` for severity overrides
 
 ## Workflow steps

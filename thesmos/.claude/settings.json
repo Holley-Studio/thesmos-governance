@@ -38,7 +38,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx --no-install thesmos claude:govern budget-check"
+          }
+        ]
+      }
     ]
   },
-  "_thesmos_governance": "1.1.0"
+  "_thesmos_governance": "1.0.0"
 }

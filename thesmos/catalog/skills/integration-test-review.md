@@ -3,7 +3,7 @@ id: integration-test-review
 name: Integration Test Review
 type: skill
 version: 1.0.0
-owner: prometheus
+owner: thesmos
 tags:
   - testing
   - integration
