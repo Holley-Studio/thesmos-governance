@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos pack:publish [pack-name] — compile, validate, and npm publish a rule pack
  *

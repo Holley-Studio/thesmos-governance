@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Ruby on Rails Security Rules — RB_001–020
  *

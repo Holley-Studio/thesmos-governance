@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos CLI entry point.
  * Dispatches to command handlers; each handler is a thin wrapper over core modules.

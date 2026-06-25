@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos ci:github-security — generate a GitHub Actions workflow step
  * that uploads thesmos.sarif to the GitHub Security tab.

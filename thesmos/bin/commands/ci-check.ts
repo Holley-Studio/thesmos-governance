@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos ci-check — fast CI-critical health check.
  * Verifies required files, adapter freshness, and config validity.

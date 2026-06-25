@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos vercel:lint — governance scan for Vercel deployment configuration.
  *

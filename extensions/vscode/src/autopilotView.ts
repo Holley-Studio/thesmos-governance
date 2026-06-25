@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Autopilot sidebar panel — shows live session state as a TreeView.
  *

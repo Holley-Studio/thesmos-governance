@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Pure file-categorization functions. All inputs are arrays of relative paths
  * or { path, lines } entries — no fs access.

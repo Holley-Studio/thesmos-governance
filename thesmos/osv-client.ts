@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * OSV.dev client — batch query for known vulnerabilities in npm packages.
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos scan — walk the repo, detect stack, write .thesmos/report.json.
  * Safe to run repeatedly: report.json is always overwritten with fresh scan data.

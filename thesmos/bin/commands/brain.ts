@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos brain:snapshot / brain:compact / brain:hook-install
  *

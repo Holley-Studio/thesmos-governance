@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos ai-lint — lint AI behavior files for governance gaps.
  *

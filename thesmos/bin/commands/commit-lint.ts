@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos commit:lint — validate commit messages against Conventional Commits.
  * thesmos commit:create — interactive guided commit wizard.

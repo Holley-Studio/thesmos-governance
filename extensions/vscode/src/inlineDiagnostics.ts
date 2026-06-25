@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 import * as vscode from 'vscode';
 import type { Finding, Severity } from './types.js';
 import { relative } from 'node:path';

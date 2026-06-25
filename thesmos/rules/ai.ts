@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * AI / LLM governance rules — the category that makes Thesmos unique.
  *

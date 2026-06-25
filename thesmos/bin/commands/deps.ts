@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos deps:audit  — query OSV.dev for CVEs in all npm dependencies
  *                          and write .thesmos/dep-cache.json.

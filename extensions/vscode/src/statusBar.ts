@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * StatusBarManager — shows governance health in the VS Code status bar.
  *
@@ -16,6 +17,7 @@ import type { HealthScore } from './types.js';
 export class StatusBarManager implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;
   private readonly governanceItem: vscode.StatusBarItem;
+  private readonly tokenItem: vscode.StatusBarItem;
 
   constructor() {
     this.item = vscode.window.createStatusBarItem(
@@ -33,6 +35,14 @@ export class StatusBarManager implements vscode.Disposable {
     );
     this.governanceItem.command = 'thesmos.governance.status';
     this.governanceItem.hide();
+
+    this.tokenItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      98,
+    );
+    this.tokenItem.command = 'thesmos.tokens.report';
+    this.tokenItem.tooltip = 'Thesmos token usage — click for full report';
+    this.tokenItem.hide();
   }
 
   showLoading(): void {
@@ -143,6 +153,23 @@ export class StatusBarManager implements vscode.Disposable {
     this.item.backgroundColor = undefined;
   }
 
+  showTokenCost(sessionCostUSD: number, todayCostUSD: number): void {
+    const fmt = (n: number) =>
+      n < 0.01 ? '<$0.01' : `$${n.toFixed(2)}`;
+    this.tokenItem.text = `$(circuit-board) ${fmt(sessionCostUSD)}`;
+    this.tokenItem.tooltip = new vscode.MarkdownString(
+      `**Thesmos Token Usage**\n\n` +
+      `Session: **${fmt(sessionCostUSD)}**\n\n` +
+      `Today: **${fmt(todayCostUSD)}**\n\n` +
+      `_Click for full report_`,
+    );
+    this.tokenItem.show();
+  }
+
+  clearTokenMeter(): void {
+    this.tokenItem.hide();
+  }
+
   hide(): void {
     this.item.hide();
   }
@@ -154,5 +181,6 @@ export class StatusBarManager implements vscode.Disposable {
   dispose(): void {
     this.item.dispose();
     this.governanceItem.dispose();
+    this.tokenItem.dispose();
   }
 }

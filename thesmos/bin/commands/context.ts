@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos context:snapshot  — generate .thesmos/context.md
  * thesmos context:health    — check freshness of context and adapter files

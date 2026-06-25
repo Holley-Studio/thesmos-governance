@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Agents sidebar panel — lists all 40 Pantheon agents grouped by domain.
  *

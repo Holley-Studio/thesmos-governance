@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * import:scan — live registry validation for AI-generated package imports.
  *

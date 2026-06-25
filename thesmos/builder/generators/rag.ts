@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * RAG pipeline generator — creates Retrieval-Augmented Generation scaffold from wizard answers.
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Interactive wizard for `thesmos init --interactive`.
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Git helpers for obtaining changed files in review/validate commands.
  * execSync calls are side-effects; the returned ChangedFile objects are plain data.

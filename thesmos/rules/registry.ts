@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Canonical rule registry — single source of truth for all Thesmos rules.
  *

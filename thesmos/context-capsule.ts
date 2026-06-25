@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Context Health + Session Handoff — project context capsule generator.
  *

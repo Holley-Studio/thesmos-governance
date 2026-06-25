@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos registry — loads, validates, and resolves .thesmos/registry.json.
  *

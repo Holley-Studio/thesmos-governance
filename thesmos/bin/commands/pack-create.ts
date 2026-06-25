@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos pack:create <@scope/name> — scaffold a new rule pack
  *

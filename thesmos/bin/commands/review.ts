@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos review — run review checks and report findings.
  * Always exits 0 (informational). Use `validate` to gate CI.

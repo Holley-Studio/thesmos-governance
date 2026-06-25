@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos init — scaffold or update the .thesmos/ governance folder.
  * Safe to run repeatedly: generated sections are overwritten, manual content preserved.

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos MCP Server — JSON-RPC 2.0 over stdio (NDJSON transport).
  *

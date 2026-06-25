@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Voice agent generator — creates real-time voice AI agent scaffold from wizard answers.
  *

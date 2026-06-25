@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos Health Score — a single 0-100 number that synthesises governance state.
  *
