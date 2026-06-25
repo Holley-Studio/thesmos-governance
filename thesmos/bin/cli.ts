@@ -64,6 +64,7 @@ import { cmdBuild } from './commands/build.ts';
 import { cmdEval } from './commands/eval.ts';
 import { cmdScore } from './commands/score.ts';
 import { cmdCompile } from './commands/compile.ts';
+import { cmdLicense } from './commands/license.ts';
 import { startLspServer } from '../lang-server.ts';
 import { makeLogger } from '../logger.ts';
 import { checkForUpdate } from './lib/update-check.ts';
@@ -215,6 +216,9 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'secrets:vault:delete':   (argv) => cmdVault('delete', argv),
   'secrets:vault:inject':   (argv) => cmdVault('inject', argv),
   'secrets:vault:destroy':  (argv) => cmdVault('destroy', argv),
+  'license:activate':       (argv) => cmdLicense('activate', argv),
+  'license:status':         ()     => cmdLicense('status', []),
+  'license:deactivate':     ()     => cmdLicense('deactivate', []),
 };
 
 const argv = process.argv.slice(2); // ['command', ...flags]
@@ -449,6 +453,11 @@ SECRETS VAULT  (local encrypted secrets — never transmitted)
   secrets:vault inject            List keys, or use --export for shell-sourceable export
   secrets:vault destroy           Permanently delete vault + keychain entry
 
+LICENSE
+  license:activate <key>   Activate a Thesmos Pro/Team/Enterprise license key
+  license:status           Show current license tier and active features
+  license:deactivate       Remove license (reverts to Community)
+
 FIX
   fix                      Auto-fix safe violations (dry-run by default)
     --apply                  Write changes to disk
@@ -524,7 +533,7 @@ const cliStart = Date.now();
 log.info('command start', { command });
 
 // Skip update check for machine-readable commands and update itself
-const SKIP_UPDATE_CHECK = new Set(['tokens:report', 'health', 'self:check', 'self:update', 'self:improve', 'profile:view']);
+const SKIP_UPDATE_CHECK = new Set(['tokens:report', 'health', 'self:check', 'self:update', 'self:improve', 'profile:view', 'license:status']);
 
 handler(argv.slice(1))
   .then(() => {
