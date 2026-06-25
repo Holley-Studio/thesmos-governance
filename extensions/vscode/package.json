@@ -228,6 +228,24 @@
         "title": "Show Token Usage",
         "category": "Thesmos",
         "icon": "$(circuit-board)"
+      },
+      {
+        "command": "thesmos.fix.single",
+        "title": "Fix This Issue",
+        "category": "Thesmos",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "thesmos.fix.all",
+        "title": "Fix All Auto-Fixable",
+        "category": "Thesmos",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "thesmos.fix.copyPrompt",
+        "title": "Copy AI Fix Prompt",
+        "category": "Thesmos",
+        "icon": "$(clippy)"
       }
     ],
     "viewsContainers": {
@@ -268,6 +286,11 @@
     "menus": {
       "view/title": [
         {
+          "command": "thesmos.fix.all",
+          "when": "view == thesmos.findingsView",
+          "group": "navigation"
+        },
+        {
           "command": "thesmos.refreshFindings",
           "when": "view == thesmos.findingsView",
           "group": "navigation"
@@ -300,6 +323,21 @@
       ],
       "view/item/context": [
         {
+          "command": "thesmos.fix.single",
+          "when": "view == thesmos.findingsView && viewItem == fixableFinding",
+          "group": "fix@1"
+        },
+        {
+          "command": "thesmos.fix.copyPrompt",
+          "when": "view == thesmos.findingsView && viewItem == fixableFinding",
+          "group": "fix@2"
+        },
+        {
+          "command": "thesmos.fix.copyPrompt",
+          "when": "view == thesmos.findingsView && viewItem == finding",
+          "group": "fix@1"
+        },
+        {
           "command": "thesmos.autopilot.cancel",
           "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
           "group": "autopilot@1"
@@ -329,6 +367,18 @@
         {
           "command": "thesmos.reviewFile",
           "when": "editorIsOpen"
+        },
+        {
+          "command": "thesmos.fix.all",
+          "when": "thesmos.active"
+        },
+        {
+          "command": "thesmos.fix.single",
+          "when": "false"
+        },
+        {
+          "command": "thesmos.fix.copyPrompt",
+          "when": "false"
         },
         {
           "command": "thesmos.autopilot.cancel",
