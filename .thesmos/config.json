@@ -7,7 +7,10 @@
     "eval_usage",
     "vibe_eval_usage",
     "lic_proprietary_dependency",
-    "lic_copyleft_dependency"
+    "lic_copyleft_dependency",
+    "mcp_cursor_rules_injection",
+    "mcp_readme_injection",
+    "mcp_cursor_rules_external_url"
   ],
   "ignoredFolders": [
     "node_modules",

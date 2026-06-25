@@ -99,6 +99,13 @@ export async function getChangedFiles(
         core.debug(`Skipping internal tooling file: ${file.filename}`);
         continue;
       }
+      // Skip agent/governance config dirs — .cursor/rules/, .claude/agents/, .thesmos/
+      // contain generated rule files that intentionally describe bad patterns and
+      // will self-trigger mcp_cursor_rules_injection and mcp_readme_injection.
+      if (/(?:^|[\\/])(?:\.cursor|\.claude|\.thesmos|pantheon\/exports)(?:[\\/]|$)/.test(file.filename)) {
+        core.debug(`Skipping governance config file: ${file.filename}`);
+        continue;
+      }
 
       const absPath = join(workspace, file.filename);
       if (!existsSync(absPath)) continue;
