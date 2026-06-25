@@ -284,7 +284,7 @@ function exportAgentsMd(agents: PantheonAgent[]): string {
 // ── pantheon:list ──────────────────────────────────────────────────────────────
 
 function cmdList(agents: PantheonAgent[]): void {
-  console.log('\n  THE THESMOS PANTHEON — 21 Governed AI Business Agents\n');
+  console.log('\n  THE THESMOS PANTHEON — 40 Governed AI Business Agents\n');
   console.log(`  ${'GOD'.padEnd(16)} ${'ROLE'.padEnd(36)} VERSION`);
   console.log(`  ${''.padEnd(16, '─')} ${''.padEnd(36, '─')} ${''.padEnd(7, '─')}`);
   for (const a of agents) {
@@ -489,7 +489,7 @@ function cmdOrchestrate(agents: PantheonAgent[], argv: string[]): void {
   brief += `**Delegated to:** ${agentIds.length} agent${agentIds.length !== 1 ? 's' : ''}\n\n---\n\n`;
 
   if (agentIds.length === 0) {
-    brief += `Zeus could not confidently route this task. Run \`thesmos pantheon:list\` to browse all 21 agents and invoke the most relevant one directly.\n`;
+    brief += `Zeus could not confidently route this task. Run \`thesmos pantheon:list\` to browse all 40 agents and invoke the most relevant one directly.\n`;
   } else {
     for (const id of agentIds) {
       const a = agents.find(x => x.id === id);

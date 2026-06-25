@@ -361,8 +361,8 @@ GDPR COMPLIANCE
     --write                              Write to .thesmos/compliance-gdpr.md
     --output=<path>                      Write to custom path
 
-THESMOS PANTHEON  (governed AI business team — 21 agents, 6 platforms)
-  pantheon:list                       List all 21 agents with roles and mythology
+THESMOS PANTHEON  (governed AI business team — 40 agents, 6 platforms)
+  pantheon:list                       List all 40 agents with roles and mythology
   pantheon:install --all              Add all agents to .thesmos/registry.json
   pantheon:install <id> [id...]       Install specific agents
   pantheon:status                     Show active Pantheon agents in this project
