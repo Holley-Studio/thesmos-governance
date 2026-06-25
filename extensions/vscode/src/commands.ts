@@ -22,11 +22,13 @@ import {
   runScan,
   runHealth,
   runAdapters,
+  runFix,
   runThesmos,
   runTokensReport,
   ThesmosNotFoundError,
   ThesmosReportMissingError,
 } from './runner.js';
+import type { FindingItem } from './treeView.js';
 import { HealthPanel } from './panel.js';
 import type { HealthEntry } from './panel.js';
 import type { ExtensionConfig } from './types.js';
@@ -683,6 +685,118 @@ export function registerCommands(
         const msg = err instanceof Error ? err.message : String(err);
         outputChannel.appendLine(`Error: ${msg}`);
       }
+    }),
+  );
+
+  // ── thesmos.fix.single ─────────────────────────────────────────────────
+  // Invoked from tree view context menu — VS Code passes the FindingItem.
+
+  disposables.push(
+    vscode.commands.registerCommand('thesmos.fix.single', async (item: FindingItem) => {
+      const cfg = getConfig();
+      if (!cfg.enable || !item?.finding) return;
+
+      const { category, message, file } = item.finding;
+
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Thesmos: Fixing \`${category}\`…`,
+          cancellable: false,
+        },
+        async () => {
+          try {
+            const output = await runFix(workspaceRoot, cfg.binaryPath || undefined, category);
+            const changed = output.includes('fixed') || output.includes('changed') || output.includes('✓');
+
+            if (changed) {
+              void vscode.window.showInformationMessage(
+                `Thesmos: Fixed \`${category}\` in ${file}. Refreshing…`,
+              );
+              await onRefresh();
+            } else {
+              // No auto-fix available — fall back to AI prompt clipboard
+              const prompt =
+                `Fix the following Thesmos governance finding:\n\n` +
+                `Rule: ${category}\n` +
+                `Severity: ${item.finding.severity}\n` +
+                `File: ${file}${item.finding.line ? `:${item.finding.line}` : ''}\n` +
+                `Message: ${message}\n` +
+                (item.finding.suggestion ? `Suggestion: ${item.finding.suggestion}\n` : '') +
+                `\nPlease fix this issue in the code.`;
+
+              await vscode.env.clipboard.writeText(prompt);
+              void vscode.window.showInformationMessage(
+                `Thesmos: No automatic fix for \`${category}\`. AI fix prompt copied to clipboard.`,
+                'OK',
+              );
+            }
+          } catch (err) {
+            handleError(err);
+          }
+        },
+      );
+    }),
+  );
+
+  // ── thesmos.fix.all ─────────────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('thesmos.fix.all', async () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const confirm = await vscode.window.showWarningMessage(
+        'Apply all auto-fixable Thesmos findings? This will modify files in the workspace.',
+        { modal: true },
+        'Fix All',
+      );
+      if (confirm !== 'Fix All') return;
+
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: 'Thesmos: Applying all auto-fixes…',
+          cancellable: false,
+        },
+        async () => {
+          try {
+            const output = await runFix(workspaceRoot, cfg.binaryPath || undefined);
+            const lines = output.split('\n').filter((l) => l.trim());
+            const summary = lines.find((l) => l.includes('fixed') || l.includes('changed') || l.includes('✓'))
+              ?? `${lines.length} operations completed.`;
+
+            void vscode.window.showInformationMessage(`Thesmos: ${summary} Refreshing findings…`);
+            await onRefresh();
+          } catch (err) {
+            handleError(err);
+          }
+        },
+      );
+    }),
+  );
+
+  // ── thesmos.fix.copyPrompt ──────────────────────────────────────────────
+  // For findings without an auto-fixer: copy an AI fix prompt to clipboard.
+
+  disposables.push(
+    vscode.commands.registerCommand('thesmos.fix.copyPrompt', async (item: FindingItem) => {
+      if (!item?.finding) return;
+
+      const { category, severity, file, line, message, suggestion } = item.finding;
+      const prompt =
+        `Fix the following Thesmos governance finding:\n\n` +
+        `Rule: ${category}\n` +
+        `Severity: ${severity}\n` +
+        `File: ${file}${line ? `:${line}` : ''}\n` +
+        `Message: ${message}\n` +
+        (suggestion ? `Suggestion: ${suggestion}\n` : '') +
+        `\nPlease fix this issue in the code.`;
+
+      await vscode.env.clipboard.writeText(prompt);
+      void vscode.window.showInformationMessage(
+        `Thesmos: AI fix prompt for \`${category}\` copied to clipboard.`,
+      );
     }),
   );
 

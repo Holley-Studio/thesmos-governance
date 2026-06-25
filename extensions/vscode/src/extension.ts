@@ -42,6 +42,7 @@ import {
   runTokensReport,
   isInstalled,
   hasReport,
+  resolveBinary,
   ThesmosNotFoundError,
   ThesmosReportMissingError,
 } from './runner.js';
@@ -544,30 +545,25 @@ async function startLspClient(
   workspaceRoot: string,
 ): Promise<void> {
   try {
+    // Resolve the local binary before attempting to start the LSP.
+    // If thesmos-governance is not installed, bail silently — do NOT fall
+    // through to `npx thesmos` which would attempt to pull a non-existent
+    // "thesmos" package from the npm registry and crash-loop.
+    const cfg = readConfig();
+    let serverCommand: string;
+    try {
+      serverCommand = resolveBinary(workspaceRoot, cfg.binaryPath || undefined);
+    } catch {
+      // Package not installed — on-save analysis still works via diagnostics
+      return;
+    }
+
     // Dynamic import so the extension still loads even if vscode-languageclient
     // is not yet installed (e.g. first-run before `npm install`).
     const { LanguageClient, TransportKind } = await import('vscode-languageclient/node');
 
-    // Resolve the thesmos binary to use as the LSP server.
-    // VS Code launched from the Dock doesn't inherit nvm PATH, so extend it
-    // with common node version manager locations before spawning the server.
-    const home = process['env']['HOME'] ?? process['env']['USERPROFILE'] ?? '';
-    const extraPaths = [
-      `${home}/.nvm/versions/node/v20.20.2/bin`,
-      `${home}/.nvm/versions/node/v22.0.0/bin`,
-      `${home}/.nvm/versions/node/v24.0.0/bin`,
-      `${home}/.nvm/versions/node/v18.0.0/bin`,
-      `${home}/.volta/bin`,
-      `${home}/.fnm/aliases/default/bin`,
-      '/opt/homebrew/bin',
-      '/usr/local/bin',
-    ];
-    const enhancedPath = [...extraPaths, process['env']['PATH'] ?? ''].join(process.platform === 'win32' ? ';' : ':');
-    const serverEnv = { ...process['env'], PATH: enhancedPath };
-
-    const serverCommand = 'npx';
-    const serverArgs = ['thesmos', 'lsp', '--root', workspaceRoot];
-    const serverOpts = { env: serverEnv };
+    const serverArgs = ['lsp', '--root', workspaceRoot];
+    const serverOpts = { env: process['env'] as NodeJS.ProcessEnv };
 
     lspClient = new LanguageClient(
       'thesmos-lsp',

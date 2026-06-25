@@ -205,6 +205,22 @@ export async function runAdapters(
 }
 
 /**
+ * Runs `thesmos fix --apply [--rule=<category>]`.
+ * Returns human-readable stdout showing what was changed.
+ * A "no changes" result is a valid exit 0 — never throws for that case.
+ */
+export async function runFix(
+  workspaceRoot: string,
+  binaryOverride: string | undefined,
+  ruleCategory?: string,
+): Promise<string> {
+  const bin = resolveBinary(workspaceRoot, binaryOverride);
+  const args = ['fix', '--apply'];
+  if (ruleCategory) args.push(`--rule=${ruleCategory}`);
+  return exec(bin, args, workspaceRoot);
+}
+
+/**
  * Generic CLI runner for autopilot subcommands (revert, open-pr, etc.).
  * Resolves the binary from the workspace, passes arbitrary args.
  */

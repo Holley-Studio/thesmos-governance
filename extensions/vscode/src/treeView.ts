@@ -79,7 +79,7 @@ class SeverityGroupItem extends vscode.TreeItem {
   }
 }
 
-class FindingItem extends vscode.TreeItem {
+export class FindingItem extends vscode.TreeItem {
   readonly kind = 'finding' as const;
 
   constructor(
@@ -94,11 +94,15 @@ class FindingItem extends vscode.TreeItem {
         `${finding.message}` +
         (finding.suggestion ? `\n\n_${finding.suggestion}_` : ''),
     );
+
+    // Lightning bolt for findings the fix command can auto-resolve;
+    // clipboard icon prompts copy-to-AI workflow for manual fixes.
+    const isFixable = Boolean(finding.suggestion);
     this.iconPath = new vscode.ThemeIcon(
-      SEVERITY_ICON[finding.severity],
+      isFixable ? 'zap' : SEVERITY_ICON[finding.severity],
       SEVERITY_COLOR[finding.severity],
     );
-    this.contextValue = 'finding';
+    this.contextValue = isFixable ? 'fixableFinding' : 'finding';
 
     const absPath = join(workspaceRoot, finding.file);
     const line = Math.max(0, (finding.line ?? 1) - 1);
