@@ -28,7 +28,10 @@ import { FindingsTreeProvider } from './treeView.js';
 import { AutopilotWatcher } from './autopilotWatcher.js';
 import { AutopilotTreeProvider } from './autopilotView.js';
 import { AutoModeGovernor } from './autoModeGovernor.js';
+import { ThesmosCodeLensProvider } from './codeLens.js';
+import { InlineDiagnosticsManager } from './inlineDiagnostics.js';
 import { registerCommands } from './commands.js';
+import type { HealthEntry } from './panel.js';
 import { ThesmosHoverProvider } from './hover.js';
 import { ThesmosCodeActionProvider } from './codeAction.js';
 import {
@@ -66,6 +69,9 @@ class ThesmosExtension implements vscode.Disposable {
   private readonly autopilotWatcher: AutopilotWatcher;
   private readonly autopilotView: AutopilotTreeProvider;
   private readonly autoModeGovernor: AutoModeGovernor;
+  private readonly codeLensProvider: ThesmosCodeLensProvider;
+  private readonly inlineDiagnostics: InlineDiagnosticsManager;
+  private updateBadge: (count: number) => void = () => {};
 
   private workspaceRoot: string;
   private allFindings: Finding[] = [];
@@ -83,6 +89,8 @@ class ThesmosExtension implements vscode.Disposable {
     this.autopilotWatcher = new AutopilotWatcher(workspaceRoot);
     this.autopilotView = new AutopilotTreeProvider(workspaceRoot, this.autopilotWatcher);
     this.autoModeGovernor = new AutoModeGovernor(workspaceRoot);
+    this.codeLensProvider = new ThesmosCodeLensProvider();
+    this.inlineDiagnostics = new InlineDiagnosticsManager();
 
     this.disposables.push(
       this.diagnostics,
@@ -91,6 +99,8 @@ class ThesmosExtension implements vscode.Disposable {
       this.autopilotWatcher,
       this.autopilotView,
       this.autoModeGovernor,
+      this.codeLensProvider,
+      this.inlineDiagnostics,
     );
 
     // Update status bar when autopilot session state changes
@@ -138,6 +148,13 @@ class ThesmosExtension implements vscode.Disposable {
     });
     this.disposables.push(treeView);
 
+    // Badge on the activity bar icon: shows BLOCKER + HIGH count
+    this.updateBadge = (count) => {
+      treeView.badge = count > 0
+        ? { value: count, tooltip: `${count} BLOCKER/HIGH finding${count === 1 ? '' : 's'}` }
+        : undefined;
+    };
+
     // Register autopilot tree view
     const autopilotTreeView = vscode.window.createTreeView('thesmos.autopilotView', {
       treeDataProvider: this.autopilotView,
@@ -177,6 +194,27 @@ class ThesmosExtension implements vscode.Disposable {
       { providedCodeActionKinds: ThesmosCodeActionProvider.providedCodeActionKinds },
     );
     this.disposables.push(codeActionProvider);
+
+    // CodeLens provider — BLOCKER/HIGH annotation above each affected line
+    const codeLensProvider = vscode.languages.registerCodeLensProvider(
+      [
+        { scheme: 'file', language: 'typescript' },
+        { scheme: 'file', language: 'typescriptreact' },
+        { scheme: 'file', language: 'javascript' },
+        { scheme: 'file', language: 'javascriptreact' },
+        { scheme: 'file', language: 'python' },
+      ],
+      this.codeLensProvider,
+    );
+    this.disposables.push(codeLensProvider);
+
+    // Inline diagnostics — re-apply when the user switches editor tabs
+    const editorWatcher = vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (editor) {
+        this.inlineDiagnostics.applyToEditor(editor, this.allFindings, this.workspaceRoot);
+      }
+    });
+    this.disposables.push(editorWatcher);
 
     // File save watcher (debounced)
     const saveWatcher = vscode.workspace.onDidSaveTextDocument((doc) => {
@@ -275,6 +313,15 @@ class ThesmosExtension implements vscode.Disposable {
       // Update tree view
       this.treeProvider.refresh(this.allFindings, this.workspaceRoot);
 
+      // Update CodeLens, inline decorations, and activity bar badge
+      this.codeLensProvider.update(this.allFindings, this.workspaceRoot);
+      for (const editor of vscode.window.visibleTextEditors) {
+        this.inlineDiagnostics.applyToEditor(editor, this.allFindings, this.workspaceRoot);
+      }
+      this.updateBadge(
+        this.allFindings.filter((f) => f.severity === 'BLOCKER' || f.severity === 'HIGH').length,
+      );
+
       // Update status bar with health score
       await this.refreshStatusBar(cfg);
     } catch (err) {
@@ -305,6 +352,13 @@ class ThesmosExtension implements vscode.Disposable {
 
       this.diagnostics.setForFile(uri, output.findings);
       this.treeProvider.refresh(this.allFindings, this.workspaceRoot);
+      this.codeLensProvider.update(this.allFindings, this.workspaceRoot);
+      for (const editor of vscode.window.visibleTextEditors) {
+        this.inlineDiagnostics.applyToEditor(editor, this.allFindings, this.workspaceRoot);
+      }
+      this.updateBadge(
+        this.allFindings.filter((f) => f.severity === 'BLOCKER' || f.severity === 'HIGH').length,
+      );
 
       await this.refreshStatusBar(cfg);
     } catch (err) {
@@ -323,6 +377,12 @@ class ThesmosExtension implements vscode.Disposable {
         cfg.binaryPath || undefined,
       );
       this.statusBar.showHealth(health, this.allFindings.length);
+
+      // Persist for trend chart (capped at 30 entries per workspace)
+      const hist = this.context.workspaceState.get<HealthEntry[]>('thesmos.healthHistory', []);
+      hist.push({ score: health.score, grade: health.grade, ts: Date.now() });
+      if (hist.length > 30) hist.splice(0, hist.length - 30);
+      void this.context.workspaceState.update('thesmos.healthHistory', hist);
     } catch {
       // Health score is a nice-to-have; don't surface the error
       this.statusBar.showInactive();

@@ -42,7 +42,6 @@
   "bugs": {
     "url": "https://github.com/Holley-Studio/thesmos-governance/issues"
   },
-  "license": "MIT",
   "sponsor": {
     "url": "https://github.com/sponsors/Holley-Studio"
   },
@@ -371,6 +370,28 @@
           "type": "string",
           "default": "main",
           "description": "Base branch to diff against when reviewing an autopilot session."
+        },
+        "thesmos.codeLens.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show CodeLens annotations above BLOCKER and HIGH findings."
+        },
+        "thesmos.inlineDiagnostics.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Error Lens-style inline text (← [BLOCKER] ...) next to findings."
+        },
+        "thesmos.minSeverity": {
+          "type": "string",
+          "enum": ["ALL", "MEDIUM", "HIGH", "BLOCKER"],
+          "enumDescriptions": [
+            "Show all findings",
+            "Show MEDIUM and above",
+            "Show HIGH and above",
+            "Show BLOCKER only"
+          ],
+          "default": "ALL",
+          "description": "Minimum severity to display in the Findings tree."
         }
       }
     }
