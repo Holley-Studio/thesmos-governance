@@ -161,6 +161,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'vercel:lint':            (argv) => cmdVercelLint(argv),
   'context:snapshot':       (argv) => cmdContext(['snapshot', ...argv]),
   'context:health':         (argv) => cmdContext(['health', ...argv]),
+  'context:compact':        (argv) => cmdContext(['compact', ...argv]),
   'github:comment':         (argv) => cmdGithubComment(argv),
   'self:check':             (argv) => cmdSelf(['check', ...argv]),
   'self:update':            (argv) => cmdSelf(['update', ...argv]),

@@ -573,6 +573,27 @@ function cmdCouncil(agents: PantheonAgent[], argv: string[]): void {
   } else {
     process.stdout.write(output);
   }
+
+  // Always save council output to .thesmos/active-plan.md for session continuity
+  if (!flags['no-save']) {
+    try {
+      const { root } = createContext();
+      const activePlanPath = join(root, '.thesmos', 'active-plan.md');
+      mkdirSync(join(root, '.thesmos'), { recursive: true });
+      const header =
+        `<!-- thesmos:active-plan generated ${new Date().toISOString()} -->\n` +
+        `# Active Plan\n\n` +
+        `**Task:** ${task}\n` +
+        `**Council convened:** ${agentIds.length} agents\n` +
+        `**Generated:** ${new Date().toLocaleString()}\n\n`;
+      writeFileSync(activePlanPath, header + output + '\n', 'utf8');
+      if (!outFile) {
+        console.log(`  ✓ Active plan saved → .thesmos/active-plan.md\n`);
+      }
+    } catch {
+      // Non-fatal — don't block council output if save fails
+    }
+  }
 }
 
 // ── pantheon:orchestrate ───────────────────────────────────────────────────────
