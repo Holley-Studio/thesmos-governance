@@ -6,6 +6,7 @@ import {
   formatInlineComment,
   buildInlineComments,
   shouldFail,
+  computeScore,
 } from './formatter.js';
 import type { Finding } from './types.js';
 
@@ -171,9 +172,20 @@ describe('formatSummaryComment — all severities', () => {
 
   it('omits finding sections for zero-count severities in details', () => {
     const out = formatSummaryComment([blocker], 'repo', 1);
-    // Only BLOCKER has findings so only one <details> section should appear
-    const detailsCount = (out.match(/<details>/g) ?? []).length;
+    // Only BLOCKER has findings — one <details> section (may be <details open>)
+    const detailsCount = (out.match(/<details/g) ?? []).length;
     expect(detailsCount).toBe(1);
+  });
+
+  it('uses <details open> for BLOCKER and HIGH sections', () => {
+    const out = formatSummaryComment([blocker, high, medium], 'repo', 1);
+    expect(out).toContain('<details open>');
+  });
+
+  it('uses plain <details> (collapsed) for MEDIUM sections', () => {
+    const out = formatSummaryComment([medium], 'repo', 1);
+    expect(out).toContain('<details>');
+    expect(out).not.toContain('<details open>');
   });
 });
 
@@ -266,6 +278,98 @@ describe('buildInlineComments', () => {
 
   it('returns empty array for empty findings', () => {
     expect(buildInlineComments([], new Set(['src/auth.ts']))).toHaveLength(0);
+  });
+});
+
+// ── computeScore ───────────────────────────────────────────────────────────────
+
+describe('computeScore', () => {
+  it('returns 100 for no findings', () => {
+    expect(computeScore([])).toBe(100);
+  });
+
+  it('deducts 15 per BLOCKER', () => {
+    expect(computeScore([blocker])).toBe(85);
+  });
+
+  it('deducts 3 per HIGH', () => {
+    expect(computeScore([high])).toBe(97);
+  });
+
+  it('deducts 1 per MEDIUM', () => {
+    expect(computeScore([medium])).toBe(99);
+  });
+
+  it('does not deduct for LOW or TECH_DEBT', () => {
+    expect(computeScore([low, techDebt])).toBe(100);
+  });
+
+  it('floors at 0', () => {
+    const manyBlockers = Array.from({ length: 10 }, () => blocker);
+    expect(computeScore(manyBlockers)).toBe(0);
+  });
+
+  it('combines penalties correctly', () => {
+    // 1 BLOCKER (-15) + 1 HIGH (-3) + 1 MEDIUM (-1) = 81
+    expect(computeScore([blocker, high, medium])).toBe(81);
+  });
+
+  it('shows score in summary comment', () => {
+    const out = formatSummaryComment([blocker], 'repo', 1);
+    expect(out).toContain('PR Score:');
+    expect(out).toContain('85/100');
+  });
+
+  it('shows 100/100 when no findings', () => {
+    const out = formatSummaryComment([], 'repo', 1);
+    expect(out).toContain('100/100');
+  });
+});
+
+// ── dedup ──────────────────────────────────────────────────────────────────────
+
+describe('dedup — categories spanning many files', () => {
+  function makeFindings(category: string, count: number, sev: Finding['severity'] = 'HIGH'): Finding[] {
+    return Array.from({ length: count }, (_, i) => ({
+      severity: sev,
+      file: `src/file${i}.ts`,
+      line: 1,
+      category,
+      message: `Rule ${category} fired`,
+    }));
+  }
+
+  it('collapses category with >3 distinct files to one summary row', () => {
+    const findings = makeFindings('missing_ts_extension', 7);
+    const out = formatSummaryComment(findings, 'repo', 1);
+    // Should show "7 files" collapsed summary with fix command
+    expect(out).toContain('7 files');
+    expect(out).toContain('thesmos fix --rule=missing_ts_extension');
+    // Files beyond the 5-file preview window are hidden (+2 more)
+    expect(out).not.toContain('src/file6.ts');
+    expect(out).toContain('+2 more');
+  });
+
+  it('shows individual rows for categories with ≤3 distinct files', () => {
+    const findings = makeFindings('sec_sql_injection', 2);
+    const out = formatSummaryComment(findings, 'repo', 1);
+    expect(out).toContain('src/file0.ts');
+    expect(out).toContain('src/file1.ts');
+  });
+
+  it('suppresses bulk categories from inline comments', () => {
+    const findings = makeFindings('missing_ts_extension', 5);
+    const changed = new Set(findings.map((f) => f.file));
+    const inline = buildInlineComments(findings, changed);
+    // Bulk category (5 files > threshold 3) suppressed from inline
+    expect(inline).toHaveLength(0);
+  });
+
+  it('allows inline comments for non-bulk categories', () => {
+    const findings = makeFindings('sec_sql_injection', 2);
+    const changed = new Set(findings.map((f) => f.file));
+    const inline = buildInlineComments(findings, changed);
+    expect(inline).toHaveLength(2);
   });
 });
 

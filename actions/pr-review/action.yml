@@ -46,6 +46,8 @@ outputs:
     description: 'Number of BLOCKER-severity findings.'
   health-grade:
     description: 'Governance health grade (A+, A, B, C, D, F) if report.json is present.'
+  health-score:
+    description: 'PR health score (0–100). BLOCKER=-15, HIGH=-3, MEDIUM=-1, floor 0.'
 
 runs:
   using: 'node20'
