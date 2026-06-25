@@ -95,7 +95,7 @@ async function run(): Promise<void> {
     // ── 1. Inputs ──────────────────────────────────────────────────────────
 
     const inputs = parseInputs();
-    const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
+    const workspace = process['env']['GITHUB_WORKSPACE'] ?? process.cwd();
 
     core.debug(`Workspace: ${workspace}`);
     core.debug(`Fail on severity: ${inputs.failOnSeverity}`);

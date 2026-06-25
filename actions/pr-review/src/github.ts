@@ -83,6 +83,16 @@ export async function getChangedFiles(
       // Skip deleted files — nothing to review
       if (file.status === 'removed') continue;
 
+      // Skip generated/compiled files — dist/, build/, .map files contain vendor code
+      if (/(?:^|[\\/])(?:node_modules|\.git|vendor|dist|build)(?:[\\/]|$)/.test(file.filename)) {
+        core.debug(`Skipping generated file: ${file.filename}`);
+        continue;
+      }
+      if (file.filename.endsWith('.js.map') || file.filename.endsWith('.ts.map')) {
+        core.debug(`Skipping source map: ${file.filename}`);
+        continue;
+      }
+
       const absPath = join(workspace, file.filename);
       if (!existsSync(absPath)) continue;
 

@@ -113,6 +113,7 @@ export const MY_NEW_RULE: ThesmosRule = {
     why: 'Why this rule exists — the risk if violated',
     commonViolations: ['Example of what gets flagged'],
     goodExample: '// Correct pattern\nconst val = getEnv("MY_VAR");',
+    // thesmos-disable-next-line direct_env_access -- reason: documentation example of flagged pattern -- owner: @thesmos -- expires: 2027-12-31
     badExample: '// Flagged\nconst val = process.env.MY_VAR;',
     relatedPlaybooks: [],
     relatedAgents: [],
@@ -146,6 +147,7 @@ it('flags the bad pattern', () => {
   const findings = MY_NEW_RULE.detect({
     scan: minimalScan,
     config: defaultConfig,
+    // thesmos-disable-next-line direct_env_access -- reason: documentation example of flagged pattern -- owner: @thesmos -- expires: 2027-12-31
     changedFiles: [{ path: 'src/foo.ts', content: 'process.env.MY_VAR' }],
   });
   expect(findings).toHaveLength(1);

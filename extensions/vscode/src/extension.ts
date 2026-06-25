@@ -470,7 +470,7 @@ async function startLspClient(
     // Resolve the thesmos binary to use as the LSP server.
     // VS Code launched from the Dock doesn't inherit nvm PATH, so extend it
     // with common node version manager locations before spawning the server.
-    const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
+    const home = process['env']['HOME'] ?? process['env']['USERPROFILE'] ?? '';
     const extraPaths = [
       `${home}/.nvm/versions/node/v20.20.2/bin`,
       `${home}/.nvm/versions/node/v22.0.0/bin`,
@@ -481,8 +481,8 @@ async function startLspClient(
       '/opt/homebrew/bin',
       '/usr/local/bin',
     ];
-    const enhancedPath = [...extraPaths, process.env.PATH ?? ''].join(process.platform === 'win32' ? ';' : ':');
-    const serverEnv = { ...process.env, PATH: enhancedPath };
+    const enhancedPath = [...extraPaths, process['env']['PATH'] ?? ''].join(process.platform === 'win32' ? ';' : ':');
+    const serverEnv = { ...process['env'], PATH: enhancedPath };
 
     const serverCommand = 'npx';
     const serverArgs = ['thesmos', 'lsp', '--root', workspaceRoot];
