@@ -138,12 +138,22 @@ export async function getChangedFiles(
  * Updates it in-place if found; creates a new one otherwise.
  * This prevents duplicate comment spam on re-runs.
  */
+// GitHub issue comment body limit is 65536 characters.
+const GH_COMMENT_MAX = 65_000;
+
 export async function upsertSummaryComment(
   octokit: Octokit,
   ctx: PullRequestContext,
   body: string,
 ): Promise<void> {
   const { owner, repo, pullNumber } = ctx;
+
+  if (body.length > GH_COMMENT_MAX) {
+    const notice =
+      '\n\n---\n_⚠️ Comment truncated — too many findings to display in full. ' +
+      'Run `thesmos scan` locally for the complete report._';
+    body = body.slice(0, GH_COMMENT_MAX - notice.length) + notice;
+  }
 
   // Find existing summary comment
   let existingCommentId: number | undefined;
