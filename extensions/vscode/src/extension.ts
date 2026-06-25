@@ -458,6 +458,59 @@ class ThesmosExtension implements vscode.Disposable {
   }
 }
 
+// ── Extension update check ────────────────────────────────────────────────────
+
+const UPDATE_CHECK_CACHE_KEY = 'thesmos.updateCheck';
+const UPDATE_CHECK_TTL_MS = 24 * 60 * 60 * 1000;
+
+async function checkExtensionUpdate(context: vscode.ExtensionContext): Promise<void> {
+  try {
+    // Throttle to once per 24h using globalState
+    const last = context.globalState.get<number>(UPDATE_CHECK_CACHE_KEY, 0);
+    if (Date.now() - last < UPDATE_CHECK_TTL_MS) return;
+
+    const current: string = context.extension.packageJSON.version as string;
+    if (!current) return;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(
+      'https://registry.npmjs.org/thesmos-governance/latest',
+      { signal: controller.signal },
+    );
+    clearTimeout(timer);
+    if (!res.ok) return;
+
+    const data = (await res.json()) as { version?: string };
+    const latest = data.version;
+    if (!latest) return;
+
+    await context.globalState.update(UPDATE_CHECK_CACHE_KEY, Date.now());
+
+    if (latest === current) return;
+    // Simple semver: compare numeric parts
+    const parse = (v: string) => v.split('.').map(Number);
+    const [cMaj = 0, cMin = 0, cPat = 0] = parse(current);
+    const [lMaj = 0, lMin = 0, lPat = 0] = parse(latest);
+    const newer = lMaj > cMaj || (lMaj === cMaj && (lMin > cMin || (lMin === cMin && lPat > cPat)));
+    if (!newer) return;
+
+    const choice = await vscode.window.showInformationMessage(
+      `Thesmos Governance ${latest} is available (you have ${current}).`,
+      'Update Extension',
+      'Dismiss',
+    );
+    if (choice === 'Update Extension') {
+      await vscode.commands.executeCommand(
+        'workbench.extensions.action.installExtension',
+        'holley-studios.thesmos-governance',
+      );
+    }
+  } catch {
+    // Update check is best-effort; never surface errors
+  }
+}
+
 // ── VS Code entry points ──────────────────────────────────────────────────────
 
 let extension: ThesmosExtension | undefined;
@@ -475,6 +528,9 @@ export async function activate(
   context.subscriptions.push(extension);
 
   await extension.activate();
+
+  // Non-blocking extension update check (runs after activation to stay out of the critical path)
+  void checkExtensionUpdate(context);
 
   // Start Thesmos LSP server for real-time as-you-type diagnostics.
   // The server is the thesmos CLI launched with the "lsp" subcommand.
