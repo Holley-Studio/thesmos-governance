@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thesmos vs. CodeRabbit, Semgrep, Microsoft AGT — AI Governance Comparison 2026</title>
+  <meta name="description" content="How Thesmos compares to CodeRabbit ($24/user), Semgrep ($35/user), Microsoft Agent Governance Toolkit (free), and Knostic ($50K/year). Developer-first, 1,075 rules, mythology-powered agents." />
+  <meta name="robots" content="index, follow" />
+  <meta name="author" content="Holley Studios" />
+  <link rel="canonical" href="https://github.com/Holley-Studio/thesmos-governance" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 90'%3E%3Cpath d='M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z' stroke='%23C9A84C' stroke-width='2.8' fill='none'/%3E%3Cpath d='M40 39 C36 32 31 25 34 15 C36 10 39 8 37 5 C45 10 47 22 42 31 C47 23 48 14 45 9 C52 20 50 32 44 39 Z' fill='%23F5C842'/%3E%3C/svg%3E" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Thesmos vs. CodeRabbit, Semgrep, Microsoft AGT" />
+  <meta property="og:description" content="The developer tool that solves false positives wins. Thesmos positions below Semgrep ($29/mo vs $35/mo) with deeper AI agent governance no competitor offers." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;700&family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:       #050408;
+      --bg-s:     #09080F;
+      --card:     rgba(255,255,255,.03);
+      --card-h:   rgba(255,255,255,.05);
+      --gold:     #C9A84C;
+      --gold-dim: rgba(201,168,76,.35);
+      --cream:    #F5F0E8;
+      --t1:       #F5F5F7;
+      --t2:       rgba(255,255,255,.55);
+      --t3:       rgba(255,255,255,.4);
+      --border:   rgba(255,255,255,.07);
+      --green:    #4CAF82;
+      --red:      #E05555;
+      --yellow:   #E0B84C;
+      --ease:     cubic-bezier(0.4,0,0.2,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--t1);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 300; line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Nav ── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 0 24px; height: 60px;
+      display: flex; align-items: center;
+      background: rgba(5,4,8,.8); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-i { width: 100%; max-width: 1080px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo { display: flex; align-items: center; gap: 8px; font-family: 'Cinzel', serif; font-weight: 700; font-size: 15px; letter-spacing: .12em; color: var(--t1); text-decoration: none; }
+    .nav-logo svg { width: 20px; height: 22px; }
+    .nav-links { display: flex; align-items: center; gap: 28px; }
+    .nav-links a { font-size: 13px; font-weight: 400; color: var(--t2); text-decoration: none; transition: color .2s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--t1); }
+    .nav-cta { font-size: 13px; font-weight: 500; color: var(--t1); text-decoration: none; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; padding: 6px 14px; transition: all .2s; }
+    .nav-cta:hover { background: rgba(255,255,255,.08); }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 140px 0 72px;
+      text-align: center;
+    }
+    .hero-tag {
+      display: inline-block;
+      font-size: 11px; font-weight: 500; letter-spacing: .1em;
+      color: var(--gold); text-transform: uppercase;
+      border: 1px solid var(--gold-dim); border-radius: 100px;
+      padding: 4px 14px; margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-family: 'Cinzel', serif; font-size: clamp(28px, 5vw, 52px); font-weight: 700;
+      line-height: 1.1; letter-spacing: .02em;
+      color: var(--t1);
+      margin-bottom: 20px;
+    }
+    .hero p { font-size: 17px; color: var(--t2); max-width: 620px; margin: 0 auto 40px; line-height: 1.7; }
+
+    /* ── Section ── */
+    section { padding: 80px 0; }
+    section + section { border-top: 1px solid var(--border); }
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .section-title { font-family: 'Cinzel', serif; font-size: clamp(22px, 3vw, 34px); font-weight: 700; color: var(--t1); margin-bottom: 16px; line-height: 1.2; }
+    .section-sub { font-size: 16px; color: var(--t2); max-width: 560px; line-height: 1.7; margin-bottom: 48px; }
+
+    /* ── Comparison table ── */
+    .comp-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .comp-table thead th {
+      padding: 14px 16px; text-align: left;
+      font-family: 'Cinzel', serif; font-size: 13px; font-weight: 500; letter-spacing: .06em;
+      color: var(--t2);
+      border-bottom: 1px solid var(--border);
+    }
+    .comp-table thead th:first-child { color: var(--t3); }
+    .comp-table thead th.col-thesmos { color: var(--gold); }
+    .comp-table tbody tr { border-bottom: 1px solid rgba(255,255,255,.04); transition: background .15s; }
+    .comp-table tbody tr:hover { background: rgba(255,255,255,.02); }
+    .comp-table tbody td { padding: 13px 16px; vertical-align: top; color: var(--t2); }
+    .comp-table tbody td:first-child { font-weight: 500; color: var(--t1); font-size: 13px; }
+    .comp-table tbody td.col-thesmos { background: rgba(201,168,76,.04); }
+    .comp-table .check { color: var(--green); }
+    .comp-table .cross { color: var(--red); opacity: .7; }
+    .comp-table .partial { color: var(--yellow); }
+    .comp-table .note { font-size: 12px; color: var(--t3); display: block; margin-top: 2px; }
+
+    /* ── VS cards ── */
+    .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 48px; }
+    @media (max-width: 640px) { .vs-grid { grid-template-columns: 1fr; } }
+    .vs-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 28px;
+    }
+    .vs-card-name { font-family: 'Cinzel', serif; font-size: 16px; font-weight: 600; color: var(--t1); margin-bottom: 4px; }
+    .vs-card-price { font-size: 13px; color: var(--t3); margin-bottom: 20px; }
+    .vs-card ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .vs-card li { font-size: 14px; color: var(--t2); display: flex; gap: 10px; align-items: flex-start; }
+    .vs-card li .icon { flex-shrink: 0; margin-top: 2px; }
+    .vs-card li .icon.g { color: var(--green); }
+    .vs-card li .icon.r { color: var(--red); }
+    .vs-card-verdict {
+      margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
+      font-size: 13px; color: var(--gold); font-style: italic;
+    }
+
+    /* ── Differentiator section ── */
+    .diff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .diff-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 24px;
+    }
+    .diff-icon { font-size: 20px; margin-bottom: 12px; }
+    .diff-title { font-size: 15px; font-weight: 600; color: var(--t1); margin-bottom: 8px; }
+    .diff-body { font-size: 13px; color: var(--t2); line-height: 1.6; }
+
+    /* ── Positioning statement ── */
+    .position-box {
+      background: rgba(201,168,76,.06); border: 1px solid rgba(201,168,76,.2);
+      border-radius: 12px; padding: 36px; margin: 48px 0; text-align: center;
+    }
+    .position-box h3 { font-family: 'Cinzel', serif; font-size: 20px; color: var(--gold); margin-bottom: 12px; }
+    .position-box p { font-size: 15px; color: var(--t2); max-width: 600px; margin: 0 auto; line-height: 1.7; }
+
+    /* ── Pricing strip ── */
+    .pricing-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    @media (max-width: 860px) { .pricing-strip { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .pricing-strip { grid-template-columns: 1fr; } }
+    .tier-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 24px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .tier-card.featured { border-color: var(--gold-dim); background: rgba(201,168,76,.06); }
+    .tier-name { font-family: 'Cinzel', serif; font-size: 14px; font-weight: 600; color: var(--t1); }
+    .tier-price { font-size: 26px; font-weight: 600; color: var(--t1); }
+    .tier-price span { font-size: 13px; color: var(--t3); font-weight: 300; }
+    .tier-tag { font-size: 11px; color: var(--gold); font-weight: 500; text-transform: uppercase; letter-spacing: .08em; }
+    .tier-features { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .tier-features li { font-size: 13px; color: var(--t2); display: flex; gap: 8px; }
+    .tier-features li::before { content: '—'; color: var(--t3); flex-shrink: 0; }
+
+    /* ── CTA ── */
+    .cta-row { display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 40px; }
+    .btn-primary {
+      display: inline-block; background: var(--gold); color: #080508; font-weight: 600;
+      font-size: 14px; padding: 12px 28px; border-radius: 8px; text-decoration: none;
+      transition: opacity .2s;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-ghost {
+      display: inline-block; border: 1px solid rgba(255,255,255,.18); color: var(--t2);
+      font-size: 14px; padding: 11px 24px; border-radius: 8px; text-decoration: none;
+      transition: all .2s;
+    }
+    .btn-ghost:hover { color: var(--t1); border-color: rgba(255,255,255,.35); }
+
+    /* ── Footer ── */
+    footer { border-top: 1px solid var(--border); padding: 40px 0; }
+    .footer-i { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
+    .f-brand { font-family: 'Cinzel', serif; font-size: 14px; font-weight: 700; letter-spacing: .1em; color: var(--gold); }
+    .f-by { font-size: 12px; color: var(--t3); margin-top: 4px; }
+    .f-links { display: flex; gap: 20px; flex-wrap: wrap; }
+    .f-links a { font-size: 13px; color: var(--t3); text-decoration: none; transition: color .2s; }
+    .f-links a:hover { color: var(--t1); }
+
+    /* ── Scroll reveal ── */
+    [data-r] { opacity: 0; transform: translateY(20px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
+    [data-r].on { opacity: 1; transform: none; }
+
+    /* ── Table scroll on mobile ── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav class="nav">
+  <div class="nav-i">
+    <a href="index.html" aria-label="Thesmos — home" class="nav-logo">
+      <svg viewBox="0 0 80 90" fill="none" aria-hidden="true">
+        <path d="M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z"
+          stroke="currentColor" stroke-width="2.8" fill="none" stroke-linejoin="round"/>
+        <circle cx="40" cy="48" r="19" stroke="currentColor" stroke-width="2.5" fill="none"/>
+        <line x1="23" y1="48" x2="57" y2="48" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      THESMOS
+    </a>
+    <div class="nav-links">
+      <a href="index.html#tools">Tools</a>
+      <a href="index.html#pantheon">Pantheon</a>
+      <a href="index.html#rules">Rules</a>
+      <a href="vs.html" class="active">Compare</a>
+      <a href="demo.html">Demo</a>
+      <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+    </div>
+    <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer" class="nav-cta">Get Thesmos</a>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-tag">Competitive Comparison · June 2026</div>
+    <h1>Thesmos vs. The Competition</h1>
+    <p>How Thesmos compares to CodeRabbit, Semgrep, and Microsoft's Agent Governance Toolkit across price, features, and philosophy.</p>
+  </div>
+</section>
+
+<!-- ── The market problem ── -->
+<section>
+  <div class="wrap">
+    <div class="section-label">The problem every competitor has</div>
+    <h2 class="section-title">2,400 findings is not governance. It's noise.</h2>
+    <p class="section-sub">From June 2026 research: Semgrep produces "noisy results with a lot of false positives out-of-the-box." SonarQube causes "alert fatigue." CodeRabbit is rate-limited to 200 files/hour. The developer tool that solves false positives wins. No one owns this position yet.</p>
+
+    <div class="position-box" data-r>
+      <h3>Thesmos's strategic answer</h3>
+      <p>Smart deduplication collapses 47 files firing the same rule into one grouped finding with a one-command fix. BLOCKERs are always expanded. LOW findings collapse by default. Result: 2,400 raw findings → under 150 visible items. The signal-to-noise ratio that makes Thesmos worth installing.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Full comparison table ── -->
+<section>
+  <div class="wrap">
+    <div class="section-label">Side by side</div>
+    <h2 class="section-title">Feature comparison</h2>
+    <p class="section-sub">All data is from public pricing pages and documentation as of June 2026.</p>
+
+    <div class="table-wrap" data-r>
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th>Dimension</th>
+            <th class="col-thesmos">Thesmos</th>
+            <th>CodeRabbit</th>
+            <th>Semgrep</th>
+            <th>Microsoft AGT</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Price (developer tier)</td>
+            <td class="col-thesmos"><strong>$29/month</strong><span class="note">Pro; Community free</span></td>
+            <td>$24/month<span class="note">Pro plan</span></td>
+            <td>$35/month<span class="note">per contributor</span></td>
+            <td>Free<span class="note">MIT open source</span></td>
+          </tr>
+          <tr>
+            <td>Governance rules</td>
+            <td class="col-thesmos"><span class="check">✓</span> 1,075+ rules<span class="note">78 categories, 10 languages</span></td>
+            <td><span class="partial">~</span> AI-generated<span class="note">No static ruleset</span></td>
+            <td><span class="check">✓</span> 20,000+<span class="note">High noise out-of-box</span></td>
+            <td><span class="cross">✗</span> None<span class="note">Runtime policy, not rules</span></td>
+          </tr>
+          <tr>
+            <td>AI agent governance</td>
+            <td class="col-thesmos"><span class="check">✓</span> Strong<span class="note">46 Pantheon agents, AGNT/MCP/RAG rules</span></td>
+            <td><span class="cross">✗</span> None</td>
+            <td><span class="cross">✗</span> None</td>
+            <td><span class="check">✓</span> Very strong<span class="note">OWASP Agentic Top 10, runtime</span></td>
+          </tr>
+          <tr>
+            <td>PR review</td>
+            <td class="col-thesmos"><span class="check">✓</span> Inline + Checks API<span class="note">SARIF, health score 0–100</span></td>
+            <td><span class="check">✓</span> Inline + summary<span class="note">AI-generated summaries</span></td>
+            <td><span class="partial">~</span> CI only<span class="note">SARIF; no inline comments</span></td>
+            <td><span class="cross">✗</span> No PR review</td>
+          </tr>
+          <tr>
+            <td>VS Code extension</td>
+            <td class="col-thesmos"><span class="check">✓</span> Full<span class="note">Inline diagnostics, Fix button, token meter</span></td>
+            <td><span class="partial">~</span> Limited<span class="note">Chat only</span></td>
+            <td><span class="partial">~</span> Basic<span class="note">No Fix button</span></td>
+            <td><span class="cross">✗</span> None</td>
+          </tr>
+          <tr>
+            <td>Business operation agents</td>
+            <td class="col-thesmos"><span class="check">✓</span> 46 agents<span class="note">Zeus, Athena, Hermes, 43 more</span></td>
+            <td><span class="cross">✗</span> None</td>
+            <td><span class="cross">✗</span> None</td>
+            <td><span class="cross">✗</span> None</td>
+          </tr>
+          <tr>
+            <td>Token budget management</td>
+            <td class="col-thesmos"><span class="check">✓</span> Built-in<span class="note">Hard stops, cost tracking, alerts</span></td>
+            <td><span class="cross">✗</span> None</td>
+            <td><span class="cross">✗</span> None</td>
+            <td><span class="cross">✗</span> None</td>
+          </tr>
+          <tr>
+            <td>Local secrets vault</td>
+            <td class="col-thesmos"><span class="check">✓</span> AES-256-GCM<span class="note">System keychain, never transmitted</span></td>
+            <td><span class="cross">✗</span> None</td>
+            <td><span class="cross">✗</span> None</td>
+            <td><span class="cross">✗</span> None</td>
+          </tr>
+          <tr>
+            <td>Developer UX</td>
+            <td class="col-thesmos"><span class="check">✓</span> Strong<span class="note">CLI, VS Code, MCP, hooks</span></td>
+            <td><span class="check">✓</span> Strong<span class="note">Simple UX, PR-first</span></td>
+            <td><span class="check">✓</span> Strong<span class="note">CLI + CI, lots of config</span></td>
+            <td><span class="cross">✗</span> Weak<span class="note">SDK integration required</span></td>
+          </tr>
+          <tr>
+            <td>False positive handling</td>
+            <td class="col-thesmos"><span class="check">✓</span> Smart dedup<span class="note">Groups by rule, collapses LOW/DEBT</span></td>
+            <td><span class="partial">~</span> Per-finding<span class="note">No grouping</span></td>
+            <td><span class="cross">✗</span> Known issue<span class="note">Needs manual tuning</span></td>
+            <td><span class="partial">~</span> N/A<span class="note">Runtime, different problem</span></td>
+          </tr>
+          <tr>
+            <td>EU AI Act compliance</td>
+            <td class="col-thesmos"><span class="check">✓</span> SARIF + footer<span class="note">Article 12 audit trail</span></td>
+            <td><span class="cross">✗</span> None</td>
+            <td><span class="cross">✗</span> None</td>
+            <td><span class="check">✓</span> Yes<span class="note">HIPAA + SOC 2 mapping</span></td>
+          </tr>
+          <tr>
+            <td>Open source</td>
+            <td class="col-thesmos"><span class="check">✓</span> MIT<span class="note">Community tier free forever</span></td>
+            <td><span class="check">✓</span> Free for public repos</td>
+            <td><span class="check">✓</span> OSS + paid</td>
+            <td><span class="check">✓</span> MIT</td>
+          </tr>
+          <tr>
+            <td>Mythology + culture</td>
+            <td class="col-thesmos"><span class="check">✓</span> Unique<span class="note">Greek pantheon, world-class agent personas</span></td>
+            <td><span class="cross">✗</span></td>
+            <td><span class="cross">✗</span></td>
+            <td><span class="cross">✗</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── Head-to-head callouts ── -->
+<section>
+  <div class="wrap">
+    <div class="section-label">Head to head</div>
+    <h2 class="section-title">The honest comparison</h2>
+
+    <div class="vs-grid" data-r>
+
+      <div class="vs-card">
+        <div class="vs-card-name">vs. CodeRabbit</div>
+        <div class="vs-card-price">$24/user/month — AI-generated PR summaries</div>
+        <ul>
+          <li><span class="icon g">+</span> Thesmos: 1,075 static rules vs. AI-generated (consistent, auditable)</li>
+          <li><span class="icon g">+</span> Thesmos: 46 Pantheon agents — CodeRabbit has no agent system</li>
+          <li><span class="icon g">+</span> Thesmos: Smart dedup groups findings — CodeRabbit shows raw per-finding</li>
+          <li><span class="icon g">+</span> Thesmos: Token budget, secrets vault, user profile memory</li>
+          <li><span class="icon r">−</span> CodeRabbit: Simpler UX for quick PR summaries</li>
+          <li><span class="icon r">−</span> CodeRabbit: $5/month cheaper (Pro)</li>
+        </ul>
+        <div class="vs-card-verdict">Verdict: Thesmos has more depth. CodeRabbit has simpler onboarding. Use Thesmos if you need governance; CodeRabbit if you only need AI PR summaries.</div>
+      </div>
+
+      <div class="vs-card">
+        <div class="vs-card-name">vs. Semgrep</div>
+        <div class="vs-card-price">$35/contributor/month — 20,000+ SAST rules</div>
+        <ul>
+          <li><span class="icon g">+</span> Thesmos: $6/month cheaper ($29 vs $35)</li>
+          <li><span class="icon g">+</span> Thesmos: AI agent governance Semgrep doesn't touch</li>
+          <li><span class="icon g">+</span> Thesmos: Smart dedup — Semgrep is notoriously noisy</li>
+          <li><span class="icon g">+</span> Thesmos: VS Code Fix button, token meter, 46 Pantheon agents</li>
+          <li><span class="icon r">−</span> Semgrep: 20x more rules (but most are noisy)</li>
+          <li><span class="icon r">−</span> Semgrep: Larger community, more integrations</li>
+        </ul>
+        <div class="vs-card-verdict">Verdict: Thesmos beats Semgrep on price, noise ratio, and AI agent governance. Semgrep wins on raw rule count and ecosystem maturity.</div>
+      </div>
+
+      <div class="vs-card">
+        <div class="vs-card-name">vs. Microsoft AGT</div>
+        <div class="vs-card-price">Free (MIT) — OWASP Agentic AI Top 10 runtime governance</div>
+        <ul>
+          <li><span class="icon g">+</span> Microsoft AGT: Runtime enforcement while agents execute (LangChain, CrewAI)</li>
+          <li><span class="icon g">+</span> Thesmos: Development-time governance — what agents write and how</li>
+          <li><span class="icon g">+</span> Thesmos: 1,075 code quality rules vs. AGT's zero</li>
+          <li><span class="icon g">+</span> Thesmos: 46 business operation agents vs. AGT's SDK-only approach</li>
+          <li><span class="icon g">+</span> These solve different problems — use both, don't choose</li>
+        </ul>
+        <div class="vs-card-verdict">Verdict: Not competing. Microsoft AGT governs what agents do at runtime. Thesmos governs the quality and safety of code agents produce at development time. The best teams use both.</div>
+      </div>
+
+      <div class="vs-card">
+        <div class="vs-card-name">vs. Knostic</div>
+        <div class="vs-card-price">$50,000/year — Enterprise AI security, prompt injection firewall</div>
+        <ul>
+          <li><span class="icon g">+</span> Knostic: Real-time prompt injection firewall, DLP</li>
+          <li><span class="icon g">+</span> Thesmos: $29/month vs. $50,000/year (170x cheaper)</li>
+          <li><span class="icon g">+</span> Thesmos: Developer-first vs. Knostic's enterprise-only model</li>
+          <li><span class="icon g">+</span> Thesmos: MIT open source core — Knostic is closed</li>
+          <li><span class="icon r">−</span> Knostic: Enterprise buyer (Fortune 500) — different market</li>
+        </ul>
+        <div class="vs-card-verdict">Verdict: Not head-to-head. Knostic serves Fortune 500 security teams. Thesmos serves individual developers and startup engineering teams.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Where Thesmos wins ── -->
+<section>
+  <div class="wrap">
+    <div class="section-label">Our differentiation</div>
+    <h2 class="section-title">Where Thesmos is uniquely strong</h2>
+
+    <div class="diff-grid" data-r>
+
+      <div class="diff-card">
+        <div class="diff-icon">🔇</div>
+        <div class="diff-title">Signal-to-noise ratio</div>
+        <div class="diff-body">Smart dedup collapses 47 files firing the same rule into one grouped finding. BLOCKERs always expanded. LOW findings collapsed. No competitor owns this position — and it's the #1 reason developers uninstall SAST tools.</div>
+      </div>
+
+      <div class="diff-card">
+        <div class="diff-icon">⚡</div>
+        <div class="diff-title">46 Pantheon business agents</div>
+        <div class="diff-body">Zeus, Athena, Hermes, Daedalus — plus 42 more. No competitor has an agent system for business operations. Strategy, marketing, engineering, finance, legal — all as structured AI agents with governance protocols.</div>
+      </div>
+
+      <div class="diff-card">
+        <div class="diff-icon">🏛️</div>
+        <div class="diff-title">Agent Teams (V1)</div>
+        <div class="diff-body">Sequential multi-agent orchestration: The Argonauts (14-agent product launch), The Forge (engineering), The Muses (content), The Furies (revenue rescue), The Olympian Council (executive strategy). Zeus routes to each in sequence.</div>
+      </div>
+
+      <div class="diff-card">
+        <div class="diff-icon">🔐</div>
+        <div class="diff-title">Local-first design</div>
+        <div class="diff-body">Secrets vault (AES-256-GCM, system keychain), user profile memory, governance config — all local. No code sent to Holley Studios servers. Telemetry is opt-in. GDPR-safe by architecture.</div>
+      </div>
+
+      <div class="diff-card">
+        <div class="diff-icon">💰</div>
+        <div class="diff-title">Token budget management</div>
+        <div class="diff-body">Built-in token tracking with hard stops, daily budgets, VS Code status bar meter, and automated cost alerts. No competitor tracks LLM spend at the governance layer. Cost overruns die here.</div>
+      </div>
+
+      <div class="diff-card">
+        <div class="diff-icon">⚖️</div>
+        <div class="diff-title">EU AI Act readiness</div>
+        <div class="diff-body">SARIF export maps to Article 12 audit trail requirements (effective August 2026). Every PR review includes the EU AI Act compliance footer. Thesmos is one of the first developer tools to address this — most competitors haven't noticed.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Pricing ── -->
+<section>
+  <div class="wrap">
+    <div class="section-label">Pricing</div>
+    <h2 class="section-title">Below Semgrep. Above CodeRabbit.</h2>
+    <p class="section-sub">Positioned at $29/month — below Semgrep ($35) to capture teams fatigued by noise, above CodeRabbit ($24) to reflect the additional depth.</p>
+
+    <div class="pricing-strip" data-r>
+      <div class="tier-card">
+        <div class="tier-name">Community</div>
+        <div class="tier-price">$0 <span>/ month</span></div>
+        <div class="tier-tag">MIT forever</div>
+        <ul class="tier-features">
+          <li>Core CLI (scan, fix, validate)</li>
+          <li>500 core governance rules</li>
+          <li>10 core Pantheon agents</li>
+          <li>PR summary comment</li>
+          <li>Community support</li>
+        </ul>
+      </div>
+      <div class="tier-card featured">
+        <div class="tier-name">Pro</div>
+        <div class="tier-price">$29 <span>/ month</span></div>
+        <div class="tier-tag">Most popular</div>
+        <ul class="tier-features">
+          <li>All 1,075+ rules</li>
+          <li>All 46 Pantheon agents</li>
+          <li>Inline PR comments + SARIF</li>
+          <li>VS Code diagnostics + Fix button</li>
+          <li>secrets:vault + profile memory</li>
+          <li>EU AI Act footer</li>
+        </ul>
+      </div>
+      <div class="tier-card">
+        <div class="tier-name">Team</div>
+        <div class="tier-price">$99 <span>/ user / mo</span></div>
+        <div class="tier-tag">Min 3 seats</div>
+        <ul class="tier-features">
+          <li>Everything in Pro</li>
+          <li>Agent Teams (5 mythology teams)</li>
+          <li>pantheon:council multi-agent</li>
+          <li>Shared team governance baseline</li>
+          <li>Slack/webhook notifications</li>
+          <li>PR trend tracking dashboard</li>
+        </ul>
+      </div>
+      <div class="tier-card">
+        <div class="tier-name">Enterprise</div>
+        <div class="tier-price">Custom</div>
+        <div class="tier-tag">$300+/seat/year</div>
+        <ul class="tier-features">
+          <li>Everything in Team</li>
+          <li>SSO (SAML, Okta)</li>
+          <li>EU AI Act Article 12 export</li>
+          <li>Private MCP server deployment</li>
+          <li>Custom rule packs</li>
+          <li>Dedicated CSM + SLA</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section>
+  <div class="wrap" style="text-align: center;">
+    <div class="section-label">Get started</div>
+    <h2 class="section-title">Try Thesmos free — no card required</h2>
+    <p class="section-sub" style="margin: 0 auto 0;">Community tier is MIT-licensed and free forever. Install in 30 seconds.</p>
+    <div class="cta-row">
+      <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer" class="btn-primary">Get Thesmos →</a>
+      <a href="demo.html" class="btn-ghost">See the demo</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="wrap footer-i">
+    <div>
+      <div class="f-brand">THESMOS</div>
+      <div class="f-by">Built by Holley Studios</div>
+    </div>
+    <div class="f-links">
+      <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="index.html">Home</a>
+      <a href="demo.html">Demo</a>
+      <a href="https://github.com/Holley-Studio/thesmos-governance/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">Security</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const io = new IntersectionObserver(entries =>
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } })
+  , {threshold:.1});
+  document.querySelectorAll('[data-r]').forEach(el => io.observe(el));
+}());
+</script>
+</body>
+</html>
