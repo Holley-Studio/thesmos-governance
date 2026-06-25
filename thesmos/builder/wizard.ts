@@ -80,7 +80,7 @@ export async function runWizard(
   context: WizardContext,
   prefilledAnswers: Partial<WizardAnswers> = {},
 ): Promise<WizardAnswers> {
-  const answers: WizardAnswers = { ...prefilledAnswers };
+  const answers: WizardAnswers = { ...prefilledAnswers } as WizardAnswers;
 
   // Filter out pre-answered questions
   const toAsk = questions.filter((q) => !answers[q.key]);

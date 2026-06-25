@@ -246,7 +246,7 @@ function handleScanFile(
 
   for (const f of findings) {
     const outcome = f.severity === 'BLOCKER' ? 'BLOCKED' : f.severity === 'HIGH' ? 'WARN' : 'PASS';
-    logRuleFire(root, f.rule ?? f.category, params.path, outcome, 'mcp', params.session, f.message);
+    logRuleFire(root, f.category, params.path, outcome, 'mcp', params.session, f.message);
   }
 
   const summary =

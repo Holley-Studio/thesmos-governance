@@ -19,7 +19,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs, flag, flagVal } from '../lib/args.ts';
 import { PROMETHEUS_RULES } from '../../rules/registry.js';
-import type { Rule } from '../../types.js';
+import type { ThesmosRule as Rule } from '../../types.js';
 
 type Provider = 'anthropic' | 'openai' | 'google';
 type Severity = 'BLOCKER' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';

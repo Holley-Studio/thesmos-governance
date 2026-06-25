@@ -152,8 +152,9 @@ function formatMarkdown(summary: GovernanceSummary, projectName: string, period:
   return lines.join('\n');
 }
 
-function formatJson(summary: GovernanceSummary, projectName: string, period: string): string {
-  return JSON.stringify({ project: projectName, period, ...summary }, null, 2);
+function formatJson(summary: GovernanceSummary, projectName: string, periodLabel: string): string {
+  const { period, ...rest } = summary;
+  return JSON.stringify({ project: projectName, period: periodLabel, summaryPeriod: period, ...rest }, null, 2);
 }
 
 // ── Scan findings summary (from report.json) ─────────────────────────────────

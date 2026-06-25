@@ -220,7 +220,7 @@ async function runGovernanceScan(root: string, files: string[]): Promise<{ findi
         content: readFileSync(join(root, f), 'utf-8'),
       }));
 
-    const allFindings = await runReview({ config, changedFiles });
+    const allFindings = await runReview({ scan: {} as import('../../types.js').ScanResult, config, changedFiles });
     const blockers = allFindings.filter((f) => f.severity === 'BLOCKER');
     return { findings: allFindings.length, blockers: blockers.length };
   } catch {
