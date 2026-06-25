@@ -5,6 +5,7 @@
     "moduleResolution": "node10",
     "ignoreDeprecations": "6.0",
     "lib": ["ES2022"],
+    "types": ["node"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -13,7 +14,7 @@
     "sourceMap": true,
     "declaration": false,
     "paths": {
-      "vscode-languageclient/node": ["../../node_modules/vscode-languageclient/node.d.ts"]
+      "vscode-languageclient/node": ["../../node_modules/vscode-languageclient/lib/node/main.d.ts"]
     }
   },
   "include": ["src/**/*.ts"],
