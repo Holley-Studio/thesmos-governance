@@ -385,7 +385,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^10.0.1"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
