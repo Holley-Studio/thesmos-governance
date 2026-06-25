@@ -199,9 +199,10 @@ export async function learnFromBrainStore(
 
   // Dynamic import of Anthropic SDK — only happens when user explicitly calls brain:learn
   console.log('\n  Calling Claude API...\n');
+  // @ts-ignore — @anthropic-ai/sdk is an optional runtime dep, not listed in package.json
   let Anthropic: typeof import('@anthropic-ai/sdk').default;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // @ts-ignore — optional runtime dep; caught below if absent
     const mod = await import('@anthropic-ai/sdk');
     Anthropic = mod.default;
   } catch {
