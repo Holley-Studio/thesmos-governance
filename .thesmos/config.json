@@ -10,7 +10,8 @@
     "lic_copyleft_dependency",
     "mcp_cursor_rules_injection",
     "mcp_readme_injection",
-    "mcp_cursor_rules_external_url"
+    "mcp_cursor_rules_external_url",
+    "mcp_tool_description_injection"
   ],
   "ignoredFolders": [
     "node_modules",
@@ -18,7 +19,11 @@
     "dist",
     "out",
     ".next",
-    ".vercel"
+    ".vercel",
+    ".claude",
+    ".thesmos",
+    ".cursor",
+    "coverage"
   ],
   "largeFileThreshold": 800,
   "failOnSeverity": ["BLOCKER"],
