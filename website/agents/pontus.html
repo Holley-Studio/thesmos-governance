@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Talos — Web Development Agent · Thesmos Pantheon</title>
-  <meta name="description" content="Talos is the Web Development Agent of the Thesmos Pantheon. Full-stack web development: React, TypeScript, Next.js, Node.js, databases — the agent that ships production code, not just designs.">
+  <title>Pontus — Supabase Platform Agent · Thesmos Pantheon</title>
+  <meta name="description" content="Pontus is the Supabase Platform Agent of the Thesmos Pantheon. RLS policies, schema design, Edge Functions, Storage security, Realtime subscriptions — the deep expert in Supabase's full stack.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #B07D3C; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
+    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #3ECF8E; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
     html { scroll-behavior: smooth; }
     body { background: var(--navy); color: var(--t1); font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; min-height: 100vh; }
     nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px,5vw,80px); height: 60px; background: rgba(5,4,8,.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
@@ -90,23 +90,29 @@
     <span>·</span>
     <a href="../index.html#pantheon">Pantheon</a>
     <span>·</span>
-    <span>Talos</span>
+    <span>Pontus</span>
   </div>
   <div class="agent-header">
     <div class="agent-avatar-lg">
       <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="46" fill="#B07D3C15"/>
-        <rect x="34" y="22" width="32" height="56" rx="4" stroke="#B07D3C" stroke-width="2.2" fill="none"/>
-        <line x1="42" y1="34" x2="58" y2="34" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <line x1="42" y1="42" x2="58" y2="42" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <line x1="42" y1="50" x2="54" y2="50" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <circle cx="50" cy="64" r="4" stroke="#B07D3C" stroke-width="1.8" fill="none"/>
-        <circle cx="50" cy="64" r="1.5" fill="#B07D3C"/>
+        <circle cx="50" cy="50" r="46" fill="#3ECF8E15"/>
+        <!-- Database cylinder top ellipse -->
+        <ellipse cx="50" cy="28" rx="22" ry="7" stroke="#3ECF8E" stroke-width="2" fill="none"/>
+        <!-- Database cylinder body -->
+        <line x1="28" y1="28" x2="28" y2="52" stroke="#3ECF8E" stroke-width="2"/>
+        <line x1="72" y1="28" x2="72" y2="52" stroke="#3ECF8E" stroke-width="2"/>
+        <!-- Database cylinder bottom ellipse -->
+        <ellipse cx="50" cy="52" rx="22" ry="7" stroke="#3ECF8E" stroke-width="2" fill="none"/>
+        <!-- Middle stripe for depth -->
+        <path d="M28 40 Q50 46 72 40" stroke="#3ECF8E" stroke-width="1.2" fill="none" opacity=".5"/>
+        <!-- Wave lines below (water/sea) -->
+        <path d="M26 66 Q33 61 40 66 Q47 71 54 66 Q61 61 68 66" stroke="#3ECF8E" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <path d="M30 76 Q37 71 44 76 Q51 81 58 76 Q65 71 72 76" stroke="#3ECF8E" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".6"/>
       </svg>
     </div>
     <div class="agent-meta">
-      <div class="agent-name">Talos</div>
-      <div class="agent-role-title">Web Development Agent · Full-Stack React, TypeScript & Node.js</div>
+      <div class="agent-name">Pontus</div>
+      <div class="agent-role-title">Supabase Platform Agent · RLS, Schema Design & Edge Functions</div>
       <div class="agent-pantheon-tag">THESMOS PANTHEON</div>
     </div>
   </div>
@@ -119,28 +125,28 @@
   <div class="section" style="margin-top:48px">
     <div class="section-label">Mythology</div>
     <div class="lore-block">
-      <p>Talos was the giant bronze automaton created by Hephaestus and given by Zeus to Europa as her guardian — he circled the island of Crete three times daily, repelling invaders by hurling boulders or heating his bronze body red-hot to crush enemies in an embrace. He was singular in purpose: protect the perimeter, without rest, without failure.</p>
-      <p class="lore-channel">Thesmos channels Talos as full-stack web development. React, TypeScript, Next.js, Node.js, databases. Where Hephaestus designed the form, Talos operates it relentlessly — the agent that ships production code, not just designs.</p>
+      <p>Pontus was the primordial god of the deep sea — one of the first beings born from Gaia, predating the Olympians themselves. He is the source from which all flows: still, vast, and containing everything. He is not turbulent like Poseidon; he is the deep itself — the substrate beneath all surface activity.</p>
+      <p class="lore-channel">Thesmos channels Pontus as Supabase platform expertise. RLS policies, schema design, Edge Functions, Storage security, Realtime subscriptions — the data foundation on which everything else is built. As the deep sea contains all things, Pontus holds the data layer every other agent depends on.</p>
     </div>
   </div>
 
   <div class="section">
     <div class="section-label">Purpose</div>
-    <div class="section-title">What Talos does</div>
-    <p class="prose">Talos implements features end to end. Frontend components built with React and TypeScript, API endpoints in Node.js, database schema design with Prisma, performance optimization, code review. Talos applies TDD to write tests before implementation, and Component-Driven Development to build UI from atoms to pages. The deliverable is always working code with tests — not a plan for working code.</p>
+    <div class="section-title">What Pontus does</div>
+    <p class="prose">Pontus designs and secures the Supabase data layer. He writes schema migrations with RLS enabled from the first line, authors policies that enforce correct isolation for each actor type, builds Edge Functions that run safely in Deno's sandbox, and debugs Realtime subscriptions that leak memory or miss events. His first principle is defense-in-depth: RLS is the last line of defense, not the only one. No user-facing table ever reaches production with RLS disabled.</p>
   </div>
 
   <div class="section">
     <div class="section-label">Responsibilities</div>
-    <div class="section-title">Talos's domain</div>
+    <div class="section-title">Pontus's domain</div>
     <ul class="resp-list">
-      <li>Frontend implementation: React components, TypeScript interfaces, state management</li>
-      <li>Backend feature development: REST API endpoints, authentication, middleware</li>
-      <li>Database design: schema modeling, migrations, query optimization with Prisma/PostgreSQL</li>
-      <li>Component architecture: design system contributions, reusable component library</li>
-      <li>API development: OpenAPI specs, endpoint design, versioning, error handling</li>
-      <li>Code review: TypeScript type safety, performance, accessibility, security patterns</li>
-      <li>Testing: unit tests, integration tests, E2E test specification</li>
+      <li>Schema design: CREATE TABLE with column types, constraints, indexes, and ENABLE ROW LEVEL SECURITY from the start</li>
+      <li>RLS policy authoring: named policies covering SELECT, INSERT, UPDATE, DELETE with auth.uid() index requirements</li>
+      <li>Migration strategy: timestamped, idempotent migrations with rollback comments</li>
+      <li>Edge Functions: Deno-compatible TypeScript with error boundaries, Deno.env access, and CORS handlers</li>
+      <li>Client guidance: anon key vs. service role key — which to use where and exactly why</li>
+      <li>Realtime patterns: subscription setup with correct cleanup to prevent memory leaks</li>
+      <li>Security audit: scanning for RLS gaps, service role key exposure, and INFRA_001 violations</li>
     </ul>
   </div>
 
@@ -148,43 +154,44 @@
 
   <div class="section">
     <div class="section-label">Resume</div>
-    <div class="section-title">What Talos brings</div>
+    <div class="section-title">What Pontus brings</div>
     <div class="resume-card">
       <div class="resume-header">
         <div class="resume-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="50" cy="50" r="46" fill="#B07D3C15"/>
-          <rect x="34" y="22" width="32" height="56" rx="4" stroke="#B07D3C" stroke-width="2.2" fill="none"/>
-          <line x1="42" y1="34" x2="58" y2="34" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="42" y1="42" x2="58" y2="42" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="42" y1="50" x2="54" y2="50" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <circle cx="50" cy="64" r="4" stroke="#B07D3C" stroke-width="1.8" fill="none"/>
-          <circle cx="50" cy="64" r="1.5" fill="#B07D3C"/>
+          <circle cx="50" cy="50" r="46" fill="#3ECF8E15"/>
+          <ellipse cx="50" cy="28" rx="22" ry="7" stroke="#3ECF8E" stroke-width="2" fill="none"/>
+          <line x1="28" y1="28" x2="28" y2="52" stroke="#3ECF8E" stroke-width="2"/>
+          <line x1="72" y1="28" x2="72" y2="52" stroke="#3ECF8E" stroke-width="2"/>
+          <ellipse cx="50" cy="52" rx="22" ry="7" stroke="#3ECF8E" stroke-width="2" fill="none"/>
+          <path d="M28 40 Q50 46 72 40" stroke="#3ECF8E" stroke-width="1.2" fill="none" opacity=".5"/>
+          <path d="M26 66 Q33 61 40 66 Q47 71 54 66 Q61 61 68 66" stroke="#3ECF8E" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <path d="M30 76 Q37 71 44 76 Q51 81 58 76 Q65 71 72 76" stroke="#3ECF8E" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".6"/>
         </svg></div>
         <div>
-          <div class="resume-name">Talos</div>
-          <div class="resume-subtitle">Web Development Agent · Thesmos Pantheon</div>
+          <div class="resume-name">Pontus</div>
+          <div class="resume-subtitle">Supabase Platform Agent · Thesmos Pantheon</div>
         </div>
       </div>
       <div class="resume-body">
 
         <div>
           <div class="resume-section-title">Core methodology</div>
-          <div class="methodology-badge">TDD + Component-Driven Development</div>
+          <div class="methodology-badge">Defense-in-Depth + Schema-First + Service Client Separation</div>
         </div>
 
         <div>
           <div class="resume-section-title">Skills</div>
           <div class="skills-grid">
-            <span class="skill-tag">React</span>
-            <span class="skill-tag">TypeScript</span>
-            <span class="skill-tag">Next.js</span>
-            <span class="skill-tag">Node.js</span>
+            <span class="skill-tag">Row Level Security</span>
             <span class="skill-tag">PostgreSQL</span>
-            <span class="skill-tag">Prisma</span>
-            <span class="skill-tag">REST APIs</span>
-            <span class="skill-tag">Component architecture</span>
-            <span class="skill-tag">Testing</span>
-            <span class="skill-tag">Performance</span>
+            <span class="skill-tag">Supabase Edge Functions</span>
+            <span class="skill-tag">Deno</span>
+            <span class="skill-tag">PostgREST</span>
+            <span class="skill-tag">Realtime subscriptions</span>
+            <span class="skill-tag">Storage policies</span>
+            <span class="skill-tag">pgvector</span>
+            <span class="skill-tag">pg_cron</span>
+            <span class="skill-tag">Multi-tenant isolation</span>
           </div>
         </div>
 
@@ -192,16 +199,16 @@
           <div class="resume-section-title">Example deliverables</div>
           <div class="deliverables-list">
             <div class="deliverable">
-              <div class="del-label">Implemented feature with tests</div>
-              <div class="del-desc">Full-stack feature implementation: TypeScript React component, API endpoint, database migration, and test coverage — commit-ready with PR description.</div>
+              <div class="del-label">Schema migration with RLS</div>
+              <div class="del-desc">Complete CREATE TABLE with covering index for auth.uid(), named RLS policies for all four DML operations, and rollback comments — tested through PostgREST, not just psql.</div>
             </div>
             <div class="deliverable">
-              <div class="del-label">Component library additions</div>
-              <div class="del-desc">New reusable UI components with TypeScript props, usage examples, accessibility attributes, and Storybook stories.</div>
+              <div class="del-label">Supabase Edge Function</div>
+              <div class="del-desc">Deno-compatible TypeScript with try/catch error boundaries, Deno.env.get() (not process.env), CORS configuration, and structured JSON error responses.</div>
             </div>
             <div class="deliverable">
-              <div class="del-label">API endpoint with schema + tests</div>
-              <div class="del-desc">REST endpoint implementation with OpenAPI schema definition, request validation, error handling, and Jest integration tests.</div>
+              <div class="del-label">RLS audit report</div>
+              <div class="del-desc">Tables with RLS disabled, policies with logical gaps (missing INSERT WITH CHECK, UPDATE without USING), and service role key exposure risks — with DB_001 status for each finding.</div>
             </div>
           </div>
         </div>
@@ -211,21 +218,21 @@
           <div class="invoke-block">
             <code>// Claude Code — sub-agent
 Agent({
-  subagent_type: "Talos",
+  subagent_type: "Pontus",
   prompt: "your task here"
 })
 
 // CLI
-npx thesmos pantheon:invoke talos --prompt "your task"</code>
+npx thesmos pantheon:invoke pontus --prompt "your task"</code>
           </div>
         </div>
 
         <div>
           <div class="resume-section-title">Best paired with</div>
           <div class="paired-agents">
-            <a href="chiron.html" class="pair-link">Chiron</a>
-            <a href="hephaestus.html" class="pair-link">Hephaestus</a>
-            <a href="cassandra.html" class="pair-link">Cassandra</a>
+            <a href="talos.html" class="pair-link">Talos</a>
+            <a href="argus.html" class="pair-link">Argus</a>
+            <a href="themis.html" class="pair-link">Themis</a>
           </div>
         </div>
 
@@ -236,12 +243,12 @@ npx thesmos pantheon:invoke talos --prompt "your task"</code>
 </div>
 
 <div class="agent-nav">
-  <a href="proteus.html" class="nav-arrow">← Proteus</a>
+  <a href="alecto.html" class="nav-arrow">← Alecto</a>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
     <a href="../index.html#pantheon" class="nav-all">ALL AGENTS</a>
-    <div class="agent-counter">40 / 46</div>
+    <div class="agent-counter">43 / 46</div>
   </div>
-  <a href="kronos.html" class="nav-arrow">Kronos →</a>
+  <a href="notus.html" class="nav-arrow">Notus →</a>
 </div>
 
 </body>

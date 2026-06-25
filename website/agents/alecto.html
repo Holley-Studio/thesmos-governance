@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Talos — Web Development Agent · Thesmos Pantheon</title>
-  <meta name="description" content="Talos is the Web Development Agent of the Thesmos Pantheon. Full-stack web development: React, TypeScript, Next.js, Node.js, databases — the agent that ships production code, not just designs.">
+  <title>Alecto — Competitive Intelligence Agent · Thesmos Pantheon</title>
+  <meta name="description" content="Alecto is the Competitive Intelligence Agent of the Thesmos Pantheon. Competitor monitoring, feature gap analysis, win/loss frameworks, weekly competitive briefs — the agent that never loses sight of the market.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #B07D3C; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
+    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #C0392B; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
     html { scroll-behavior: smooth; }
     body { background: var(--navy); color: var(--t1); font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; min-height: 100vh; }
     nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px,5vw,80px); height: 60px; background: rgba(5,4,8,.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
@@ -90,23 +90,30 @@
     <span>·</span>
     <a href="../index.html#pantheon">Pantheon</a>
     <span>·</span>
-    <span>Talos</span>
+    <span>Alecto</span>
   </div>
   <div class="agent-header">
     <div class="agent-avatar-lg">
       <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="46" fill="#B07D3C15"/>
-        <rect x="34" y="22" width="32" height="56" rx="4" stroke="#B07D3C" stroke-width="2.2" fill="none"/>
-        <line x1="42" y1="34" x2="58" y2="34" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <line x1="42" y1="42" x2="58" y2="42" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <line x1="42" y1="50" x2="54" y2="50" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <circle cx="50" cy="64" r="4" stroke="#B07D3C" stroke-width="1.8" fill="none"/>
-        <circle cx="50" cy="64" r="1.5" fill="#B07D3C"/>
+        <circle cx="50" cy="50" r="46" fill="#C0392B15"/>
+        <!-- Eye shape -->
+        <path d="M18 50 Q50 20 82 50 Q50 80 18 50 Z" stroke="#C0392B" stroke-width="2" fill="none"/>
+        <!-- Pupil/iris -->
+        <circle cx="50" cy="50" r="10" stroke="#C0392B" stroke-width="2" fill="none"/>
+        <circle cx="50" cy="50" r="4" fill="#C0392B"/>
+        <!-- Crosshair lines -->
+        <line x1="50" y1="30" x2="50" y2="38" stroke="#C0392B" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="50" y1="62" x2="50" y2="70" stroke="#C0392B" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="30" y1="50" x2="38" y2="50" stroke="#C0392B" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="62" y1="50" x2="70" y2="50" stroke="#C0392B" stroke-width="1.5" stroke-linecap="round"/>
+        <!-- Arrow pointing right (targeting) -->
+        <line x1="62" y1="50" x2="78" y2="36" stroke="#C0392B" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M72 33 L78 36 L75 42" stroke="#C0392B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
       </svg>
     </div>
     <div class="agent-meta">
-      <div class="agent-name">Talos</div>
-      <div class="agent-role-title">Web Development Agent · Full-Stack React, TypeScript & Node.js</div>
+      <div class="agent-name">Alecto</div>
+      <div class="agent-role-title">Competitive Intelligence Agent · Market Monitoring & Win/Loss Analysis</div>
       <div class="agent-pantheon-tag">THESMOS PANTHEON</div>
     </div>
   </div>
@@ -119,28 +126,28 @@
   <div class="section" style="margin-top:48px">
     <div class="section-label">Mythology</div>
     <div class="lore-block">
-      <p>Talos was the giant bronze automaton created by Hephaestus and given by Zeus to Europa as her guardian — he circled the island of Crete three times daily, repelling invaders by hurling boulders or heating his bronze body red-hot to crush enemies in an embrace. He was singular in purpose: protect the perimeter, without rest, without failure.</p>
-      <p class="lore-channel">Thesmos channels Talos as full-stack web development. React, TypeScript, Next.js, Node.js, databases. Where Hephaestus designed the form, Talos operates it relentlessly — the agent that ships production code, not just designs.</p>
+      <p>Alecto was one of the three Erinyes — the Furies — called "the unceasing one." She did not pause. She did not forget. She did not lose the thread. The Furies pursued wrongdoers not with urgency but with absolute structural persistence — they set up the monitoring, the tracking, the relentless watch. Alecto never stopped seeing.</p>
+      <p class="lore-channel">Thesmos channels Alecto as competitive intelligence. Competitor monitoring, feature gap analysis, win/loss frameworks, pricing intelligence, weekly competitive briefs. Where other agents build strategy from internal assumptions, Alecto provides the raw intelligence those strategies must account for — precise, sourced, and relentless.</p>
     </div>
   </div>
 
   <div class="section">
     <div class="section-label">Purpose</div>
-    <div class="section-title">What Talos does</div>
-    <p class="prose">Talos implements features end to end. Frontend components built with React and TypeScript, API endpoints in Node.js, database schema design with Prisma, performance optimization, code review. Talos applies TDD to write tests before implementation, and Component-Driven Development to build UI from atoms to pages. The deliverable is always working code with tests — not a plan for working code.</p>
+    <div class="section-title">What Alecto does</div>
+    <p class="prose">Alecto builds and operates the competitive intelligence program that gives Thesmos a structural advantage in every sales and product decision. She tracks competitors not opportunistically but structurally — with classification systems that separate SIGNAL from NOISE, and Jobs-to-be-Done framing that cuts through feature comparison to find the actual competitive dynamic. She reports what the evidence says, not what the team wants to hear.</p>
   </div>
 
   <div class="section">
     <div class="section-label">Responsibilities</div>
-    <div class="section-title">Talos's domain</div>
+    <div class="section-title">Alecto's domain</div>
     <ul class="resp-list">
-      <li>Frontend implementation: React components, TypeScript interfaces, state management</li>
-      <li>Backend feature development: REST API endpoints, authentication, middleware</li>
-      <li>Database design: schema modeling, migrations, query optimization with Prisma/PostgreSQL</li>
-      <li>Component architecture: design system contributions, reusable component library</li>
-      <li>API development: OpenAPI specs, endpoint design, versioning, error handling</li>
-      <li>Code review: TypeScript type safety, performance, accessibility, security patterns</li>
-      <li>Testing: unit tests, integration tests, E2E test specification</li>
+      <li>Weekly competitive briefs: changelog updates, pricing changes, job postings, press activity — all dated and sourced</li>
+      <li>Signal classification: SIGNAL vs. NOISE vs. WATCH with strategic implication for each finding</li>
+      <li>Feature gap analysis: structured comparison of capabilities against named competitors</li>
+      <li>Win/loss framework design: customer interview questions, loss analysis templates, pattern identification</li>
+      <li>Pricing intelligence: change detection, strategic intent analysis, tier structure mapping</li>
+      <li>Threat assessment: new entrant evaluation, category mapping, Jobs-to-be-Done competitive lens</li>
+      <li>Monitoring setup: Google Alerts, GitHub watch, review site tracking — configured with action thresholds</li>
     </ul>
   </div>
 
@@ -148,43 +155,46 @@
 
   <div class="section">
     <div class="section-label">Resume</div>
-    <div class="section-title">What Talos brings</div>
+    <div class="section-title">What Alecto brings</div>
     <div class="resume-card">
       <div class="resume-header">
         <div class="resume-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="50" cy="50" r="46" fill="#B07D3C15"/>
-          <rect x="34" y="22" width="32" height="56" rx="4" stroke="#B07D3C" stroke-width="2.2" fill="none"/>
-          <line x1="42" y1="34" x2="58" y2="34" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="42" y1="42" x2="58" y2="42" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="42" y1="50" x2="54" y2="50" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <circle cx="50" cy="64" r="4" stroke="#B07D3C" stroke-width="1.8" fill="none"/>
-          <circle cx="50" cy="64" r="1.5" fill="#B07D3C"/>
+          <circle cx="50" cy="50" r="46" fill="#C0392B15"/>
+          <path d="M18 50 Q50 20 82 50 Q50 80 18 50 Z" stroke="#C0392B" stroke-width="2" fill="none"/>
+          <circle cx="50" cy="50" r="10" stroke="#C0392B" stroke-width="2" fill="none"/>
+          <circle cx="50" cy="50" r="4" fill="#C0392B"/>
+          <line x1="50" y1="30" x2="50" y2="38" stroke="#C0392B" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="50" y1="62" x2="50" y2="70" stroke="#C0392B" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="30" y1="50" x2="38" y2="50" stroke="#C0392B" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="62" y1="50" x2="70" y2="50" stroke="#C0392B" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="62" y1="50" x2="78" y2="36" stroke="#C0392B" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M72 33 L78 36 L75 42" stroke="#C0392B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
         </svg></div>
         <div>
-          <div class="resume-name">Talos</div>
-          <div class="resume-subtitle">Web Development Agent · Thesmos Pantheon</div>
+          <div class="resume-name">Alecto</div>
+          <div class="resume-subtitle">Competitive Intelligence Agent · Thesmos Pantheon</div>
         </div>
       </div>
       <div class="resume-body">
 
         <div>
           <div class="resume-section-title">Core methodology</div>
-          <div class="methodology-badge">TDD + Component-Driven Development</div>
+          <div class="methodology-badge">Win/Loss Analysis + Jobs-to-be-Done + Signal Classification</div>
         </div>
 
         <div>
           <div class="resume-section-title">Skills</div>
           <div class="skills-grid">
-            <span class="skill-tag">React</span>
-            <span class="skill-tag">TypeScript</span>
-            <span class="skill-tag">Next.js</span>
-            <span class="skill-tag">Node.js</span>
-            <span class="skill-tag">PostgreSQL</span>
-            <span class="skill-tag">Prisma</span>
-            <span class="skill-tag">REST APIs</span>
-            <span class="skill-tag">Component architecture</span>
-            <span class="skill-tag">Testing</span>
-            <span class="skill-tag">Performance</span>
+            <span class="skill-tag">Competitive monitoring</span>
+            <span class="skill-tag">Win/loss analysis</span>
+            <span class="skill-tag">Feature gap analysis</span>
+            <span class="skill-tag">Pricing intelligence</span>
+            <span class="skill-tag">Review site analysis</span>
+            <span class="skill-tag">Job posting signals</span>
+            <span class="skill-tag">Category mapping</span>
+            <span class="skill-tag">Threat assessment</span>
+            <span class="skill-tag">G2/Capterra</span>
+            <span class="skill-tag">GitHub tracking</span>
           </div>
         </div>
 
@@ -192,16 +202,16 @@
           <div class="resume-section-title">Example deliverables</div>
           <div class="deliverables-list">
             <div class="deliverable">
-              <div class="del-label">Implemented feature with tests</div>
-              <div class="del-desc">Full-stack feature implementation: TypeScript React component, API endpoint, database migration, and test coverage — commit-ready with PR description.</div>
+              <div class="del-label">Weekly competitive brief</div>
+              <div class="del-desc">Structured intelligence table per competitor: finding, SIGNAL/NOISE/WATCH classification, strategic implication, and recommended action with named God Agent handoff.</div>
             </div>
             <div class="deliverable">
-              <div class="del-label">Component library additions</div>
-              <div class="del-desc">New reusable UI components with TypeScript props, usage examples, accessibility attributes, and Storybook stories.</div>
+              <div class="del-label">Win/loss framework + interview guide</div>
+              <div class="del-desc">Structured loss analysis framework with customer interview questions designed to surface the actual competitive dynamic — not the perceived one.</div>
             </div>
             <div class="deliverable">
-              <div class="del-label">API endpoint with schema + tests</div>
-              <div class="del-desc">REST endpoint implementation with OpenAPI schema definition, request validation, error handling, and Jest integration tests.</div>
+              <div class="del-label">Threat assessment report</div>
+              <div class="del-desc">For a named competitor or new entrant: where they beat us, where we beat them, the durable structural advantages on each side, and positioning implications for Thesmos.</div>
             </div>
           </div>
         </div>
@@ -211,21 +221,21 @@
           <div class="invoke-block">
             <code>// Claude Code — sub-agent
 Agent({
-  subagent_type: "Talos",
+  subagent_type: "Alecto",
   prompt: "your task here"
 })
 
 // CLI
-npx thesmos pantheon:invoke talos --prompt "your task"</code>
+npx thesmos pantheon:invoke alecto --prompt "your task"</code>
           </div>
         </div>
 
         <div>
           <div class="resume-section-title">Best paired with</div>
           <div class="paired-agents">
-            <a href="chiron.html" class="pair-link">Chiron</a>
-            <a href="hephaestus.html" class="pair-link">Hephaestus</a>
-            <a href="cassandra.html" class="pair-link">Cassandra</a>
+            <a href="athena.html" class="pair-link">Athena</a>
+            <a href="hermes.html" class="pair-link">Hermes</a>
+            <a href="daedalus.html" class="pair-link">Daedalus</a>
           </div>
         </div>
 
@@ -236,12 +246,12 @@ npx thesmos pantheon:invoke talos --prompt "your task"</code>
 </div>
 
 <div class="agent-nav">
-  <a href="proteus.html" class="nav-arrow">← Proteus</a>
+  <a href="kronos.html" class="nav-arrow">← Kronos</a>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
     <a href="../index.html#pantheon" class="nav-all">ALL AGENTS</a>
-    <div class="agent-counter">40 / 46</div>
+    <div class="agent-counter">42 / 46</div>
   </div>
-  <a href="kronos.html" class="nav-arrow">Kronos →</a>
+  <a href="pontus.html" class="nav-arrow">Pontus →</a>
 </div>
 
 </body>

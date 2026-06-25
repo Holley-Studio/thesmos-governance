@@ -51,6 +51,7 @@ import { cmdDeps } from './commands/deps.ts';
 import { cmdCompliance } from './commands/compliance.ts';
 import { cmdAiFingerprint } from './commands/ai-fingerprint.ts';
 import { cmdPantheon } from './commands/pantheon.ts';
+import { cmdTeams } from './commands/teams.ts';
 import { cmdProfile } from './commands/profile.ts';
 import { cmdSuppress } from './commands/suppress.ts';
 import { cmdVault } from './commands/secrets.ts';
@@ -167,6 +168,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'self:check':             (argv) => cmdSelf(['check', ...argv]),
   'self:update':            (argv) => cmdSelf(['update', ...argv]),
   'self:repair':            (argv) => cmdSelf(['repair', ...argv]),
+  'self:improve':           ()     => cmdSelf(['improve']),
   'brain:snapshot':         (argv) => cmdBrain(['snapshot', ...argv]),
   'brain:compact':          ()     => cmdBrain(['compact']),
   'brain:hook-install':     ()     => cmdBrain(['hook-install']),
@@ -196,6 +198,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   compile:                  (argv) => cmdCompile(argv),
   notify:                   (argv) => cmdNotify(argv),
   'pantheon:council':       (argv) => cmdPantheon(['council', ...argv]),
+  'pantheon:team':          (argv) => cmdTeams(argv),
   'profile:init':           (argv) => cmdProfile('init', argv),
   'profile:view':           (argv) => cmdProfile('view', argv),
   'profile:correct':        (argv) => cmdProfile('correct', argv),
@@ -521,7 +524,7 @@ const cliStart = Date.now();
 log.info('command start', { command });
 
 // Skip update check for machine-readable commands and update itself
-const SKIP_UPDATE_CHECK = new Set(['tokens:report', 'health', 'self:check', 'self:update', 'profile:view']);
+const SKIP_UPDATE_CHECK = new Set(['tokens:report', 'health', 'self:check', 'self:update', 'self:improve', 'profile:view']);
 
 handler(argv.slice(1))
   .then(() => {

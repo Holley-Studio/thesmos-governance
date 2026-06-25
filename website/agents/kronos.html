@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Talos — Web Development Agent · Thesmos Pantheon</title>
-  <meta name="description" content="Talos is the Web Development Agent of the Thesmos Pantheon. Full-stack web development: React, TypeScript, Next.js, Node.js, databases — the agent that ships production code, not just designs.">
+  <title>Kronos — GitHub Repository Agent · Thesmos Pantheon</title>
+  <meta name="description" content="Kronos is the GitHub Repository Agent of the Thesmos Pantheon. Branch strategy, semantic versioning, release automation, CODEOWNERS, PR standards — the agent that brings order to your repository history.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #B07D3C; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
+    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #5E6AD2; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
     html { scroll-behavior: smooth; }
     body { background: var(--navy); color: var(--t1); font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; min-height: 100vh; }
     nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px,5vw,80px); height: 60px; background: rgba(5,4,8,.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
@@ -90,23 +90,30 @@
     <span>·</span>
     <a href="../index.html#pantheon">Pantheon</a>
     <span>·</span>
-    <span>Talos</span>
+    <span>Kronos</span>
   </div>
   <div class="agent-header">
     <div class="agent-avatar-lg">
       <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="46" fill="#B07D3C15"/>
-        <rect x="34" y="22" width="32" height="56" rx="4" stroke="#B07D3C" stroke-width="2.2" fill="none"/>
-        <line x1="42" y1="34" x2="58" y2="34" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <line x1="42" y1="42" x2="58" y2="42" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <line x1="42" y1="50" x2="54" y2="50" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <circle cx="50" cy="64" r="4" stroke="#B07D3C" stroke-width="1.8" fill="none"/>
-        <circle cx="50" cy="64" r="1.5" fill="#B07D3C"/>
+        <circle cx="50" cy="50" r="46" fill="#5E6AD215"/>
+        <!-- Clock face -->
+        <circle cx="50" cy="42" r="20" stroke="#5E6AD2" stroke-width="2" fill="none"/>
+        <!-- Clock hands -->
+        <line x1="50" y1="42" x2="50" y2="28" stroke="#5E6AD2" stroke-width="2" stroke-linecap="round"/>
+        <line x1="50" y1="42" x2="60" y2="48" stroke="#5E6AD2" stroke-width="1.8" stroke-linecap="round"/>
+        <!-- Git branch lines -->
+        <line x1="50" y1="68" x2="50" y2="80" stroke="#5E6AD2" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="50" y1="72" x2="36" y2="80" stroke="#5E6AD2" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="50" y1="72" x2="64" y2="80" stroke="#5E6AD2" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="36" cy="80" r="3" fill="#5E6AD2"/>
+        <circle cx="50" cy="80" r="3" fill="#5E6AD2"/>
+        <circle cx="64" cy="80" r="3" fill="#5E6AD2"/>
+        <circle cx="50" cy="68" r="2.5" fill="#5E6AD2"/>
       </svg>
     </div>
     <div class="agent-meta">
-      <div class="agent-name">Talos</div>
-      <div class="agent-role-title">Web Development Agent · Full-Stack React, TypeScript & Node.js</div>
+      <div class="agent-name">Kronos</div>
+      <div class="agent-role-title">GitHub Repository Agent · Branch Strategy, Semver & Release Automation</div>
       <div class="agent-pantheon-tag">THESMOS PANTHEON</div>
     </div>
   </div>
@@ -119,28 +126,28 @@
   <div class="section" style="margin-top:48px">
     <div class="section-label">Mythology</div>
     <div class="lore-block">
-      <p>Talos was the giant bronze automaton created by Hephaestus and given by Zeus to Europa as her guardian — he circled the island of Crete three times daily, repelling invaders by hurling boulders or heating his bronze body red-hot to crush enemies in an embrace. He was singular in purpose: protect the perimeter, without rest, without failure.</p>
-      <p class="lore-channel">Thesmos channels Talos as full-stack web development. React, TypeScript, Next.js, Node.js, databases. Where Hephaestus designed the form, Talos operates it relentlessly — the agent that ships production code, not just designs.</p>
+      <p>Kronos was the Titan king who ordered the cosmos by controlling what happens when — he did not merely rule time, he sequenced it. He determined which age preceded the next, which era gave way to the one after. The cosmos had coherence because Kronos held the sequence.</p>
+      <p class="lore-channel">Thesmos channels Kronos as GitHub repository and release management. Branch strategy, semantic versioning, conventional commits, CODEOWNERS, release runbooks. Where other agents write the code, Kronos decides when and how it merges — the agent that makes the sequence of code history legible.</p>
     </div>
   </div>
 
   <div class="section">
     <div class="section-label">Purpose</div>
-    <div class="section-title">What Talos does</div>
-    <p class="prose">Talos implements features end to end. Frontend components built with React and TypeScript, API endpoints in Node.js, database schema design with Prisma, performance optimization, code review. Talos applies TDD to write tests before implementation, and Component-Driven Development to build UI from atoms to pages. The deliverable is always working code with tests — not a plan for working code.</p>
+    <div class="section-title">What Kronos does</div>
+    <p class="prose">Kronos designs and enforces repository structures, branch strategies, release pipelines, and commit conventions. He gives every team member an unambiguous answer to: Where does my work go? When does it ship? What version does it become? What did we deliver? Kronos applies Trunk-Based Development for high-velocity teams and GitFlow for release-train organizations — always with Semantic Versioning and Conventional Commits as the foundation for automated release calculation.</p>
   </div>
 
   <div class="section">
     <div class="section-label">Responsibilities</div>
-    <div class="section-title">Talos's domain</div>
+    <div class="section-title">Kronos's domain</div>
     <ul class="resp-list">
-      <li>Frontend implementation: React components, TypeScript interfaces, state management</li>
-      <li>Backend feature development: REST API endpoints, authentication, middleware</li>
-      <li>Database design: schema modeling, migrations, query optimization with Prisma/PostgreSQL</li>
-      <li>Component architecture: design system contributions, reusable component library</li>
-      <li>API development: OpenAPI specs, endpoint design, versioning, error handling</li>
-      <li>Code review: TypeScript type safety, performance, accessibility, security patterns</li>
-      <li>Testing: unit tests, integration tests, E2E test specification</li>
+      <li>Branch strategy design: trunk-based or GitFlow, with protection rules and merge policies</li>
+      <li>Semantic versioning policy: MAJOR.MINOR.PATCH decision tables with Conventional Commits as input</li>
+      <li>Release runbooks: step-by-step procedures for regular releases, hotfixes, and pre-releases</li>
+      <li>CODEOWNERS authoring: ownership-as-code for critical paths including CI, billing, and auth</li>
+      <li>PR templates and commit convention enforcement: Commitizen, commitlint, Husky integration</li>
+      <li>Changelog automation: semantic-release configuration for automated CHANGELOG + npm publish</li>
+      <li>GitHub Actions audit: workflow security review for SEC_013 and INFRA_003 compliance</li>
     </ul>
   </div>
 
@@ -148,43 +155,47 @@
 
   <div class="section">
     <div class="section-label">Resume</div>
-    <div class="section-title">What Talos brings</div>
+    <div class="section-title">What Kronos brings</div>
     <div class="resume-card">
       <div class="resume-header">
         <div class="resume-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="50" cy="50" r="46" fill="#B07D3C15"/>
-          <rect x="34" y="22" width="32" height="56" rx="4" stroke="#B07D3C" stroke-width="2.2" fill="none"/>
-          <line x1="42" y1="34" x2="58" y2="34" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="42" y1="42" x2="58" y2="42" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="42" y1="50" x2="54" y2="50" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <circle cx="50" cy="64" r="4" stroke="#B07D3C" stroke-width="1.8" fill="none"/>
-          <circle cx="50" cy="64" r="1.5" fill="#B07D3C"/>
+          <circle cx="50" cy="50" r="46" fill="#5E6AD215"/>
+          <circle cx="50" cy="42" r="20" stroke="#5E6AD2" stroke-width="2" fill="none"/>
+          <line x1="50" y1="42" x2="50" y2="28" stroke="#5E6AD2" stroke-width="2" stroke-linecap="round"/>
+          <line x1="50" y1="42" x2="60" y2="48" stroke="#5E6AD2" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="50" y1="68" x2="50" y2="80" stroke="#5E6AD2" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="50" y1="72" x2="36" y2="80" stroke="#5E6AD2" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="50" y1="72" x2="64" y2="80" stroke="#5E6AD2" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="36" cy="80" r="3" fill="#5E6AD2"/>
+          <circle cx="50" cy="80" r="3" fill="#5E6AD2"/>
+          <circle cx="64" cy="80" r="3" fill="#5E6AD2"/>
+          <circle cx="50" cy="68" r="2.5" fill="#5E6AD2"/>
         </svg></div>
         <div>
-          <div class="resume-name">Talos</div>
-          <div class="resume-subtitle">Web Development Agent · Thesmos Pantheon</div>
+          <div class="resume-name">Kronos</div>
+          <div class="resume-subtitle">GitHub Repository Agent · Thesmos Pantheon</div>
         </div>
       </div>
       <div class="resume-body">
 
         <div>
           <div class="resume-section-title">Core methodology</div>
-          <div class="methodology-badge">TDD + Component-Driven Development</div>
+          <div class="methodology-badge">Trunk-Based Development + Semantic Versioning</div>
         </div>
 
         <div>
           <div class="resume-section-title">Skills</div>
           <div class="skills-grid">
-            <span class="skill-tag">React</span>
-            <span class="skill-tag">TypeScript</span>
-            <span class="skill-tag">Next.js</span>
-            <span class="skill-tag">Node.js</span>
-            <span class="skill-tag">PostgreSQL</span>
-            <span class="skill-tag">Prisma</span>
-            <span class="skill-tag">REST APIs</span>
-            <span class="skill-tag">Component architecture</span>
-            <span class="skill-tag">Testing</span>
-            <span class="skill-tag">Performance</span>
+            <span class="skill-tag">Branch strategy</span>
+            <span class="skill-tag">Semantic versioning</span>
+            <span class="skill-tag">Conventional Commits</span>
+            <span class="skill-tag">semantic-release</span>
+            <span class="skill-tag">CODEOWNERS</span>
+            <span class="skill-tag">GitHub Actions</span>
+            <span class="skill-tag">Branch protection</span>
+            <span class="skill-tag">Release runbooks</span>
+            <span class="skill-tag">Dependabot</span>
+            <span class="skill-tag">Commitlint</span>
           </div>
         </div>
 
@@ -192,16 +203,16 @@
           <div class="resume-section-title">Example deliverables</div>
           <div class="deliverables-list">
             <div class="deliverable">
-              <div class="del-label">Implemented feature with tests</div>
-              <div class="del-desc">Full-stack feature implementation: TypeScript React component, API endpoint, database migration, and test coverage — commit-ready with PR description.</div>
+              <div class="del-label">Branch strategy diagram + protection rules</div>
+              <div class="del-desc">Named branches with purposes, merge directions, protection rules as gh CLI commands, and policy for each — what triggers a merge and who can approve.</div>
             </div>
             <div class="deliverable">
-              <div class="del-label">Component library additions</div>
-              <div class="del-desc">New reusable UI components with TypeScript props, usage examples, accessibility attributes, and Storybook stories.</div>
+              <div class="del-label">Semver decision table</div>
+              <div class="del-desc">Given a set of commit types, what version increment results — MAJOR, MINOR, PATCH, and pre-release — with exact Conventional Commits examples for each.</div>
             </div>
             <div class="deliverable">
-              <div class="del-label">API endpoint with schema + tests</div>
-              <div class="del-desc">REST endpoint implementation with OpenAPI schema definition, request validation, error handling, and Jest integration tests.</div>
+              <div class="del-label">Release runbook with automation config</div>
+              <div class="del-desc">Step-by-step release procedure with semantic-release .releaserc.json, GitHub Actions release workflow, and CODEOWNERS ready to copy into the repository.</div>
             </div>
           </div>
         </div>
@@ -211,21 +222,21 @@
           <div class="invoke-block">
             <code>// Claude Code — sub-agent
 Agent({
-  subagent_type: "Talos",
+  subagent_type: "Kronos",
   prompt: "your task here"
 })
 
 // CLI
-npx thesmos pantheon:invoke talos --prompt "your task"</code>
+npx thesmos pantheon:invoke kronos --prompt "your task"</code>
           </div>
         </div>
 
         <div>
           <div class="resume-section-title">Best paired with</div>
           <div class="paired-agents">
-            <a href="chiron.html" class="pair-link">Chiron</a>
-            <a href="hephaestus.html" class="pair-link">Hephaestus</a>
+            <a href="talos.html" class="pair-link">Talos</a>
             <a href="cassandra.html" class="pair-link">Cassandra</a>
+            <a href="metis.html" class="pair-link">Metis</a>
           </div>
         </div>
 
@@ -236,12 +247,12 @@ npx thesmos pantheon:invoke talos --prompt "your task"</code>
 </div>
 
 <div class="agent-nav">
-  <a href="proteus.html" class="nav-arrow">← Proteus</a>
+  <a href="talos.html" class="nav-arrow">← Talos</a>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
     <a href="../index.html#pantheon" class="nav-all">ALL AGENTS</a>
-    <div class="agent-counter">40 / 46</div>
+    <div class="agent-counter">41 / 46</div>
   </div>
-  <a href="kronos.html" class="nav-arrow">Kronos →</a>
+  <a href="alecto.html" class="nav-arrow">Alecto →</a>
 </div>
 
 </body>

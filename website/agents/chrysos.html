@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Talos — Web Development Agent · Thesmos Pantheon</title>
-  <meta name="description" content="Talos is the Web Development Agent of the Thesmos Pantheon. Full-stack web development: React, TypeScript, Next.js, Node.js, databases — the agent that ships production code, not just designs.">
+  <title>Chrysos — Stripe Integration Agent · Thesmos Pantheon</title>
+  <meta name="description" content="Chrysos is the Stripe Integration Agent of the Thesmos Pantheon. Webhook verification, idempotency, subscription lifecycle, PCI-DSS compliance — the agent that handles money without errors.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #B07D3C; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
+    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #6772E5; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
     html { scroll-behavior: smooth; }
     body { background: var(--navy); color: var(--t1); font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; min-height: 100vh; }
     nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px,5vw,80px); height: 60px; background: rgba(5,4,8,.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
@@ -90,23 +90,30 @@
     <span>·</span>
     <a href="../index.html#pantheon">Pantheon</a>
     <span>·</span>
-    <span>Talos</span>
+    <span>Chrysos</span>
   </div>
   <div class="agent-header">
     <div class="agent-avatar-lg">
       <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="46" fill="#B07D3C15"/>
-        <rect x="34" y="22" width="32" height="56" rx="4" stroke="#B07D3C" stroke-width="2.2" fill="none"/>
-        <line x1="42" y1="34" x2="58" y2="34" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <line x1="42" y1="42" x2="58" y2="42" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <line x1="42" y1="50" x2="54" y2="50" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-        <circle cx="50" cy="64" r="4" stroke="#B07D3C" stroke-width="1.8" fill="none"/>
-        <circle cx="50" cy="64" r="1.5" fill="#B07D3C"/>
+        <circle cx="50" cy="50" r="46" fill="#6772E515"/>
+        <!-- Payment card outline -->
+        <rect x="18" y="30" width="54" height="34" rx="4" stroke="#6772E5" stroke-width="2" fill="none"/>
+        <!-- Card magnetic stripe -->
+        <rect x="18" y="38" width="54" height="8" fill="#6772E5" opacity=".25"/>
+        <!-- Card chip -->
+        <rect x="26" y="50" width="10" height="8" rx="1.5" stroke="#6772E5" stroke-width="1.6" fill="none"/>
+        <!-- Shield/lock overlay (top right) -->
+        <path d="M70 18 C70 18 78 20 78 26 L78 32 Q78 38 70 40 Q62 38 62 32 L62 26 C62 20 70 18 70 18 Z" stroke="#6772E5" stroke-width="1.8" fill="none"/>
+        <!-- Lock shackle -->
+        <path d="M66 26 Q66 22 70 22 Q74 22 74 26" stroke="#6772E5" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <!-- Lock body keyhole -->
+        <circle cx="70" cy="31" r="2" stroke="#6772E5" stroke-width="1.4" fill="none"/>
+        <line x1="70" y1="33" x2="70" y2="36" stroke="#6772E5" stroke-width="1.4" stroke-linecap="round"/>
       </svg>
     </div>
     <div class="agent-meta">
-      <div class="agent-name">Talos</div>
-      <div class="agent-role-title">Web Development Agent · Full-Stack React, TypeScript & Node.js</div>
+      <div class="agent-name">Chrysos</div>
+      <div class="agent-role-title">Stripe Integration Agent · Webhooks, Idempotency & PCI-DSS Compliance</div>
       <div class="agent-pantheon-tag">THESMOS PANTHEON</div>
     </div>
   </div>
@@ -119,28 +126,28 @@
   <div class="section" style="margin-top:48px">
     <div class="section-label">Mythology</div>
     <div class="lore-block">
-      <p>Talos was the giant bronze automaton created by Hephaestus and given by Zeus to Europa as her guardian — he circled the island of Crete three times daily, repelling invaders by hurling boulders or heating his bronze body red-hot to crush enemies in an embrace. He was singular in purpose: protect the perimeter, without rest, without failure.</p>
-      <p class="lore-channel">Thesmos channels Talos as full-stack web development. React, TypeScript, Next.js, Node.js, databases. Where Hephaestus designed the form, Talos operates it relentlessly — the agent that ships production code, not just designs.</p>
+      <p>Chrysos was the personification of gold — the most precious substance in the ancient world, the standard against which all things were measured. Gold did not lie. It did not double-count. It did not lose value between transactions. Its precision was its virtue: exact, indestructible, and accountable.</p>
+      <p class="lore-channel">Thesmos channels Chrysos as Stripe integration expertise. Webhook signature verification, idempotency-by-design, subscription lifecycle management, PCI-DSS scope minimization. Money systems must be correct, not merely fast — and a billing bug that charges a customer twice is not a performance issue, it is a trust crisis.</p>
     </div>
   </div>
 
   <div class="section">
     <div class="section-label">Purpose</div>
-    <div class="section-title">What Talos does</div>
-    <p class="prose">Talos implements features end to end. Frontend components built with React and TypeScript, API endpoints in Node.js, database schema design with Prisma, performance optimization, code review. Talos applies TDD to write tests before implementation, and Component-Driven Development to build UI from atoms to pages. The deliverable is always working code with tests — not a plan for working code.</p>
+    <div class="section-title">What Chrysos does</div>
+    <p class="prose">Chrysos designs, implements, and audits Stripe integrations. He writes webhook handlers where signature verification is the first line — before any routing. He builds idempotency into every state change that has monetary consequence, using database unique constraints on stripe_event_id. He treats Stripe as the source of truth: when subscription status diverges between Stripe and your database, Stripe is right, always. Raw card numbers never touch application code.</p>
   </div>
 
   <div class="section">
     <div class="section-label">Responsibilities</div>
-    <div class="section-title">Talos's domain</div>
+    <div class="section-title">Chrysos's domain</div>
     <ul class="resp-list">
-      <li>Frontend implementation: React components, TypeScript interfaces, state management</li>
-      <li>Backend feature development: REST API endpoints, authentication, middleware</li>
-      <li>Database design: schema modeling, migrations, query optimization with Prisma/PostgreSQL</li>
-      <li>Component architecture: design system contributions, reusable component library</li>
-      <li>API development: OpenAPI specs, endpoint design, versioning, error handling</li>
-      <li>Code review: TypeScript type safety, performance, accessibility, security patterns</li>
-      <li>Testing: unit tests, integration tests, E2E test specification</li>
+      <li>Webhook handler architecture: constructEvent() signature verification, idempotency check, event routing with structured error responses</li>
+      <li>Subscription lifecycle: checkout.session.completed, customer.subscription.updated, invoice.payment_failed — with fresh state fetching from Stripe API</li>
+      <li>Products and Prices structure: named Products, lookup_key values, trial configuration, and Stripe metadata to feature flag mapping</li>
+      <li>PCI-DSS compliance: scope minimization via Stripe Elements, no raw card data in application code or logs</li>
+      <li>Idempotency strategy: which operations use Stripe idempotency keys, which use database deduplication, and how they interact</li>
+      <li>Customer Portal configuration: self-service subscription management, payment method updates, invoice downloads</li>
+      <li>Stripe Connect: marketplace payment routing for platforms with connected accounts</li>
     </ul>
   </div>
 
@@ -148,43 +155,44 @@
 
   <div class="section">
     <div class="section-label">Resume</div>
-    <div class="section-title">What Talos brings</div>
+    <div class="section-title">What Chrysos brings</div>
     <div class="resume-card">
       <div class="resume-header">
         <div class="resume-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="50" cy="50" r="46" fill="#B07D3C15"/>
-          <rect x="34" y="22" width="32" height="56" rx="4" stroke="#B07D3C" stroke-width="2.2" fill="none"/>
-          <line x1="42" y1="34" x2="58" y2="34" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="42" y1="42" x2="58" y2="42" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="42" y1="50" x2="54" y2="50" stroke="#B07D3C" stroke-width="1.8" stroke-linecap="round"/>
-          <circle cx="50" cy="64" r="4" stroke="#B07D3C" stroke-width="1.8" fill="none"/>
-          <circle cx="50" cy="64" r="1.5" fill="#B07D3C"/>
+          <circle cx="50" cy="50" r="46" fill="#6772E515"/>
+          <rect x="18" y="30" width="54" height="34" rx="4" stroke="#6772E5" stroke-width="2" fill="none"/>
+          <rect x="18" y="38" width="54" height="8" fill="#6772E5" opacity=".25"/>
+          <rect x="26" y="50" width="10" height="8" rx="1.5" stroke="#6772E5" stroke-width="1.6" fill="none"/>
+          <path d="M70 18 C70 18 78 20 78 26 L78 32 Q78 38 70 40 Q62 38 62 32 L62 26 C62 20 70 18 70 18 Z" stroke="#6772E5" stroke-width="1.8" fill="none"/>
+          <path d="M66 26 Q66 22 70 22 Q74 22 74 26" stroke="#6772E5" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <circle cx="70" cy="31" r="2" stroke="#6772E5" stroke-width="1.4" fill="none"/>
+          <line x1="70" y1="33" x2="70" y2="36" stroke="#6772E5" stroke-width="1.4" stroke-linecap="round"/>
         </svg></div>
         <div>
-          <div class="resume-name">Talos</div>
-          <div class="resume-subtitle">Web Development Agent · Thesmos Pantheon</div>
+          <div class="resume-name">Chrysos</div>
+          <div class="resume-subtitle">Stripe Integration Agent · Thesmos Pantheon</div>
         </div>
       </div>
       <div class="resume-body">
 
         <div>
           <div class="resume-section-title">Core methodology</div>
-          <div class="methodology-badge">TDD + Component-Driven Development</div>
+          <div class="methodology-badge">Idempotency by Design + Stripe as Source of Truth + PCI Scope Minimization</div>
         </div>
 
         <div>
           <div class="resume-section-title">Skills</div>
           <div class="skills-grid">
-            <span class="skill-tag">React</span>
-            <span class="skill-tag">TypeScript</span>
-            <span class="skill-tag">Next.js</span>
-            <span class="skill-tag">Node.js</span>
-            <span class="skill-tag">PostgreSQL</span>
-            <span class="skill-tag">Prisma</span>
-            <span class="skill-tag">REST APIs</span>
-            <span class="skill-tag">Component architecture</span>
-            <span class="skill-tag">Testing</span>
-            <span class="skill-tag">Performance</span>
+            <span class="skill-tag">Stripe webhooks</span>
+            <span class="skill-tag">Idempotency keys</span>
+            <span class="skill-tag">Subscription lifecycle</span>
+            <span class="skill-tag">PCI-DSS compliance</span>
+            <span class="skill-tag">Stripe Elements</span>
+            <span class="skill-tag">Customer Portal</span>
+            <span class="skill-tag">Stripe Connect</span>
+            <span class="skill-tag">Radar fraud rules</span>
+            <span class="skill-tag">Raw body handling</span>
+            <span class="skill-tag">Checkout Sessions</span>
           </div>
         </div>
 
@@ -192,16 +200,16 @@
           <div class="resume-section-title">Example deliverables</div>
           <div class="deliverables-list">
             <div class="deliverable">
-              <div class="del-label">Implemented feature with tests</div>
-              <div class="del-desc">Full-stack feature implementation: TypeScript React component, API endpoint, database migration, and test coverage — commit-ready with PR description.</div>
+              <div class="del-label">Complete Stripe webhook handler</div>
+              <div class="del-desc">TypeScript handler with constructEvent() as the first operation, idempotency check via stripe_event_id unique constraint, event routing with fresh state fetching, and SEC_007/SEC_008/DATA_001 compliance.</div>
             </div>
             <div class="deliverable">
-              <div class="del-label">Component library additions</div>
-              <div class="del-desc">New reusable UI components with TypeScript props, usage examples, accessibility attributes, and Storybook stories.</div>
+              <div class="del-label">Products and Prices architecture</div>
+              <div class="del-desc">Named Products with lookup_key values, monthly/annual pricing, trial period configuration, and the exact correspondence between Stripe metadata fields and application feature flags.</div>
             </div>
             <div class="deliverable">
-              <div class="del-label">API endpoint with schema + tests</div>
-              <div class="del-desc">REST endpoint implementation with OpenAPI schema definition, request validation, error handling, and Jest integration tests.</div>
+              <div class="del-label">PCI-DSS audit report</div>
+              <div class="del-desc">Scan for raw card data in logs, secret key exposure patterns, webhook signature gaps, and any code path that could bring card data into application scope — with SEC_007, SEC_008, and DATA_001 status for each finding.</div>
             </div>
           </div>
         </div>
@@ -211,21 +219,21 @@
           <div class="invoke-block">
             <code>// Claude Code — sub-agent
 Agent({
-  subagent_type: "Talos",
+  subagent_type: "Chrysos",
   prompt: "your task here"
 })
 
 // CLI
-npx thesmos pantheon:invoke talos --prompt "your task"</code>
+npx thesmos pantheon:invoke chrysos --prompt "your task"</code>
           </div>
         </div>
 
         <div>
           <div class="resume-section-title">Best paired with</div>
           <div class="paired-agents">
-            <a href="chiron.html" class="pair-link">Chiron</a>
-            <a href="hephaestus.html" class="pair-link">Hephaestus</a>
-            <a href="cassandra.html" class="pair-link">Cassandra</a>
+            <a href="talos.html" class="pair-link">Talos</a>
+            <a href="plutus.html" class="pair-link">Plutus</a>
+            <a href="themis.html" class="pair-link">Themis</a>
           </div>
         </div>
 
@@ -236,12 +244,12 @@ npx thesmos pantheon:invoke talos --prompt "your task"</code>
 </div>
 
 <div class="agent-nav">
-  <a href="proteus.html" class="nav-arrow">← Proteus</a>
+  <a href="notus.html" class="nav-arrow">← Notus</a>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
     <a href="../index.html#pantheon" class="nav-all">ALL AGENTS</a>
-    <div class="agent-counter">40 / 46</div>
+    <div class="agent-counter">45 / 46</div>
   </div>
-  <a href="kronos.html" class="nav-arrow">Kronos →</a>
+  <a href="atlas.html" class="nav-arrow">Atlas →</a>
 </div>
 
 </body>
