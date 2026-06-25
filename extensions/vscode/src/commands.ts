@@ -23,6 +23,7 @@ import {
   runHealth,
   runAdapters,
   runThesmos,
+  runTokensReport,
   ThesmosNotFoundError,
   ThesmosReportMissingError,
 } from './runner.js';
@@ -649,6 +650,39 @@ export function registerCommands(
       });
       terminal.sendText('thesmos vercel:lint');
       terminal.show();
+    }),
+  );
+
+  // ── thesmos.tokens.report ───────────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('thesmos.tokens.report', async () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const outputChannel = vscode.window.createOutputChannel('Thesmos Token Usage');
+      outputChannel.show(true);
+      outputChannel.appendLine('Thesmos Token Usage — fetching…');
+
+      try {
+        const report = await runTokensReport(workspaceRoot, cfg.binaryPath || undefined);
+        if (!report) {
+          outputChannel.appendLine('No token usage recorded yet.');
+          return;
+        }
+
+        const fmt = (n: number) => n < 0.01 ? '<$0.01' : `$${n.toFixed(4)}`;
+        outputChannel.clear();
+        outputChannel.appendLine('── Thesmos Token Usage ─────────────────────');
+        outputChannel.appendLine(`  Session:  ${fmt(report.sessionCostUSD)}`);
+        outputChannel.appendLine(`  Today:    ${fmt(report.todayCostUSD)}`);
+        outputChannel.appendLine(`  Project:  ${fmt(report.projectCostUSD)}`);
+        outputChannel.appendLine('');
+        outputChannel.appendLine('Run `thesmos tokens:reset --session` to reset the session counter.');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        outputChannel.appendLine(`Error: ${msg}`);
+      }
     }),
   );
 

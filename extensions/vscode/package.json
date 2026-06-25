@@ -222,6 +222,12 @@
         "title": "Invoke Agent",
         "category": "Thesmos Agents",
         "icon": "$(play)"
+      },
+      {
+        "command": "thesmos.tokens.report",
+        "title": "Show Token Usage",
+        "category": "Thesmos",
+        "icon": "$(circuit-board)"
       }
     ],
     "viewsContainers": {

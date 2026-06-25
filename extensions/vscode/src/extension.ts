@@ -39,6 +39,7 @@ import { ThesmosCodeActionProvider } from './codeAction.js';
 import {
   runReview,
   runHealth,
+  runTokensReport,
   isInstalled,
   hasReport,
   ThesmosNotFoundError,
@@ -404,6 +405,13 @@ class ThesmosExtension implements vscode.Disposable {
       // Health score is a nice-to-have; don't surface the error
       this.statusBar.showInactive();
     }
+
+    // Token meter — non-blocking, fail silently
+    void runTokensReport(this.workspaceRoot, cfg.binaryPath || undefined).then((report) => {
+      if (report) {
+        this.statusBar.showTokenCost(report.sessionCostUSD, report.todayCostUSD);
+      }
+    });
   }
 
   private handleAnalysisError(err: unknown): void {
