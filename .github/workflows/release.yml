@@ -123,6 +123,7 @@ jobs:
         run: npx vsce publish --no-dependencies
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        continue-on-error: true
 
       - name: Publish to Open VSX Registry
         working-directory: extensions/vscode
