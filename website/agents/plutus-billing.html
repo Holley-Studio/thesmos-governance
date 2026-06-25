@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Atlas — Platform Integration Agent · Thesmos Pantheon</title>
-  <meta name="description" content="Atlas is the Platform Integration Agent of the Thesmos Pantheon. Cross-repo governance, template management, naming conventions, platform health — the agent that holds the entire project landscape together.">
+  <title>Plutus — Billing Operations Agent · Thesmos Business Pack</title>
+  <meta name="description" content="Plutus is the Billing Operations & Revenue Collection Agent of the Thesmos Business Pack. Invoice automation, AR aging, dunning sequences, Stripe Billing configuration, and monthly reconciliation.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #7B68EE; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
+    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #27AE60; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
     html { scroll-behavior: smooth; }
     body { background: var(--navy); color: var(--t1); font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; min-height: 100vh; }
     nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px,5vw,80px); height: 60px; background: rgba(5,4,8,.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
@@ -90,36 +90,24 @@
     <span>·</span>
     <a href="../index.html#pantheon">Pantheon</a>
     <span>·</span>
-    <span>Atlas</span>
+    <span>Plutus (Billing)</span>
   </div>
   <div class="agent-header">
     <div class="agent-avatar-lg">
       <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="46" fill="#7B68EE15"/>
-        <!-- Atlas figure: person silhouette holding sphere -->
-        <!-- Head -->
-        <circle cx="50" cy="28" r="7" stroke="#7B68EE" stroke-width="2" fill="none"/>
-        <!-- Body/torso lines -->
-        <line x1="50" y1="35" x2="50" y2="55" stroke="#7B68EE" stroke-width="2" stroke-linecap="round"/>
-        <!-- Arms raised holding sphere above -->
-        <line x1="50" y1="42" x2="34" y2="35" stroke="#7B68EE" stroke-width="1.8" stroke-linecap="round"/>
-        <line x1="50" y1="42" x2="66" y2="35" stroke="#7B68EE" stroke-width="1.8" stroke-linecap="round"/>
-        <!-- Globe/sphere above arms -->
-        <circle cx="50" cy="16" r="10" stroke="#7B68EE" stroke-width="1.8" fill="none"/>
-        <!-- Latitude lines on globe -->
-        <path d="M40 16 Q50 13 60 16" stroke="#7B68EE" stroke-width="1" fill="none" opacity=".6"/>
-        <path d="M40 16 Q50 19 60 16" stroke="#7B68EE" stroke-width="1" fill="none" opacity=".6"/>
-        <!-- Vertical meridian on globe -->
-        <line x1="50" y1="6" x2="50" y2="26" stroke="#7B68EE" stroke-width="1" opacity=".6"/>
-        <!-- Legs -->
-        <line x1="50" y1="55" x2="40" y2="72" stroke="#7B68EE" stroke-width="1.8" stroke-linecap="round"/>
-        <line x1="50" y1="55" x2="60" y2="72" stroke="#7B68EE" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="50" cy="50" r="46" fill="#27AE6015"/>
+        <rect x="24" y="18" width="40" height="56" rx="3" stroke="#27AE60" stroke-width="2" fill="none"/>
+        <path d="M50 27 L50 31 M50 47 L50 51" stroke="#27AE60" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M56 31 Q43 31 43 37 Q43 41 50 41 Q57 41 57 47 Q57 53 44 53" stroke="#27AE60" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <line x1="30" y1="60" x2="58" y2="60" stroke="#27AE60" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>
+        <line x1="30" y1="66" x2="52" y2="66" stroke="#27AE60" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>
+        <line x1="30" y1="72" x2="58" y2="72" stroke="#27AE60" stroke-width="1.8" stroke-linecap="round"/>
       </svg>
     </div>
     <div class="agent-meta">
-      <div class="agent-name">Atlas</div>
-      <div class="agent-role-title">Platform Integration Agent · Cross-Repo Governance & Template Management</div>
-      <div class="agent-pantheon-tag">THESMOS PANTHEON</div>
+      <div class="agent-name">Plutus</div>
+      <div class="agent-role-title">Billing Operations Agent · AR Aging, Dunning Sequences & Revenue Collection</div>
+      <div class="agent-pantheon-tag">THESMOS BUSINESS PACK</div>
     </div>
   </div>
 </div>
@@ -131,28 +119,28 @@
   <div class="section" style="margin-top:48px">
     <div class="section-label">Mythology</div>
     <div class="lore-block">
-      <p>Atlas was the Titan condemned to hold up the celestial sphere for eternity — the weight of the world on his shoulders. But what made Atlas singular was his vantage point. To hold the sphere, he had to see it whole. No other being had that view: every continent, every coastline, every trajectory at once. The burden was the position.</p>
-      <p class="lore-channel">Thesmos channels Atlas as platform integration expertise. Cross-repo governance scanning, template creation and auditing, naming convention enforcement, platform health monitoring. Where other agents work within a single repository, Atlas sees the entire project landscape at once — the agent that holds it all together.</p>
+      <p>Plutus was said to be blind — he distributed wealth without knowing who deserved it. Zeus had blinded him so he would not show favor based on merit, and wealth would flow impartially to those the system designated. A billing operation makes collection systematic and impartial in the same way: it is not personal, it is operational. Revenue is collected from all accounts equally, according to the terms agreed, without judgment about who deserves to pay.</p>
+      <p class="lore-channel">Thesmos channels Plutus — Billing as the operational machinery that collects revenue after the deal is closed. The financial model tells you what to charge; billing is the system that actually collects it, reconciles it, and resolves it when it goes wrong. Where Plutus — Finance Agent handles pricing strategy and MRR/ARR analysis, Plutus — Billing owns the machinery that executes the billing cycle.</p>
     </div>
   </div>
 
   <div class="section">
     <div class="section-label">Purpose</div>
-    <div class="section-title">What Atlas does</div>
-    <p class="prose">Atlas designs and maintains the platform integration layer for Thesmos: template creation and auditing, cross-repo governance scanning, naming convention enforcement, scaffolding workflows, and platform health monitoring. He ensures that every managed repository starts correctly, stays correctly, and diverges visibly rather than silently. Governance you cannot measure cannot be trusted — and a template updated in one place but not propagated is worse than no template at all.</p>
+    <div class="section-title">What Plutus does</div>
+    <p class="prose">Plutus designs and operates the billing infrastructure that turns revenue into cash: invoice generation, delivery, and tracking; accounts receivable management with aging dashboards; payment failure handling with smart dunning sequences; subscription billing platform configuration in Stripe, Recurly, or Chargebee; expense reconciliation; and the escalation path for collections and disputes. Revenue recognized but uncollected is a forecast, not cash — Plutus closes that gap systematically.</p>
   </div>
 
   <div class="section">
     <div class="section-label">Responsibilities</div>
-    <div class="section-title">Atlas's domain</div>
+    <div class="section-title">Plutus's domain</div>
     <ul class="resp-list">
-      <li>Repository templates: CLAUDE.md with real behavioral constraints, .thesmos/scope.json with allowedPaths, governance CI workflow — for each service type</li>
-      <li>Cross-repo governance scanning: consolidated Thesmos score reports across all managed repositories with BLOCKER counts and remediation priority ranking</li>
-      <li>Naming convention specification: machine-readable JSON Schema and regex validators for repo names, branch names, environment variables, and API routes</li>
-      <li>Template drift detection: structural diff between service templates to surface inconsistency before it propagates to new services</li>
-      <li>Scaffolding workflows: step-by-step process for creating new repositories from templates with explicit manual configuration steps</li>
-      <li>Platform health manifest: Thesmos scores, scan timestamps, open blockers, and drift indicators per repository — suitable for automated weekly health reports</li>
-      <li>Governance bypass detection: repositories not in Atlas's registry that lack Thesmos config, CLAUDE.md constraints, and scope declarations</li>
+      <li>Invoice template design and automated delivery workflows: required fields, payment instructions, confirmation tracking, and dunning schedule</li>
+      <li>AR aging dashboard: current/1–30/31–60/61–90/90+ buckets, revenue-at-risk by bucket, owner assignment, and escalation triggers</li>
+      <li>Dunning sequence design: email cadence, smart retry scheduling aligned with Stripe/Recurly logic, in-app notifications, and access suspension decision point</li>
+      <li>Stripe Billing / Recurly / Chargebee configuration: product catalog, pricing rules, trial, proration, portal, and webhook events for AR tracking</li>
+      <li>Monthly billing reconciliation: invoiced vs. collected, deferred revenue for annual prepays, credit notes and refunds, chargeback outcomes, and platform fees</li>
+      <li>Chargeback and dispute triage: 24-hour response protocol, documentation requirements, resolution options, and escalation path to legal</li>
+      <li>Revenue recognition schedule: cash collected vs. revenue recognized, with deferred revenue tracking for annual contracts</li>
     </ul>
   </div>
 
@@ -160,47 +148,43 @@
 
   <div class="section">
     <div class="section-label">Resume</div>
-    <div class="section-title">What Atlas brings</div>
+    <div class="section-title">What Plutus brings</div>
     <div class="resume-card">
       <div class="resume-header">
         <div class="resume-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="50" cy="50" r="46" fill="#7B68EE15"/>
-          <circle cx="50" cy="28" r="7" stroke="#7B68EE" stroke-width="2" fill="none"/>
-          <line x1="50" y1="35" x2="50" y2="55" stroke="#7B68EE" stroke-width="2" stroke-linecap="round"/>
-          <line x1="50" y1="42" x2="34" y2="35" stroke="#7B68EE" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="50" y1="42" x2="66" y2="35" stroke="#7B68EE" stroke-width="1.8" stroke-linecap="round"/>
-          <circle cx="50" cy="16" r="10" stroke="#7B68EE" stroke-width="1.8" fill="none"/>
-          <path d="M40 16 Q50 13 60 16" stroke="#7B68EE" stroke-width="1" fill="none" opacity=".6"/>
-          <path d="M40 16 Q50 19 60 16" stroke="#7B68EE" stroke-width="1" fill="none" opacity=".6"/>
-          <line x1="50" y1="6" x2="50" y2="26" stroke="#7B68EE" stroke-width="1" opacity=".6"/>
-          <line x1="50" y1="55" x2="40" y2="72" stroke="#7B68EE" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="50" y1="55" x2="60" y2="72" stroke="#7B68EE" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="50" cy="50" r="46" fill="#27AE6015"/>
+          <rect x="24" y="18" width="40" height="56" rx="3" stroke="#27AE60" stroke-width="2" fill="none"/>
+          <path d="M50 27 L50 31 M50 47 L50 51" stroke="#27AE60" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M56 31 Q43 31 43 37 Q43 41 50 41 Q57 41 57 47 Q57 53 44 53" stroke="#27AE60" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <line x1="30" y1="60" x2="58" y2="60" stroke="#27AE60" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>
+          <line x1="30" y1="66" x2="52" y2="66" stroke="#27AE60" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>
+          <line x1="30" y1="72" x2="58" y2="72" stroke="#27AE60" stroke-width="1.8" stroke-linecap="round"/>
         </svg></div>
         <div>
-          <div class="resume-name">Atlas</div>
-          <div class="resume-subtitle">Platform Integration Agent · Thesmos Pantheon</div>
+          <div class="resume-name">Plutus</div>
+          <div class="resume-subtitle">Billing Operations Agent · Thesmos Business Pack</div>
         </div>
       </div>
       <div class="resume-body">
 
         <div>
           <div class="resume-section-title">Core methodology</div>
-          <div class="methodology-badge">Convention over Config + Governance as Code + Cross-Repo Visibility</div>
+          <div class="methodology-badge">Revenue-at-risk as the primary billing metric</div>
         </div>
 
         <div>
           <div class="resume-section-title">Skills</div>
           <div class="skills-grid">
-            <span class="skill-tag">Repository templates</span>
-            <span class="skill-tag">Cross-repo scanning</span>
-            <span class="skill-tag">Naming conventions</span>
-            <span class="skill-tag">Platform health</span>
-            <span class="skill-tag">Template drift detection</span>
-            <span class="skill-tag">CLAUDE.md constraints</span>
-            <span class="skill-tag">scope.json authoring</span>
-            <span class="skill-tag">JSON Schema validation</span>
-            <span class="skill-tag">GitHub Actions</span>
-            <span class="skill-tag">Scaffolding workflows</span>
+            <span class="skill-tag">Stripe Billing</span>
+            <span class="skill-tag">Recurly</span>
+            <span class="skill-tag">Chargebee</span>
+            <span class="skill-tag">AR aging</span>
+            <span class="skill-tag">Dunning sequences</span>
+            <span class="skill-tag">Invoice automation</span>
+            <span class="skill-tag">Revenue reconciliation</span>
+            <span class="skill-tag">Chargeback response</span>
+            <span class="skill-tag">Deferred revenue</span>
+            <span class="skill-tag">DSO tracking</span>
           </div>
         </div>
 
@@ -208,16 +192,16 @@
           <div class="resume-section-title">Example deliverables</div>
           <div class="deliverables-list">
             <div class="deliverable">
-              <div class="del-label">Repository template for a service type</div>
-              <div class="del-desc">Complete template with CLAUDE.md (populated behavioral constraints), .thesmos/scope.json (explicit allowedPaths and deniedPaths), config.json, and CI governance workflow — AGNT_001, AGNT_007, AGNT_008 compliant.</div>
+              <div class="del-label">Dunning sequence design</div>
+              <div class="del-desc">Email cadence (Day 0 notification, Day 3 friendly retry, Day 7 account at risk, Day 14 final notice), smart retry schedule aligned with Stripe logic, in-app notification triggers, and access suspension decision point with customer communication — designed to recover revenue without destroying relationships.</div>
             </div>
             <div class="deliverable">
-              <div class="del-label">Cross-repo governance scan report</div>
-              <div class="del-desc">Structured report listing each managed repository, Thesmos score, BLOCKER count, violated rules, and remediation priority ranking — scoped by service type to eliminate false positives.</div>
+              <div class="del-label">AR aging dashboard specification</div>
+              <div class="del-desc">Aging bucket structure, revenue-at-risk dollar amount per bucket, named owner for each bucket's follow-up action, escalation triggers at 30/60/90 days, and the query or report to run in each billing platform.</div>
             </div>
             <div class="deliverable">
-              <div class="del-label">Naming convention validator</div>
-              <div class="del-desc">Machine-readable JSON Schema or regex set for repo names, branch names, environment variable patterns, and API routes — in a format that CI can validate, not just documentation that can be ignored.</div>
+              <div class="del-label">Monthly billing reconciliation checklist</div>
+              <div class="del-desc">Step-by-step close process: invoiced vs. collected, deferred revenue schedule for annual prepays, credit notes and refunds, chargeback outcomes, and platform fees — with the specific report to pull for each step and the acceptable variance threshold.</div>
             </div>
           </div>
         </div>
@@ -227,21 +211,21 @@
           <div class="invoke-block">
             <code>// Claude Code — sub-agent
 Agent({
-  subagent_type: "Atlas",
+  subagent_type: "Plutus",
   prompt: "your task here"
 })
 
 // CLI
-npx thesmos pantheon:invoke atlas --prompt "your task"</code>
+npx thesmos pantheon:invoke plutus-billing --prompt "your task"</code>
           </div>
         </div>
 
         <div>
           <div class="resume-section-title">Best paired with</div>
           <div class="paired-agents">
-            <a href="talos.html" class="pair-link">Talos</a>
-            <a href="kratos.html" class="pair-link">Kratos</a>
-            <a href="chiron.html" class="pair-link">Chiron</a>
+            <a href="chrysos.html" class="pair-link">Chrysos</a>
+            <a href="themis.html" class="pair-link">Themis</a>
+            <a href="tyche.html" class="pair-link">Tyche</a>
           </div>
         </div>
 
@@ -252,12 +236,12 @@ npx thesmos pantheon:invoke atlas --prompt "your task"</code>
 </div>
 
 <div class="agent-nav">
-  <a href="chrysos.html" class="nav-arrow">← Chrysos</a>
+  <a href="hera-recruiting.html" class="nav-arrow">← Hera</a>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
     <a href="../index.html#pantheon" class="nav-all">ALL AGENTS</a>
-    <div class="agent-counter">46 / 51</div>
+    <div class="agent-counter">50 / 51</div>
   </div>
-  <a href="heracles-crm.html" class="nav-arrow">Heracles →</a>
+  <a href="nike-social.html" class="nav-arrow">Nike →</a>
 </div>
 
 </body>
