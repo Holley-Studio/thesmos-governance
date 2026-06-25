@@ -69,6 +69,19 @@ export async function getChangedFiles(
 ): Promise<ChangedFile[]> {
   const files: ChangedFile[] = [];
 
+  // Directories whose contents should never be reviewed — they contain
+  // governance rule templates that intentionally describe bad patterns.
+  const IGNORED_PREFIXES = [
+    '.claude/',
+    '.thesmos/',
+    '.cursor/',
+    'dist/',
+    'thesmos/dist/',
+    'actions/pr-review/dist/',
+    'coverage/',
+    'node_modules/',
+  ];
+
   // Paginate through all changed files (PRs can have >100 files)
   for await (const response of octokit.paginate.iterator(
     octokit.rest.pulls.listFiles,
@@ -83,29 +96,14 @@ export async function getChangedFiles(
       // Skip deleted files — nothing to review
       if (file.status === 'removed') continue;
 
-      // Skip generated/compiled files — dist/, build/, .map files contain vendor code
-      if (/(?:^|[\\/])(?:node_modules|\.git|vendor|dist|build)(?:[\\/]|$)/.test(file.filename)) {
-        core.debug(`Skipping generated file: ${file.filename}`);
+      // Skip governance/generated directories — they describe bad patterns
+      // intentionally and would self-trigger false BLOCKERs.
+      if (IGNORED_PREFIXES.some((prefix) => file.filename.startsWith(prefix)))
         continue;
-      }
-      if (file.filename.endsWith('.js.map') || file.filename.endsWith('.ts.map')) {
-        core.debug(`Skipping source map: ${file.filename}`);
+
+      // Skip source map files
+      if (file.filename.endsWith('.js.map') || file.filename.endsWith('.ts.map'))
         continue;
-      }
-      // Skip rule detection source and catalog docs — they contain intentional
-      // bad-pattern examples and regex strings that self-trigger the very rules
-      // they implement, producing false BLOCKER annotations.
-      if (/(?:^|[\\/])thesmos\/(?:rules|catalog)(?:[\\/]|$)/.test(file.filename)) {
-        core.debug(`Skipping internal tooling file: ${file.filename}`);
-        continue;
-      }
-      // Skip agent/governance config dirs — .cursor/rules/, .claude/agents/, .thesmos/
-      // contain generated rule files that intentionally describe bad patterns and
-      // will self-trigger mcp_cursor_rules_injection and mcp_readme_injection.
-      if (/(?:^|[\\/])(?:\.cursor|\.claude|\.thesmos|pantheon\/exports)(?:[\\/]|$)/.test(file.filename)) {
-        core.debug(`Skipping governance config file: ${file.filename}`);
-        continue;
-      }
 
       const absPath = join(workspace, file.filename);
       if (!existsSync(absPath)) continue;

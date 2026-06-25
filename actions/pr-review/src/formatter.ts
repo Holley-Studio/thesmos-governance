@@ -25,6 +25,9 @@ const SEVERITY_EMOJI: Record<Severity, string> = {
 
 const SEVERITY_ORDER: Severity[] = ['BLOCKER', 'HIGH', 'MEDIUM', 'LOW', 'TECH_DEBT'];
 
+// Rules firing on >DEDUP_THRESHOLD distinct files are collapsed to a single summary item.
+const DEDUP_THRESHOLD = 3;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function esc(s: string): string {
@@ -42,6 +45,63 @@ function groupBySeverity(findings: Finding[]): Map<Severity, Finding[]> {
   return map;
 }
 
+/** Computes a 0-100 PR health score. */
+function computeScore(findings: Finding[]): number {
+  let score = 100;
+  for (const f of findings) {
+    if (f.severity === 'BLOCKER') score -= 15;
+    else if (f.severity === 'HIGH') score -= 3;
+    else if (f.severity === 'MEDIUM') score -= 1;
+  }
+  return Math.max(0, score);
+}
+
+/**
+ * Renders one severity bucket's findings with deduplication.
+ *
+ * Same rule firing on >DEDUP_THRESHOLD distinct files → one collapsed item
+ * showing a count and a bulk-fix command. Individual findings below the
+ * threshold are shown per-file as before.
+ */
+function renderBucket(sev: Severity, group: Finding[]): string {
+  // Group by category
+  const byCategory = new Map<string, Finding[]>();
+  for (const f of group) {
+    const existing = byCategory.get(f.category) ?? [];
+    existing.push(f);
+    byCategory.set(f.category, existing);
+  }
+
+  const rows: string[] = [];
+
+  for (const [category, catFindings] of byCategory) {
+    const uniqueFiles = new Set(catFindings.map((f) => f.file));
+
+    if (uniqueFiles.size > DEDUP_THRESHOLD) {
+      // Collapsed summary for high-occurrence rules
+      const fileList = [...uniqueFiles].slice(0, 5).map((f) => `\`${esc(f)}\``).join(', ');
+      const moreFiles = uniqueFiles.size > 5 ? ` +${uniqueFiles.size - 5} more` : '';
+      const exampleMsg = catFindings[0]?.message ?? '';
+      rows.push(
+        `- **\`${esc(category)}\`** — ${esc(exampleMsg)} ` +
+        `(**${plural(uniqueFiles.size, 'file')}**: ${fileList}${moreFiles})\n` +
+        `  > 💡 Run \`thesmos fix --rule=${esc(category)}\` to fix all automatically`,
+      );
+    } else {
+      // Individual findings for low-occurrence rules
+      for (const f of catFindings) {
+        const loc = f.line ? `:${f.line}` : '';
+        const suggestion = f.suggestion ? `\n  > 💡 ${esc(f.suggestion)}` : '';
+        rows.push(
+          `- **\`${esc(f.file)}${loc}\`** — ${esc(f.message)} \`${esc(f.category)}\`${suggestion}`,
+        );
+      }
+    }
+  }
+
+  return rows.join('\n');
+}
+
 // ── Summary comment ───────────────────────────────────────────────────────────
 
 /** Formats the full-PR summary comment (markdown). */
@@ -54,6 +114,9 @@ export function formatSummaryComment(
 
   const blockers = byGroup.get('BLOCKER')?.length ?? 0;
   const highs = byGroup.get('HIGH')?.length ?? 0;
+
+  const score = computeScore(findings);
+  const scoreEmoji = score >= 90 ? '🟢' : score >= 70 ? '🟡' : score >= 50 ? '🟠' : '🔴';
 
   const headerLine =
     findings.length === 0
@@ -71,17 +134,18 @@ export function formatSummaryComment(
       : SEVERITY_ORDER.filter((sev) => (byGroup.get(sev)?.length ?? 0) > 0)
           .map((sev) => {
             const group = byGroup.get(sev) ?? [];
-            const rows = group
-              .map((f) => {
-                const loc = f.line ? `:${f.line}` : '';
-                const suggestion = f.suggestion
-                  ? `\n  > 💡 ${esc(f.suggestion)}`
-                  : '';
-                return `- **\`${esc(f.file)}${loc}\`** — ${esc(f.message)} \`${esc(f.category)}\`${suggestion}`;
-              })
-              .join('\n');
+            const rows = renderBucket(sev, group);
 
-            return `<details>\n<summary>${SEVERITY_EMOJI[sev]} <strong>${sev}</strong> &nbsp;·&nbsp; ${plural(group.length, 'finding')}</summary>\n\n${rows}\n\n</details>`;
+            // BLOCKER and HIGH are expanded by default; others collapsed.
+            const isExpanded = sev === 'BLOCKER' || sev === 'HIGH';
+            const openAttr = isExpanded ? ' open' : '';
+
+            return (
+              `<details${openAttr}>\n` +
+              `<summary>${SEVERITY_EMOJI[sev]} <strong>${sev}</strong> &nbsp;·&nbsp; ${plural(group.length, 'finding')}</summary>\n\n` +
+              `${rows}\n\n` +
+              `</details>`
+            );
           })
           .join('\n\n');
 
@@ -94,12 +158,17 @@ export function formatSummaryComment(
           ? `> ✅ No governance violations found.`
           : `> ℹ️ ${plural(findings.length, 'finding')} found — no blockers.`;
 
+  const scoreSection =
+    findings.length === 0
+      ? ''
+      : `\n**PR Score: ${scoreEmoji} ${score}/100**\n`;
+
   return [
     SUMMARY_MARKER,
     `## 🔱 Thesmos Governance Review`,
     ``,
     status,
-    ``,
+    scoreSection,
     headerLine,
     ``,
     `| Severity | Count |`,
@@ -109,7 +178,7 @@ export function formatSummaryComment(
     findingSections,
     ``,
     `---`,
-    `<sub>🔱 **Thesmos Governance** by Holley Studios · PR #${prNumber} in \`${repoName}\`</sub>`,
+    `<sub>🔱 **Thesmos Governance** by Holley Studios · PR #${prNumber} in \`${repoName}\` · [SARIF audit trail](https://docs.github.com/en/code-security/code-scanning) available via \`thesmos validate --sarif\` (EU AI Act Art. 12)</sub>`,
   ]
     .filter((l) => l !== undefined)
     .join('\n');
@@ -144,6 +213,8 @@ export function formatInlineComment(finding: Finding): string {
  * Only includes findings that:
  *   1. Have a line number
  *   2. Are in a file that was part of the PR diff
+ *   3. Come from a rule that fires on ≤DEDUP_THRESHOLD files (bulk rules
+ *      are surfaced in the summary comment instead of flooding the diff view)
  *
  * Files and line numbers outside the diff will cause a 422 from GitHub.
  * We return comments for changed files only; the caller wraps the API
@@ -153,8 +224,27 @@ export function buildInlineComments(
   findings: Finding[],
   changedFilePaths: Set<string>,
 ): InlineComment[] {
+  // Identify bulk rules (firing on too many files) — inline comments for
+  // these would overwhelm the diff view; they appear in the summary instead.
+  const fileCountByCategory = new Map<string, Set<string>>();
+  for (const f of findings) {
+    const files = fileCountByCategory.get(f.category) ?? new Set<string>();
+    files.add(f.file);
+    fileCountByCategory.set(f.category, files);
+  }
+  const bulkCategories = new Set(
+    [...fileCountByCategory.entries()]
+      .filter(([, files]) => files.size > DEDUP_THRESHOLD)
+      .map(([cat]) => cat),
+  );
+
   return findings
-    .filter((f) => f.line !== undefined && changedFilePaths.has(f.file))
+    .filter(
+      (f) =>
+        f.line !== undefined &&
+        changedFilePaths.has(f.file) &&
+        !bulkCategories.has(f.category),
+    )
     .map((f) => ({
       path: f.file,
       line: f.line as number,
