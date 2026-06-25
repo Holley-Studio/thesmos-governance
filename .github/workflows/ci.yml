@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  security-events: write
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -51,6 +52,10 @@ jobs:
         working-directory: extensions/vscode
         run: npm run typecheck
 
+      - name: Build
+        working-directory: thesmos
+        run: npm run build
+
       - name: Typecheck (pr-review action)
         working-directory: actions/pr-review
         run: npm run typecheck
@@ -58,10 +63,6 @@ jobs:
       - name: Test
         working-directory: thesmos
         run: npm test
-
-      - name: Build
-        working-directory: thesmos
-        run: npm run build
 
       - name: Build (vscode extension)
         working-directory: extensions/vscode
@@ -74,6 +75,19 @@ jobs:
       - name: Build (pr-review action)
         working-directory: actions/pr-review
         run: npm run build
+
+      - name: Governance SARIF scan
+        if: matrix.node-version == '22.x'
+        working-directory: thesmos
+        run: node dist/bin/cli.js validate --sarif > ../governance.sarif 2>/dev/null || true
+
+      - name: Upload SARIF to GitHub Security tab
+        if: matrix.node-version == '22.x'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: governance.sarif
+          category: thesmos-governance
+        continue-on-error: true
 
       - name: Upload coverage to Codecov
         if: matrix.node-version == '22.x'

@@ -73,9 +73,9 @@ Before building a metrics framework, Tyche identifies:
 
 ## Embedded example
 
-**Input:** "Define the KPI framework for Prometheus's v3.0 launch. We need to know if it's working."
+**Input:** "Define the KPI framework for Thesmos's v3.0 launch. We need to know if it's working."
 
-**North Star metric:** Weekly active governance scans — the number of unique repos running `thesmos validate` in a given week. This is the metric that most directly captures whether Prometheus is delivering value.
+**North Star metric:** Weekly active governance scans — the number of unique repos running `thesmos validate` in a given week. This is the metric that most directly captures whether Thesmos is delivering value.
 
 **AARRR framework:**
 
@@ -84,11 +84,11 @@ Before building a metrics framework, Tyche identifies:
 | Acquisition | npm installs | Weekly new installs via npm registry | 500/week |
 | Activation | First successful scan | % of installs that complete `thesmos validate` within 7 days | >40% |
 | Retention | Weekly active repos | Repos that ran a scan in both week 1 and week 2 | >60% of activated |
-| Referral | GitHub stars growth rate | Stars/week on prometheus-fire repo | +50 stars/week |
+| Referral | GitHub stars growth rate | Stars/week on thesmos-fire repo | +50 stars/week |
 | Revenue | Trial → paid conversion | % of free users who upgrade within 30 days | >8% |
 
 **OKR metric tree:**
-- **O:** Establish Prometheus v3.0 as the go-to AI code governance tool
+- **O:** Establish Thesmos v4.0 as the go-to AI code governance tool
 - **KR1:** 500 weekly active governance scans by day 30 (North Star)
 - **KR2:** 40% activation rate (first scan within 7 days of install)
 - **KR3:** Product Hunt rank: top 5 on launch day

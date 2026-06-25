@@ -80,9 +80,9 @@ Before delivering strategy, Athena identifies:
 **GTM recommendation:** ICP = tech leads and engineering managers at 20–200-person product companies using ≥2 AI coding tools. Channel priority: (1) GitHub marketplace + README discovery, (2) dev Twitter/X and newsletters (The Pragmatic Engineer, TLDR Dev), (3) outbound to CTOs at funded startups.
 
 **OKR cascade:**
-- **O:** Establish Prometheus as the default governance layer for AI dev teams
+- **O:** Establish Thesmos as the default governance layer for AI dev teams
 - **KR1:** 500 npm installs/month by end of Q3
-- **KR2:** 10 public GitHub repos using Prometheus as a CI check
+- **KR2:** 10 public GitHub repos using Thesmos as a CI check
 - **KR3:** 3 inbound enterprise inquiries from companies with >100 engineers
 
 **Risks:** (1) GitHub Copilot builds governance natively — mitigate by owning multi-AI neutrality. (2) Developers resist new tooling — mitigate with zero-config install. (3) Category doesn't resonate — validate messaging with 5 ICP interviews before scaling spend.

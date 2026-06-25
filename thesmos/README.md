@@ -14,13 +14,13 @@ Thesmos is a repo governance tool for TypeScript projects. Define your code revi
 
 ---
 
-## Why Prometheus?
+## Why Thesmos?
 
 Without governance, every AI assistant in your team invents its own rules. Claude follows one convention, Cursor follows another, Copilot knows nothing about your auth patterns. Every PR review is inconsistent. Governance debt compounds silently.
 
-Prometheus solves this with a **single source of truth**: 911 rules defined once, propagated everywhere.
+Thesmos solves this with a **single source of truth**: 911 rules defined once, propagated everywhere.
 
-| | Prometheus | ESLint | Danger.js | CodeClimate |
+| | Thesmos | ESLint | Danger.js | CodeClimate |
 | --- | --- | --- | --- | --- |
 | AI adapter generation (6 targets) | ✓ | ✗ | ✗ | ✗ |
 | Zero runtime dependencies | ✓ | ✗ | ✗ | ✗ |
@@ -65,14 +65,14 @@ That's it. You now have:
 
 ---
 
-## Why Prometheus is different
+## Why Thesmos is different
 
-Other platforms give you AI assistants. Prometheus gives you a governed AI team — 38 God Agents with domain expertise, built-in challengers, and every output governance-checked.
+Other platforms give you AI assistants. Thesmos gives you a governed AI team — 38 God Agents with domain expertise, built-in challengers, and every output governance-checked.
 
-| Capability | ChatGPT GPTs | Cursor Agents | Claude Projects | Prometheus God Agents |
+| Capability | ChatGPT GPTs | Cursor Agents | Claude Projects | Thesmos Pantheon Agents |
 | --- | --- | --- | --- | --- |
 | Domain specialization | Basic | Code only | Custom instructions | Deep methodology + mythology |
-| Governance-checked outputs | ✗ | ✗ | ✗ | ✅ Prometheus badge on every output |
+| Governance-checked outputs | ✗ | ✗ | ✗ | ✅ Thesmos badge on every output |
 | Consultation mode (ranked options) | ✗ | ✗ | ✗ | ✅ Universal protocol |
 | Cross-agent team + arbitration | ✗ | ✗ | ✗ | ✅ God Council |
 | Devil's advocate built-in | ✗ | ✗ | ✗ | ✅ God Agent Momus |
@@ -94,7 +94,7 @@ Other platforms give you AI assistants. Prometheus gives you a governed AI team 
 
 ---
 
-## The Prometheus Pantheon
+## The Thesmos Pantheon
 
 38 God Agents — a governed AI team named after Greek gods, covering every major business and engineering function. Every agent has deep methodology, failure mode taxonomy, domain mastery sections, and the Universal Intelligence Protocol injected by `thesmos adapters`.
 
@@ -602,7 +602,7 @@ Grades: **A+** (95–100) · **A** (85–94) · **B** (75–84) · **C** (65–7
 
 ## Baseline system
 
-The baseline lets you adopt Prometheus in an existing codebase without failing CI on day one. Snapshot your current debt, then only new violations block CI.
+The baseline lets you adopt Thesmos in an existing codebase without failing CI on day one. Snapshot your current debt, then only new violations block CI.
 
 ```bash
 # Snapshot current findings as known debt
@@ -646,7 +646,7 @@ This flags: missing reasons, expired suppressions, blanket disables (no rule ID)
 
 ## Library API
 
-Import Prometheus programmatically — for VS Code extensions, build tools, or custom scripts:
+Import Thesmos programmatically — for VS Code extensions, build tools, or custom scripts:
 
 ```typescript
 import {

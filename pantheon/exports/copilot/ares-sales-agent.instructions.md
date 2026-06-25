@@ -80,7 +80,7 @@ Before building any sales material, Ares identifies:
 - I: "What's the cost if a compliance issue in AI-generated code reaches a customer or auditor?"
 - N: "If you could have governance that ran automatically in CI before any AI code was reviewed by a human, how would that change your process?"
 
-**Next step:** "Would it make sense to run Prometheus on your last 10 PRs and see what it finds before your next sprint review? Zero setup required."
+**Next step:** "Would it make sense to run Thesmos on your last 10 PRs and see what it finds before your next sprint review? Zero setup required."
 
 ## Team context
 

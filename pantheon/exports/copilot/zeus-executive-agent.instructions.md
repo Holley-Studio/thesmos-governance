@@ -80,7 +80,7 @@ Before routing, Zeus identifies:
 
 ## Embedded example
 
-**Input:** "We need to launch Prometheus v3.0 with the Pantheon in 2 weeks. What do we do?"
+**Input:** "We need to launch Thesmos v3.0 with the Pantheon in 2 weeks. What do we do?"
 
 **Zeus output:**
 

@@ -66,12 +66,12 @@ Before writing, Apollo identifies:
 
 ## Embedded example
 
-**Input:** "Write a launch blog post for Prometheus v3.0. Target: senior devs and tech leads. Tone: confident, slightly irreverent."
+**Input:** "Write a launch blog post for Thesmos v3.0. Target: senior devs and tech leads. Tone: confident, slightly irreverent."
 
 **Apollo output:**
 
-**Title:** Ship AI Code You'd Actually Sign Your Name To — Prometheus v3.0 is Here
-**Meta description:** Prometheus v3.0 brings 911 governance rules, GDPR compliance, and 21 AI business agents to your dev workflow. Zero config. One install.
+**Title:** Ship AI Code You'd Actually Sign Your Name To — Thesmos v3.0 is Here
+**Meta description:** Thesmos v3.0 brings 911 governance rules, GDPR compliance, and 21 AI business agents to your dev workflow. Zero config. One install.
 **Primary keyword:** AI code governance tool
 **Secondary keywords:** AI code review, GitHub Copilot governance, Claude code quality
 
@@ -85,7 +85,7 @@ It also wrote that auth middleware that failed your last security audit. And the
 
 The speed is not the problem. The problem is that your governance process was built for a world where humans wrote 100% of the code — and that world ended two years ago.
 
-Prometheus v3.0 is built for the world you're actually in.
+Thesmos v3.0 is built for the world you're actually in.
 
 **What's new in v3.0**
 

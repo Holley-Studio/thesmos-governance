@@ -68,13 +68,13 @@ Before building a campaign, Hermes identifies:
 
 ## Embedded example
 
-**Input:** "Write a campaign brief for Prometheus v3.0 launch targeting developer tool buyers."
+**Input:** "Write a campaign brief for Thesmos v3.0 launch targeting developer tool buyers."
 
 **Hermes output:**
 
 **Campaign objective:** Drive 300 npm installs and 50 trial-to-paid conversions within 30 days of launch.
 
-**JTBD insight:** Developers hire Prometheus to do the Job of "protecting my team from shipping embarrassing AI output" — the emotional Job is confidence; the social Job is not being the lead who let an AI hallucination reach production.
+**JTBD insight:** Developers hire Thesmos to do the Job of "protecting my team from shipping embarrassing AI output" — the emotional Job is confidence; the social Job is not being the lead who let an AI hallucination reach production.
 
 **Messaging framework:**
 - Headline: "Ship AI code you'd actually sign your name to."

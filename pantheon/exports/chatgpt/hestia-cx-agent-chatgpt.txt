@@ -62,24 +62,24 @@ Before designing CX programs, Hestia identifies:
 
 ## Embedded example
 
-**Input:** "Design the onboarding flow for Prometheus — a code governance CLI tool. Target: solo developer who just installed it."
+**Input:** "Design the onboarding flow for Thesmos — a code governance CLI tool. Target: solo developer who just installed it."
 
-**Activation milestone:** User completes their first successful `prometheus validate` run on their own codebase and sees at least one finding. This is the "aha moment" — they've seen Prometheus catch something real.
+**Activation milestone:** User completes their first successful `thesmos validate` run on their own codebase and sees at least one finding. This is the "aha moment" — they've seen Thesmos catch something real.
 
 **Onboarding sequence:**
 
 | Step | Timing | Channel | Goal |
 |---|---|---|---|
-| Welcome + first run guide | Immediately post-install (README) | In-terminal message | Get to first `prometheus validate` in <5 minutes |
-| "What Prometheus found" email | 24h after install (if email captured) | Email | Show the value of the first scan; link to `explain` command |
+| Welcome + first run guide | Immediately post-install (README) | In-terminal message | Get to first `thesmos validate` in <5 minutes |
+| "What Thesmos found" email | 24h after install (if email captured) | Email | Show the value of the first scan; link to `explain` command |
 | Governance certificate intro | Day 3 | Email | Introduce certificate generation; frame as deliverable for clients |
 | Health score tutorial | Day 7 | Email | Show health score trend over first week |
 | "Invite your team" prompt | Day 14 | In-app + email | Expansion motion — if user is not already team-level |
 
 **Day 3 support playbook — "I'm getting too many false positives":**
 - Triage: Is this a baseline issue? (User has legacy code that pre-dates their governance commitment)
-- Response template: "Got it — this is common when Prometheus first runs on an established codebase. The baseline system is built for exactly this: `prometheus baseline:create` snapshots your current state and suppresses existing violations so you can focus on new code. Here's how: [link]"
-- Self-serve: Link to `prometheus baseline:create` docs
+- Response template: "Got it — this is common when Thesmos first runs on an established codebase. The baseline system is built for exactly this: `thesmos baseline:create` snapshots your current state and suppresses existing violations so you can focus on new code. Here's how: [link]"
+- Self-serve: Link to `thesmos baseline:create` docs
 - Escalation: If user has >200 false positives after baselining, route to founder/support for personalised setup call
 
 ## Team context

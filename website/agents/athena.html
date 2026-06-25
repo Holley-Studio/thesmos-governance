@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Athena — Strategy Agent · Thesmos Pantheon</title>
+  <meta name="description" content="Athena is the Strategy Agent of the Thesmos Pantheon. Athena is your strategic co-founder. She builds go-to-market strategies, competitive analyses, and positioning framework...">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy:    #050408;
+      --gold:    #C9A84C;
+      --parch:   #F5F0E8;
+      --blue:    #1B4F8A;
+      --agent:   #7BB8D4;
+      --t1:      rgba(255,255,255,.92);
+      --t2:      rgba(255,255,255,.55);
+      --t3:      rgba(255,255,255,.35);
+      --border:  rgba(255,255,255,.07);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--navy);
+      color: var(--t1);
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Nav */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 clamp(20px,5vw,80px);
+      height: 60px;
+      background: rgba(5,4,8,.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+      font-family: 'Cinzel', serif;
+      font-size: 12px;
+      letter-spacing: .16em;
+      color: rgba(255,255,255,.7);
+    }
+    .nav-brand svg { width: 28px; height: 32px; }
+    .nav-back {
+      font-size: 13px;
+      color: var(--t2);
+      text-decoration: none;
+      display: flex; align-items: center; gap: 6px;
+      transition: color 180ms ease;
+    }
+    .nav-back:hover { color: var(--t1); }
+
+    /* Hero */
+    .agent-hero {
+      padding: clamp(60px,8vw,120px) clamp(20px,5vw,80px) clamp(40px,6vw,80px);
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .agent-breadcrumb {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--t3);
+      letter-spacing: .1em;
+      margin-bottom: 32px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .agent-breadcrumb a { color: var(--t3); text-decoration: none; transition: color 180ms; }
+    .agent-breadcrumb a:hover { color: var(--gold); }
+    .agent-breadcrumb span { color: var(--agent); }
+    .agent-header {
+      display: flex; gap: clamp(24px,4vw,56px);
+      align-items: flex-start;
+      margin-bottom: 40px;
+    }
+    .agent-avatar-lg {
+      flex-shrink: 0;
+      width: clamp(72px,10vw,112px);
+      height: clamp(72px,10vw,112px);
+    }
+    .agent-avatar-lg svg { width: 100%; height: 100%; }
+    .agent-meta { flex: 1; }
+    .agent-name {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(28px,5vw,52px);
+      font-weight: 700;
+      color: var(--agent);
+      line-height: 1.1;
+      margin-bottom: 6px;
+    }
+    .agent-role-title {
+      font-size: clamp(14px,2vw,18px);
+      color: var(--t2);
+      font-weight: 300;
+      letter-spacing: .04em;
+      margin-bottom: 16px;
+    }
+    .agent-pantheon-tag {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--t3);
+      letter-spacing: .08em;
+    }
+
+    /* Content sections */
+    .content { max-width: 960px; margin: 0 auto; padding: 0 clamp(20px,5vw,80px); }
+    .section { margin-bottom: clamp(48px,6vw,80px); }
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .14em;
+      color: var(--agent);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      opacity: .8;
+    }
+    .section-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(18px,2.5vw,26px);
+      font-weight: 400;
+      color: var(--t1);
+      margin-bottom: 20px;
+      line-height: 1.3;
+    }
+    .prose {
+      font-size: 16px;
+      line-height: 1.75;
+      color: var(--t2);
+      font-weight: 300;
+      max-width: 680px;
+    }
+
+    /* Lore block */
+    .lore-block {
+      background: rgba(255,255,255,.02);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--agent);
+      border-radius: 4px;
+      padding: 24px 28px;
+      margin-bottom: 20px;
+    }
+    .lore-block p { font-size: 15px; line-height: 1.72; color: var(--t2); font-style: italic; }
+    .lore-channel { margin-top: 16px; font-style: normal !important; font-size: 14px !important; color: var(--t3) !important; }
+
+    /* Responsibilities */
+    .resp-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 680px;
+    }
+    .resp-list li {
+      display: flex;
+      gap: 12px;
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--t2);
+    }
+    .resp-list li::before {
+      content: '';
+      display: block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--agent);
+      flex-shrink: 0;
+      margin-top: 8px;
+      opacity: .7;
+    }
+
+    /* Resume */
+    .resume-card {
+      background: rgba(255,255,255,.025);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .resume-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 14px;
+    }
+    .resume-avatar { width: 44px; height: 44px; }
+    .resume-name {
+      font-family: 'Cinzel', serif;
+      font-size: 16px;
+      color: var(--agent);
+    }
+    .resume-subtitle { font-size: 12px; color: var(--t3); margin-top: 2px; }
+    .resume-body { padding: 24px; display: flex; flex-direction: column; gap: 28px; }
+    .resume-section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .12em;
+      color: var(--t3);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .skills-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .skill-tag {
+      display: inline-block;
+      padding: 5px 12px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      font-size: 13px;
+      color: var(--t2);
+    }
+    .methodology-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      background: color-mix(in srgb, var(--agent) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--agent) 30%, transparent);
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--agent);
+      letter-spacing: .04em;
+    }
+    .deliverables-list { display: flex; flex-direction: column; gap: 14px; }
+    .deliverable {
+      padding: 14px 16px;
+      background: rgba(255,255,255,.02);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .del-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--t1);
+      margin-bottom: 4px;
+    }
+    .del-desc { font-size: 13px; color: var(--t3); line-height: 1.6; }
+
+    .invoke-block {
+      background: rgba(0,0,0,.3);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 6px;
+      padding: 16px 18px;
+    }
+    .invoke-block code {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--parch);
+      line-height: 2;
+      white-space: pre;
+    }
+    .paired-agents { display: flex; flex-wrap: wrap; gap: 10px; }
+    .pair-link {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 13px;
+      color: var(--t2);
+      text-decoration: none;
+      transition: border-color 180ms, color 180ms;
+    }
+    .pair-link:hover { border-color: var(--agent); color: var(--agent); }
+    .veto-block {
+      padding: 12px 16px;
+      background: color-mix(in srgb, var(--agent) 8%, transparent);
+      border: 1px solid color-mix(in srgb, var(--agent) 25%, transparent);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--t2);
+      line-height: 1.6;
+    }
+    .veto-label { font-weight: 500; color: var(--agent); margin-right: 4px; }
+
+    /* Nav footer */
+    .agent-nav {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: clamp(40px,5vw,64px) clamp(20px,5vw,80px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--border);
+      gap: 16px;
+    }
+    .nav-arrow {
+      display: flex; align-items: center; gap: 8px;
+      text-decoration: none;
+      font-size: 13px;
+      color: var(--t2);
+      transition: color 180ms ease;
+    }
+    .nav-arrow:hover { color: var(--gold); }
+    .nav-all {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .12em;
+      color: var(--t3);
+      text-decoration: none;
+      transition: color 180ms;
+    }
+    .nav-all:hover { color: var(--gold); }
+    .agent-counter {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--t3);
+    }
+
+    /* HR */
+    hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+    @media (max-width: 600px) {
+      .agent-header { flex-direction: column; gap: 20px; }
+      .agent-nav { flex-direction: column; text-align: center; gap: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-brand">
+    <svg viewBox="0 0 80 90" fill="none" aria-hidden="true">
+      <path d="M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linejoin="round"/>
+      <circle cx="40" cy="48" r="19" stroke="currentColor" stroke-width="2.5" fill="none"/>
+      <line x1="23" y1="48" x2="57" y2="48" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    THESMOS
+  </a>
+  <a href="../index.html#pantheon" class="nav-back">← All Agents</a>
+</nav>
+
+<div class="agent-hero">
+  <div class="agent-breadcrumb">
+    <a href="../index.html">Thesmos</a>
+    <span>·</span>
+    <a href="../index.html#pantheon">Pantheon</a>
+    <span>·</span>
+    <span>Athena</span>
+  </div>
+  <div class="agent-header">
+    <div class="agent-avatar-lg">
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="50" r="46" fill="#7BB8D415"/>
+  <circle cx="50" cy="50" r="19" stroke="#7BB8D4" stroke-width="2.2" fill="none"/>
+  <line x1="33" y1="50" x2="67" y2="50" stroke="#7BB8D4" stroke-width="2.2" stroke-linecap="round"/>
+</svg>
+    </div>
+    <div class="agent-meta">
+      <div class="agent-name">Athena</div>
+      <div class="agent-role-title">Strategy Agent · Business Strategy & Intelligence</div>
+      <div class="agent-pantheon-tag">THESMOS PANTHEON</div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<div class="content">
+
+  <!-- Lore -->
+  <div class="section" style="margin-top:48px">
+    <div class="section-label">Mythology</div>
+    <div class="lore-block">
+      <p>Goddess of wisdom, strategy, and crafts — born fully-formed and battle-ready from Zeus's head. Athena won wars not through brute force but through cunning, preparation, and out-thinking the opponent.</p>
+      <p class="lore-channel">Thesmos channels Athena as the strategic mind of the Pantheon: the agent that sees competitive dynamics clearly, identifies the highest-leverage moves, and builds frameworks that survive contact with reality.</p>
+    </div>
+  </div>
+
+  <!-- Purpose -->
+  <div class="section">
+    <div class="section-label">Purpose</div>
+    <div class="section-title">What Athena does</div>
+    <p class="prose">Athena is your strategic co-founder. She builds go-to-market strategies, competitive analyses, and positioning frameworks grounded in real methodology — not opinion. When you need to know where to compete, how to win, and what to do first, Athena applies Porter's Five Forces, Jobs-to-be-Done, and Blue Ocean strategy to your actual situation and delivers a concrete plan with prioritized actions.</p>
+  </div>
+
+  <!-- Responsibilities -->
+  <div class="section">
+    <div class="section-label">Responsibilities</div>
+    <div class="section-title">Athena's domain</div>
+    <ul class="resp-list">
+      <li>Go-to-market strategy: market entry, ICP definition, positioning, and competitive moat</li>
+<li>Competitive intelligence: Porter's Five Forces analysis, SWOT with strategic implications</li>
+<li>OKR design: define the outcomes before the activities, cascade to team</li>
+<li>Blue Ocean strategy: identify uncontested market space before competing on price</li>
+<li>Pricing strategy frameworks (value-based, penetration, premium)</li>
+<li>Partnership and channel strategy</li>
+<li>Strategic planning cycles: annual planning, quarterly reviews, pivot analysis</li>
+    </ul>
+  </div>
+
+  <hr style="margin-bottom:48px">
+
+  <!-- Resume -->
+  <div class="section">
+    <div class="section-label">Resume</div>
+    <div class="section-title">What Athena brings</div>
+    <div class="resume-card">
+      <div class="resume-header">
+        <div class="resume-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="50" r="46" fill="#7BB8D415"/>
+  <circle cx="50" cy="50" r="19" stroke="#7BB8D4" stroke-width="2.2" fill="none"/>
+  <line x1="33" y1="50" x2="67" y2="50" stroke="#7BB8D4" stroke-width="2.2" stroke-linecap="round"/>
+</svg></div>
+        <div>
+          <div class="resume-name">Athena</div>
+          <div class="resume-subtitle">Strategy Agent · Thesmos Pantheon</div>
+        </div>
+      </div>
+      <div class="resume-body">
+
+        <div>
+          <div class="resume-section-title">Core methodology</div>
+          <div class="methodology-badge">Porter's Five Forces + Blue Ocean Strategy</div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Skills</div>
+          <div class="skills-grid">
+            <span class="skill-tag">Porter's Five Forces</span>
+<span class="skill-tag">Blue Ocean Strategy</span>
+<span class="skill-tag">Jobs-to-be-Done</span>
+<span class="skill-tag">OKR design</span>
+<span class="skill-tag">Competitive moats</span>
+<span class="skill-tag">GTM strategy</span>
+<span class="skill-tag">Market positioning</span>
+<span class="skill-tag">Pricing frameworks</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Example deliverables</div>
+          <div class="deliverables-list">
+            <div class="deliverable">
+          <div class="del-label">GTM strategy</div>
+          <div class="del-desc">12-week market entry plan with ICP, channels, sequencing, and success metrics — not a deck, a decision document.</div>
+        </div>
+<div class="deliverable">
+          <div class="del-label">Competitive brief</div>
+          <div class="del-desc">5-force analysis of your market with specific moat recommendations per competitor type.</div>
+        </div>
+<div class="deliverable">
+          <div class="del-label">Strategic OKRs</div>
+          <div class="del-desc">3 company-level OKRs for Q-next with key results that are measurable and owned.</div>
+        </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">How to invoke</div>
+          <div class="invoke-block">
+            <code>// Claude Code — sub-agent
+Agent({
+  subagent_type: "Athena",
+  prompt: "your task here"
+})
+
+// CLI
+npx thesmos pantheon:invoke athena --prompt "your task"</code>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Best paired with</div>
+          <div class="paired-agents">
+            <a href="zeus.html" class="pair-link">Zeus</a>
+<a href="hermes.html" class="pair-link">Hermes</a>
+<a href="plutus.html" class="pair-link">Plutus</a>
+          </div>
+        </div>
+
+        
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="agent-nav">
+  <a href="zeus.html" class="nav-arrow">← Zeus</a>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+    <a href="../index.html#pantheon" class="nav-all">ALL AGENTS</a>
+    <div class="agent-counter">2 / 21</div>
+  </div>
+  <a href="hermes.html" class="nav-arrow">Hermes →</a>
+</div>
+
+</body>
+</html>

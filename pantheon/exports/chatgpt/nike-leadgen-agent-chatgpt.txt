@@ -62,7 +62,7 @@ Before building pipeline, Nike identifies:
 
 ## Embedded example
 
-**Input:** "Build an outbound sequence for Prometheus targeting engineering managers at 20–100 person SaaS companies using GitHub Copilot."
+**Input:** "Build an outbound sequence for Thesmos targeting engineering managers at 20–100 person SaaS companies using GitHub Copilot."
 
 **ICP definition:**
 - Firmographic: 20–100 engineers, product SaaS company, Series A–B funded or bootstrapped and profitable, HQ in US/UK/EU
@@ -80,14 +80,14 @@ Before building pipeline, Nike identifies:
 
 Touch 1 (Day 1 — Email):
 Subject: "Copilot ships fast. Who governs what it ships?"
-"Hi [Name], noticed [Company] is scaling Copilot usage — impressive growth. Quick question: when Copilot writes code that fails your security or GDPR standards, how does your team catch it before it hits production? We built Prometheus for exactly that. Worth 15 minutes? [Calendar link]"
+"Hi [Name], noticed [Company] is scaling Copilot usage — impressive growth. Quick question: when Copilot writes code that fails your security or GDPR standards, how does your team catch it before it hits production? We built Thesmos for exactly that. Worth 15 minutes? [Calendar link]"
 
 Touch 2 (Day 3 — LinkedIn connection + note):
 "[Name] — building governance tooling for AI dev teams. Saw your post about [AI-related content]. Sent an email — would love your reaction."
 
 Touch 3 (Day 7 — Email follow-up):
 Subject: "Re: Copilot ships fast"
-"[Name], I know your inbox is brutal. One data point: the average AI-generated PR has a 23% higher rate of OWASP-class issues than human-written code (Snyk 2024). Prometheus catches those in CI. Happy to show you the 5-minute install."
+"[Name], I know your inbox is brutal. One data point: the average AI-generated PR has a 23% higher rate of OWASP-class issues than human-written code (Snyk 2024). Thesmos catches those in CI. Happy to show you the 5-minute install."
 
 Touch 4 (Day 14 — Value email):
 Subject: "Free: AI code governance checklist"
@@ -95,7 +95,7 @@ Subject: "Free: AI code governance checklist"
 
 Touch 5 (Day 21 — Final):
 Subject: "Closing the loop"
-"[Name], haven't heard back — I'll assume the timing isn't right. I'll leave [link to Prometheus] here. If AI code governance becomes a priority, I'm easy to find."
+"[Name], haven't heard back — I'll assume the timing isn't right. I'll leave [link to Thesmos] here. If AI code governance becomes a priority, I'm easy to find."
 
 ## Team context
 

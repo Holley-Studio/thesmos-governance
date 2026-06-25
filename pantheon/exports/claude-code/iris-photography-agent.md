@@ -69,7 +69,7 @@ Before producing a shot list, Iris identifies:
 
 ## Embedded example
 
-**Input:** "Create a shot list for a Prometheus brand photography shoot. Brand: developer tool, Sage + Outlaw archetype, dark/gold palette."
+**Input:** "Create a shot list for a Thesmos brand photography shoot. Brand: developer tool, Sage + Outlaw archetype, dark/gold palette."
 
 **Photography brief:**
 Mood: High-contrast. Dramatic. Architectural. The feel of a control room, not a coffee shop. No generic stock "developer at laptop" imagery. Every shot should feel like it belongs in a Wired editorial, not a SaaS homepage template.
@@ -79,11 +79,11 @@ Avoid: White backgrounds. Smiling people looking at camera. Hands-on-keyboard st
 
 | # | Shot | Composition | Lighting | Technical | Intent |
 |---|---|---|---|---|---|
-| 1 | Terminal screen in darkness — Prometheus scan running, gold text | Frame terminal screen full-bleed; rule of thirds: screen left 2/3, shadow right 1/3 | Single practical (screen glow only); no fill light | 50mm f/1.8, ISO 1600, 1/60s | Power and precision in the dark |
+| 1 | Terminal screen in darkness — Thesmos scan running, gold text | Frame terminal screen full-bleed; rule of thirds: screen left 2/3, shadow right 1/3 | Single practical (screen glow only); no fill light | 50mm f/1.8, ISO 1600, 1/60s | Power and precision in the dark |
 | 2 | Developer's hands on keyboard — terminal in background, soft bokeh | Low angle, looking up; hands rule-of-thirds left; terminal bokeh right | Practical screen + single rim light from right | 85mm f/1.4, ISO 800 | The craftsman at work |
-| 3 | Prometheus fire icon large-format print on concrete wall — person walking past (motion blur) | Person in lower third walking left-to-right; icon centered upper-left | Natural industrial light (warehouse/loft); no flash | 35mm f/8, ISO 400, 1/15s (intentional blur) | Scale and movement |
+| 3 | Thesmos fire icon large-format print on concrete wall — person walking past (motion blur) | Person in lower third walking left-to-right; icon centered upper-left | Natural industrial light (warehouse/loft); no flash | 35mm f/8, ISO 400, 1/15s (intentional blur) | Scale and movement |
 | 4 | Close-up: printed governance certificate with gold embossed seal | Macro, flat lay, slight angle; certificate fills frame with 10% margin | Soft overhead light box; single reflector fill from below | 100mm macro, f/5.6, ISO 200 | Tangible quality of governance |
-| 5 | 3-person dev team reviewing Prometheus output on monitors (candid, not posed) | Environmental portrait; team occupies left 60%; monitors visible right | Existing office practical light; no flash | 35mm f/2.8, ISO 1600 | Real teams, real tools |
+| 5 | 3-person dev team reviewing Thesmos output on monitors (candid, not posed) | Environmental portrait; team occupies left 60%; monitors visible right | Existing office practical light; no flash | 35mm f/2.8, ISO 1600 | Real teams, real tools |
 
 **Post-production direction:** High contrast. Pull shadows to near-black. Warm highlights toward gold. Skin tones natural (never over-brightened). No vignette. Grain at ISO 400 equivalent for warmth. Crop for 16:9 primary (website), deliver 4:5 crop for social.
 

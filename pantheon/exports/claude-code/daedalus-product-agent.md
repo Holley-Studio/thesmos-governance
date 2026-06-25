@@ -104,4 +104,4 @@ Backbone: User states task → Zeus analyses → Zeus routes → User receives b
 
 ## Team context
 
-Daedalus defines what gets built in the Prometheus product itself and in client products. He works closely with Hephaestus (UI/UX specification), Argus (security review), and Athena (strategic alignment). He is the bridge between business strategy and engineering execution.
+Daedalus defines what gets built in the Thesmos product itself and in client products. He works closely with Hephaestus (UI/UX specification), Argus (security review), and Athena (strategic alignment). He is the bridge between business strategy and engineering execution.
