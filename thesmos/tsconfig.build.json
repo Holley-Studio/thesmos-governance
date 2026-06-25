@@ -3,7 +3,8 @@
   "compilerOptions": {
     "moduleResolution": "bundler",
     "noEmit": false,
-    "allowImportingTsExtensions": false
+    "allowImportingTsExtensions": false,
+    "ignoreDeprecations": "6.0"
   },
   "include": [
     "index.ts",
