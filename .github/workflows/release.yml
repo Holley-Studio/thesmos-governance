@@ -41,6 +41,10 @@ jobs:
         working-directory: extensions/vscode
         run: npm run typecheck
 
+      - name: Build
+        working-directory: thesmos
+        run: npm run build
+
       - name: Typecheck (pr-review action)
         working-directory: actions/pr-review
         run: npm run typecheck
@@ -52,10 +56,6 @@ jobs:
       - name: Test (pr-review action)
         working-directory: actions/pr-review
         run: npm test
-
-      - name: Build
-        working-directory: thesmos
-        run: npm run build
 
       - name: Build (vscode extension)
         working-directory: extensions/vscode
