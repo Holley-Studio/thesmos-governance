@@ -105,3 +105,12 @@ jobs:
           name: coverage
           path: thesmos/coverage/
           retention-days: 7
+
+  # Status-check aggregator: branch ruleset requires a check named "typecheck".
+  # This job runs only after all matrix legs of `ci` pass, creating exactly
+  # that context so the ruleset is satisfied on every PR.
+  typecheck:
+    runs-on: ubuntu-latest
+    needs: ci
+    steps:
+      - run: echo "All CI checks passed"
