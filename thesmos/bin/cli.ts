@@ -62,6 +62,7 @@ import { cmdScore } from './commands/score.ts';
 import { cmdCompile } from './commands/compile.ts';
 import { startLspServer } from '../lang-server.ts';
 import { makeLogger } from '../logger.ts';
+import { checkForUpdate } from './lib/update-check.ts';
 
 const log = makeLogger('cli');
 
@@ -490,9 +491,13 @@ if (!handler) {
 const cliStart = Date.now();
 log.info('command start', { command });
 
+// Skip update check for machine-readable commands and update itself
+const SKIP_UPDATE_CHECK = new Set(['tokens:report', 'health', 'self:check', 'self:update']);
+
 handler(argv.slice(1))
   .then(() => {
     log.info('command complete', { command, durationMs: Date.now() - cliStart });
+    if (!SKIP_UPDATE_CHECK.has(command)) void checkForUpdate();
   })
   .catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
