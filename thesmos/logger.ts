@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos internal logger — zero dependencies, NDJSON to stderr.
  *

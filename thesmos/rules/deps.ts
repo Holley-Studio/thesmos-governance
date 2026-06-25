@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Dependency Security Rules — DEP_001–010
  *

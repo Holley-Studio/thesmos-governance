@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos pantheon:list        — list all 38 God Agents
  * thesmos pantheon:install     — add agents to .thesmos/registry.json

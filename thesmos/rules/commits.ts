@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Conventional Commits Governance Rules — COMMIT_001–010
  *

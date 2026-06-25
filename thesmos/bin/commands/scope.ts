@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos scope:* — agent blast radius enforcement.
  *

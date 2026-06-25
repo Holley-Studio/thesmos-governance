@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos CLI execution layer.
  *
@@ -214,4 +215,36 @@ export async function runThesmos(
 ): Promise<string> {
   const bin = resolveBinary(workspaceRoot, binaryOverride);
   return exec(bin, args, workspaceRoot);
+}
+
+export interface TokenReport {
+  sessionCostUSD: number;
+  todayCostUSD: number;
+  projectCostUSD: number;
+}
+
+/**
+ * Runs `thesmos tokens:report --json` and returns a parsed cost summary.
+ * Returns null if token tracking has no data yet (first run, no events file).
+ */
+export async function runTokensReport(
+  workspaceRoot: string,
+  binaryOverride?: string,
+): Promise<TokenReport | null> {
+  const bin = resolveBinary(workspaceRoot, binaryOverride);
+  try {
+    const stdout = await exec(bin, ['tokens:report', '--json'], workspaceRoot);
+    const data = JSON.parse(stdout) as {
+      session?: { cost?: number };
+      today?: { cost?: number };
+      project?: { cost?: number };
+    };
+    return {
+      sessionCostUSD: data.session?.cost ?? 0,
+      todayCostUSD: data.today?.cost ?? 0,
+      projectCostUSD: data.project?.cost ?? 0,
+    };
+  } catch {
+    return null;
+  }
 }

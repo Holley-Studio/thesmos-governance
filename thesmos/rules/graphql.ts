@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * GraphQL Security & Quality Rules — GQL_001–025
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * SARIF 2.1.0 serializer for Thesmos findings.
  *

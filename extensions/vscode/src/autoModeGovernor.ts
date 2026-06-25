@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * AutoModeGovernor — watches .claude/settings.json for governance hook installation
  * and emits status-change events so the status bar and notification system

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Token Budget Governance — AI cost tracking and enforcement for Claude Code sessions.
  *

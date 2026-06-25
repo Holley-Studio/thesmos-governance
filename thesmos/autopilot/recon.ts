@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Reconnaissance phase — a read-only AI call that reads the codebase
  * before each task executes.

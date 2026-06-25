@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos notify — sends webhook notifications when findings meet a severity threshold.
  *

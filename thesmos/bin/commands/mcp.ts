@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos mcp:serve   — start the MCP server (stdio JSON-RPC 2.0)
  * thesmos mcp:install — add thesmos to ~/.claude/settings.json as an MCP server

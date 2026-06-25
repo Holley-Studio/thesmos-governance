@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Dashboard generator — creates monitoring/analytics dashboard scaffold from wizard answers.
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Prototype Pollution Rules — PROTO_001–010
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * DiagnosticsManager — maps thesmos findings to VS Code squiggles.
  *

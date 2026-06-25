@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos watch — real-time governance feedback as you code.
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Output mode helpers — JSON, Markdown, and human-readable console.
  * Import and call `applyOutputMode` at the end of each script's main().

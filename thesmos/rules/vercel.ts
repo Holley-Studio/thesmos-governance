@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Vercel Deployment Governance Rules — VERCEL_001–010
  *

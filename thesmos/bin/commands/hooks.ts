@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos hooks — install/uninstall/status of governance git hooks.
  *

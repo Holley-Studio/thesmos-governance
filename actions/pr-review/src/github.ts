@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * GitHub API interactions for the Thesmos Governance PR Review Action.
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Git operations for autopilot sessions.
  * All operations use execSync with explicit cwd — never rely on process.cwd().

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Type declarations mirroring the JSON output of the thesmos-governance CLI.
  *

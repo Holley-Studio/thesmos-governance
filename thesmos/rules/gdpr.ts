@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * GDPR Compliance Rules — GDPR_001–015
  *

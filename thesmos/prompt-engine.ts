@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos Prompt Engine — template interpolation and trigger evaluation.
  *

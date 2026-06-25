@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * HealthPanel — VS Code Webview panel showing the governance health dashboard.
  *

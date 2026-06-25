@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Comment formatters for the Thesmos Governance PR Review Action.
  *

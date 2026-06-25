@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Java / Spring Boot Security Rules — JAVA_001–020
  *

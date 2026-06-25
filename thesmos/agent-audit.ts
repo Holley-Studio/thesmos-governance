@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos Agent Audit Trail — tamper-evident log of AI agent actions.
  *

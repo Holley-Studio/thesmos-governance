@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Governance event log — append-only JSONL for rule fires, blocked actions,
  * and MCP enforcement decisions.

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * FindingsTreeProvider — Explorer panel tree of all governance findings.
  *

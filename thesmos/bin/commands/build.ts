@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos build:agent / build:skill / build:dashboard / build:workflow / build:rag / build:voice / build:mcp-tool / build:automation
  *
