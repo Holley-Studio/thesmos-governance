@@ -51,6 +51,8 @@ import { cmdDeps } from './commands/deps.ts';
 import { cmdCompliance } from './commands/compliance.ts';
 import { cmdAiFingerprint } from './commands/ai-fingerprint.ts';
 import { cmdPantheon } from './commands/pantheon.ts';
+import { cmdProfile } from './commands/profile.ts';
+import { cmdSuppress } from './commands/suppress.ts';
 import { cmdNotify } from './commands/notify.ts';
 import { cmdGithubComment } from './commands/github-comment.ts';
 import { cmdSelf } from './commands/self.ts';
@@ -192,6 +194,14 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   compile:                  (argv) => cmdCompile(argv),
   notify:                   (argv) => cmdNotify(argv),
   'pantheon:council':       (argv) => cmdPantheon(['council', ...argv]),
+  'profile:init':           (argv) => cmdProfile('init', argv),
+  'profile:view':           (argv) => cmdProfile('view', argv),
+  'profile:correct':        (argv) => cmdProfile('correct', argv),
+  'profile:disable':        (argv) => cmdProfile('disable', argv),
+  'profile:enable':         (argv) => cmdProfile('enable', argv),
+  'profile:set':            (argv) => cmdProfile('set', argv),
+  'profile:reset':          (argv) => cmdProfile('reset', argv),
+  'suppress':               (argv) => cmdSuppress(argv),
 };
 
 const argv = process.argv.slice(2); // ['command', ...flags]
@@ -492,7 +502,7 @@ const cliStart = Date.now();
 log.info('command start', { command });
 
 // Skip update check for machine-readable commands and update itself
-const SKIP_UPDATE_CHECK = new Set(['tokens:report', 'health', 'self:check', 'self:update']);
+const SKIP_UPDATE_CHECK = new Set(['tokens:report', 'health', 'self:check', 'self:update', 'profile:view']);
 
 handler(argv.slice(1))
   .then(() => {
