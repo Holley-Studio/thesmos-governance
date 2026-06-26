@@ -1,0 +1,633 @@
+# thesmos-governance — Guardrails
+
+<!-- TODO: Add project-specific exceptions, approved patterns, and team agreements. -->
+
+
+<!-- THESMOS:GENERATED START rules -->
+### Active Rules
+
+**BLOCKER — CI will fail:**
+
+- 🔴 **[ENV_001]** Use bracket-notation env access — process['env' as 'env']['VAR'] — never process.env.VAR dot notation.
+- 🔴 **[SEC_001]** Never import the Supabase admin client in 'use client' files. Admin clients expose service-role keys to the browser.
+- 🔴 **[SEC_002]** Never disable Row Level Security. All Supabase tables must have RLS enabled with explicit policies.
+- 🔴 **[SEC_003]** Never commit secrets, API keys, or private key material in code or config files.
+- 🔴 **[SEC_004]** Never use eval() or new Function(string). Both execute arbitrary code and open remote code execution vulnerabilities.
+- 🔴 **[SEC_006]** SQL queries built with template literals or string concatenation are vulnerable to injection. Use parameterized queries.
+- 🔴 **[SEC_009]** path.join / path.resolve with user-controlled input enables directory traversal attacks.
+- 🔴 **[SEC_014]** Server-side fetch with a user-controlled URL enables SSRF — attackers can reach internal services.
+- 🔴 **[SEC_016]** child_process.exec / execSync with template literals or concatenation enables command injection.
+- 🔴 **[SEC_018]** Passwords or secrets in URLs appear in server logs, browser history, and Referer headers.
+- 🔴 **[AUTH_002]** jwt.decode() decodes without verifying the signature. Use jwt.verify() to authenticate the token.
+- 🔴 **[AUTH_004]** Trusting userId from req.body instead of the session allows users to act as any other user.
+- 🔴 **[AUTH_006]** Hardcoded test credentials or default passwords in non-test files are a persistent security risk.
+- 🔴 **[AUTH_007]** Admin or internal routes exposed without authentication middleware are world-accessible.
+- 🔴 **[SEC_021]** Spreading user input directly into database operations allows attackers to set fields they shouldn't control.
+- 🔴 **[SEC_022]** CORS Access-Control-Allow-Origin: * allows any website to make credentialed requests to your API.
+- 🔴 **[SEC_024]** Deserializing untrusted data with eval(), new Function(), or JSON.parse without schema validation is dangerous.
+- 🔴 **[SEC_025]** Using user-provided filenames for file uploads allows path traversal attacks (../../etc/passwd).
+- 🔴 **[SEC_027]** Using a short or predictable JWT secret allows attackers to forge tokens via offline brute force.
+- 🔴 **[SEC_029]** Parsing XML with external entity expansion enabled allows XXE attacks that can read local files.
+- 🔴 **[SEC_033]** Using user-provided URLs in href attributes allows javascript: protocol XSS attacks.
+- 🔴 **[SEC_035]** Storing passwords without hashing exposes all user credentials if the database is breached.
+- 🔴 **[SEC_037]** Object.assign() or lodash.merge() with user-controlled keys can pollute Object.prototype.
+- 🔴 **[SEC_038]** CORS origin reflected from request header without allowlist — any origin can make credentialed cross-origin requests.
+- 🔴 **[SEC_039]** CORS allows wildcard origin (*) combined with credentials:true — credentials are never sent with wildcard but this signals a misconfiguration.
+- 🔴 **[SEC_044]** HTTP request to a URL that may resolve to a private IP range — SSRF to internal services.
+- 🔴 **[SEC_045]** Path validation uses string comparison without URL-decoding first — encoding bypass (..%2F..%2F).
+- 🔴 **[REACT_019]** Hooks called inside conditionals, loops, or early returns violate Rules of Hooks and cause crashes.
+- 🔴 **[REACT_026]** dangerouslySetInnerHTML with unescaped user content is a direct XSS vulnerability.
+- 🔴 **[NEXT_003]** `cookies()` and `headers()` from next/headers cannot be called in Client Components.
+- 🔴 **[NEXT_012]** Importing 'server-only' packages in Client Components leaks server logic to the browser bundle.
+- 🔴 **[NEXT_038]** Authentication enforced only in Next.js middleware — bypassable via x-middleware-subrequest header (CVE-2025-29927, CVSS 9.1).
+- 🔴 **[NEXT_039]** x-middleware-subrequest header not stripped at edge/proxy — CVE-2025-29927 bypass.
+- 🔴 **[NEXT_047]** Secret or private key stored in NEXT_PUBLIC_ environment variable — exposed to client bundle.
+- 🔴 **[AI_001]** LLM API keys (OpenAI, Anthropic, Gemini, etc.) must never be loaded in Client Components or browser-visible code.
+- 🔴 **[AI_003]** Rendering raw LLM output as HTML (innerHTML, dangerouslySetInnerHTML) enables XSS via prompt injection.
+- 🔴 **[AI_013]** Interpolating unsanitized user input directly into a system prompt enables prompt injection attacks.
+- 🔴 **[AI_016]** LLM output used directly in code execution, SQL queries, or HTML without validation is dangerous.
+- 🔴 **[AI_028]** LLM output rendered directly as HTML without sanitization — XSS via AI response.
+- 🔴 **[AI_029]** System prompt concatenated directly with user input — adversarial prompt can override system instructions.
+- 🔴 **[AI_030]** LLM output used directly as a shell command or SQL query without validation — command/SQL injection via AI.
+- 🔴 **[DB_001]** `DROP TABLE` in a migration permanently destroys data and is unrecoverable without a backup.
+- 🔴 **[DB_002]** Storing passwords in plaintext or with reversible encoding is a critical security vulnerability.
+- 🔴 **[DB_005]** SQL constructed with template literals and user input is vulnerable to SQL injection.
+- 🔴 **[API_004]** API responses that include the password hash field expose sensitive data to API consumers.
+- 🔴 **[API_008]** Making API requests with secret keys from client-side code exposes the key to anyone who inspects network traffic.
+- 🔴 **[DB_014]** Creating a new database connection per request instead of using a singleton connection pool will exhaust connections.
+- 🔴 **[DB_021]** Database calls in Next.js middleware run on the Edge Runtime which doesn't support standard TCP connections.
+- 🔴 **[DB_024]** Balance or inventory updated outside a transaction — concurrent requests can produce incorrect totals (TOCTOU).
+- 🔴 **[GIT_001]** Merge conflict markers committed to a file indicate an incomplete conflict resolution.
+- 🔴 **[GIT_002]** `.env` files committed to source control expose secrets to everyone with repository access.
+- 🔴 **[ZOD_028]** Schemas accepting credit card numbers must comply with PCI DSS — storing raw PANs requires certification.
+- 🔴 **[ZOD_030]** Schemas accepting Social Security Numbers (SSNs) are subject to CCPA/GDPR special-category data requirements.
+- 🔴 **[TRPC_016]** tRPC handler with CORS origin: "*" allows any website to call your API with credentials.
+- 🔴 **[PRISMA_003]** $queryRaw and $executeRaw with template literals are vulnerable to SQL injection if user input is interpolated.
+- 🔴 **[PRISMA_009]** updateMany() and deleteMany() without a restrictive where clause affect the entire table.
+- 🔴 **[PRISMA_011]** Queries on the user model without excluding passwordHash risk exposing the hash in API responses.
+- 🔴 **[NODE_001]** File path constructed from user input without sanitization is a path traversal vulnerability.
+- 🔴 **[NODE_004]** Object.assign or spread of untrusted user input to objects with no prototype guard allows prototype pollution.
+- 🔴 **[NODE_005]** child_process with shell: true and user input is a command injection vulnerability.
+- 🔴 **[NODE_007]** rejectUnauthorized: false or NODE_TLS_REJECT_UNAUTHORIZED=0 disables TLS certificate validation.
+- 🔴 **[NODE_008]** JWT verification without explicit algorithm restriction allows the "none" algorithm attack.
+- 🔴 **[NODE_015]** yaml.load() (js-yaml) executes JavaScript functions embedded in YAML — use yaml.safeLoad() or yaml.load() with schema.
+- 🔴 **[NODE_019]** String-concatenated SQL queries with user input are vulnerable to SQL injection.
+- 🔴 **[NODE_023]** Hardcoded API keys, tokens, or passwords in source files will be committed to git and leaked.
+- 🔴 **[NODE_030]** Server-side requests to user-supplied URLs without validation allow SSRF attacks against internal infrastructure.
+- 🔴 **[IMPORT_005]** Importing server-only modules (node:fs, node:crypto, prisma) in client-side components leaks them to the browser bundle.
+- 🔴 **[STATE_008]** Dispatching Redux actions during component render (not in useEffect or event handlers) causes infinite loops.
+- 🔴 **[STATE_011]** Persisting sensitive data (tokens, passwords) to localStorage via zustand/persist exposes it to XSS.
+- 🔴 **[STATE_012]** Global mutable state (module-level variables) in Next.js Server Components leaks between requests.
+- 🔴 **[FORM_009]** Forms that POST data without CSRF protection are vulnerable to cross-site request forgery attacks.
+- 🔴 **[FORM_011]** Submitting forms with GET method sends sensitive data (passwords, tokens) in the URL query string.
+- 🔴 **[LOG_002]** Logging personally identifiable information (PII) violates GDPR/CCPA and creates security exposure.
+- 🔴 **[LOG_003]** Logging API keys, tokens, or passwords exposes secrets to anyone with log access.
+- 🔴 **[LOG_008]** Logging full request bodies may capture passwords, credit card numbers, or other sensitive POST data.
+- 🔴 **[VIBE_002]** AI tools generate fetch(userInput) patterns that are trivially exploitable as SSRF.
+- 🔴 **[VIBE_007]** AI assistants fill in placeholder secrets (API keys, tokens, passwords) during code generation that get committed.
+- 🔴 **[VIBE_008]** eval() and new Function() are AI hallucination favorites for "dynamic" code — they allow arbitrary code execution.
+- 🔴 **[VIBE_009]** AI-generated SQL using template literals with unescaped interpolation is trivially exploitable.
+- 🔴 **[VIBE_010]** AI-generated file-serving code using path.join(userInput) enables directory traversal attacks.
+- 🔴 **[VIBE_017]** dangerouslySetInnerHTML with user-controlled content — the React XSS vector AI tools consistently generate.
+- 🔴 **[VIBE_020]** AI-generated code concatenating user data into HTML strings without encoding enables server-side XSS.
+- 🔴 **[VIBE_021]** AI inference endpoints generated by AI tools almost never have authentication — your LLM costs are exposed to the internet.
+- 🔴 **[VIBE_022]** Concatenating user input directly into LLM system prompts enables prompt injection attacks.
+- 🔴 **[VIBE_024]** AI-generated CRUD routes use user-supplied IDs without verifying the caller owns the resource — classic IDOR.
+- 🔴 **[VIBE_026]** Rate limiter imported or created but not applied to any route handler — AI generates middleware it never wires up.
+- 🔴 **[VIBE_027]** Payment or subscription API route has no rate limiting — financial abuse via rapid repeated requests.
+- 🔴 **[VIBE_033]** AI-generated code adds REST auth but skips WebSocket upgrade authentication — universal vibe-coding gap.
+- 🔴 **[SLOP_001]** Import references a package not listed in package.json — may be an AI-hallucinated phantom dependency.
+- 🔴 **[SLOP_004]** Import matches a package on the documented list of AI-hallucinated package names from security research.
+- 🔴 **[SLOP_009]** Package name is within edit-distance 2 of a popular npm package — possible typosquatting attack or AI typo.
+- 🔴 **[PY_001]** eval() or exec() called with a non-literal argument — remote code execution risk.
+- 🔴 **[PY_002]** SQL query built with f-string or % formatting — SQL injection risk.
+- 🔴 **[PY_003]** Hardcoded secret, API key, or password found in Python source.
+- 🔴 **[PY_004]** requests.get/post called with a variable URL — potential SSRF if user-controlled.
+- 🔴 **[PY_006]** subprocess or os.system called with a dynamic string — shell injection risk.
+- 🔴 **[PY_007]** pickle.loads() or pickle.load() on data that may come from user input.
+- 🔴 **[PY_009]** File opened with a path from request/user input without traversal protection.
+- 🔴 **[PY_014]** LLM prompt built by concatenating or f-stringing user input without sanitization.
+- 🔴 **[PY_015]** Route calling OpenAI/Anthropic/LangChain with no authentication — unbounded API cost exposure.
+- 🔴 **[PY_019]** Database connection string with credentials hardcoded in source.
+- 🔴 **[PY_029]** Coroutine called without `await` — silently no-ops and returns a coroutine object.
+- 🔴 **[PY_030]** `pickle.loads()` on externally-sourced data — remote code execution vector.
+- 🔴 **[PY_031]** `marshal.loads()` on external data — same RCE class as pickle.
+- 🔴 **[PY_033]** `os.system()` with f-string or % formatting — shell injection vector.
+- 🔴 **[PY_034]** `subprocess` with `shell=True` and a non-literal command — shell injection risk.
+- 🔴 **[PY_040]** Django `QuerySet.raw()` or `cursor.execute()` with user-supplied data — SQL injection.
+- 🔴 **[PY_041]** Django `mark_safe()` called on user-controlled string — XSS vulnerability.
+- 🔴 **[PY_025]** LangChain agent or chain invoked in a route with no authentication.
+- 🔴 **[DJG_001]** DEBUG = True in settings file exposes stack traces and config to end users.
+- 🔴 **[DJG_003]** Django .raw() or cursor.execute() called with string formatting — SQL injection risk.
+- 🔴 **[DJG_006]** Django SECRET_KEY appears to be hardcoded — rotate it and load from environment.
+- 🔴 **[DJG_014]** pickle.loads() or pickle.load() called — arbitrary code execution if input is attacker-controlled.
+- 🔴 **[DJG_016]** subprocess called with shell=True and dynamic string — command injection if user input is included.
+- 🔴 **[DJG_017]** DATABASES settings contains a hardcoded PASSWORD — database credentials in source code.
+- 🔴 **[GO_001]** SQL query built with fmt.Sprintf or string concat — SQL injection risk.
+- 🔴 **[GO_002]** exec.Command() first arg built with fmt.Sprintf or string concat — command injection risk.
+- 🔴 **[GO_005]** Variable named password/secret/apiKey/token assigned a string literal.
+- 🔴 **[GO_006]** InsecureSkipVerify: true in TLS config disables certificate verification.
+- 🔴 **[GO_017]** filepath.Join or os.Open/ReadFile called with a request-derived argument — path traversal risk.
+- 🔴 **[RB_001]** String interpolation inside ActiveRecord .where()/.find_by()/.order()/.group()/.having()/.joins()/.select() — SQL injection risk.
+- 🔴 **[RB_002]** ActiveRecord::Base.connection.execute() with string interpolation — SQL injection risk.
+- 🔴 **[RB_005]** params.permit! bypasses strong parameters and allows all user input through mass assignment.
+- 🔴 **[RB_009]** Shell command with string interpolation — system("#{...}"), backtick interpolation, exec, %x, IO.popen, Open3.
+- 🔴 **[RB_010]** File.read/File.open/send_file/render file: with params[] — user-controlled file path traversal.
+- 🔴 **[RB_011]** send_file with a variable path argument (not a string literal or Rails.root-based path) — path traversal risk.
+- 🔴 **[RB_012]** secret_key_base with a literal string value in a YAML config file — credential in source code.
+- 🔴 **[RB_016]** YAML.load() without safe_load — executes arbitrary Ruby code via !!ruby/object tags.
+- 🔴 **[RB_017]** Marshal.load() or Marshal.restore() deserializes arbitrary Ruby objects — RCE if input is attacker-controlled.
+- 🔴 **[PHP_001]** SQL query built by string concatenation with a variable — SQL injection.
+- 🔴 **[PHP_002]** PDO or mysqli query uses PHP variable interpolation inside the SQL string.
+- 🔴 **[PHP_003]** User superglobal ($_GET/$_POST/$_REQUEST) echoed without htmlspecialchars().
+- 🔴 **[PHP_004]** eval() executes arbitrary PHP — code injection if input is attacker-controlled.
+- 🔴 **[PHP_005]** Shell command executed with user-controlled input — command injection.
+- 🔴 **[PHP_007]** File path or include built from user input — path traversal / LFI.
+- 🔴 **[PHP_008]** Eloquent model with $guarded = [] allows mass assignment of all attributes.
+- 🔴 **[PHP_009]** Laravel whereRaw(), selectRaw(), or DB::raw() with PHP variable interpolation.
+- 🔴 **[PHP_012]** unserialize() on user-supplied data — PHP object injection / RCE.
+- 🔴 **[PHP_018]** HTTP request or file fetch with URL from user input — Server-Side Request Forgery.
+- 🔴 **[JAVA_001]** JDBC executeQuery/execute with string concatenation — SQL injection risk.
+- 🔴 **[JAVA_002]** String.format() used to build a SQL query — SQL injection risk.
+- 🔴 **[JAVA_006]** XMLInputFactory/DocumentBuilderFactory/SAXParserFactory without external entity protection — XXE injection.
+- 🔴 **[JAVA_007]** new ObjectInputStream followed by readObject() — arbitrary code execution via unsafe deserialization.
+- 🔴 **[JAVA_008]** Runtime.exec() or new ProcessBuilder() with string concatenation — command injection risk.
+- 🔴 **[JAVA_009]** new File() with request.getParameter() or concatenation — path traversal risk.
+- 🔴 **[JAVA_018]** new SecretKeySpec() with a hardcoded string or byte literal — cryptographic key in source code.
+- 🔴 **[JAVA_019]** Class.forName() with a variable argument — dynamic class loading from user-controlled input enables RCE.
+- 🔴 **[RUST_008]** MutexGuard (.lock()) held across an .await point — deadlock risk in async code.
+- 🔴 **[RUST_010]** SQL string built with format!() including a {} placeholder — SQL injection risk.
+- 🔴 **[RUST_014]** std::mem::transmute — extremely unsafe type punning that bypasses all safety guarantees.
+- 🔴 **[CS_001]** SQL built by string interpolation or concatenation passed to a database method — SQL injection.
+- 🔴 **[CS_002]** EF Core FromSqlRaw() called with an interpolated string $"..." — defeats parameterization.
+- 🔴 **[CS_007]** JsonSerializerSettings with TypeNameHandling set to All, Objects, or Auto — RCE via deserialization.
+- 🔴 **[CS_008]** XmlDocument or XmlReader created without disabling external entity processing — XXE vulnerability.
+- 🔴 **[CS_011]** File.ReadAllText/Open/ReadAllBytes or Path.Combine used with user-supplied request input.
+- 🔴 **[CS_012]** Process.Start or ProcessStartInfo used with user-controlled arguments.
+- 🔴 **[CS_019]** JWT signing key hardcoded as a string literal in SymmetricSecurityKey.
+- 🔴 **[DOCKER_005]** ENV instruction sets a sensitive variable to a literal value.
+- 🔴 **[DOCKER_007]** RUN curl/wget piped to bash/sh — arbitrary remote code execution.
+- 🔴 **[GHA_001]** Untrusted GitHub context expression used directly inside a run: step — script injection.
+- 🔴 **[GHA_002]** pull_request_target event combined with actions/checkout at the PR head — privileged workflow runs attacker code.
+- 🔴 **[TF_001]** S3 bucket resource with a public-read or public-read-write ACL — publicly exposes all bucket objects.
+- 🔴 **[TF_002]** Security group allows inbound traffic from 0.0.0.0/0 on sensitive ports (SSH, database ports).
+- 🔴 **[TF_005]** IAM policy statement grants all actions ("*") — full AWS admin access.
+- 🔴 **[TF_008]** Hardcoded password, secret, or API key found in Terraform configuration.
+- 🔴 **[TF_011]** Security group ingress/egress with from_port = 0 and to_port = 65535 — all TCP/UDP ports open.
+- 🔴 **[TF_013]** IAM policy grants sensitive actions with `"Resource": "*"` — overly permissive.
+- 🔴 **[TF_014]** Security group allows ingress from `0.0.0.0/0` on a non-HTTP/HTTPS port.
+- 🔴 **[TF_022]** Hardcoded secret or token in EC2 `user_data` — visible in AWS console and instance metadata.
+- 🔴 **[GQL_003]** GraphQL resolver accesses data without an authorization check.
+- 🔴 **[GQL_010]** GraphQL subscription handler has no authentication check on the connection context.
+- 🔴 **[GQL_017]** Hardcoded API key, token, or secret found in GraphQL resolver.
+- 🔴 **[GQL_025]** DataLoader instance created outside request context — shared cache leaks data between users.
+- 🔴 **[COMMIT_001]** Commit message first line must match Conventional Commits format: type[(scope)][!]: subject
+- 🔴 **[COMMIT_008]** Breaking change indicator (!) requires a BREAKING CHANGE: footer in the commit body.
+- 🔴 **[VERCEL_001]** Never embed literal credential values in vercel.json. Use environment variable references instead.
+- 🔴 **[VERCEL_002]** Server secrets must never use the NEXT_PUBLIC_ prefix — it ships them to the browser bundle.
+- 🔴 **[AGNT_003]** .claude/settings.json has no bash deny patterns — agent can run arbitrary shell commands.
+- 🔴 **[AGNT_013]** Agent loop uses alert/warn on token usage but has no hard stop — cost runaway if alert is ignored.
+- 🔴 **[AGNT_014]** Agent autopilot config has no maxIterationsPerTask — tasks can loop indefinitely.
+- 🔴 **[DEP_001]** Dependency has a CRITICAL CVE — immediate upgrade required.
+- 🔴 **[LIC_001]** GPL/AGPL dependency found in a project with a commercial or permissive license — copyleft contamination.
+- 🔴 **[LIC_009]** Project is open source (GPL) but has a permissive dep that conflicts with GPL requirements.
+- 🔴 **[GDPR_007]** PII sent to external logging service (Sentry/Datadog/LogRocket) — third-party data transfer.
+- 🔴 **[GDPR_011]** API error response may include user object fields — PII leak via error messages.
+- 🔴 **[MCP_001]** MCP tool description contains instruction-like patterns — potential tool poisoning (CVE-2025-54136).
+- 🔴 **[MCP_002]** MCP server response passed directly into a prompt or eval — enables indirect prompt injection.
+- 🔴 **[MCP_003]** MCP tool output passed directly to exec/eval/spawn — remote code execution if server is compromised.
+- 🔴 **[MCP_007]** .cursor/rules or .cursorrules file contains shell execution or key exfiltration pattern (CVE-2025-54135).
+- 🔴 **[MCP_019]** MCP tool parameter used directly in a database query — SQL/NoSQL injection risk.
+- 🔴 **[RAG_001]** Vector store accepts user-submitted documents without content sanitization — RAG poisoning risk.
+- 🔴 **[RAG_002]** Retrieved RAG content injected into prompt without data/instruction boundary — indirect prompt injection.
+- 🔴 **[RAG_005]** Vector store write endpoint has no authentication — anyone can poison the knowledge base.
+- 🔴 **[WS_001]** WebSocket upgrade handler has no authentication check — any client can open a connection.
+- 🔴 **[WS_002]** WebSocket message handler processes commands without per-message authorization check.
+- 🔴 **[PROTO_001]** Recursive object merge without __proto__/constructor/prototype key guard — prototype pollution.
+- 🔴 **[JWT_001]** JWT secret has a hardcoded fallback string — any key derived from the fallback is compromised.
+- 🔴 **[JWT_002]** JWT verified without pinning the algorithm — allows alg:none and RS256→HS256 confusion attacks.
+- 🔴 **[AUTH_008]** Authentication check exists only in a client component — bypassable with browser dev tools.
+- 🔴 **[SC_002]** package.json present without a lockfile — dependencies are not pinned.
+- 🔴 **[SC_003]** postinstall/preinstall script fetches from network at install time — potential supply-chain attack vector.
+- 🔴 **[DAST_001]** XML parser called without entity expansion protection — vulnerable to XXE and billion-laughs attacks.
+- 🔴 **[DAST_005]** User-controlled input passed to eval(), new Function(), or vm.runInContext() — remote code execution risk.
+- 🔴 **[DAST_008]** Template engine render called with user-controlled template string — Server-Side Template Injection (SSTI) risk.
+- 🔴 **[K8S_003]** Kubernetes container runs with privileged: true — equivalent to root access on the host node.
+- 🔴 **[K8S_005]** Kubernetes secret value appears as a literal string in env: rather than using secretKeyRef.
+
+**HIGH — Must address before merge:**
+
+- 🟠 **[AUTH_001]** All POST, PATCH, PUT, and DELETE API routes must verify caller identity before executing mutations.
+- 🟠 **[GATE_001]** Monday.com write mutations must go through the designated gateway module, not scattered across the codebase.
+- 🟠 **[SEC_005]** dangerouslySetInnerHTML with a variable value is an XSS vector. Sanitize with DOMPurify before use.
+- 🟠 **[SEC_007]** Direct assignment to .innerHTML with a variable is an XSS vulnerability. Use textContent or sanitize first.
+- 🟠 **[SEC_010]** CORS wildcard origin (*) allows any website to make credentialed cross-origin requests to your API.
+- 🟠 **[SEC_011]** Math.random() is not cryptographically secure. Never use it for tokens, passwords, session IDs, or security-sensitive values.
+- 🟠 **[SEC_012]** Cookies set without httpOnly, secure, and sameSite flags are vulnerable to XSS theft and CSRF.
+- 🟠 **[SEC_015]** redirect() or res.redirect() with user-controlled input enables open redirect attacks.
+- 🟠 **[SEC_017]** Object.assign or spread with untrusted input into a shared object enables prototype pollution.
+- 🟠 **[SEC_019]** Password or token comparison with == / === is vulnerable to timing attacks. Use a constant-time comparison function.
+- 🟠 **[AUTH_003]** Storing auth tokens in localStorage exposes them to XSS. Use httpOnly cookies managed by the server.
+- 🟠 **[AUTH_005]** Auth endpoints (login, register, password reset) without rate limiting are brute-force targets.
+- 🟠 **[SEC_020]** Redirecting to a URL from user input without validation allows attackers to redirect users to phishing sites.
+- 🟠 **[SEC_023]** Comparing secrets with === is vulnerable to timing attacks — use crypto.timingSafeEqual instead.
+- 🟠 **[SEC_026]** Authentication endpoints (login, password reset) without rate limiting are vulnerable to brute force attacks.
+- 🟠 **[SEC_028]** Not regenerating the session ID after login allows session fixation attacks.
+- 🟠 **[SEC_030]** Using user-provided IDs to fetch resources without verifying ownership enables IDOR attacks.
+- 🟠 **[SEC_031]** Hardcoded http:// URLs in production code transmit data unencrypted and break HSTS.
+- 🟠 **[SEC_036]** Logging process.env values risks exposing secret keys in log aggregators.
+- 🟠 **[SEC_040]** CORS allowlist uses regex pattern matching instead of exact string comparison — regex bypass risk.
+- 🟠 **[SEC_041]** CORS allowlist includes "null" origin — allows requests from file:// and sandboxed iframes.
+- 🟠 **[SEC_042]** CORS headers set inside individual route handlers instead of global middleware — inconsistent coverage.
+- 🟠 **[TS_004]** Non-null assertion (!) on req.query, req.params, or req.body values hides runtime crashes.
+- 🟠 **[TS_008]** Empty catch blocks swallow errors silently. At minimum, log the error.
+- 🟠 **[TS_010]** Calling an async function without await or .catch() creates an unhandled promise rejection.
+- 🟠 **[TS_011]** `debugger` statement committed to source code pauses execution in any environment with dev tools open.
+- 🟠 **[ASYNC_001]** `await` inside `.forEach()` does not wait for promises — use `for...of` or `Promise.all` instead.
+- 🟠 **[REACT_001]** useEffect does not support async callbacks directly. The cleanup function must be synchronous.
+- 🟠 **[REACT_004]** Accessing `window` at the module or component level breaks server-side rendering.
+- 🟠 **[REACT_005]** Mutating state arrays or objects directly (push, splice, sort) bypasses React's change detection.
+- 🟠 **[REACT_012]** Components using useSuspense, lazy(), or use() must be wrapped in a <Suspense> boundary.
+- 🟠 **[REACT_013]** List items rendered without a stable key prop cause incorrect reconciliation and DOM mutations.
+- 🟠 **[REACT_015]** useCallback with missing dependencies will use stale closure values instead of the latest state/props.
+- 🟠 **[REACT_017]** Calling setState on an unmounted component causes memory leaks and 'Can\'t perform state update on unmounted component' warnings.
+- 🟠 **[REACT_020]** Async event handlers without error handling cause unhandled promise rejections that silently swallow errors.
+- 🟠 **[REACT_031]** Async data-fetching components without an error boundary crash the entire component tree on failure.
+- 🟠 **[NEXT_001]** `next/router` is for the Pages Router. Use `next/navigation` for the App Router.
+- 🟠 **[NEXT_002]** `getServerSideProps` is a Pages Router API. In the App Router, data fetching is done in Server Components.
+- 🟠 **[NEXT_004]** In Next.js 15+, `params` and `searchParams` are Promises and must be awaited before destructuring.
+- 🟠 **[NEXT_005]** Server Actions must include the `"use server"` directive to prevent accidental client execution.
+- 🟠 **[NEXT_006]** `redirect()` from next/navigation throws an error internally — catching it prevents the redirect.
+- 🟠 **[NEXT_010]** `useSearchParams()` must be wrapped in a Suspense boundary or it causes a build-time error in Next.js.
+- 🟠 **[NEXT_016]** 'use server' directive must appear at the top of a file or function body — not mid-file.
+- 🟠 **[NEXT_021]** Next.js App Router pages without an error.tsx sibling have no error boundary — unhandled errors crash the entire segment.
+- 🟠 **[NEXT_023]** redirect() from 'next/navigation' called inside try/catch in a Server Action is swallowed — it throws internally.
+- 🟠 **[NEXT_027]** Server Actions that mutate data should call revalidatePath or revalidateTag to clear stale cache.
+- 🟠 **[NEXT_029]** Cloning or consuming the request body in Next.js Middleware is not supported in Edge Runtime.
+- 🟠 **[NEXT_030]** Marking a layout.tsx as 'use client' prevents Server Component children from fetching data on the server.
+- 🟠 **[NEXT_040]** next.config has no security headers — missing X-Frame-Options, HSTS, X-Content-Type-Options.
+- 🟠 **[NEXT_041]** Next.js Server Action exposed without CSRF validation.
+- 🟠 **[NEXT_042]** revalidatePath or revalidateTag callable from an unauthenticated route.
+- 🟠 **[AI_002]** User input passed directly to LLM messages without sanitization enables prompt injection attacks.
+- 🟠 **[AI_006]** AI-powered endpoints without rate limiting expose you to cost amplification attacks.
+- 🟠 **[AI_007]** Sending PII (emails, names, SSNs, phone numbers) to external LLM APIs violates data privacy obligations.
+- 🟠 **[AI_009]** JSON.parse on LLM completion output without try-catch will crash when the model returns non-JSON text.
+- 🟠 **[AI_010]** AI tool/function call arguments must be validated with a schema before use — the model can hallucinate invalid args.
+- 🟠 **[AI_014]** Passing unchecked user content to an LLM can exceed context limits, causing errors or truncated responses.
+- 🟠 **[AI_017]** LLM API calls without cost budgets or usage tracking can result in runaway cloud bills.
+- 🟠 **[AI_018]** Agentic LLM loops without a maximum iteration limit can run indefinitely and drain API credits.
+- 🟠 **[AI_019]** System prompts and internal AI instructions exposed via API responses or error messages.
+- 🟠 **[AI_020]** User-facing AI features without content moderation can generate or relay harmful content.
+- 🟠 **[AI_021]** Agentic tool calls that modify state (create, delete, send) should require human-in-the-loop confirmation for high-stakes actions.
+- 🟠 **[AI_023]** Embedding documents containing PII in a vector database creates a hard-to-audit data store.
+- 🟠 **[AI_027]** LLM outputs used as structured data without schema validation risk runtime errors when the model deviates from expected format.
+- 🟠 **[AI_031]** Training data pipeline accepts user-contributed content without sanitization — data poisoning risk (OWASP LLM04).
+- 🟠 **[AI_032]** AI-generated citation URLs displayed to user without validation — hallucinated or malicious link risk (OWASP LLM09).
+- 🟠 **[AI_033]** System prompt stored or transmitted in a client-accessible location — prompt leakage (OWASP LLM07).
+- 🟠 **[AI_034]** LLM response returned to user without content moderation filter — harmful output risk.
+- 🟠 **[AI_035]** AI-generated code snippets executed without human review gate — supply chain and code injection risk.
+- 🟠 **[PERF_001]** `fs.readFileSync` and `fs.writeFileSync` in async request handlers block the Node.js event loop.
+- 🟠 **[PERF_003]** Database query inside a loop causes N+1 queries — one per iteration instead of one batched query.
+- 🟠 **[A11Y_001]** <img> elements must have an `alt` attribute for screen readers and SEO.
+- 🟠 **[A11Y_002]** onClick on non-interactive elements (div, span, p) is inaccessible to keyboard and screen reader users.
+- 🟠 **[A11Y_003]** aria-label with an empty string provides no accessible name — use a meaningful description or remove it.
+- 🟠 **[A11Y_006]** Form inputs without an associated label are inaccessible to screen reader users.
+- 🟠 **[A11Y_008]** Removing focus outlines without providing an alternative makes keyboard navigation invisible.
+- 🟠 **[PERF_011]** Rendering large lists (100+ items) without virtualization causes DOM bloat and scroll jank.
+- 🟠 **[PERF_020]** CPU-intensive computations in Server Components block the response for all concurrent requests.
+- 🟠 **[PERF_022]** Interleaving reads (getBoundingClientRect) and writes (style.x = ...) in a loop causes layout thrashing.
+- 🟠 **[DB_003]** Multi-step writes without a transaction leave the database in a partially-updated state if any step fails.
+- 🟠 **[DB_008]** Logging database rows that contain passwords, tokens, or PII creates audit and compliance exposure.
+- 🟠 **[API_001]** Returning HTTP 200 for error responses breaks API contracts — clients cannot detect errors.
+- 🟠 **[API_002]** Sensitive data in URL query parameters is logged in server access logs, browser history, and referrer headers.
+- 🟠 **[API_003]** API route handlers that read request body or params without schema validation trust unverified client input.
+- 🟠 **[API_005]** Setting CORS `origin` to a dynamic request value without an allowlist allows any domain to make credentialed requests.
+- 🟠 **[API_006]** File upload endpoints without size limits allow denial-of-service via large file uploads.
+- 🟠 **[DB_009]** N+1 query pattern: fetching a list then querying each item individually inside a loop.
+- 🟠 **[DB_010]** Prisma schema with a foreign key field but no @@index causes full table scans on related-record lookups.
+- 🟠 **[DB_012]** Multiple related database writes not wrapped in a transaction risk partial failures leaving data inconsistent.
+- 🟠 **[DB_016]** Database queries without a timeout can block indefinitely, exhausting the connection pool.
+- 🟠 **[DB_017]** Fetching all records without LIMIT/take causes slow queries and huge memory usage as data grows.
+- 🟠 **[DB_020]** prisma.$queryRaw with template literals bypasses type safety and may allow SQL injection.
+- 🟠 **[DB_022]** onDelete: Cascade on a parent relation can silently delete thousands of child records.
+- 🟠 **[DB_025]** `findFirst` + `update` pattern without `$transaction` — classic TOCTOU race condition.
+- 🟠 **[DB_026]** Concurrent `upsert` calls can create duplicate records if no unique constraint exists on the target field.
+- 🟠 **[DB_027]** Mutating API route has no idempotency key — double-submit creates duplicate records.
+- 🟠 **[DB_030]** Ticket, seat, or appointment reservation without pessimistic lock — overselling under concurrent requests.
+- 🟠 **[TEST_002]** `it.only` / `test.only` / `describe.only` committed to the repo skips all other tests in CI.
+- 🟠 **[TEST_004]** Tests with empty bodies always pass — they provide false coverage confidence.
+- 🟠 **[TEST_005]** Tests with no `expect()` calls pass without validating any behavior.
+- 🟠 **[DEPS_001]** `require()` in an ESM module fails at runtime — use `import` instead.
+- 🟠 **[ZOD_001]** z.parse() throws a ZodError on invalid input. Uncaught, it becomes an unhandled 500. Use .safeParse() or wrap in try/catch.
+- 🟠 **[ZOD_004]** .passthrough() in API input schemas silently forwards unknown fields to downstream systems.
+- 🟠 **[ZOD_008]** Password fields without a minimum length allow trivially weak passwords like "a".
+- 🟠 **[ZOD_009]** URL fields without protocol enforcement accept javascript:// and data: URIs, creating XSS vectors.
+- 🟠 **[ZOD_011]** Number fields used for pagination (limit, take, pageSize) without .max() allow full-table reads.
+- 🟠 **[ZOD_017]** z.coerce.boolean() converts any truthy string including "false" to true. Use explicit transformation instead.
+- 🟠 **[ZOD_019]** Price/amount fields without .positive() or .min(0) allow negative values that break billing logic.
+- 🟠 **[ZOD_022]** Self-referential schemas without z.lazy() cause infinite recursion at module load time.
+- 🟠 **[ZOD_029]** Regex validators without ^ and $ anchors match anywhere in the string, bypassing intended validation.
+- 🟠 **[TRPC_001]** tRPC procedures without .input() validation accept any payload — a type-unsafe API boundary.
+- 🟠 **[TRPC_002]** Throwing a plain Error instead of TRPCError in a procedure exposes the full error message to the client.
+- 🟠 **[TRPC_003]** Mutations that modify data using publicProcedure should be audited — they require no authentication.
+- 🟠 **[TRPC_005]** Spreading tRPC input directly into database operations is a mass-assignment vulnerability.
+- 🟠 **[TRPC_007]** tRPC query procedures that fetch lists without a limit parameter return unbounded results.
+- 🟠 **[TRPC_012]** Public tRPC endpoints without rate limiting are vulnerable to abuse and enumeration attacks.
+- 🟠 **[TRPC_017]** Synchronous file I/O inside tRPC procedures blocks the Node.js event loop.
+- 🟠 **[TRPC_019]** Storing raw secrets (tokens, keys) on the tRPC context makes them accessible from all procedures.
+- 🟠 **[TRPC_020]** Accessing ctx.session.user without a null check will crash when called by an unauthenticated user.
+- 🟠 **[TRPC_021]** Hardcoded IDs or user references in procedures create data isolation bugs in multi-tenant systems.
+- 🟠 **[TRPC_022]** tRPC subscriptions without a cleanup function leak memory when clients disconnect.
+- 🟠 **[TRPC_023]** Role-based authorization using raw string comparison is fragile — a typo silently grants or denies access.
+- 🟠 **[PRISMA_001]** prisma.findMany() without a take limit returns the full table — catastrophic on large datasets.
+- 🟠 **[PRISMA_002]** Fetching related records inside a loop is an N+1 query — use include or select to eager-load.
+- 🟠 **[PRISMA_004]** Multiple related Prisma writes without a transaction leave the database in a partial state on failure.
+- 🟠 **[PRISMA_006]** Instantiating PrismaClient inside a function creates a new connection pool on every call.
+- 🟠 **[PRISMA_007]** Prisma unique constraint violations (P2002) should be caught and returned as 409 Conflict, not 500.
+- 🟠 **[PRISMA_008]** Queries that do not filter deleted_at IS NULL silently return soft-deleted records.
+- 🟠 **[PRISMA_012]** Interactive Prisma transactions without a timeout can hold locks indefinitely, causing database gridlock.
+- 🟠 **[PRISMA_014]** Cascading deletes in migrations require review — accidental parent deletion removes all children.
+- 🟠 **[PRISMA_015]** prisma.upsert() without a unique constraint race condition guard can create duplicate records under concurrent load.
+- 🟠 **[PRISMA_018]** Aggregate queries (sum, avg, count) without a where clause compute across the entire table.
+- 🟠 **[PRISMA_019]** Comparing dates as strings in Prisma where clauses produces incorrect results across timezones.
+- 🟠 **[PRISMA_022]** Using connect instead of set for many-to-many updates appends — it does not replace. Use set to replace all.
+- 🟠 **[PRISMA_024]** Using both select and include in the same Prisma query causes a runtime error.
+- 🟠 **[PRISMA_026]** Models without @id or @default(cuid()/uuid()) produce tables without primary keys.
+- 🟠 **[NODE_002]** Math.random() is not cryptographically secure — never use it for tokens, IDs, or security decisions.
+- 🟠 **[NODE_003]** Synchronous filesystem operations inside request handlers block the Node.js event loop.
+- 🟠 **[NODE_006]** HTTP server or outbound request without a timeout allows stalled connections to exhaust resources.
+- 🟠 **[NODE_009]** Cookies set without Secure and HttpOnly flags are accessible to JavaScript and transmitted over HTTP.
+- 🟠 **[NODE_010]** Node.js streams without an "error" event handler cause unhandled exceptions that crash the process.
+- 🟠 **[NODE_011]** Adding event listeners inside request handlers without removing them is a memory leak.
+- 🟠 **[NODE_012]** process.exit() inside a request handler terminates the server for all concurrent users.
+- 🟠 **[NODE_013]** HTTP servers parsing request bodies without a size limit allow unbounded payload DoS.
+- 🟠 **[NODE_014]** Redirecting to a user-supplied URL without validation enables phishing attacks.
+- 🟠 **[NODE_016]** Regex patterns with catastrophic backtracking applied to untrusted input cause ReDoS.
+- 🟠 **[NODE_017]** Auth endpoints (login, register, password reset) without rate limiting are vulnerable to brute force.
+- 🟠 **[NODE_018]** Express apps without Helmet are missing security headers (CSP, HSTS, X-Frame-Options).
+- 🟠 **[NODE_020]** Logging objects that may contain passwords, tokens, or keys ships secrets to log aggregators.
+- 🟠 **[NODE_021]** API without explicit CORS configuration defaults to allowing all origins in some frameworks.
+- 🟠 **[NODE_022]** Promises without .catch() or try/catch in async functions cause unhandled rejection crashes in Node.js 15+.
+- 🟠 **[NODE_028]** MD5 and SHA1 are cryptographically broken — never use them for security-sensitive purposes.
+- 🟠 **[NODE_029]** Web applications without a Content-Security-Policy header are fully exposed to XSS attacks.
+- 🟠 **[ERR_001]** Empty catch blocks silently swallow errors, making debugging impossible and hiding production failures.
+- 🟠 **[ERR_004]** throw "error message" throws a string, not an Error. String throws cannot be caught with instanceof Error.
+- 🟠 **[ERR_005]** Returning err.message directly to API clients leaks internal implementation details.
+- 🟠 **[ERR_007]** TypeScript 4.0+ types catch variables as unknown — accessing .message without a type guard throws at runtime.
+- 🟠 **[ERR_008]** Async event handlers and callbacks that throw produce unhandled rejections without a top-level error boundary.
+- 🟠 **[ERR_010]** Promise.all() without try/catch causes an unhandled rejection if any promise rejects.
+- 🟠 **[ERR_011]** Throwing inside a finally block swallows the original error from the try or catch block.
+- 🟠 **[ERR_013]** React component trees without an Error Boundary let rendering errors crash the entire app.
+- 🟠 **[ERR_015]** Returning a 200 OK with an error body is misleading — HTTP clients check status codes, not body shape.
+- 🟠 **[ERR_016]** Resources (connections, file handles, timers) opened in try blocks must be released in finally.
+- 🟠 **[ERR_020]** Immediately-invoked async functions without .catch() produce unhandled promise rejections.
+- 🟠 **[ERR_025]** Express apps without a global error-handling middleware leave unhandled errors returning raw stack traces.
+- 🟠 **[IMPORT_002]** Circular imports (A imports B, B imports A) cause initialization order bugs and are a design smell.
+- 🟠 **[IMPORT_006]** require() calls in ES modules are not available at runtime unless using a CJS interop shim.
+- 🟠 **[IMPORT_007]** Relative imports without .js extension fail in native ESM Node.js environments.
+- 🟠 **[IMPORT_011]** Test utilities (vitest, jest, msw) imported in non-test production files inflate the bundle.
+- 🟠 **[IMPORT_016]** Importing Node.js 'node:crypto' in code that runs in browsers causes build failures or silent bugs.
+- 🟠 **[STATE_003]** Mutating Redux state outside of a createSlice reducer loses Immer's protection and breaks time-travel debugging.
+- 🟠 **[STATE_004]** Passing an object or array literal as Context value triggers all consumers to re-render on every parent render.
+- 🟠 **[STATE_007]** Defining Jotai/Recoil atoms inside a component body recreates them on every render, losing state.
+- 🟠 **[STATE_010]** useReducer switch statements without a default case cause unhandled actions to return undefined.
+- 🟠 **[STATE_013]** Updating state based on previous value without the functional form causes stale closure bugs.
+- 🟠 **[STATE_014]** Accessing localStorage in code that runs during SSR throws 'localStorage is not defined' in Node.js.
+- 🟠 **[STATE_019]** Next.js Server Actions that mutate data without revalidatePath/revalidateTag leave the cache stale.
+- 🟠 **[FORM_001]** Form submission handler without input validation allows empty or malformed data to reach the server.
+- 🟠 **[FORM_002]** Form inputs without associated labels are inaccessible to screen readers and fail WCAG 2.1 Level A.
+- 🟠 **[FORM_005]** Switching a React input from uncontrolled to controlled (or vice versa) logs a React error and causes bugs.
+- 🟠 **[FORM_008]** Buttons inside a <form> without an explicit type='button' default to type='submit', causing accidental submissions.
+- 🟠 **[FORM_010]** File upload inputs without type/size validation allow attackers to upload malicious files.
+- 🟠 **[LOG_007]** Catching errors and logging only console.error (without rethrowing or tracking) swallows the error from monitoring.
+- 🟠 **[LOG_011]** Logging inside tight loops (forEach, map, for) generates enormous log volume and degrades performance.
+- 🟠 **[LOG_012]** Logging error.message without the error object itself loses the stack trace, making debugging impossible.
+- 🟠 **[LOG_016]** Destructive operations (delete, update, transfer) without audit logging make incident investigation impossible.
+- 🟠 **[CSS_009]** Removing or overriding focus styles (outline-none without focus-visible:) breaks keyboard navigation — WCAG 2.4.7.
+- 🟠 **[CSS_010]** CSS animations without prefers-reduced-motion guards cause nausea in users with vestibular disorders — WCAG 2.3.3.
+- 🟠 **[CSS_012]** Light gray text on white backgrounds fails WCAG 1.4.3 contrast ratio requirements (4.5:1 for normal text).
+- 🟠 **[CSS_013]** Files not covered by tailwind.config.js 'content' glob will have their classes purged in production builds.
+- 🟠 **[CSS_016]** Dynamically constructed Tailwind class names (e.g., `bg-${color}-500`) are purged in production builds.
+- 🟠 **[VIBE_001]** POST/PUT/DELETE handlers in AI-generated code often lack CSRF protection — the #1 vibe-coding gap.
+- 🟠 **[VIBE_003]** AI-generated API routes almost never include rate limiting — exposing endpoints to brute force and resource exhaustion.
+- 🟠 **[VIBE_005]** AI-generated backends frequently use CORS wildcard (`*`) that allows any origin to make credentialed requests.
+- 🟠 **[VIBE_006]** AI-generated API routes accept request bodies without schema validation — the primary source of injection and type confusion bugs.
+- 🟠 **[VIBE_011]** AI-generated redirect(searchParams.get("next")) enables open redirect attacks used for phishing.
+- 🟠 **[VIBE_012]** AI-generated cookie-setting code omits httpOnly/secure/sameSite attributes — enabling session theft.
+- 🟠 **[VIBE_013]** AI tools use Math.random() for tokens, passwords, and session IDs — it is not cryptographically secure.
+- 🟠 **[VIBE_016]** AI tools generate Object.assign(target, userInput) and spread patterns that enable prototype pollution.
+- 🟠 **[VIBE_018]** AI-generated Next.js apps frequently have no middleware.ts — meaning protected routes are accessible without a session.
+- 🟠 **[VIBE_019]** String equality comparison for tokens/passwords is vulnerable to timing attacks — use crypto.timingSafeEqual().
+- 🟠 **[VIBE_025]** AI-generated code trusts LLM JSON responses without schema validation — causing runtime crashes when the model hallucinates the shape.
+- 🟠 **[VIBE_028]** Rate limit applied globally (all users share one counter) — one user can DoS others by exhausting the shared limit.
+- 🟠 **[VIBE_029]** File upload endpoint has no size or frequency rate limit — storage exhaustion and DoS.
+- 🟠 **[VIBE_030]** LLM/AI API call route has no rate limiting — financial exposure from unbounded model usage.
+- 🟠 **[VIBE_032]** OTP send or password reset endpoint has no rate limiting — SMS pumping and reset enumeration.
+- 🟠 **[SLOP_002]** Package imported in source code is not declared in package.json — phantom dependency or missing install.
+- 🟠 **[SLOP_006]** Package imported in source code is absent from the project lockfile — it has never been installed or audited.
+- 🟠 **[SLOP_008]** Package version set to `latest`, `*`, or `x` in package.json — no version locking, exploitable if the package is squatted.
+- 🟠 **[SLOP_012]** Suspicious package added to package.json but not imported in any changed source file — possible phantom dependency.
+- 🟠 **[PY_005]** FastAPI or Flask route decorator with no authentication dependency or login_required.
+- 🟠 **[PY_008]** yaml.load() without a safe Loader — can execute arbitrary Python via !!python/object.
+- 🟠 **[PY_010]** CORSMiddleware configured with allow_origins=["*"] — permits any origin.
+- 🟠 **[PY_012]** Flask/uvicorn debug=True — exposes interactive debugger and verbose error pages in production.
+- 🟠 **[PY_013]** random module used for tokens, keys, or passwords — not cryptographically secure.
+- 🟠 **[PY_016]** LLM response content used directly as code, SQL, or HTML without validation.
+- 🟠 **[PY_017]** redirect() called with a URL from request parameters without validation.
+- 🟠 **[PY_018]** FastAPI/Flask app has routes but no rate-limiting middleware.
+- 🟠 **[PY_022]** FastAPI route reads raw request.json() instead of a typed Pydantic model.
+- 🟠 **[PY_023]** Secret or token compared with == operator — vulnerable to timing attacks.
+- 🟠 **[PY_026]** Function uses mutable default argument (list or dict) — shared across all calls.
+- 🟠 **[PY_028]** `time.sleep()` inside an `async def` blocks the entire event loop.
+- 🟠 **[PY_037]** `assert` used for runtime input validation — stripped by Python `-O` flag.
+- 🟠 **[PY_038]** Pydantic v1 `.dict()` or `.json()` method called — these are removed in Pydantic v2.
+- 🟠 **[DJG_002]** ALLOWED_HOSTS = ["*"] disables Django's Host header validation, enabling header injection attacks.
+- 🟠 **[DJG_004]** @csrf_exempt disables CSRF protection on a view — vulnerable to cross-site request forgery.
+- 🟠 **[DJG_005]** View function with state-changing HTTP method handling lacks @login_required or LoginRequiredMixin.
+- 🟠 **[DJG_008]** DRF ModelSerializer with fields = "__all__" exposes every model field including sensitive ones.
+- 🟠 **[DJG_009]** {{ value|safe }} in Django template bypasses auto-escaping — XSS if value is user-controlled.
+- 🟠 **[DJG_010]** mark_safe() called with a dynamic/formatted string — XSS if the value is user-controlled.
+- 🟠 **[DJG_012]** Django redirect() called with unvalidated user input — open redirect vulnerability.
+- 🟠 **[DJG_013]** File upload handler stores the file without validating the extension or content type.
+- 🟠 **[DJG_019]** CORS_ALLOW_ALL_ORIGINS = True allows any website to make cross-origin requests with credentials.
+- 🟠 **[GO_003]** http.Get() or http.Post() with a variable URL — SSRF if user-controlled.
+- 🟠 **[GO_004]** math/rand used near token/secret/key/password — not cryptographically secure.
+- 🟠 **[GO_007]** log.Printf/fmt.Printf logging a value named password/secret/token/apiKey.
+- 🟠 **[GO_009]** Function return value discarded with _ = — silently ignores errors.
+- 🟠 **[GO_010]** panic() called inside an HTTP handler — crashes the server or goroutine.
+- 🟠 **[GO_013]** http.DefaultClient or &http.Client{} without Timeout — hangs indefinitely on slow upstreams.
+- 🟠 **[GO_016]** HTTP handler registration with no visible auth check or middleware in the handler body.
+- 🟠 **[RB_003]** Rails controller with action methods but no before_action :authenticate_user! or equivalent.
+- 🟠 **[RB_004]** skip_before_action :authenticate_user! or :require_login disables authentication for specific actions.
+- 🟠 **[RB_006]** attr_accessible :admin, :role, or :is_admin exposes privileged fields to mass assignment.
+- 🟠 **[RB_007]** protect_from_forgery with: :null_session or skip_before_action :verify_authenticity_token disables CSRF protection.
+- 🟠 **[RB_008]** redirect_to params[:return_to] or similar user-controlled URL without validation — open redirect.
+- 🟠 **[RB_013]** config.log_level = :debug or consider_all_requests_local = true in a production config file.
+- 🟠 **[RB_014]** raw() or .html_safe called on user-controlled content — XSS vulnerability.
+- 🟠 **[PHP_006]** HTTP redirect destination taken directly from user input without validation.
+- 🟠 **[PHP_010]** Laravel apiResource/resource route defined without auth middleware in context.
+- 🟠 **[PHP_011]** move_uploaded_file() called without MIME type validation in surrounding context.
+- 🟠 **[PHP_013]** APP_DEBUG=true in .env or hardcoded 'debug' => true in config/app.php.
+- 🟠 **[PHP_014]** md5() or sha1() used for password hashing instead of password_hash().
+- 🟠 **[PHP_015]** Blade form with POST/PUT/PATCH/DELETE method but no @csrf directive.
+- 🟠 **[PHP_016]** extract() on $_GET/$_POST/$_REQUEST creates arbitrary local variables from user input.
+- 🟠 **[PHP_017]** session_id() set from user input — session fixation attack.
+- 🟠 **[PHP_019]** Password, API key, or secret hardcoded directly in PHP source code.
+- 🟠 **[PHP_020]** Model::create() or ->update() called with $request->all() — unfiltered mass assignment.
+- 🟠 **[JAVA_003]** Spring @RequestMapping/@GetMapping/@PostMapping etc. without @PreAuthorize or @Secured — unauthenticated access possible.
+- 🟠 **[JAVA_004]** String variable named password/secret/apiKey assigned a hardcoded string literal.
+- 🟠 **[JAVA_005]** MessageDigest.getInstance("MD5") or ("SHA-1") — insecure for password hashing.
+- 🟠 **[JAVA_010]** response.sendRedirect() with request.getParameter() — open redirect vulnerability.
+- 🟠 **[JAVA_011]** Spring Security .csrf().disable() or csrf(AbstractHttpConfigurer::disable) — CSRF protection removed.
+- 🟠 **[JAVA_012]** .allowedOrigins("*") in CORS configuration — accepts requests from any origin.
+- 🟠 **[JAVA_013]** management.endpoints.web.exposure.include=* exposes all Spring Actuator endpoints.
+- 🟠 **[JAVA_014]** spring.h2.console.enabled=true in application properties — H2 web console exposed.
+- 🟠 **[JAVA_015]** new Random() used near token/password/key/session generation — use SecureRandom instead.
+- 🟠 **[JAVA_016]** Logger.info/debug/error/warn with password/token/secret in the message — credential leaked to logs.
+- 🟠 **[RUST_001]** .unwrap() in a lib crate (not in tests, not in fn main, not in examples).
+- 🟠 **[RUST_003]** panic!() macro called in a lib crate (not in tests).
+- 🟠 **[RUST_004]** unsafe { } block without a // SAFETY: comment explaining the invariant.
+- 🟠 **[RUST_009]** Blocking I/O (std::fs::read, std::thread::sleep, TcpStream::connect) in an async fn.
+- 🟠 **[RUST_011]** Hardcoded API key, password, or secret assigned to a sensitive-named variable.
+- 🟠 **[RUST_015]** Raw pointer dereference (*raw_ptr/*ptr) without a // SAFETY: comment.
+- 🟠 **[RUST_019]** std::env::var("KEY").unwrap() — panics at startup if the environment variable is missing.
+- 🟠 **[CS_003]** ASP.NET Core controller action with [Http*] attribute but no [Authorize] or [AllowAnonymous] nearby.
+- 🟠 **[CS_004]** Razor form with POST method missing @Html.AntiForgeryToken() or asp-antiforgery.
+- 🟠 **[CS_005]** Connection string with credentials hardcoded in C# source.
+- 🟠 **[CS_006]** appsettings.json contains a hardcoded API key, password, or secret.
+- 🟠 **[CS_009]** app.UseDeveloperExceptionPage() called without an IsDevelopment() guard — leaks stack traces.
+- 🟠 **[CS_010]** Response.Redirect or Redirect() called with a user-supplied URL.
+- 🟠 **[CS_013]** Cookie created with HttpOnly or Secure explicitly set to false.
+- 🟠 **[CS_014]** MD5.Create() or SHA1.Create() used for hashing — not safe for passwords or integrity checks.
+- 🟠 **[CS_015]** CORS policy allows all origins — exposes API to any website.
+- 🟠 **[CS_016]** Logger call includes password, secret, token, or API key — sensitive data in logs.
+- 🟠 **[CS_018]** Empty catch block silently swallows exceptions.
+- 🟠 **[CS_020]** Razor view outputs ViewBag or ViewData via @Html.Raw() — unescaped XSS risk.
+- 🟠 **[DOCKER_001]** No USER instruction or only USER root — container runs as root.
+- 🟠 **[DOCKER_003]** FROM uses :latest tag or no tag — image is not pinned.
+- 🟠 **[DOCKER_006]** EXPOSE 22 exposes the SSH port.
+- 🟠 **[DOCKER_008]** RUN sudo used inside Dockerfile — redundant and signals running as root.
+- 🟠 **[DOCKER_009]** ARG with a sensitive name — build-arg values are visible in docker history.
+- 🟠 **[GHA_003]** permissions: write-all grants all write permissions to the workflow token.
+- 🟠 **[GHA_005]** Secret value echoed inside a run: step — secrets in logs even with masking.
+- 🟠 **[GHA_006]** Self-hosted runner used in a workflow that can be triggered by external contributors.
+- 🟠 **[GHA_007]** Workflow dispatch input interpolated directly into a run: command instead of being set as an env var first.
+- 🟠 **[GHA_010]** Deprecated ::set-env:: or ::add-path:: workflow commands used — CVE-2020-15228 environment injection.
+- 🟠 **[TF_003]** RDS instance or cluster with publicly_accessible = true — database is internet-reachable.
+- 🟠 **[TF_004]** RDS instance or cluster without storage_encrypted = true — data at rest is unencrypted.
+- 🟠 **[TF_006]** IAM policy statement uses resources = ["*"] — policy applies to all AWS resources.
+- 🟠 **[TF_012]** EBS volume declared without encrypted = true — data at rest is unencrypted.
+- 🟠 **[TF_015]** No `terraform { backend }` block — state is stored locally and not shared with the team.
+- 🟠 **[TF_016]** Variable with a sensitive name (password, secret, token, key) not marked `sensitive = true`.
+- 🟠 **[TF_018]** RDS instance missing `deletion_protection = true` — can be permanently deleted by terraform destroy.
+- 🟠 **[TF_020]** DynamoDB table missing Point-In-Time Recovery (PITR) — data loss risk.
+- 🟠 **[TF_023]** Stateful resource (RDS, S3, DynamoDB) missing `lifecycle { prevent_destroy = true }`.
+- 🟠 **[TF_024]** EC2 instance with `associate_public_ip_address = true` — instance directly reachable from internet.
+- 🟠 **[GQL_001]** GraphQL server configured without query depth limiting — DoS via deeply nested queries.
+- 🟠 **[GQL_002]** GraphQL server has no query complexity limit — DoS via expensive field combinations.
+- 🟠 **[GQL_004]** GraphQL resolver calls the database inside a field that returns a list — N+1 query problem.
+- 🟠 **[GQL_011]** `context.user` or `ctx.user` accessed without null check — crashes on unauthenticated requests.
+- 🟠 **[GQL_013]** GraphQL union or interface schema defined but `__resolveType` missing in resolvers.
+- 🟠 **[GQL_015]** GraphQL endpoint has no rate limiting middleware configured.
+- 🟠 **[GQL_016]** GraphQL file upload configured without a file size limit.
+- 🟠 **[GQL_019]** Schema stitching merges a remote schema without forwarding authorization headers.
+- 🟠 **[GQL_021]** GraphQL `input` type name used as a field return type — inputs cannot be used as outputs.
+- 🟠 **[GQL_023]** GraphQL server configured to expose full error details — leaks internals in production.
+- 🟠 **[GQL_024]** Async GraphQL resolver with no try/catch — unhandled rejections crash the server.
+- 🟠 **[DESIGN_001]** Hardcoded hex color in style prop or CSS — bypasses design tokens.
+- 🟠 **[DESIGN_004]** Hardcoded font-family bypasses design system typography.
+- 🟠 **[DESIGN_008]** !important overrides fight the design system — fix specificity instead.
+- 🟠 **[DESIGN_012]** outline-none without a focus-visible alternative — keyboard users lose focus indicator.
+- 🟠 **[DESIGN_016]** Multiple icon libraries imported in the same file — pick one for the whole project.
+- 🟠 **[DEBT_001]** Two or more functions in the same file share a highly similar body (≥80%) — AI-generated code duplication.
+- 🟠 **[DEBT_002]** New exported function has no corresponding test — AI-generated functions are often untested.
+- 🟠 **[DEBT_004]** API route handler returns a response type but no error response type is defined.
+- 🟠 **[DEBT_005]** Error is caught and silently discarded — hidden failure that produces incorrect behavior in production.
+- 🟠 **[DEBT_009]** Hardcoded URL in business logic — should be an environment variable.
+- 🟠 **[DEBT_016]** Nested loop over the same or similar collections — O(n²) or worse time complexity.
+- 🟠 **[DEBT_019]** catch block returns null/undefined instead of handling or rethrowing — silent failure propagation.
+- 🟠 **[COMMIT_002]** Commit type must be one of the allowed types (feat, fix, docs, etc.)
+- 🟠 **[COMMIT_006]** WIP commit messages must not land on protected branches.
+- 🟠 **[COMMIT_010]** Raw merge commit messages ('Merge branch X into Y') should be avoided — use squash merge instead.
+- 🟠 **[VERCEL_003]** Vercel Cron job route handlers must verify a CRON_SECRET authorization header.
+- 🟠 **[VERCEL_004]** Every process.env.VAR_NAME used in source must be documented in .env.example.
+- 🟠 **[VERCEL_005]** Projects that use process.env variables must have a .env.example file.
+- 🟠 **[VERCEL_010]** vercel.json redirect destinations using wildcards must be restricted to the same domain.
+- 🟠 **[AGNT_001]** No .thesmos/scope.json found — agent file and network boundaries are undeclared.
+- 🟠 **[AGNT_002]** No tokenBudget configured — agent sessions have no cost ceiling.
+- 🟠 **[AGNT_005]** MCP server registered without a pinned version or integrity hash — supply chain risk.
+- 🟠 **[AGNT_007]** CLAUDE.md has no behavioral constraints section — agent behavior is unconstrained.
+- 🟠 **[AGNT_008]** scope.json has no allowedPaths — agent can access all files in the repo.
+- 🟠 **[AGNT_009]** Agent spawning (Agent tool) is not mentioned in governance config — sub-agents are ungoverned.
+- 🟠 **[AGNT_015]** Autopilot config has no maxCostUSD — no financial ceiling on agent sessions.
+- 🟠 **[AGNT_016]** Agent tool chain has no AbortController — long-running tool calls cannot be cancelled.
+- 🟠 **[AGNT_017]** Agent can perform destructive or high-cost operations without human-in-the-loop approval.
+- 🟠 **[DEP_002]** Dependency has a HIGH severity CVE.
+- 🟠 **[DEP_004]** Dependency not updated in 2+ years AND has a known CVE — no fix expected.
+- 🟠 **[DEP_006]** Dependency points to a git URL instead of a semver version — no integrity guarantee.
+- 🟠 **[LIC_002]** Dependency has UNLICENSED or missing license — cannot determine usage rights.
+- 🟠 **[LIC_004]** No LICENSE file found in project root — open source obligations unclear.
+- 🟠 **[LIC_005]** Dependency uses a proprietary or non-open-source license.
+- 🟠 **[GDPR_001]** console.log appears to log PII (email/phone/name adjacent variables).
+- 🟠 **[GDPR_002]** Analytics library initialized without a consent check — GDPR opt-in required.
+- 🟠 **[GDPR_003]** document.cookie set without adjacent consent check.
+- 🟠 **[GDPR_004]** PII found in URL query parameters — violates data minimization and logs in server access logs.
+- 🟠 **[GDPR_005]** PII stored in localStorage without encryption — accessible to any JavaScript on the page.
+- 🟠 **[GDPR_010]** Third-party tracking script loaded without consent wrapper.
+- 🟠 **[GDPR_014]** Test fixtures contain real-looking email or phone numbers — use synthetic data.
+- 🟠 **[MCP_004]** MCP server registered from external/untrusted source without an integrity check.
+- 🟠 **[MCP_005]** MCP tool performs a destructive action (delete/drop/truncate/destroy) without a confirmation gate.
+- 🟠 **[MCP_006]** MCP server implementation exposes tools without authentication.
+- 🟠 **[MCP_008]** .cursor/rules file fetches instructions from an external URL — enables dynamic instruction injection.
+- 🟠 **[MCP_010]** MCP tool accepts a file path parameter without path sanitization — directory traversal risk.
+- 🟠 **[MCP_012]** MCP server uses service-role or admin credentials — violates least-privilege.
+- 🟠 **[MCP_013]** MCP tool call result used without schema validation — type confusion and injection risk.
+- 🟠 **[MCP_016]** Agent invokes MCP tools by name from a variable without checking against a permitted allowlist.
+- 🟠 **[MCP_017]** README or source comment contains AI-targeted instructions designed to manipulate coding agents.
+- 🟠 **[RAG_003]** Vector store query has no metadata filter for tenant/user isolation — cross-tenant data leak.
+- 🟠 **[RAG_004]** Vector retrieval has no similarity threshold — irrelevant or adversarial documents always returned.
+- 🟠 **[RAG_006]** Embedding model called with unbounded input length — token exhaustion and cost runaway.
+- 🟠 **[RAG_007]** RAG pipeline output returned to user without validation — hallucination or injected content presented as fact.
+- 🟠 **[RAG_008]** Vector store query endpoint has no rate limiting — vector DB exhaustion and cost runaway.
+- 🟠 **[RAG_009]** LLM-generated citation URLs displayed to users without validation — hallucinated link risk.
+- 🟠 **[RAG_012]** User query used directly as vector store filter expression — NoSQL/vector injection risk.
+- 🟠 **[RAG_013]** RAG context window not bounded — large retrieval results cause cost runaway and context overflow.
+- 🟠 **[WS_003]** WebSocket server has no Origin header validation — cross-origin WebSocket hijacking risk.
+- 🟠 **[WS_004]** WebSocket connection has no heartbeat/ping or idle timeout — zombie connections exhaust server resources.
+- 🟠 **[WS_005]** WebSocket message handler accepts messages without payload size limit — memory exhaustion DoS.
+- 🟠 **[WS_006]** WebSocket message handler parses JSON without schema validation before processing.
+- 🟠 **[WS_007]** Authentication token passed in WebSocket URL query string — logged by proxies and web servers.
+- 🟠 **[WS_008]** WebSocket broadcast sends sensitive data to all connected clients without room/tenant isolation.
+- 🟠 **[PROTO_002]** for...in loop over user-supplied object assigns properties to target without key sanitization.
+- 🟠 **[PROTO_003]** lodash.merge() called with unvalidated user input — known prototype pollution CVEs.
+- 🟠 **[PROTO_004]** lodash.defaultsDeep() with user input — recursive merge prototype pollution.
+- 🟠 **[PROTO_005]** JSON.parse() result used as source in Object.assign without sanitization.
+- 🟠 **[PROTO_008]** Express body-parser with extended: true parses deeply nested objects from user input — pollution vector.
+- 🟠 **[PROTO_010]** Spreading user input directly into an object literal without validation — prototype pollution via __proto__.
+- 🟠 **[JWT_003]** Refresh token stored in localStorage — accessible to any JavaScript on the page (XSS theft).
+- 🟠 **[JWT_004]** JWT signed without an expiry (expiresIn) — tokens are valid forever if compromised.
+- 🟠 **[JWT_005]** OAuth callback handler does not validate the state parameter — CSRF on OAuth flow.
+- 🟠 **[JWT_006]** Social login account linking performed without re-authentication of the existing account.
+- 🟠 **[AUTH_009]** API route exposes sequential numeric ID without ownership verification — IDOR enumeration risk.
+- 🟠 **[AUTH_010]** Login or password-reset endpoint has no rate limiting or brute-force protection.
+- 🟠 **[AUTH_011]** Password reset token not deleted after use — allows replay attacks for unlimited resets.
+- 🟠 **[AUTH_013]** Auto-increment integer ID used as public resource identifier — IDOR enumeration attack surface.
+- 🟠 **[SC_001]** package.json dependency with git:, github:, or http: URL — unpinned and unaudited source.
+- 🟠 **[SC_004]** .npmrc registry URL uses http:// — package downloads are unencrypted and cannot be verified.
+- 🟠 **[SC_006]** CI npm publish step without --provenance flag — package has no cryptographic build attestation.
+- 🟠 **[SC_008]** package.json has no "files" field — the entire directory (including source, tests, and .env files) is published to npm.
+- 🟠 **[SC_009]** Lockfile contains a "resolved" URL pointing to a non-standard registry.
+- 🟠 **[SC_010]** package.json dependency uses git:// protocol (not git+https://) — unauthenticated and potentially interceptable.
+- 🟠 **[DAST_002]** Access-Control-Allow-Origin: * set on a route that also performs authentication — CORS wildcard bypasses same-origin protection.
+- 🟠 **[DAST_004]** Sensitive parameter name (password, token, secret, key, api_key) appears in a GET route path or query handler.
+- 🟠 **[DAST_009]** Express body-parser configured with extended: true — enables prototype pollution via qs library.
+- 🟠 **[DAST_010]** User input used directly in a response header value — HTTP response splitting / header injection risk.
+- 🟠 **[K8S_001]** Kubernetes container spec without resources.limits — pod can consume unbounded CPU/memory.
+- 🟠 **[K8S_002]** Kubernetes pod or container securityContext allows running as root.
+- 🟠 **[K8S_004]** Pod spec uses hostPID: true or hostNetwork: true — shares host process or network namespace.
+- 🟠 **[K8S_007]** Container imagePullPolicy: Never — image won't be refreshed, running stale/vulnerable versions.
+- 🟠 **[K8S_010]** Kubernetes manifest references an image with :latest tag — deployment is not reproducible.
+- 🟠 **[SELF_001]** Installed thesmos-governance is behind the latest npm release by ≥ 1 minor version.
+- 🟠 **[SELF_003]** Git hook installed by Thesmos references thesmos-governance but the package may not be installed.
+- 🟠 **[SELF_004]** .thesmos/config.json uses an old schema (missing required fields from the current version).
+<!-- THESMOS:GENERATED END rules -->
