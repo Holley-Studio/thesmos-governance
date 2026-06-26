@@ -69,8 +69,8 @@ export interface SuppressionAuditInput {
 
 // ── Parsing ───────────────────────────────────────────────────────────────────
 
-const DISABLE_NEXT_LINE_RE = /\/\/\s*thesmos-disable-next-line\s*(.*)/i;
-const DISABLE_FILE_RE = /\/\/\s*thesmos-disable\s+(.*)/i;
+const DISABLE_NEXT_LINE_RE = /^\s*\/\/\s*thesmos-disable-next-line\s*(.*)/i;
+const DISABLE_FILE_RE = /^\s*\/\/\s*thesmos-disable\s+(.*)/i;
 
 function parseAttribute(text: string, key: string): string | null {
   // Split on " -- " separators so hyphens in values (e.g. dates) are not consumed

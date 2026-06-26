@@ -9,7 +9,7 @@
  * All I/O is isolated here — no vscode imports, fully unit-testable.
  */
 
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -79,13 +79,43 @@ export class ThesmosParseError extends Error {
  * Throws ThesmosNotFoundError if neither is available.
  */
 export function resolveBinary(workspaceRoot: string, override?: string): string {
+  // 1. User override (settings → thesmos.binaryPath)
   if (override && override.trim()) {
     if (existsSync(override.trim())) return override.trim();
     throw new ThesmosNotFoundError(workspaceRoot);
   }
 
+  // 2. Project-local node_modules/.bin/thesmos
   const local = join(workspaceRoot, 'node_modules', '.bin', 'thesmos');
   if (existsSync(local)) return local;
+
+  // 3. Global PATH — catches `npm link`, volta global installs, homebrew, etc.
+  //    Uses RUNNER_ENV so nvm-managed node bins are on PATH.
+  try {
+    const cmd = process.platform === 'win32' ? 'where.exe' : 'which';
+    const found = execFileSync(cmd, ['thesmos'], {
+      encoding: 'utf8',
+      env: RUNNER_ENV,
+      timeout: 3000,
+    }).trim().split('\n')[0].trim();
+    if (found && existsSync(found)) return found;
+  } catch {
+    // not on PATH — continue to well-known paths
+  }
+
+  // 4. Well-known nvm / volta global bin locations (for VS Code launched from Dock)
+  const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
+  const candidates = [
+    join(home, '.nvm', 'versions', 'node', 'v20.20.2', 'bin', 'thesmos'),
+    join(home, '.nvm', 'versions', 'node', 'v22.0.0', 'bin', 'thesmos'),
+    join(home, '.nvm', 'versions', 'node', 'v24.0.0', 'bin', 'thesmos'),
+    join(home, '.nvm', 'versions', 'node', 'v18.0.0', 'bin', 'thesmos'),
+    join(home, '.volta', 'bin', 'thesmos'),
+    join(home, '.fnm', 'aliases', 'default', 'bin', 'thesmos'),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
 
   throw new ThesmosNotFoundError(workspaceRoot);
 }

@@ -1,0 +1,63 @@
+{
+  "version": "1.0",
+  "workspace": {
+    "allowedPaths": [
+      "thesmos/",
+      "extensions/vscode/",
+      "actions/pr-review/",
+      "website/",
+      ".thesmos/",
+      ".github/",
+      ".cursor/",
+      ".codex/",
+      "CLAUDE.md",
+      "AGENTS.md",
+      "GEMINI.md",
+      "package.json",
+      "package-lock.json",
+      "LICENSE",
+      "README.md"
+    ],
+    "blockedPaths": [
+      "node_modules/",
+      ".env",
+      ".env.*",
+      "*.pem",
+      "*.key",
+      "*.p12",
+      "*.pfx",
+      ".claude/"
+    ],
+    "absoluteBlockPaths": [
+      "/etc/",
+      "/usr/",
+      "/bin/",
+      "/sbin/",
+      "/System/",
+      "/Library/"
+    ]
+  },
+  "operations": {
+    "allowDelete": false,
+    "allowGitPush": false,
+    "allowNetworkHosts": [
+      "registry.npmjs.org",
+      "api.github.com"
+    ],
+    "allowDatabaseWrites": false,
+    "requireConfirmation": [
+      "git push",
+      "npm publish",
+      "git push --force"
+    ]
+  },
+  "destructivePatterns": [
+    "rm -rf",
+    "rm -r /",
+    "DROP TABLE",
+    "DELETE FROM",
+    "TRUNCATE",
+    "truncate -s 0",
+    "mkfs"
+  ]
+}
