@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eidos — Figma AI Orchestrator · Thesmos Figma Agent Team</title>
+  <meta name="description" content="Eidos is the Figma AI Orchestrator of the Thesmos Figma Agent Team. Translates creative briefs into structured Figma AI workflows, routes tasks to the right specialist, enforces the QA gate.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #A259FF; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
+    html { scroll-behavior: smooth; }
+    body { background: var(--navy); color: var(--t1); font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; min-height: 100vh; }
+    nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px,5vw,80px); height: 60px; background: rgba(5,4,8,.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: .16em; color: rgba(255,255,255,.7); }
+    .nav-brand svg { width: 28px; height: 32px; }
+    .nav-back { font-size: 13px; color: var(--t2); text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 180ms ease; }
+    .nav-back:hover { color: var(--t1); }
+    .agent-hero { padding: clamp(60px,8vw,120px) clamp(20px,5vw,80px) clamp(40px,6vw,80px); max-width: 960px; margin: 0 auto; }
+    .agent-breadcrumb { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); letter-spacing: .1em; margin-bottom: 32px; display: flex; align-items: center; gap: 8px; }
+    .agent-breadcrumb a { color: var(--t3); text-decoration: none; transition: color 180ms; }
+    .agent-breadcrumb a:hover { color: var(--gold); }
+    .agent-breadcrumb span { color: var(--agent); }
+    .agent-header { display: flex; gap: clamp(24px,4vw,56px); align-items: flex-start; margin-bottom: 40px; }
+    .agent-avatar-lg { flex-shrink: 0; width: clamp(72px,10vw,112px); height: clamp(72px,10vw,112px); }
+    .agent-avatar-lg svg { width: 100%; height: 100%; }
+    .agent-meta { flex: 1; }
+    .agent-name { font-family: 'Cinzel', serif; font-size: clamp(28px,5vw,52px); font-weight: 700; color: var(--agent); line-height: 1.1; margin-bottom: 6px; }
+    .agent-role-title { font-size: clamp(14px,2vw,18px); color: var(--t2); font-weight: 300; letter-spacing: .04em; margin-bottom: 16px; }
+    .agent-pantheon-tag { display: inline-block; padding: 4px 12px; background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 20px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); letter-spacing: .08em; }
+    .content { max-width: 960px; margin: 0 auto; padding: 0 clamp(20px,5vw,80px); }
+    .section { margin-bottom: clamp(48px,6vw,80px); }
+    .section-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .14em; color: var(--agent); text-transform: uppercase; margin-bottom: 16px; opacity: .8; }
+    .section-title { font-family: 'Cinzel', serif; font-size: clamp(18px,2.5vw,26px); font-weight: 400; color: var(--t1); margin-bottom: 20px; line-height: 1.3; }
+    .prose { font-size: 16px; line-height: 1.75; color: var(--t2); font-weight: 300; max-width: 680px; }
+    .lore-block { background: rgba(255,255,255,.02); border: 1px solid var(--border); border-left: 3px solid var(--agent); border-radius: 4px; padding: 24px 28px; margin-bottom: 20px; }
+    .lore-block p { font-size: 15px; line-height: 1.72; color: var(--t2); font-style: italic; }
+    .lore-channel { margin-top: 16px; font-style: normal !important; font-size: 14px !important; color: var(--t3) !important; }
+    .resp-list { list-style: none; display: flex; flex-direction: column; gap: 10px; max-width: 680px; }
+    .resp-list li { display: flex; gap: 12px; font-size: 15px; line-height: 1.6; color: var(--t2); }
+    .resp-list li::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--agent); flex-shrink: 0; margin-top: 8px; opacity: .7; }
+    .resume-card { background: rgba(255,255,255,.025); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .resume-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; }
+    .resume-avatar { width: 44px; height: 44px; }
+    .resume-name { font-family: 'Cinzel', serif; font-size: 16px; color: var(--agent); }
+    .resume-subtitle { font-size: 12px; color: var(--t3); margin-top: 2px; }
+    .resume-body { padding: 24px; display: flex; flex-direction: column; gap: 28px; }
+    .resume-section-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .12em; color: var(--t3); text-transform: uppercase; margin-bottom: 12px; }
+    .skills-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .skill-tag { display: inline-block; padding: 5px 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; font-size: 13px; color: var(--t2); }
+    .methodology-badge { display: inline-block; padding: 6px 14px; background: color-mix(in srgb, var(--agent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--agent) 30%, transparent); border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--agent); letter-spacing: .04em; }
+    .deliverables-list { display: flex; flex-direction: column; gap: 14px; }
+    .deliverable { padding: 14px 16px; background: rgba(255,255,255,.02); border: 1px solid var(--border); border-radius: 6px; }
+    .del-label { font-size: 13px; font-weight: 500; color: var(--t1); margin-bottom: 4px; }
+    .del-desc { font-size: 13px; color: var(--t3); line-height: 1.6; }
+    .invoke-block { background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 16px 18px; }
+    .invoke-block code { display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--parch); line-height: 2; white-space: pre; }
+    .paired-agents { display: flex; flex-wrap: wrap; gap: 10px; }
+    .pair-link { display: inline-block; padding: 6px 14px; background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 20px; font-size: 13px; color: var(--t2); text-decoration: none; transition: border-color 180ms, color 180ms; }
+    .pair-link:hover { border-color: var(--agent); color: var(--agent); }
+    .figma-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(162,89,255,.08); border: 1px solid rgba(162,89,255,.25); border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--agent); margin-bottom: 16px; }
+    .agent-nav { max-width: 960px; margin: 0 auto; padding: clamp(40px,5vw,64px) clamp(20px,5vw,80px); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); gap: 16px; }
+    .nav-arrow { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 13px; color: var(--t2); transition: color 180ms ease; }
+    .nav-arrow:hover { color: var(--gold); }
+    .nav-all { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .12em; color: var(--t3); text-decoration: none; transition: color 180ms; }
+    .nav-all:hover { color: var(--gold); }
+    hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+    @media (max-width: 600px) { .agent-header { flex-direction: column; gap: 20px; } .agent-nav { flex-direction: column; text-align: center; gap: 20px; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-brand">
+    <svg viewBox="0 0 80 90" fill="none" aria-hidden="true">
+      <path d="M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linejoin="round"/>
+      <circle cx="40" cy="48" r="19" stroke="currentColor" stroke-width="2.5" fill="none"/>
+      <line x1="23" y1="48" x2="57" y2="48" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    THESMOS
+  </a>
+  <a href="../index.html#figma-team" class="nav-back">← Figma Agent Team</a>
+</nav>
+
+<div class="agent-hero">
+  <div class="agent-breadcrumb">
+    <a href="../index.html">Thesmos</a>
+    <span>·</span>
+    <a href="../index.html#figma-team">Figma Agent Team</a>
+    <span>·</span>
+    <span>Eidos</span>
+  </div>
+  <div class="agent-header">
+    <div class="agent-avatar-lg">
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="46" fill="#A259FF15"/>
+        <!-- Platonic form: nested geometric shapes suggesting ideal essence -->
+        <polygon points="50,18 82,68 18,68" stroke="#A259FF" stroke-width="2" fill="none" stroke-linejoin="round"/>
+        <polygon points="50,30 70,62 30,62" stroke="#A259FF" stroke-width="1.5" fill="#A259FF10" stroke-linejoin="round"/>
+        <circle cx="50" cy="50" r="8" stroke="#A259FF" stroke-width="1.5" fill="none"/>
+        <circle cx="50" cy="50" r="3" fill="#A259FF"/>
+        <!-- Routing lines suggesting orchestration -->
+        <line x1="50" y1="42" x2="50" y2="18" stroke="#A259FF" stroke-width="1" opacity=".4" stroke-linecap="round"/>
+        <line x1="50" y1="58" x2="30" y2="62" stroke="#A259FF" stroke-width="1" opacity=".4" stroke-linecap="round"/>
+        <line x1="50" y1="58" x2="70" y2="62" stroke="#A259FF" stroke-width="1" opacity=".4" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="agent-meta">
+      <div class="agent-name">Eidos</div>
+      <div class="agent-role-title">Figma AI Orchestrator · Workflow Director & QA Gate</div>
+      <div class="agent-pantheon-tag">THESMOS FIGMA AGENT TEAM</div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<div class="content">
+
+  <div class="section" style="margin-top:48px">
+    <div class="section-label">Philosophy</div>
+    <div class="lore-block">
+      <p>Eidos (εἶδος) is Plato's concept of Form — the ideal essence behind every visible thing. Before the chair exists, there is the idea of the chair: the eidos. Before the design exists, there is the workflow that will produce it. Eidos sees the shape of a session before the first prompt is written.</p>
+      <p class="lore-channel">In the Figma Agent Team, Eidos is the intelligence that sequences intelligence. It does not design — it orchestrates who designs what, in what order, at what credit cost, and with what human gate before anything is published.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Purpose</div>
+    <div class="section-title">What Eidos does</div>
+    <p class="prose">Eidos decomposes creative briefs into Figma AI workflows — assigning the right specialist to every task, estimating credit costs, sequencing agent handoffs, and enforcing the QA gate that prevents misaligned AI work from reaching engineering or the public. Eidos is the first agent invoked after Mnemon loads the session context.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Responsibilities</div>
+    <div class="section-title">Eidos's domain</div>
+    <ul class="resp-list">
+      <li>Brief decomposition: translating ambiguous creative briefs into structured agent task assignments</li>
+      <li>Workflow sequencing: defining which agent runs before which, based on output dependencies</li>
+      <li>Credit budgeting: estimating which tasks consume Figma AI credits and routing accordingly</li>
+      <li>QA gate enforcement: ensuring brand compliance, accessibility, and system checks before assets exit the canvas</li>
+      <li>Human gate design: inserting mandatory human decision points before any external publication</li>
+      <li>Risk register: identifying workflow risks before the session starts, not after they happen</li>
+    </ul>
+  </div>
+
+  <hr style="margin-bottom:48px">
+
+  <div class="section">
+    <div class="section-label">Resume</div>
+    <div class="section-title">What Eidos brings</div>
+    <div class="resume-card">
+      <div class="resume-header">
+        <div class="resume-avatar"><svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#A259FF15"/><polygon points="50,18 82,68 18,68" stroke="#A259FF" stroke-width="2" fill="none" stroke-linejoin="round"/><polygon points="50,30 70,62 30,62" stroke="#A259FF" stroke-width="1.5" fill="#A259FF10" stroke-linejoin="round"/><circle cx="50" cy="50" r="8" stroke="#A259FF" stroke-width="1.5" fill="none"/><circle cx="50" cy="50" r="3" fill="#A259FF"/></svg></div>
+        <div>
+          <div class="resume-name">Eidos</div>
+          <div class="resume-subtitle">Figma AI Orchestrator · Thesmos Figma Agent Team</div>
+        </div>
+      </div>
+      <div class="resume-body">
+
+        <div>
+          <div class="resume-section-title">Core methodology</div>
+          <div class="methodology-badge">Brief Decomposition + Agent Routing + Credit-Aware Sequencing</div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Skills</div>
+          <div class="skills-grid">
+            <span class="skill-tag">Brief decomposition</span>
+            <span class="skill-tag">Agent sequencing</span>
+            <span class="skill-tag">Credit budgeting</span>
+            <span class="skill-tag">QA gate design</span>
+            <span class="skill-tag">Human gate insertion</span>
+            <span class="skill-tag">Figma Skills management</span>
+            <span class="skill-tag">MCP workflow review</span>
+            <span class="skill-tag">Risk registers</span>
+            <span class="skill-tag">Session orchestration</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Example deliverables</div>
+          <div class="deliverables-list">
+            <div class="deliverable">
+              <div class="del-label">Workflow map</div>
+              <div class="del-desc">Agent routing table: who runs first, what they produce, what feeds into the next step, and where human decision gates are placed before external publication.</div>
+            </div>
+            <div class="deliverable">
+              <div class="del-label">Credit budget estimate</div>
+              <div class="del-desc">Which tasks consume Figma AI credits (Weave, shaders, Make), estimated cost per task, total estimate vs. available budget, and which tasks to defer if budget is constrained.</div>
+            </div>
+            <div class="deliverable">
+              <div class="del-label">QA gate checklist</div>
+              <div class="del-desc">Pre-delivery checklist: brand compliance, WCAG 2.1 AA a11y, Dev Mode token alignment, implementation feasibility, and publishing governance sign-off.</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">How to invoke</div>
+          <div class="figma-badge">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="9" height="9" rx="2" fill="#A259FF" opacity=".6"/><rect x="13" y="2" width="9" height="9" rx="2" fill="#1ABCFE" opacity=".6"/><rect x="2" y="13" width="9" height="9" rx="2" fill="#0ACF83" opacity=".6"/><circle cx="17.5" cy="17.5" r="4.5" fill="#FF7262" opacity=".6"/></svg>
+            Figma AI Skill — load eidos.txt
+          </div>
+          <div class="invoke-block">
+            <code>// Figma AI panel → Add Skill → paste eidos.txt
+@Eidos "Brief: [describe your project and deliverables]"
+
+// Claude Code — sub-agent
+Agent({
+  subagent_type: "Eidos",
+  prompt: "your Figma workflow task"
+})
+
+// CLI
+npx thesmos pantheon:invoke eidos --prompt "your task"</code>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Best paired with</div>
+          <div class="paired-agents">
+            <a href="mnemon.html" class="pair-link">Mnemon</a>
+            <a href="techne.html" class="pair-link">Techne</a>
+            <a href="logos.html" class="pair-link">Logos</a>
+            <a href="praxis.html" class="pair-link">Praxis</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="agent-nav">
+  <a href="mnemon.html" class="nav-arrow">← Mnemon</a>
+  <a href="../index.html#figma-team" class="nav-all">FIGMA AGENT TEAM</a>
+  <a href="techne.html" class="nav-arrow">Techne →</a>
+</div>
+
+</body>
+</html>
