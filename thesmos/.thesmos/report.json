@@ -20,13 +20,14 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-06-25T04:10:16.845Z",
+  "generatedAt": "2026-06-26T18:32:57.260Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
   "componentCount": 0,
   "sharedUiFiles": [],
   "designSystemFiles": [
+    "catalog/agents/figma/techne-design-system.md",
     "catalog/agents/reviewers/design-system-reviewer.md",
     "catalog/skills/design-token-audit.md"
   ],
@@ -108,31 +109,35 @@
   "largeFiles": [
     {
       "file": "rules/python.ts",
-      "lines": 1736
+      "lines": 1737
     },
     {
       "file": "rules/security.ts",
-      "lines": 1697
+      "lines": 1698
     },
     {
       "file": "rules/nextjs.ts",
-      "lines": 1605
+      "lines": 1606
+    },
+    {
+      "file": "fix.ts",
+      "lines": 1440
     },
     {
       "file": "rules/vibe-coding.ts",
-      "lines": 1402
+      "lines": 1403
     },
     {
       "file": "rules/database.ts",
-      "lines": 1349
+      "lines": 1350
     },
     {
       "file": "rules/ai.ts",
-      "lines": 1332
+      "lines": 1333
     },
     {
       "file": "rules/typescript.ts",
-      "lines": 1219
+      "lines": 1220
     },
     {
       "file": "fix.test.ts",
@@ -140,11 +145,7 @@
     },
     {
       "file": "rules/debt.ts",
-      "lines": 1152
-    },
-    {
-      "file": "fix.ts",
-      "lines": 1128
+      "lines": 1153
     },
     {
       "file": "rules/java.test.ts",
@@ -152,35 +153,35 @@
     },
     {
       "file": "rules/react.ts",
-      "lines": 1121
+      "lines": 1122
     },
     {
       "file": "rules/node.ts",
-      "lines": 1100
+      "lines": 1101
     },
     {
       "file": "rules/performance.ts",
-      "lines": 1088
+      "lines": 1089
     },
     {
       "file": "rules/prisma.ts",
-      "lines": 1085
+      "lines": 1086
     },
     {
       "file": "rules/zod.ts",
-      "lines": 1077
+      "lines": 1078
     },
     {
       "file": "rules/terraform.ts",
-      "lines": 1001
+      "lines": 1002
     },
     {
       "file": "rules/slopsquatting.ts",
-      "lines": 997
+      "lines": 998
     },
     {
       "file": "bin/commands/build.ts",
-      "lines": 989
+      "lines": 990
     },
     {
       "file": "rules/design.test.ts",
@@ -192,18 +193,18 @@
     },
     {
       "file": "rules/csharp.ts",
-      "lines": 946
+      "lines": 947
     },
     {
       "file": "rules/graphql.ts",
-      "lines": 942
-    },
-    {
-      "file": "rules/go.test.ts",
-      "lines": 938
+      "lines": 943
     },
     {
       "file": "rules/mcp.ts",
+      "lines": 939
+    },
+    {
+      "file": "rules/go.test.ts",
       "lines": 938
     },
     {
@@ -212,47 +213,47 @@
     },
     {
       "file": "rules/errors.ts",
-      "lines": 915
+      "lines": 916
     },
     {
       "file": "init.ts",
-      "lines": 905
+      "lines": 906
     },
     {
       "file": "rules/go.ts",
-      "lines": 870
+      "lines": 871
     },
     {
       "file": "rules/trpc.ts",
-      "lines": 869
+      "lines": 870
     },
     {
       "file": "rules/rust.ts",
-      "lines": 855
+      "lines": 856
     },
     {
       "file": "rules/design.ts",
-      "lines": 854
+      "lines": 855
     },
     {
       "file": "rules/ruby.ts",
-      "lines": 851
+      "lines": 852
     },
     {
       "file": "rules/agents.ts",
-      "lines": 844
+      "lines": 845
     },
     {
       "file": "rules/java.ts",
-      "lines": 841
+      "lines": 842
     },
     {
       "file": "rules/django.ts",
-      "lines": 827
+      "lines": 828
     },
     {
       "file": "rules/php.ts",
-      "lines": 827
+      "lines": 828
     },
     {
       "file": "rules/rust.test.ts",
@@ -267,12 +268,16 @@
       "lines": 805
     },
     {
+      "file": "bin/commands/pantheon.ts",
+      "lines": 785
+    },
+    {
       "file": "rules/quality.ts",
-      "lines": 746
+      "lines": 747
     },
     {
       "file": "bin/commands/autopilot.ts",
-      "lines": 744
+      "lines": 745
     },
     {
       "file": "rules/github-actions.test.ts",
@@ -280,11 +285,11 @@
     },
     {
       "file": "rules/state.ts",
-      "lines": 723
+      "lines": 724
     },
     {
       "file": "rules/forms.ts",
-      "lines": 710
+      "lines": 711
     },
     {
       "file": "bin/commands/pack-publish.test.ts",
@@ -292,19 +297,19 @@
     },
     {
       "file": "rules/css.ts",
-      "lines": 707
+      "lines": 708
+    },
+    {
+      "file": "rules/imports.ts",
+      "lines": 700
     },
     {
       "file": "rules/dockerfile.test.ts",
       "lines": 699
     },
     {
-      "file": "rules/imports.ts",
-      "lines": 699
-    },
-    {
       "file": "rules/logging.ts",
-      "lines": 690
+      "lines": 691
     },
     {
       "file": "rules/terraform.test.ts",
@@ -312,27 +317,27 @@
     },
     {
       "file": "drift.ts",
-      "lines": 681
+      "lines": 682
     },
     {
       "file": "rules/dockerfile.ts",
-      "lines": 681
+      "lines": 682
     },
     {
       "file": "rules/registry.ts",
-      "lines": 681
+      "lines": 682
     },
     {
       "file": "catalog.test.ts",
       "lines": 677
     },
     {
-      "file": "bin/commands/pantheon.ts",
-      "lines": 656
+      "file": "mcp-server.ts",
+      "lines": 653
     },
     {
       "file": "rules/rag.ts",
-      "lines": 649
+      "lines": 650
     },
     {
       "file": "rules/mcp.test.ts",
@@ -340,7 +345,7 @@
     },
     {
       "file": "rules/gdpr.ts",
-      "lines": 619
+      "lines": 620
     },
     {
       "file": "rules/django.test.ts",
@@ -352,18 +357,18 @@
     },
     {
       "file": "bin/commands/report.ts",
-      "lines": 582
+      "lines": 583
     },
     {
-      "file": "mcp-server.ts",
-      "lines": 553
-    },
-    {
-      "file": "rules/debt.test.ts",
-      "lines": 553
+      "file": "bin/cli.ts",
+      "lines": 554
     },
     {
       "file": "rules/jwt.ts",
+      "lines": 554
+    },
+    {
+      "file": "rules/debt.test.ts",
       "lines": 553
     },
     {
@@ -372,35 +377,31 @@
     },
     {
       "file": "autopilot/executor.ts",
-      "lines": 536
+      "lines": 537
     },
     {
       "file": "baseline.test.ts",
       "lines": 530
     },
     {
+      "file": "bin/commands/brain.ts",
+      "lines": 515
+    },
+    {
       "file": "rules/jwt.test.ts",
       "lines": 515
     },
     {
-      "file": "bin/commands/brain.ts",
-      "lines": 514
+      "file": "baseline.ts",
+      "lines": 513
     },
     {
-      "file": "baseline.ts",
+      "file": "rules/vercel.ts",
       "lines": 512
     },
     {
       "file": "rules/python.test.ts",
       "lines": 511
-    },
-    {
-      "file": "rules/vercel.ts",
-      "lines": 511
-    },
-    {
-      "file": "bin/cli.ts",
-      "lines": 504
     }
   ],
   "riskyFiles": [],
@@ -468,14 +469,14 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 402,
-      "lineCount": 50416
+      "fileCount": 381,
+      "lineCount": 48510
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 251,
-      "lineCount": 105339
+      "fileCount": 261,
+      "lineCount": 108613
     }
   ],
   "detectedStacks": [
@@ -511,6 +512,7 @@
       "INTERNAL_API_URL",
       "JWT_KEY",
       "JWT_SECRET",
+      "KEY",
       "LOG_LEVEL",
       "MCP_RESTRICTED_KEY",
       "MCP_SECRET",
