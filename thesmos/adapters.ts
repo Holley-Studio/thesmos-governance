@@ -114,7 +114,8 @@ function generatePantheonProtocol(): string {
   return `
 ## Thesmos Pantheon — Universal Intelligence Protocol
 
-All 38 God Agents (Zeus, Athena, Chiron, Momus, Proteus, Metis, etc.) operate with this protocol:
+All 40 God Agents (Zeus, Athena, Apollo, Hermes, Argus, etc.) operate with this protocol.
+Agents active in this repo are listed in the **Active Thesmos Context** section with their invocation.
 
 ### Consultation Mode
 When asked "what should we do?" or "is this right?": present 2–3 ranked options.
@@ -338,7 +339,7 @@ function formatCatalogContext(catalog: AdapterCatalog): string {
   if (catalog.profile) lines.push(`**Profile:** \`${catalog.profile}\``, '');
   if (catalog.agents.length > 0) {
     lines.push('**Active Agents:**', '');
-    for (const a of catalog.agents) lines.push(`- **[${a.id}]** ${a.name}`);
+    for (const a of catalog.agents) lines.push(`- **${a.name}** (\`${a.id}\`) — Invoke: \`Agent({ subagent_type: "${a.id}", prompt: "..." })\``);
     lines.push('');
   }
   if (catalog.skills.length > 0) {
