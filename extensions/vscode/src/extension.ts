@@ -43,6 +43,7 @@ import {
   isInstalled,
   hasReport,
   resolveBinary,
+  RUNNER_ENV,
   ThesmosNotFoundError,
   ThesmosReportMissingError,
 } from './runner.js';
@@ -563,7 +564,7 @@ async function startLspClient(
     const { LanguageClient, TransportKind } = await import('vscode-languageclient/node');
 
     const serverArgs = ['lsp', '--root', workspaceRoot];
-    const serverOpts = { env: process['env'] as NodeJS.ProcessEnv };
+    const serverOpts = { env: RUNNER_ENV };
 
     lspClient = new LanguageClient(
       'thesmos-lsp',

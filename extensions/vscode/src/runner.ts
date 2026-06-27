@@ -10,7 +10,7 @@
  */
 
 import { execFile, execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { Finding, HealthScore, ReviewOutput } from './types.js';
@@ -20,20 +20,27 @@ import type { Finding, HealthScore, ReviewOutput } from './types.js';
 function buildEnv(): NodeJS.ProcessEnv {
   const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
   const sep = process.platform === 'win32' ? ';' : ':';
+
+  // Dynamically scan all installed nvm versions so any patch version works
+  const nvmVersionsDir = join(home, '.nvm', 'versions', 'node');
+  let nvmPaths: string[] = [];
+  try {
+    nvmPaths = readdirSync(nvmVersionsDir).map(v => join(nvmVersionsDir, v, 'bin'));
+  } catch { /* nvm not installed */ }
+
   const extra = [
-    `${home}/.nvm/versions/node/v20.20.2/bin`,
-    `${home}/.nvm/versions/node/v22.0.0/bin`,
-    `${home}/.nvm/versions/node/v24.0.0/bin`,
-    `${home}/.nvm/versions/node/v18.0.0/bin`,
-    `${home}/.volta/bin`,
-    `${home}/.fnm/aliases/default/bin`,
+    process.env.NVM_BIN ?? '',          // currently active nvm version (set in shells)
+    ...nvmPaths,                         // all installed nvm versions
+    join(home, '.volta', 'bin'),
+    join(home, '.fnm', 'aliases', 'default', 'bin'),
     '/opt/homebrew/bin',
     '/usr/local/bin',
-  ].join(sep);
+  ].filter(Boolean).join(sep);
+
   return { ...process.env, PATH: `${extra}${sep}${process.env.PATH ?? ''}`, FORCE_COLOR: '0' };
 }
 
-const RUNNER_ENV = buildEnv();
+export const RUNNER_ENV = buildEnv();
 
 const execFileAsync = promisify(execFile);
 
@@ -105,14 +112,17 @@ export function resolveBinary(workspaceRoot: string, override?: string): string 
 
   // 4. Well-known nvm / volta global bin locations (for VS Code launched from Dock)
   const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
-  const candidates = [
-    join(home, '.nvm', 'versions', 'node', 'v20.20.2', 'bin', 'thesmos'),
-    join(home, '.nvm', 'versions', 'node', 'v22.0.0', 'bin', 'thesmos'),
-    join(home, '.nvm', 'versions', 'node', 'v24.0.0', 'bin', 'thesmos'),
-    join(home, '.nvm', 'versions', 'node', 'v18.0.0', 'bin', 'thesmos'),
+  const candidates: string[] = [];
+  const nvmVersionsDir = join(home, '.nvm', 'versions', 'node');
+  try {
+    for (const v of readdirSync(nvmVersionsDir)) {
+      candidates.push(join(nvmVersionsDir, v, 'bin', 'thesmos'));
+    }
+  } catch { /* nvm not installed */ }
+  candidates.push(
     join(home, '.volta', 'bin', 'thesmos'),
     join(home, '.fnm', 'aliases', 'default', 'bin', 'thesmos'),
-  ];
+  );
   for (const p of candidates) {
     if (existsSync(p)) return p;
   }
