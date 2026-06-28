@@ -326,6 +326,7 @@ export interface ThesmosRule {
   description: string;
   severity: Severity;
   tags: string[];
+  frameworks?: string[];
   example?: string;
   sinceVersion: string;
   explain?: RuleExplanation;

@@ -16,8 +16,13 @@ import { createContext } from '../lib/context.ts';
 import { parseArgs, flag } from '../lib/args.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PANTHEON_DIR = join(__dirname, '../../catalog/agents/pantheon');
-const AGENTS_DIR = join(__dirname, '../../catalog/agents');
+// Resolve catalog path for both dev (bin/commands/) and bundle (dist/) locations.
+const _agentsDirCandidates = [
+  join(__dirname, '../../catalog/agents'), // dev: bin/commands/ → thesmos/
+  join(__dirname, '../catalog/agents'),    // bundle: dist/ → thesmos/
+];
+const AGENTS_DIR = _agentsDirCandidates.find(p => existsSync(p)) ?? _agentsDirCandidates[0];
+const PANTHEON_DIR = join(AGENTS_DIR, 'pantheon');
 const MEMORY_DIR_REL = '.thesmos/pantheon/memory';
 
 // The 13 God Agents that live at catalog/agents root (outside pantheon/ subdir)
@@ -556,7 +561,7 @@ function cmdCouncil(agents: PantheonAgent[], argv: string[]): void {
     lines.push('');
     lines.push(`  ${voice}`);
     lines.push('');
-    lines.push(`  Invoke: Agent({ subagent_type: "${agent.id}", prompt: "${task.replace(/"/g, "'")}" })`);
+    lines.push(`  Invoke **${agent.name}**: Agent({ subagent_type: "${agent.id}", prompt: "${task.replace(/"/g, "'")}" })`);
     lines.push('');
   }
 

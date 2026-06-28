@@ -598,6 +598,147 @@ const GDPR_015: ThesmosRule = {
   },
 };
 
+// ── Rule: GDPR_016 — Consent revocation missing ───────────────────────────────
+
+const GDPR_016: ThesmosRule = {
+  id: 'GDPR_016',
+  category: 'gdpr_consent_revocation_missing',
+  severity: 'BLOCKER',
+  description: 'No consent revocation endpoint — GDPR Art. 7(3) requires withdrawal to be as easy as granting.',
+  tags: ['gdpr', 'consent', 'compliance'],
+  frameworks: ['gdpr'],
+  sinceVersion: '2.1.0',
+  detect(input: DetectInput): Finding[] {
+    const files = (input.changedFiles ?? []).filter((cf) => isApiRoute(cf.path));
+    if (files.length === 0) return [];
+    const allContent = files.map((cf) => cf.content).join('\n');
+    const hasConsentGrant = /consent.*(?:post|put|patch|accept|grant|agree)/i.test(allContent)
+      || /(?:accept|grant|save).*consent/i.test(allContent);
+    if (!hasConsentGrant) return [];
+    const hasRevocation = /(?:revoke|withdraw|opt.?out|delete.*consent|remove.*consent)/i.test(allContent);
+    if (hasRevocation) return [];
+    return [f('gdpr_consent_revocation_missing', 'BLOCKER',
+      'Consent granted but no revocation endpoint found — GDPR Art. 7(3) requires easy withdrawal.',
+      'Add a DELETE /consent or POST /consent/revoke endpoint that removes the stored consent record.',
+      files[0]!.path)];
+  },
+};
+
+// ── Rule: GDPR_017 — Data portability endpoint missing ────────────────────────
+
+const GDPR_017: ThesmosRule = {
+  id: 'GDPR_017',
+  category: 'gdpr_data_portability_missing',
+  severity: 'HIGH',
+  description: 'No data export endpoint — GDPR Art. 20 grants users the right to data portability.',
+  tags: ['gdpr', 'portability', 'compliance'],
+  frameworks: ['gdpr'],
+  sinceVersion: '2.1.0',
+  detect(input: DetectInput): Finding[] {
+    const routes = input.scan.apiRoutes ?? [];
+    if (routes.length === 0) return [];
+    const hasExport = routes.some((r) => /export|download|portable|data-request/i.test(r.path));
+    if (hasExport) return [];
+    const hasPiiRoutes = routes.some((r) => r.auth && /user|account|profile|\/me\b/i.test(r.path));
+    if (!hasPiiRoutes) return [];
+    return [f('gdpr_data_portability_missing', 'HIGH',
+      'No data export/download endpoint found — users cannot exercise their GDPR Art. 20 portability right.',
+      'Add a GET /user/export or GET /account/download route returning user data in a portable format (JSON/CSV).',
+      'package.json')];
+  },
+};
+
+// ── Rule: GDPR_018 — Lawful basis undeclared ─────────────────────────────────
+
+const GDPR_018: ThesmosRule = {
+  id: 'GDPR_018',
+  category: 'gdpr_lawful_basis_undeclared',
+  severity: 'HIGH',
+  description: 'Data processing route with no lawful basis declaration — GDPR Art. 6 requires a legal ground.',
+  tags: ['gdpr', 'lawful-basis', 'compliance'],
+  frameworks: ['gdpr'],
+  sinceVersion: '2.1.0',
+  detect(input: DetectInput): Finding[] {
+    const findings: Finding[] = [];
+    for (const cf of (input.changedFiles ?? [])) {
+      if (!isApiRoute(cf.path)) continue;
+      if (!PII_FIELD_RE.test(cf.content)) continue;
+      const hasLawfulBasis = /lawful.?basis|legal.?basis|processing.?ground|legitimate.?interest|data.?processing.?agreement|\bdpa\b/i.test(cf.content);
+      if (!hasLawfulBasis) {
+        findings.push(f('gdpr_lawful_basis_undeclared', 'HIGH',
+          'API route processes PII with no lawful basis declaration — GDPR Art. 6 requires a documented legal ground.',
+          'Add a comment or config referencing the GDPR Art. 6 basis (consent, contract, legitimate interest, etc.).',
+          cf.path));
+      }
+    }
+    return findings;
+  },
+};
+
+// ── Rule: GDPR_019 — Cross-border transfer without safeguard ─────────────────
+
+const GDPR_019: ThesmosRule = {
+  id: 'GDPR_019',
+  category: 'gdpr_cross_border_transfer_no_safeguard',
+  severity: 'HIGH',
+  description: 'Data sent to a non-EEA endpoint with no SCCs or adequacy decision referenced.',
+  tags: ['gdpr', 'data-transfer', 'compliance'],
+  frameworks: ['gdpr'],
+  sinceVersion: '2.1.0',
+  detect(input: DetectInput): Finding[] {
+    const findings: Finding[] = [];
+    const THIRD_COUNTRY_RE = /fetch\s*\(\s*["'`][^"'`]*(?:amazonaws\.com|openai\.com|api\.anthropic\.com|googleapis\.com\/(?!europe)|us-east|us-west)[^"'`]*/i;
+    for (const cf of (input.changedFiles ?? [])) {
+      if (!isSourceFile(cf.path) || isTestFile(cf.path)) continue;
+      if (!THIRD_COUNTRY_RE.test(cf.content)) continue;
+      const hasSafeguard = /standard.?contract(?:ual)?.?clause|adequacy.?decision|data.?transfer.?agreement|\bscc(?:s)?\b|transfer.?impact.?assessment/i.test(cf.content);
+      if (hasSafeguard) continue;
+      const lines = cf.content.split('\n');
+      let line: number | undefined;
+      for (let i = 0; i < lines.length; i++) {
+        if (THIRD_COUNTRY_RE.test(lines[i]!)) { line = i + 1; break; }
+      }
+      findings.push(f('gdpr_cross_border_transfer_no_safeguard', 'HIGH',
+        'Fetch to a third-country endpoint with no SCCs or adequacy decision referenced — GDPR Art. 46 requires a transfer safeguard.',
+        'Document the transfer mechanism (SCCs, BCRs, or adequacy decision) in a comment or data-transfer config file.',
+        cf.path, line));
+    }
+    return findings;
+  },
+};
+
+// ── Rule: GDPR_020 — DPIA missing for high-risk processing ───────────────────
+
+const GDPR_020: ThesmosRule = {
+  id: 'GDPR_020',
+  category: 'gdpr_dpia_missing_high_risk',
+  severity: 'BLOCKER',
+  description: 'High-risk special-category data processed with no DPIA referenced — GDPR Art. 35.',
+  tags: ['gdpr', 'dpia', 'compliance'],
+  frameworks: ['gdpr'],
+  sinceVersion: '2.1.0',
+  detect(input: DetectInput): Finding[] {
+    const findings: Finding[] = [];
+    const HIGH_RISK_RE = /\b(?:biometric|health.?data|medical.?record|genetic|racial.?origin|political.?opinion|religious.?belief|sex.?life|criminal.?conviction)\b/i;
+    for (const cf of (input.changedFiles ?? [])) {
+      if (!isSourceFile(cf.path) || isTestFile(cf.path)) continue;
+      if (!HIGH_RISK_RE.test(cf.content)) continue;
+      const hasDpia = /dpia|data.?protection.?impact.?assessment/i.test(cf.content);
+      if (hasDpia) continue;
+      const lines = cf.content.split('\n');
+      let line: number | undefined;
+      for (let i = 0; i < lines.length; i++) {
+        if (HIGH_RISK_RE.test(lines[i]!)) { line = i + 1; break; }
+      }
+      findings.push(f('gdpr_dpia_missing_high_risk', 'BLOCKER',
+        'High-risk special-category data processing without a DPIA — GDPR Art. 35 requires a Data Protection Impact Assessment.',
+        'Complete a DPIA before processing this data and reference the DPIA document ID in a comment or config.',
+        cf.path, line));
+    }
+    return findings;
+  },
+};
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 export const GDPR_RULES: ThesmosRule[] = [
@@ -616,4 +757,9 @@ export const GDPR_RULES: ThesmosRule[] = [
   GDPR_013,
   GDPR_014,
   GDPR_015,
+  GDPR_016,
+  GDPR_017,
+  GDPR_018,
+  GDPR_019,
+  GDPR_020,
 ];
