@@ -608,6 +608,16 @@ const GDPR_016: ThesmosRule = {
   tags: ['gdpr', 'consent', 'compliance'],
   frameworks: ['gdpr'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 7(3) states that withdrawal of consent must be as easy as giving it. If a user can opt in via a UI checkbox, they must be able to withdraw with equal ease.',
+    commonViolations: [
+      'Consent given at signup but only revocable by emailing support',
+        'GDPR opt-in on preferences page but no opt-out option present',
+        'Consent stored but no DELETE endpoint for consent records',
+    ],
+    goodExample: `app.delete("/api/consent/:userId", authenticateUser, async (req, res) => { await revokeConsent(req.params.userId); res.json({ revoked: true }); });`,
+    badExample: `// No revocation endpoint — users must email support`,
+  },
   detect(input: DetectInput): Finding[] {
     const files = (input.changedFiles ?? []).filter((cf) => isApiRoute(cf.path));
     if (files.length === 0) return [];
@@ -634,6 +644,16 @@ const GDPR_017: ThesmosRule = {
   tags: ['gdpr', 'portability', 'compliance'],
   frameworks: ['gdpr'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 20 grants users the right to receive their personal data in a machine-readable format and transfer it to another controller.',
+    commonViolations: [
+      'No /api/export or /account/download endpoint exists',
+        'Export endpoint requires manual support ticket',
+        'Exported data excludes processing history or preferences',
+    ],
+    goodExample: `app.get("/api/me/export", authenticateUser, async (req, res) => { const data = await exportUserData(req.user.id); res.json(data); });`,
+    badExample: `// No export endpoint — violates GDPR Art. 20`,
+  },
   detect(input: DetectInput): Finding[] {
     const routes = input.scan.apiRoutes ?? [];
     if (routes.length === 0) return [];
@@ -658,6 +678,17 @@ const GDPR_018: ThesmosRule = {
   tags: ['gdpr', 'lawful-basis', 'compliance'],
   frameworks: ['gdpr'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 6 requires that every processing activity has a documented lawful basis (consent, contract, legitimate interest, legal obligation, vital interests, or public task).',
+    commonViolations: [
+      'API route collects and processes PII without any lawful basis comment or annotation',
+        'Analytics endpoint stores user behaviour without consent or legitimate interest assessment',
+        'Email capture route with no basis documented in code or DPA',
+    ],
+    goodExample: `// Lawful basis: Art. 6(1)(b) — contract (user agreed at signup)
+app.post("/api/orders", authenticateUser, processOrder);`,
+    badExample: `app.post("/api/analytics/track", (req, res) => { storeEvent(req.body); }); // no lawful basis`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -685,6 +716,17 @@ const GDPR_019: ThesmosRule = {
   tags: ['gdpr', 'data-transfer', 'compliance'],
   frameworks: ['gdpr'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'Data transferred to non-EEA countries requires an adequacy decision (e.g., UK, Switzerland), Standard Contractual Clauses, or Binding Corporate Rules. Without a safeguard, the transfer is unlawful.',
+    commonViolations: [
+      'User data sent to a US API without SCCs or Privacy Shield successor reference',
+        'Analytics events forwarded to India-based processor without DPA reference',
+        'Logs shipped to AWS us-east-1 without adequacy decision documentation',
+    ],
+    goodExample: `// Transfer safeguard: SCCs signed 2026-01-15 (see legal/sccs-us-vendor.pdf)
+fetch("https://us-analytics.example.com/track", { body: JSON.stringify(event) });`,
+    badExample: `fetch("https://us-analytics.example.com/track", { body: JSON.stringify({ email, userId }) }); // no SCC reference`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     const THIRD_COUNTRY_RE = /fetch\s*\(\s*["'`][^"'`]*(?:amazonaws\.com|openai\.com|api\.anthropic\.com|googleapis\.com\/(?!europe)|us-east|us-west)[^"'`]*/i;
@@ -717,6 +759,17 @@ const GDPR_020: ThesmosRule = {
   tags: ['gdpr', 'dpia', 'compliance'],
   frameworks: ['gdpr'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 35 requires a DPIA before processing special-category data (health, biometrics, religion, political opinions, sexual orientation) or high-volume profiling.',
+    commonViolations: [
+      'Medical records processed without DPIA documentation',
+        'Biometric authentication added without impact assessment',
+        'Mass profiling of user behaviour without Art. 35 assessment',
+    ],
+    goodExample: `// DPIA ref: docs/dpia-health-2026-02.pdf — approved by DPO 2026-02-10
+await storeHealthRecord(userId, data);`,
+    badExample: `await storeHealthRecord(userId, data); // no DPIA reference`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     const HIGH_RISK_RE = /\b(?:biometric|health.?data|medical.?record|genetic|racial.?origin|political.?opinion|religious.?belief|sex.?life|criminal.?conviction)\b/i;

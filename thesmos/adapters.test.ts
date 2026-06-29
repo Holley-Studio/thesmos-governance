@@ -227,7 +227,8 @@ describe('generateClaudeRules (thin adapter)', () => {
   });
 
   it('contains all rule IDs', () => {
-    for (const rule of RULES) {
+    const claudeRules = RULES.filter((r) => r.severity === 'BLOCKER' || r.severity === 'HIGH');
+    for (const rule of claudeRules) {
       expect(output).toContain(`[${rule.id}]`);
     }
   });
@@ -553,7 +554,8 @@ describe('writeAllAdapters', () => {
 
 describe('adapter drift detection', () => {
   it('every THESMOS_RULES entry appears in every adapter output', () => {
-    const targets: AdapterTarget[] = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'];
+    const targets: AdapterTarget[] = ['gemini', 'cursor', 'copilot', 'codex', 'agents'];
+    // claude intentionally omits MEDIUM/LOW/TECH_DEBT rules — tested separately above
     for (const target of targets) {
       const out = buildAdapterContent(target, '', RULES, CONFIG);
       for (const rule of RULES) {
