@@ -27,6 +27,15 @@
             "command": "npx --no-install thesmos claude:govern check"
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ../.claude/hooks/agent-activity.cjs"
+          }
+        ]
       }
     ],
     "Stop": [
@@ -45,6 +54,15 @@
           {
             "type": "command",
             "command": "npx --no-install thesmos claude:govern budget-check"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ../.claude/hooks/agent-activity.cjs"
           }
         ]
       }

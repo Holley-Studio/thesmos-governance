@@ -14,6 +14,9 @@
  */
 
 import * as vscode from 'vscode';
+import { appendFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 // ── Agent catalog ─────────────────────────────────────────────────────────────
 
@@ -94,15 +97,39 @@ export class AgentsTreeProvider
 
   private domainGroups: Map<string, AgentEntry[]> = new Map();
   private activeAgents = new Set<string>();
+  private workspaceRoot: string;
 
-  constructor() {
+  constructor(workspaceRoot?: string) {
+    this.workspaceRoot = workspaceRoot ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
     this.rebuild();
   }
 
   setActive(agentId: string, active: boolean): void {
-    if (active) this.activeAgents.add(agentId);
-    else this.activeAgents.delete(agentId);
+    if (active) {
+      this.activeAgents.add(agentId);
+      this.appendActivityEvent(agentId, 'spawn');
+    } else {
+      this.activeAgents.delete(agentId);
+    }
     this._onDidChangeTreeData.fire();
+  }
+
+  private appendActivityEvent(agentId: string, type: 'spawn' | 'complete'): void {
+    try {
+      const dir = join(this.workspaceRoot, '.thesmos');
+      mkdirSync(dir, { recursive: true });
+      const event = {
+        ts: new Date().toISOString(),
+        type,
+        sessionId: 'sidebar',
+        agentId: `sidebar-${agentId}-${randomUUID()}`,
+        description: `Invoked from sidebar`,
+        subagentType: agentId,
+      };
+      appendFileSync(join(dir, 'agent-activity.jsonl'), JSON.stringify(event) + '\n', 'utf-8');
+    } catch {
+      // non-fatal — never let logging break the sidebar
+    }
   }
 
   private rebuild(): void {

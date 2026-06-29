@@ -12,8 +12,10 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import { createContext } from '../lib/context.ts';
 import { parseArgs, flag } from '../lib/args.ts';
+import { logAgentSpawn } from '../../agent-activity.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Resolve catalog path for both dev (bin/commands/) and bundle (dist/) locations.
@@ -532,6 +534,7 @@ function cmdCouncil(agents: PantheonAgent[], argv: string[]): void {
   }
 
   const agentIds = routeTask(task).slice(0, Math.max(2, Math.min(maxAgents, 6)));
+  const councilSessionId = randomUUID();
 
   const lines: string[] = [];
   const ruler = (label: string) => `${'━'.repeat(4)} ${label} ${'━'.repeat(Math.max(2, 50 - label.length))}`;
@@ -551,6 +554,16 @@ function cmdCouncil(agents: PantheonAgent[], argv: string[]): void {
   for (const id of agentIds) {
     const agent = agents.find(a => a.id === id);
     if (!agent) continue;
+
+    try {
+      const { root } = createContext();
+      logAgentSpawn(root, {
+        sessionId: councilSessionId,
+        agentId: randomUUID(),
+        description: `Council: ${task}`,
+        subagentType: id,
+      });
+    } catch { /* non-fatal */ }
 
     const voice = AGENT_VOICES[id] ?? `Apply your ${agent.role.toLowerCase()} expertise to: ${task}`;
     const label = `${agent.god} — ${agent.role}`;
@@ -614,6 +627,19 @@ function cmdOrchestrate(agents: PantheonAgent[], argv: string[]): void {
   }
 
   const agentIds = routeTask(task);
+  const orchestrateSessionId = randomUUID();
+
+  try {
+    const { root } = createContext();
+    for (const id of agentIds) {
+      logAgentSpawn(root, {
+        sessionId: orchestrateSessionId,
+        agentId: randomUUID(),
+        description: `Orchestrate: ${task}`,
+        subagentType: id,
+      });
+    }
+  } catch { /* non-fatal */ }
 
   let brief = `# Zeus Orchestration Brief\n`;
   brief += `**Task:** ${task}\n`;
