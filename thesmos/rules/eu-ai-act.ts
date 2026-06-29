@@ -54,6 +54,15 @@ const EU_AI_001: ThesmosRule = {
   tags: ['eu-ai-act', 'compliance', 'high-risk'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 43 requires Annex III high-risk AI systems to undergo a conformity assessment before market placement. Systems making automated credit, hiring, medical, or law-enforcement decisions that skip this step expose operators to fines up to €30M or 6% of global turnover.',
+    commonViolations: ['Deploying an LLM-based credit scoring API with no .thesmos/conformity-assessment.md', 'Integrating AI hiring recommendations in production with no Art. 43 evidence file'],
+    goodExample: '// .thesmos/conformity-assessment.md exists and references an EU Notified Body\n// or internal assessment per Art. 43(2) for non-third-party-assessed systems',
+    badExample: 'const approved = await llm.creditScore(applicant);  // no conformity assessment filed — EU AI Act violation',
+    relatedPlaybooks: ['eu-ai-act.md'],
+    relatedAgents: ['compliance-reviewer', 'ai-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -80,6 +89,15 @@ const EU_AI_002: ThesmosRule = {
   tags: ['eu-ai-act', 'biometric', 'prohibited'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 5 prohibits real-time remote biometric identification and AI-based biometric categorization in publicly accessible spaces as a fundamental rights violation. Violating this prohibition carries the highest fine tier: €35M or 7% of global turnover.',
+    commonViolations: ['const match = await llm.facialRecognition(frame, database);  // real-time biometric ID', 'biometricVerify(userIris, enrolledTemplates)  // iris-based categorization without exemption'],
+    goodExample: '// If biometric processing is genuinely required, obtain law-enforcement exemption\n// with specific legal basis, judicial authorization, and limited scope documentation',
+    badExample: 'const category = await ai.classifyByBiometric(faceEmbedding);  // categorizes individuals — Art. 5 prohibition',
+    relatedPlaybooks: ['eu-ai-act.md'],
+    relatedAgents: ['compliance-reviewer', 'security-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -106,6 +124,15 @@ const EU_AI_003: ThesmosRule = {
   tags: ['eu-ai-act', 'risk-management', 'compliance'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 9 requires a continuous risk management system for Annex III systems covering: identification and analysis of known and foreseeable risks, risk estimation, and evaluation measures. Absence of this documentation blocks conformity assessment and deployment.',
+    commonViolations: ['Deploying an ML hiring pipeline with no risk analysis document', 'Integrating AI credit decisions with no documented risk mitigation measures'],
+    goodExample: '// .thesmos/risk-management.md exists with: risk inventory, probability/impact matrix, mitigation steps, residual risk acceptance',
+    badExample: 'const score = await llm.riskScore(loan);  // no risk management plan filed — Art. 9 non-compliant',
+    relatedPlaybooks: ['eu-ai-act.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -132,6 +159,15 @@ const EU_AI_004: ThesmosRule = {
   tags: ['eu-ai-act', 'data-governance', 'training'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 10 requires that training data for high-risk AI systems meets data quality criteria: relevance, representativeness, freedom from errors, and completeness. Without a documented governance plan, you cannot demonstrate compliance — fine tier up to €15M or 3% of global turnover.',
+    commonViolations: ['Ingesting user data for fine-tuning with no data governance document', 'Training a classification model on a public dataset with no bias or quality assessment'],
+    goodExample: '// .thesmos/data-governance.md documents: data sources, quality criteria, bias checks, consent basis, retention policy',
+    badExample: 'await uploadTrainingFile(scrapeAllUsers());  // no data governance plan — Art. 10 violation',
+    relatedPlaybooks: ['eu-ai-act.md', 'gdpr.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const TRAINING_RE = /fine.?tun|train(?:ing)?|dataset|embedding.*ingest|createFineTune|fine_tune/i;
@@ -159,6 +195,15 @@ const EU_AI_005: ThesmosRule = {
   tags: ['eu-ai-act', 'transparency', 'model-card'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 11 and Annex IV require providers of high-risk AI systems to maintain technical documentation before market placement. This includes general system description, design specs, training methodology, monitoring procedures, and instructions for use.',
+    commonViolations: ['Shipping LLM integration with no .thesmos/model-card.md', 'AI system in production with no technical docs — blocks downstream conformity assessment'],
+    goodExample: '// .thesmos/model-card.md covers: model provider, version, intended use, known limitations, performance metrics, monitoring plan',
+    badExample: 'const result = await llm.complete(prompt);  // in production with no model card or technical documentation',
+    relatedPlaybooks: ['eu-ai-act.md'],
+    relatedAgents: ['compliance-reviewer', 'ai-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -185,6 +230,15 @@ const EU_AI_006: ThesmosRule = {
   tags: ['eu-ai-act', 'audit-log', 'traceability'],
   frameworks: ['eu-ai-act', 'hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 12 mandates automatic logging for high-risk AI systems to enable post-market monitoring and regulatory audit. Logs must be tamper-evident, retained for a defined period, and include sufficient data to reconstruct each decision.',
+    commonViolations: ['LLM credit decision returned with no audit log write', 'AI hiring recommendation served with no traceability record'],
+    goodExample: 'const result = await llm.creditDecision(applicant);\nawait auditLog.append({ ts: Date.now(), model, input: hash(applicant), output: result, userId });\nreturn result;',
+    badExample: 'return await llm.riskScore(application);  // no log — cannot reconstruct what the AI decided after the fact',
+    relatedPlaybooks: ['eu-ai-act.md', 'hipaa.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -212,6 +266,15 @@ const EU_AI_007: ThesmosRule = {
   tags: ['eu-ai-act', 'human-oversight', 'high-risk'],
   frameworks: ['eu-ai-act', 'nist-ai-rmf'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 14 requires that high-risk AI systems allow natural persons to effectively oversee their operation, understand outputs, and override decisions. Fully automated pipelines that immediately act on AI recommendations without a human review step violate this mandate.',
+    commonViolations: ['const hired = score > 0.8; await sendOfferLetter(candidate);  // no human review before action', 'if (aiLoanDecision === "approve") await disburseFunds(amount);  // automated action without oversight'],
+    goodExample: 'const recommendation = await llm.assessApplication(candidate);\nawait queue.push({ type: "hiring_review", candidate, recommendation, requiresHumanApproval: true });\n// Human reviewer acts on the recommendation, not the AI directly',
+    badExample: 'const score = await ai.evaluate(applicant); await hire(applicant);  // Art. 14 violation: no human in the loop',
+    relatedPlaybooks: ['eu-ai-act.md'],
+    relatedAgents: ['compliance-reviewer', 'ai-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -239,6 +302,15 @@ const EU_AI_008: ThesmosRule = {
   tags: ['eu-ai-act', 'gpai', 'evaluation'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 51 requires providers and deployers of general-purpose AI models with systemic risk to conduct adversarial testing and capability evaluations. Even for non-systemic-risk GPAI, documenting capability limits is required for downstream deployers to assess downstream risk.',
+    commonViolations: ['Using GPT-4 or Claude in production with no evaluation of task-specific capabilities or failure modes', 'No /evals directory or .thesmos/capability-evaluation.md documenting what the model can and cannot do'],
+    goodExample: '// .thesmos/capability-evaluation.md or /evals/\n// Documents: tasks model was evaluated on, failure modes, benchmark scores, human evaluation results',
+    badExample: 'const result = await openai.chat(messages);  // no eval suite, no capability docs — Art. 51 gap',
+    relatedPlaybooks: ['eu-ai-act.md'],
+    relatedAgents: ['compliance-reviewer', 'ai-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));

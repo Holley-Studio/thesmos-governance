@@ -63,6 +63,15 @@ const HIPAA_001: ThesmosRule = {
   tags: ['hipaa', 'phi', 'encryption'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.312(a)(2)(iv) requires covered entities to implement encryption for PHI at rest where reasonable and appropriate. Unencrypted PHI columns are a reportable breach if the database is accessed — each breach can result in fines up to $1.9M per violation category per year.',
+    commonViolations: ['Prisma schema with patient, diagnosis, prescription columns and no @encrypted annotation', 'MongoDB collection storing PHI documents with no field-level encryption configured'],
+    goodExample: '// Use field-level encryption: KMS-encrypted columns, transparent data encryption, or application-layer AES\nmedicalRecord String @encrypted  // custom annotation or middleware handles encryption',
+    badExample: 'model Patient {\n  diagnosis String\n  ssn       String\n}  // stored in plaintext — HIPAA §164.312(a)(2)(iv) violation',
+    relatedPlaybooks: ['hipaa.md'],
+    relatedAgents: ['compliance-reviewer', 'security-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -88,6 +97,15 @@ const HIPAA_002: ThesmosRule = {
   tags: ['hipaa', 'phi', 'tls'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.312(e)(2)(ii) requires encryption for PHI in transit. Transmitting PHI over unencrypted HTTP means it can be intercepted by any observer on the network path — a per se HIPAA violation triggering mandatory breach notification and potential fines.',
+    commonViolations: ['fetch("http://api.example.com/patients/" + id)  // PHI fetched over HTTP', 'axios.post("http://ehr.internal/records", { patient, diagnosis })  // internal but still unencrypted'],
+    goodExample: 'const res = await fetch("https://api.example.com/patients/" + id, { headers: { Authorization: `Bearer ${token}` } });',
+    badExample: 'const data = await http.get(`http://phi-service/records/${patientId}`);  // HIPAA §164.312(e)(2)(ii) violation',
+    relatedPlaybooks: ['hipaa.md'],
+    relatedAgents: ['compliance-reviewer', 'security-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     const HTTP_RE = /http:\/\/(?!localhost)[^\s"'`]+/i;
@@ -115,6 +133,15 @@ const HIPAA_003: ThesmosRule = {
   tags: ['hipaa', 'phi', 'access-control'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.312(a)(1) requires covered entities to implement technical policies that allow only authorized users to access PHI. An unprotected API endpoint that returns PHI is a per se violation — each unauthorized access event can trigger individual breach reports.',
+    commonViolations: ['export async function GET(req) { const patient = await db.patient.findUnique(); return Response.json(patient); }  // no auth check', 'app.get("/records/:id", async (req, res) => { res.json(await findRecord(req.params.id)); });  // unauthenticated'],
+    goodExample: 'export async function GET(req) {\n  const session = await getSession(req);\n  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });\n  const patient = await db.patient.findUnique({ where: { id: session.userId } });\n  return Response.json(patient);\n}',
+    badExample: 'app.get("/phi/:id", (req, res) => res.json(db.query("SELECT * FROM phi WHERE id=?", [req.params.id])));  // no auth — §164.312(a)(1) violation',
+    relatedPlaybooks: ['hipaa.md'],
+    relatedAgents: ['compliance-reviewer', 'security-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -140,6 +167,15 @@ const HIPAA_004: ThesmosRule = {
   tags: ['hipaa', 'audit', 'phi'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.312(b) requires covered entities to implement hardware, software, and procedural mechanisms that record and examine activity in information systems containing PHI. Audit logs must capture who accessed what PHI, when, and from where — without this you cannot detect breaches or fulfill HIPAA investigation obligations.',
+    commonViolations: ['PHI API route that queries the database but writes no access log', 'Patient record view with no audit entry capturing user ID, timestamp, and record accessed'],
+    goodExample: 'const record = await db.patient.findUnique({ where: { id } });\nawait auditLog.append({ userId: session.userId, action: "read", recordId: id, timestamp: Date.now(), ip: req.ip });\nreturn record;',
+    badExample: 'const patient = await db.patient.findUnique({ where: { id } });\nreturn Response.json(patient);  // no audit log — §164.312(b) violation',
+    relatedPlaybooks: ['hipaa.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -165,6 +201,15 @@ const HIPAA_005: ThesmosRule = {
   tags: ['hipaa', 'phi', 'minimum-necessary'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.502(b) minimum necessary standard requires that only PHI reasonably necessary to accomplish the intended purpose is used or disclosed. Returning full patient records when only a subset is needed exposes more PHI than warranted and violates this standard.',
+    commonViolations: ['db.patient.findMany()  // returns all fields including diagnosis, SSN, prescriptions', "SELECT * FROM patients WHERE clinicId = $1  // returns everything when only name + appointment is needed"],
+    goodExample: 'const patient = await db.patient.findUnique({ where: { id }, select: { name: true, appointmentDate: true } });  // only what the caller needs',
+    badExample: 'const records = await db.patient.findMany();  // §164.502(b) violation — returns all PHI for all patients',
+    relatedPlaybooks: ['hipaa.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     const SELECT_STAR_RE = /findMany\(\)|findFirst\(\)|findUnique\(\)|\bSELECT \*/i;
@@ -192,6 +237,15 @@ const HIPAA_006: ThesmosRule = {
   tags: ['hipaa', 'phi', 'llm', 'baa'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'Under HIPAA, an LLM vendor processing PHI on your behalf is a Business Associate. 45 CFR §164.308(b) requires a signed Business Associate Agreement before disclosing PHI to them. Sending PHI to OpenAI, Anthropic, or similar without a BAA is an unlawful disclosure.',
+    commonViolations: ['const summary = await openai.complete(`Patient ${patient.name} with ${patient.diagnosis}`);  // no BAA', "await anthropic.messages.create({ messages: [{ role: 'user', content: `PHI: ${phi}` }] })  // no BAA reference"],
+    goodExample: '// Azure OpenAI with HIPAA BAA signed and referenced in config\n// config.llmBaa = "azure-openai-hipaa-baa-2024.pdf"\nconst result = await azureOpenAI.chat(sanitizedPrompt);  // PHI redacted or BAA in place',
+    badExample: 'const dx = await openai.complete(`Diagnose: ${patient.symptoms} History: ${patient.medicalRecord}`);  // PHI to 3rd party without BAA',
+    relatedPlaybooks: ['hipaa.md'],
+    relatedAgents: ['compliance-reviewer', 'security-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -220,6 +274,15 @@ const HIPAA_007: ThesmosRule = {
   tags: ['hipaa', 'phi', 'session-timeout'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.312(a)(2)(iii) requires automatic logoff after a period of inactivity to prevent unauthorized access to PHI when a workstation is left unattended. Without session timeouts, a shared computer leaves PHI accessible to the next user.',
+    commonViolations: ['NextAuth session with no maxAge — sessions never expire', 'JWT tokens for PHI access with no exp claim or 30-day TTL'],
+    goodExample: 'export const authOptions = { session: { strategy: "jwt", maxAge: 15 * 60 } };  // 15-minute timeout for PHI sessions',
+    badExample: 'const session = await iron.unseal(cookie, secret, iron.defaults);  // no maxAge — session never expires',
+    relatedPlaybooks: ['hipaa.md'],
+    relatedAgents: ['compliance-reviewer', 'security-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const files = (input.changedFiles ?? []).filter(
       (cf) => isApiRoute(cf.path) && PHI_FIELD_RE.test(cf.content));
@@ -244,6 +307,15 @@ const HIPAA_008: ThesmosRule = {
   tags: ['hipaa', 'phi', 'backup'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.308(a)(7) requires a contingency plan including data backup procedures, disaster recovery, and an emergency mode operation plan for systems containing PHI. Absence of a documented backup plan means you cannot demonstrate HIPAA §164.308(a)(7) compliance during an audit.',
+    commonViolations: ['PHI stored in production database with no .thesmos/backup-plan.md', 'Database contains patient records but no documented RTO/RPO or backup frequency'],
+    goodExample: '// .thesmos/backup-plan.md\n// RTO: 4 hours, RPO: 1 hour\n// Daily encrypted snapshots to separate AWS region\n// Quarterly restore drills documented',
+    badExample: '// PHI in production DB, no backup docs anywhere in repo — §164.308(a)(7) gap',
+    relatedPlaybooks: ['hipaa.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const hasPhi = (input.changedFiles ?? []).some(
