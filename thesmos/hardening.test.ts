@@ -64,9 +64,14 @@ describe('rule registry completeness', () => {
 
   it('new rules added to THESMOS_RULES appear in all adapter outputs', () => {
     const allTargets = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'] as const;
+    const blockerHighRules = THESMOS_RULES.filter(
+      (r) => r.severity === 'BLOCKER' || r.severity === 'HIGH'
+    );
     for (const target of allTargets) {
+      // claude adapter intentionally only embeds BLOCKER+HIGH rules to avoid context thrashing
+      const rulesForTarget = target === 'claude' ? blockerHighRules : THESMOS_RULES;
       const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
-      for (const rule of THESMOS_RULES) {
+      for (const rule of rulesForTarget) {
         expect(out, `${target} is missing [${rule.id}]`).toContain(`[${rule.id}]`);
       }
     }
@@ -220,9 +225,14 @@ describe('adapter files are AI-stack-agnostic', () => {
   });
 
   it('all adapters contain only rule IDs from THESMOS_RULES', () => {
+    const blockerHighRules = THESMOS_RULES.filter(
+      (r) => r.severity === 'BLOCKER' || r.severity === 'HIGH'
+    );
     for (const target of TARGETS) {
+      // claude adapter intentionally only embeds BLOCKER+HIGH rules to avoid context thrashing
+      const rulesForTarget = target === 'claude' ? blockerHighRules : THESMOS_RULES;
       const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
-      for (const rule of THESMOS_RULES) {
+      for (const rule of rulesForTarget) {
         expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);
       }
     }

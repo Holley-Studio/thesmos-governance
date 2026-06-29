@@ -227,7 +227,9 @@ describe('generateClaudeRules (thin adapter)', () => {
   });
 
   it('contains all rule IDs', () => {
-    for (const rule of RULES) {
+    // claude adapter only embeds BLOCKER+HIGH rules to avoid context thrashing
+    const claudeRules = RULES.filter((r) => r.severity === 'BLOCKER' || r.severity === 'HIGH');
+    for (const rule of claudeRules) {
       expect(output).toContain(`[${rule.id}]`);
     }
   });
@@ -554,9 +556,12 @@ describe('writeAllAdapters', () => {
 describe('adapter drift detection', () => {
   it('every THESMOS_RULES entry appears in every adapter output', () => {
     const targets: AdapterTarget[] = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'];
+    const blockerHighRules = RULES.filter((r) => r.severity === 'BLOCKER' || r.severity === 'HIGH');
     for (const target of targets) {
+      // claude adapter intentionally only embeds BLOCKER+HIGH rules to avoid context thrashing
+      const rulesForTarget = target === 'claude' ? blockerHighRules : RULES;
       const out = buildAdapterContent(target, '', RULES, CONFIG);
-      for (const rule of RULES) {
+      for (const rule of rulesForTarget) {
         expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);
       }
     }

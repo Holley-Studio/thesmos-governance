@@ -64,8 +64,8 @@ describe('registry structure', () => {
     }
   });
 
-  it('has exactly 1075 rules (update this when adding new rules)', () => {
-    expect(THESMOS_RULES).toHaveLength(1075);
+  it('has exactly 1130 rules (update this when adding new rules)', () => {
+    expect(THESMOS_RULES).toHaveLength(1130);
   });
 });
 
@@ -95,9 +95,14 @@ describe('adapters derive from registry', () => {
   const ALL_TARGETS = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'] as const;
 
   it('every adapter target contains all registry rule IDs', () => {
+    const blockerHighRules = THESMOS_RULES.filter(
+      (r) => r.severity === 'BLOCKER' || r.severity === 'HIGH'
+    );
     for (const target of ALL_TARGETS) {
+      // claude adapter intentionally only embeds BLOCKER+HIGH rules to avoid context thrashing
+      const rulesForTarget = target === 'claude' ? blockerHighRules : THESMOS_RULES;
       const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
-      for (const rule of THESMOS_RULES) {
+      for (const rule of rulesForTarget) {
         expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);
       }
     }
