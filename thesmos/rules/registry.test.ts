@@ -64,8 +64,8 @@ describe('registry structure', () => {
     }
   });
 
-  it('has exactly 1075 rules (update this when adding new rules)', () => {
-    expect(THESMOS_RULES).toHaveLength(1075);
+  it('has exactly 1130 rules (update this when adding new rules)', () => {
+    expect(THESMOS_RULES).toHaveLength(1130);
   });
 });
 
@@ -96,6 +96,7 @@ describe('adapters derive from registry', () => {
 
   it('every adapter target contains all registry rule IDs', () => {
     for (const target of ALL_TARGETS) {
+      if (target === 'claude') continue; // claude intentionally omits MEDIUM/LOW/TECH_DEBT
       const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
       for (const rule of THESMOS_RULES) {
         expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);

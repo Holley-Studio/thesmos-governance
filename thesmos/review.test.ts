@@ -1,5 +1,8 @@
 // @vitest-environment node
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { CONFIG_DEFAULTS } from './config';
 import {
   runReview,
@@ -11,6 +14,18 @@ import {
 import type { ScanResult } from './types';
 
 // ── Test fixtures ──────────────────────────────────────────────────────────────
+
+let TEST_ROOT: string;
+
+beforeAll(() => {
+  TEST_ROOT = mkdtempSync(join(tmpdir(), 'thesmos-review-test-'));
+  mkdirSync(join(TEST_ROOT, '.thesmos'), { recursive: true });
+  writeFileSync(join(TEST_ROOT, '.thesmos', 'model-card.md'), '# Model Card\n');
+});
+
+afterAll(() => {
+  rmSync(TEST_ROOT, { recursive: true, force: true });
+});
 
 const EMPTY_SCAN: ScanResult = {
   _generatedSections: [],
@@ -38,7 +53,7 @@ function makeInput(
     scan: EMPTY_SCAN,
     config: CONFIG_DEFAULTS,
     changedFiles,
-    root: '/tmp', // hermetic: no .claude or .thesmos here, prevents filesystem-dependent rules from firing
+    root: TEST_ROOT, // hermetic temp dir with minimal .thesmos stub
     ...overrides,
   };
 }

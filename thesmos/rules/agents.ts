@@ -826,6 +826,18 @@ const AGNT_023: ThesmosRule = {
   tags: ['agent', 'security', 'privilege'],
   frameworks: ['eu-ai-act', 'nist-ai-rmf'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'Granting bash/edit tools without path restrictions gives the agent full filesystem write access. An adversarial prompt can exfiltrate secrets or corrupt the codebase.',
+    commonViolations: [
+      '.claude/settings.json with allowedTools: ["Bash", "Edit"] and no path restrictions',
+        'Agent granted Write tool with no file glob restrictions',
+        'Autopilot mode with no deny patterns on Bash tool',
+    ],
+    goodExample: `// settings.json — restrict paths
+{ "permissions": { "allow": ["Bash(git status)", "Edit(src/**)", "Read(**)" ], "deny": ["Bash(rm -rf *)", "Bash(curl *)"] } }`,
+    badExample: `// settings.json — unrestricted
+{ "permissions": { "allow": ["Bash", "Edit", "Write"] } }`,
+  },
   detect(input: DetectInput): Finding[] {
     const settingsContent = contentOf(input, 'settings.json');
     if (!settingsContent) return [];
@@ -854,6 +866,18 @@ const AGNT_024: ThesmosRule = {
   tags: ['agent', 'gdpr', 'consent', 'pii'],
   frameworks: ['gdpr', 'eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 7(3) requires consent to be as easy to withdraw as to give. If the agent scope declares PII categories, there must be a hook to revoke consent and purge data.',
+    commonViolations: [
+      'scope.json lists piiCategories but no consentHook is configured',
+        'Agent collects user emails without a deletion endpoint',
+        'PII processed in agent sessions with no expiry or revocation path',
+    ],
+    goodExample: `// scope.json
+{ "piiCategories": ["email"], "consentHook": "https://api.example.com/consent/revoke" }`,
+    badExample: `// scope.json — no consent lifecycle
+{ "piiCategories": ["email"] }`,
+  },
   detect(input: DetectInput): Finding[] {
     const scopeContent = contentOf(input, 'scope.json');
     if (!scopeContent) return [];
@@ -880,6 +904,18 @@ const AGNT_025: ThesmosRule = {
   tags: ['agent', 'gdpr', 'dpia', 'compliance'],
   frameworks: ['gdpr', 'eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 35 requires a Data Protection Impact Assessment (DPIA) before processing high-risk data. Without a reference in scope.json, there is no proof the DPIA was conducted.',
+    commonViolations: [
+      'Agent scope includes health or financial data categories without DPIA reference',
+        'Automated decision-making agent without DPIA documentation',
+        'Agent processing employee monitoring data without impact assessment',
+    ],
+    goodExample: `// scope.json
+{ "piiCategories": ["health"], "dpiaRef": "docs/dpia-2026-01.pdf" }`,
+    badExample: `// scope.json — no DPIA
+{ "piiCategories": ["health"] }`,
+  },
   detect(input: DetectInput): Finding[] {
     const scopeContent = contentOf(input, 'scope.json');
     if (!scopeContent) return [];
@@ -910,6 +946,20 @@ const AGNT_026: ThesmosRule = {
   tags: ['agent', 'transparency', 'eu-ai-act', 'documentation'],
   frameworks: ['eu-ai-act', 'nist-ai-rmf'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 13 requires transparency documentation for AI systems. A model card makes the system\'s intended use, limitations, and risk mitigations explicit and auditable.',
+    commonViolations: [
+      'AI agent deployed without any .thesmos/model-card.md',
+        'Model card exists but is empty or a placeholder',
+        'Model card missing intended use, known limitations, or risk mitigations sections',
+    ],
+    goodExample: `# .thesmos/model-card.md
+## Intended Use
+## Limitations
+## Risk Mitigations
+## Contact`,
+    badExample: `# (no model-card.md at all)`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     if (!existsSync(join(root, '.thesmos', 'model-card.md'))) {
@@ -930,6 +980,16 @@ const AGNT_027: ThesmosRule = {
   tags: ['agent', 'audit', 'compliance', 'integrity'],
   frameworks: ['eu-ai-act', 'hipaa', 'dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'Audit trails must be append-only to be legally defensible. An agent that can write to its own audit log can erase evidence of its own actions.',
+    commonViolations: [
+      'Agent writes audit events to a file it can also delete',
+        'Audit log stored in same DB table the agent can UPDATE',
+        'No separate write principal for audit events',
+    ],
+    goodExample: `await appendOnlyLog.append({ event, timestamp }); // separate write principal`,
+    badExample: `await fs.writeFile(auditPath, JSON.stringify(events)); // agent can overwrite`,
+  },
   detect(input: DetectInput): Finding[] {
     const auditFile = findFile(input, 'audit.jsonl');
     if (auditFile) {
@@ -950,6 +1010,16 @@ const AGNT_028: ThesmosRule = {
   tags: ['agent', 'auth', 'security', 'sub-agent'],
   frameworks: ['nist-ai-rmf', 'eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'When a parent agent spawns sub-agents, the parent\'s auth token must be forwarded. Without it, sub-agents run without identity and their actions are unattributable.',
+    commonViolations: [
+      'Agent tool call spawns sub-agent without forwarding Authorization header',
+        'Child agent inherits no session token from parent',
+        'Cross-agent calls authenticated with service account instead of user session',
+    ],
+    goodExample: `Agent({ prompt: task, headers: { Authorization: parentCtx.authHeader } })`,
+    badExample: `Agent({ prompt: task }) // no auth forwarded`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of input.changedFiles ?? []) {
@@ -978,6 +1048,16 @@ const AGNT_029: ThesmosRule = {
   tags: ['agent', 'pii', 'gdpr', 'privacy'],
   frameworks: ['gdpr', 'hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'PII in the agent context window is sent to the LLM provider and may be logged, cached, or used for training. PII must be minimised before entering the context.',
+    commonViolations: [
+      'Full user profile injected into system prompt including email and phone',
+        'Database row with SSN included in tool result context',
+        'Support ticket with customer address in agent reasoning chain',
+    ],
+    goodExample: `const ctx = minimisePII(userProfile, ["id", "role"]); // strip PII before context`,
+    badExample: `const ctx = JSON.stringify(userProfile); // includes email, phone, address`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     const PII_FIELDS_RE = /\b(email|phone|ssn|dateOfBirth|creditCard|password|address)\s*[+:]/i;
@@ -1003,6 +1083,18 @@ const AGNT_030: ThesmosRule = {
   tags: ['agent', 'autopilot', 'resilience', 'dora'],
   frameworks: ['dora', 'nist-ai-rmf'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'Agentic tasks that modify infrastructure or data should have a documented rollback plan. Without one, a runaway agent can cause irreversible damage.',
+    commonViolations: [
+      'Agent deploys to production with no rollback script',
+        'Agent migrates database schema without a down migration',
+        'Agent sends bulk emails with no undo capability',
+    ],
+    goodExample: `// .thesmos/scope.json
+{ "rollbackPlan": "docs/rollback-runbook.md", "requiresHumanApproval": true }`,
+    badExample: `// No rollback plan documented
+{ "allowedTools": ["Bash", "Edit"] }`,
+  },
   detect(input: DetectInput): Finding[] {
     const configContent = contentOf(input, 'config.json');
     if (!configContent) return [];

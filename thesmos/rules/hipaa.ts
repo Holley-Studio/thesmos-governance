@@ -63,6 +63,17 @@ const HIPAA_001: ThesmosRule = {
   tags: ['hipaa', 'phi', 'encryption'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA Security Rule §164.312(a)(2)(iv) requires that ePHI stored in a database be encrypted at rest using AES-128 or stronger. Unencrypted PHI fields are a breach waiting to happen.',
+    commonViolations: [
+      'diagnosis, ssn, or dob fields stored as plaintext VARCHAR in Prisma schema',
+        'PHI columns with no @encrypted annotation or encryption middleware',
+        'Database backup containing unencrypted patient records',
+    ],
+    goodExample: `// Prisma — use encrypted field extension
+diagnosis  String @encrypted // field-level encryption via Prisma extension`,
+    badExample: `diagnosis  String // plaintext — HIPAA violation`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -88,6 +99,16 @@ const HIPAA_002: ThesmosRule = {
   tags: ['hipaa', 'phi', 'tls'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.312(e)(2)(ii) requires that ePHI transmitted electronically be encrypted using a NIST-approved algorithm. HTTP transmits data in plaintext and fails this requirement.',
+    commonViolations: [
+      'PHI API endpoint served over HTTP',
+        'Medical record API URL hardcoded as http://',
+        'Health data webhook posted to http:// endpoint',
+    ],
+    goodExample: `fetch("https://ehr.example.com/api/records", { body: JSON.stringify(phi) });`,
+    badExample: `fetch("http://ehr.example.com/api/records", { body: JSON.stringify(phi) }); // HTTP — unencrypted`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     const HTTP_RE = /http:\/\/(?!localhost)[^\s"'`]+/i;
@@ -115,6 +136,16 @@ const HIPAA_003: ThesmosRule = {
   tags: ['hipaa', 'phi', 'access-control'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.312(a)(1) requires access controls ensuring only authorised users can access ePHI. API routes accessing PHI without authentication checks violate this requirement.',
+    commonViolations: [
+      'GET /api/patients/:id route with no session check',
+        'PHI endpoint using only API key stored client-side',
+        'Admin PHI route accessible without role check',
+    ],
+    goodExample: `app.get("/api/patients/:id", requireHIPAAAuth, async (req, res) => { ... });`,
+    badExample: `app.get("/api/patients/:id", async (req, res) => { const patient = await db.patient.findUnique(...); }); // no auth`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -140,6 +171,17 @@ const HIPAA_004: ThesmosRule = {
   tags: ['hipaa', 'audit', 'phi'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.312(b) requires a hardware, software, and procedural mechanism that records and examines activity accessing ePHI. Every PHI access must be logged with who accessed what and when.',
+    commonViolations: [
+      'PHI read in route handler with no audit log entry',
+        'Audit log missing required fields (user, action, resource, timestamp)',
+        'PHI access during export not logged',
+    ],
+    goodExample: `await auditLog.record({ user: req.user.id, action: "READ_PHI", resource: patientId, ts: Date.now() });
+const patient = await db.patient.findUnique({ where: { id: patientId } });`,
+    badExample: `const patient = await db.patient.findUnique({ where: { id: patientId } }); // no audit log`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -165,6 +207,16 @@ const HIPAA_005: ThesmosRule = {
   tags: ['hipaa', 'phi', 'minimum-necessary'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA minimum necessary standard requires that only the minimum necessary PHI is used, disclosed, or requested for any given purpose. Returning full records when only a subset is needed violates this.',
+    commonViolations: [
+      'API returns full patient object including all PHI fields when only name is needed',
+        'Report query fetches all PHI columns with SELECT *',
+        'Patient search returns SSN and diagnosis when only name and DOB are required',
+    ],
+    goodExample: `const patient = await db.patient.findUnique({ where: { id }, select: { name: true, dob: true } }); // minimum necessary`,
+    badExample: `const patient = await db.patient.findUnique({ where: { id } }); // returns all PHI fields`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     const SELECT_STAR_RE = /findMany\(\)|findFirst\(\)|findUnique\(\)|\bSELECT \*/i;
@@ -192,6 +244,17 @@ const HIPAA_006: ThesmosRule = {
   tags: ['hipaa', 'phi', 'llm', 'baa'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.308(b)(1) requires a Business Associate Agreement (BAA) before disclosing PHI to any business associate, including external AI/LLM API providers.',
+    commonViolations: [
+      'Patient notes sent to OpenAI without a signed BAA',
+        'Medical records forwarded to Anthropic for summarisation without BAA',
+        'PHI embedded in LLM prompt without verifying the vendor is a signed BA',
+    ],
+    goodExample: `// Anthropic BAA signed 2026-01-10 — see legal/baa-anthropic.pdf
+const summary = await anthropic.messages.create({ messages: [{ role: "user", content: sanitizedNote }] });`,
+    badExample: `const summary = await anthropic.messages.create({ messages: [{ role: "user", content: patientNote }] }); // no BAA`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -220,6 +283,16 @@ const HIPAA_007: ThesmosRule = {
   tags: ['hipaa', 'phi', 'session-timeout'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.312(a)(2)(iii) requires automatic logoff after a period of inactivity to prevent unauthorised access to ePHI from unattended sessions.',
+    commonViolations: [
+      'PHI access route with no session timeout configuration',
+        'JWT tokens for PHI access with no expiry (expiresIn)',
+        'Session cookie with no maxAge for PHI portal',
+    ],
+    goodExample: `const token = jwt.sign({ userId, role }, SECRET, { expiresIn: "15m" }); // 15-minute session timeout`,
+    badExample: `const token = jwt.sign({ userId, role }, SECRET); // no expiry — session never times out`,
+  },
   detect(input: DetectInput): Finding[] {
     const files = (input.changedFiles ?? []).filter(
       (cf) => isApiRoute(cf.path) && PHI_FIELD_RE.test(cf.content));
@@ -244,6 +317,16 @@ const HIPAA_008: ThesmosRule = {
   tags: ['hipaa', 'phi', 'backup'],
   frameworks: ['hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'HIPAA §164.312(a)(2)(i) requires a unique user identification mechanism so that every PHI access can be attributed to a specific individual.',
+    commonViolations: [
+      'Shared service account used for PHI access with no user attribution',
+        'PHI API using API keys rather than per-user authentication',
+        'Audit log entries missing user identity',
+    ],
+    goodExample: `app.use("/api/phi", authenticateUser); // per-user session, logged individually`,
+    badExample: `const headers = { Authorization: \`Bearer \${SERVICE_API_KEY}\` }; // shared key, no user attribution`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const hasPhi = (input.changedFiles ?? []).some(

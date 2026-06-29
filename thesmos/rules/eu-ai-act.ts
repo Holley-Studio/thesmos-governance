@@ -54,6 +54,17 @@ const EU_AI_001: ThesmosRule = {
   tags: ['eu-ai-act', 'compliance', 'high-risk'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 6 and Annex III require high-risk AI systems (credit, education, employment, biometrics, safety) to undergo conformity assessment before deployment. Without it, the deployment is unlawful in the EU.',
+    commonViolations: [
+      'Credit scoring AI deployed without conformity assessment documentation',
+        'CV screening model used in hiring without Art. 9 risk management system',
+        'Remote biometric identification deployed without regulatory approval',
+    ],
+    goodExample: `// Conformity assessment ref: docs/eu-ai-conformity-2026.pdf
+const score = await creditModel.score(applicant);`,
+    badExample: `const score = await creditModel.score(applicant); // no conformity assessment`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -80,6 +91,17 @@ const EU_AI_002: ThesmosRule = {
   tags: ['eu-ai-act', 'biometric', 'prohibited'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 5 prohibits real-time remote biometric identification in public spaces by law enforcement (with narrow exceptions) and biometric categorisation by sensitive attributes (race, political opinion, etc.).',
+    commonViolations: [
+      'Facial recognition API called on public venue footage in real time',
+        'Users categorised by inferred ethnicity or religion from biometric data',
+        'Employee badge scans used to infer political affiliation',
+    ],
+    goodExample: `// Use consent-based biometric verification, not identification
+await verifyFaceMatch(enrolledTemplate, capturedFace); // 1:1, not 1:N`,
+    badExample: `await identifyFaceInCrowd(videoFrame); // prohibited in EU`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -106,6 +128,17 @@ const EU_AI_003: ThesmosRule = {
   tags: ['eu-ai-act', 'risk-management', 'compliance'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 9 requires high-risk AI systems to have a documented risk management system covering identification, estimation, evaluation, and residual risk.',
+    commonViolations: [
+      'High-risk AI deployed without any risk register',
+        'Risk assessment exists but not updated after model retraining',
+        'No mitigation measures documented for identified risks',
+    ],
+    goodExample: `// Risk management ref: docs/risk-register-v2.md — updated 2026-03-01
+const decision = await loanModel.predict(application);`,
+    badExample: `const decision = await loanModel.predict(application); // no risk management`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -132,6 +165,17 @@ const EU_AI_004: ThesmosRule = {
   tags: ['eu-ai-act', 'data-governance', 'training'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 10 requires high-risk AI systems to use training data that meets quality criteria including relevance, representativeness, and freedom from errors and biases.',
+    commonViolations: [
+      'Training data ingested without documented quality assessment',
+        'Model fine-tuned on user submissions without bias screening',
+        'No data governance plan for ongoing model updates',
+    ],
+    goodExample: `// Training data governance: docs/data-governance-plan.md
+await trainModel(dataset, { governancePlanRef: "docs/data-governance-plan.md" });`,
+    badExample: `await trainModel(dataset); // no governance plan`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const TRAINING_RE = /fine.?tun|train(?:ing)?|dataset|embedding.*ingest|createFineTune|fine_tune/i;
@@ -159,6 +203,17 @@ const EU_AI_005: ThesmosRule = {
   tags: ['eu-ai-act', 'transparency', 'model-card'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 11 requires technical documentation for high-risk AI systems covering the system description, risk management, training data, and performance monitoring.',
+    commonViolations: [
+      'AI system deployed with no model card or technical documentation',
+        'Technical docs exist but are not kept up to date with model changes',
+        'Documentation missing key sections required by Annex IV',
+    ],
+    goodExample: `// Technical documentation: docs/technical-documentation.md (Annex IV compliant)
+const result = await model.predict(input);`,
+    badExample: `const result = await model.predict(input); // no technical documentation`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -185,6 +240,16 @@ const EU_AI_006: ThesmosRule = {
   tags: ['eu-ai-act', 'audit-log', 'traceability'],
   frameworks: ['eu-ai-act', 'hipaa'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 12 requires high-risk AI systems to log enough information to enable post-market monitoring and investigation of incidents.',
+    commonViolations: [
+      'AI decisions not logged or logged in a mutable store',
+        'Logs deleted after 30 days without regulatory hold',
+        'Log entries missing required fields (timestamp, input hash, output, model version)',
+    ],
+    goodExample: `await auditLog.append({ id: uuid(), decision, inputHash: hash(input), model, ts: Date.now() });`,
+    badExample: `await db.log.create({ data: { decision } }); // mutable, missing required fields`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -212,6 +277,16 @@ const EU_AI_007: ThesmosRule = {
   tags: ['eu-ai-act', 'human-oversight', 'high-risk'],
   frameworks: ['eu-ai-act', 'nist-ai-rmf'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 14 requires high-risk AI systems to be designed to allow natural persons to oversee and intervene in the AI output before consequential actions are taken.',
+    commonViolations: [
+      'Credit decision applied automatically without human sign-off',
+        'Hiring pipeline auto-rejects candidates with no human review stage',
+        'Medical treatment recommendation applied directly by the system',
+    ],
+    goodExample: `if (HIGH_RISK_DECISION) { await queueForHumanReview(decision); } else { applyDecision(decision); }`,
+    badExample: `applyDecision(await model.predict(input)); // no human oversight gate`,
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -239,6 +314,16 @@ const EU_AI_008: ThesmosRule = {
   tags: ['eu-ai-act', 'gpai', 'evaluation'],
   frameworks: ['eu-ai-act'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 13 requires high-risk AI systems to be sufficiently transparent for deployers and users to interpret the system\'s output and use it appropriately.',
+    commonViolations: [
+      'AI confidence score returned without explanation of what it means',
+        'Model outputs lack feature attribution or confidence interval',
+        'Users have no way to understand why a decision was made',
+    ],
+    goodExample: `res.json({ decision, confidence, explanation: await explain(features), appealLink });`,
+    badExample: `res.json({ decision }); // no transparency`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
