@@ -10,7 +10,7 @@
  */
 
 import { execFile, execFileSync } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { Finding, HealthScore, ReviewOutput } from './types.js';
@@ -126,6 +126,27 @@ export function resolveBinary(workspaceRoot: string, override?: string): string 
   for (const p of candidates) {
     if (existsSync(p)) return p;
   }
+
+  throw new ThesmosNotFoundError(workspaceRoot);
+}
+
+/**
+ * Resolves the absolute path to the thesmos JS entry point (dist/cli.js).
+ * Used by the LSP client's NodeModule transport so spawn never depends on PATH.
+ * Follows the node_modules/.bin/thesmos symlink to the real .js file, then
+ * falls back to a direct package path lookup.
+ */
+export function resolveServerModule(workspaceRoot: string, override?: string): string {
+  // Follow the symlink that resolveBinary returns → real .js path (no shebang lookup)
+  try {
+    const bin = resolveBinary(workspaceRoot, override);
+    const real = realpathSync(bin);
+    if (real.endsWith('.js')) return real;
+  } catch { /* fall through */ }
+
+  // Direct package path fallback
+  const direct = join(workspaceRoot, 'node_modules', 'thesmos-governance', 'dist', 'cli.js');
+  if (existsSync(direct)) return direct;
 
   throw new ThesmosNotFoundError(workspaceRoot);
 }

@@ -2,6 +2,19 @@
 
 All notable changes to the Thesmos Governance VS Code extension are documented here.
 
+## [1.5.0] - 2026-06-28
+
+### Fixed
+
+- **LSP crash "env: node: No such file or directory"** — the language server now starts with `NodeModule` transport (VS Code's own Node binary via `process.execPath`) instead of `Executable` transport. Eliminates exit-code-127 crashes when VS Code is launched from the macOS Dock where nvm/volta are not on PATH.
+
+### Added
+
+- **"Fix with AI" button** — new `$(sparkle)` button in the Findings panel toolbar (`thesmos.fixWithAi`). Sends all BLOCKER and HIGH findings to Claude Code CLI via `claude < .thesmos/.ai-fix-session.md`; falls back to clipboard copy if the CLI is not installed. Complements the existing deterministic `fix.all` for findings that require AI reasoning.
+- **Release notes on update** — after installing a new version, a "What's New" toast opens this CHANGELOG in Markdown Preview so users always know what changed.
+- **Agent presence indicators** — the Agents sidebar now shows a spinning `$(sync~spin)` icon and "working…" label when an agent task is active; clears automatically when the terminal closes or after 60 s.
+- **Rich agent invoke UX** — invoking an agent now opens a dedicated terminal running `claude -p 'Agent(...)'` directly (previously only copied a snippet to the clipboard) and reflects status in the sidebar and status bar simultaneously.
+
 ## [1.4.0] - 2026-06-25
 
 ### Added

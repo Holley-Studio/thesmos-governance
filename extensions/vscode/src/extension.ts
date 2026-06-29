@@ -43,10 +43,12 @@ import {
   isInstalled,
   hasReport,
   resolveBinary,
+  resolveServerModule,
   RUNNER_ENV,
   ThesmosNotFoundError,
   ThesmosReportMissingError,
 } from './runner.js';
+import { fixWithAi } from './fixWithAi.js';
 
 import type { ExtensionConfig, Finding } from './types.js';
 
@@ -177,9 +179,43 @@ class ThesmosExtension implements vscode.Disposable {
     });
     this.disposables.push(agentsTreeView);
 
-    // Agents invoke command
+    // Agents invoke command — opens terminal with claude, shows spinning indicator
     this.disposables.push(
-      vscode.commands.registerCommand('thesmos.agents.invoke', invokeAgentCommand),
+      vscode.commands.registerCommand('thesmos.agents.invoke', async (agent?: Parameters<typeof invokeAgentCommand>[0]) => {
+        if (!agent) return;
+
+        const task = await vscode.window.showInputBox({
+          title: `Invoke ${agent.name} — ${agent.role}`,
+          prompt: 'Describe the task for this agent',
+          placeHolder: 'e.g. Draft a competitive analysis for our Q3 launch',
+        });
+        if (!task) return;
+
+        this.agentsView.setActive(agent.id, true);
+        const statusMsg = vscode.window.setStatusBarMessage(`$(sync~spin) ${agent.name} is working…`);
+
+        const snippet = `Agent({ subagent_type: "${agent.id}", prompt: "${task.replace(/"/g, '\\"')}" })`;
+        const terminal = vscode.window.createTerminal(`${agent.name} — Thesmos`);
+        terminal.show();
+        terminal.sendText(`claude -p '${snippet}'`);
+
+        const cleanup = (): void => {
+          this.agentsView.setActive(agent.id, false);
+          statusMsg.dispose();
+        };
+        const timer = setTimeout(cleanup, 60_000);
+        const sub = vscode.window.onDidCloseTerminal((t) => {
+          if (t === terminal) { clearTimeout(timer); cleanup(); sub.dispose(); }
+        });
+        this.disposables.push(sub);
+      }),
+    );
+
+    // Fix with AI — sends BLOCKER+HIGH findings to Claude Code via stdin
+    this.disposables.push(
+      vscode.commands.registerCommand('thesmos.fixWithAi', () =>
+        fixWithAi(this.workspaceRoot, this.allFindings),
+      ),
     );
 
     // Set context flag so tree view & menus are visible
@@ -513,6 +549,31 @@ async function checkExtensionUpdate(context: vscode.ExtensionContext): Promise<v
   }
 }
 
+// ── Release notes on version bump ────────────────────────────────────────────
+
+const INSTALLED_VERSION_KEY = 'thesmos.installedVersion';
+
+async function showReleaseNotesIfUpdated(context: vscode.ExtensionContext): Promise<void> {
+  try {
+    const current = context.extension.packageJSON.version as string;
+    const last = context.globalState.get<string>(INSTALLED_VERSION_KEY);
+    await context.globalState.update(INSTALLED_VERSION_KEY, current);
+    if (!last || last === current) return;
+
+    const choice = await vscode.window.showInformationMessage(
+      `Thesmos Governance updated to v${current}`,
+      "What's New",
+      'Dismiss',
+    );
+    if (choice === "What's New") {
+      const uri = vscode.Uri.joinPath(context.extensionUri, 'CHANGELOG.md');
+      await vscode.commands.executeCommand('markdown.showPreview', uri);
+    }
+  } catch {
+    // Best-effort — never surface errors from the release notes check
+  }
+}
+
 // ── VS Code entry points ──────────────────────────────────────────────────────
 
 let extension: ThesmosExtension | undefined;
@@ -533,6 +594,7 @@ export async function activate(
 
   // Non-blocking extension update check (runs after activation to stay out of the critical path)
   void checkExtensionUpdate(context);
+  void showReleaseNotesIfUpdated(context);
 
   // Start Thesmos LSP server for real-time as-you-type diagnostics.
   // The server is the thesmos CLI launched with the "lsp" subcommand.
@@ -546,14 +608,13 @@ async function startLspClient(
   workspaceRoot: string,
 ): Promise<void> {
   try {
-    // Resolve the local binary before attempting to start the LSP.
-    // If thesmos-governance is not installed, bail silently — do NOT fall
-    // through to `npx thesmos` which would attempt to pull a non-existent
-    // "thesmos" package from the npm registry and crash-loop.
     const cfg = readConfig();
-    let serverCommand: string;
+    // NodeModule transport — uses process.execPath (VS Code's own Node) instead of a shell
+    // command, so no PATH lookup or shebang resolution. Eliminates the "env: node: No such
+    // file or directory" / exit-127 crash when VS Code is launched from the macOS Dock.
+    let serverModule: string;
     try {
-      serverCommand = resolveBinary(workspaceRoot, cfg.binaryPath || undefined);
+      serverModule = resolveServerModule(workspaceRoot, cfg.binaryPath || undefined);
     } catch {
       // Package not installed — on-save analysis still works via diagnostics
       return;
@@ -564,14 +625,14 @@ async function startLspClient(
     const { LanguageClient, TransportKind } = await import('vscode-languageclient/node');
 
     const serverArgs = ['lsp', '--root', workspaceRoot];
-    const serverOpts = { env: RUNNER_ENV };
+    const serverEnv = { env: RUNNER_ENV };
 
     lspClient = new LanguageClient(
       'thesmos-lsp',
       'Thesmos Language Server',
       {
-        run:   { command: serverCommand, args: serverArgs, transport: TransportKind.stdio, options: serverOpts },
-        debug: { command: serverCommand, args: [...serverArgs, '--debug'], transport: TransportKind.stdio, options: serverOpts },
+        run:   { module: serverModule, args: serverArgs, transport: TransportKind.stdio, options: serverEnv },
+        debug: { module: serverModule, args: [...serverArgs, '--debug'], transport: TransportKind.stdio, options: serverEnv },
       },
       {
         documentSelector: [
