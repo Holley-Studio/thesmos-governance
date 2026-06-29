@@ -73,6 +73,7 @@ import { SELF_RULES } from './self';
 import { EU_AI_ACT_RULES } from './eu-ai-act';
 import { HIPAA_RULES } from './hipaa';
 import { DORA_RULES } from './dora';
+import { LOCAL_LLM_RULES } from './local-llm';
 
 // ── Local helpers (used inside detect() methods) ──────────────────────────────
 
@@ -685,4 +686,6 @@ export const THESMOS_RULES: ThesmosRule[] = [
   ...EU_AI_ACT_RULES,
   ...HIPAA_RULES,
   ...DORA_RULES,
+  // ── Local LLM governance (v2.4.0) ────────────────────────────────────────────
+  ...LOCAL_LLM_RULES,
 ];

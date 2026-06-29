@@ -1,4 +1,4 @@
-# Project Context — thesmos-governance — 2026-06-28
+# Project Context — thesmos-governance — 2026-06-29
 
 ## Stack
 TypeScript, Vitest, Node.js >=20
