@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos shared types — imported by all thesmos/ modules and scripts.
  * Do not add logic here. Types only.

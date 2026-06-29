@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos catalog:list      — list all agents and skills
  * thesmos catalog:validate  — validate built-in + user catalog frontmatter

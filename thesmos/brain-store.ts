@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos Brain Store — .thesmos/brain.json schema and CRUD.
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos certificate:generate — produce a signed governance certificate
  * for the current project delivery.

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Lightweight interactive prompts for the Thesmos CLI.
  *

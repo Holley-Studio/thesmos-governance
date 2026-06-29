@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 import type { Finding, ThesmosConfig, Severity, SeverityRule } from './types';
 
 const SEVERITY_DEFAULT: Severity = 'MEDIUM';

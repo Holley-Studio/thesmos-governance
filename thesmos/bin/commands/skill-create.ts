@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos skill:create <name> — scaffold a new skill file in .thesmos/skills/
  *

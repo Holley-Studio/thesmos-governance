@@ -2,10 +2,12 @@
   "name": "thesmos-governance-vscode",
   "displayName": "Thesmos Governance",
   "description": "Real-time AI repo governance — inline findings, health scores, and adapter sync for Claude, Gemini, Cursor, Copilot, and Codex.",
-  "version": "1.3.0",
+  "version": "1.5.0",
   "publisher": "holley-studios",
   "author": {
-    "name": "Holley Studios"
+    "name": "Matthew Holley",
+    "email": "holley42@yahoo.com",
+    "url": "https://holley.studio"
   },
   "license": "MIT",
   "repository": {
@@ -14,7 +16,7 @@
     "directory": "extensions/vscode"
   },
   "engines": {
-    "vscode": "^1.125.0"
+    "vscode": "^1.100.0"
   },
   "categories": [
     "Linters",
@@ -222,6 +224,36 @@
         "title": "Invoke Agent",
         "category": "Thesmos Agents",
         "icon": "$(play)"
+      },
+      {
+        "command": "thesmos.tokens.report",
+        "title": "Show Token Usage",
+        "category": "Thesmos",
+        "icon": "$(circuit-board)"
+      },
+      {
+        "command": "thesmos.fix.single",
+        "title": "Fix This Issue",
+        "category": "Thesmos",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "thesmos.fix.all",
+        "title": "Fix All Auto-Fixable",
+        "category": "Thesmos",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "thesmos.fix.copyPrompt",
+        "title": "Copy AI Fix Prompt",
+        "category": "Thesmos",
+        "icon": "$(clippy)"
+      },
+      {
+        "command": "thesmos.fixWithAi",
+        "title": "Fix with AI",
+        "category": "Thesmos",
+        "icon": "$(sparkle)"
       }
     ],
     "viewsContainers": {
@@ -262,6 +294,16 @@
     "menus": {
       "view/title": [
         {
+          "command": "thesmos.fixWithAi",
+          "when": "view == thesmos.findingsView",
+          "group": "navigation"
+        },
+        {
+          "command": "thesmos.fix.all",
+          "when": "view == thesmos.findingsView",
+          "group": "navigation"
+        },
+        {
           "command": "thesmos.refreshFindings",
           "when": "view == thesmos.findingsView",
           "group": "navigation"
@@ -294,6 +336,21 @@
       ],
       "view/item/context": [
         {
+          "command": "thesmos.fix.single",
+          "when": "view == thesmos.findingsView && viewItem == fixableFinding",
+          "group": "fix@1"
+        },
+        {
+          "command": "thesmos.fix.copyPrompt",
+          "when": "view == thesmos.findingsView && viewItem == fixableFinding",
+          "group": "fix@2"
+        },
+        {
+          "command": "thesmos.fix.copyPrompt",
+          "when": "view == thesmos.findingsView && viewItem == finding",
+          "group": "fix@1"
+        },
+        {
           "command": "thesmos.autopilot.cancel",
           "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
           "group": "autopilot@1"
@@ -323,6 +380,22 @@
         {
           "command": "thesmos.reviewFile",
           "when": "editorIsOpen"
+        },
+        {
+          "command": "thesmos.fixWithAi",
+          "when": "thesmos.active"
+        },
+        {
+          "command": "thesmos.fix.all",
+          "when": "thesmos.active"
+        },
+        {
+          "command": "thesmos.fix.single",
+          "when": "false"
+        },
+        {
+          "command": "thesmos.fix.copyPrompt",
+          "when": "false"
         },
         {
           "command": "thesmos.autopilot.cancel",
@@ -421,7 +494,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
-    "@types/vscode": "^1.125.0",
+    "@types/vscode": "^1.100.0",
     "@vscode/vsce": "^3.9.2",
     "ovsx": "^1.0.2",
     "esbuild": "^0.28.1",

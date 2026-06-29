@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Session state management for autopilot.
  * The session file (.thesmos/autopilot/.session.json) tracks what's been

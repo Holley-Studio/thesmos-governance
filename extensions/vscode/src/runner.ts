@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos CLI execution layer.
  *
@@ -8,8 +9,8 @@
  * All I/O is isolated here — no vscode imports, fully unit-testable.
  */
 
-import { execFile } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { execFile, execFileSync } from 'node:child_process';
+import { existsSync, readdirSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { Finding, HealthScore, ReviewOutput } from './types.js';
@@ -19,20 +20,27 @@ import type { Finding, HealthScore, ReviewOutput } from './types.js';
 function buildEnv(): NodeJS.ProcessEnv {
   const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
   const sep = process.platform === 'win32' ? ';' : ':';
+
+  // Dynamically scan all installed nvm versions so any patch version works
+  const nvmVersionsDir = join(home, '.nvm', 'versions', 'node');
+  let nvmPaths: string[] = [];
+  try {
+    nvmPaths = readdirSync(nvmVersionsDir).map(v => join(nvmVersionsDir, v, 'bin'));
+  } catch { /* nvm not installed */ }
+
   const extra = [
-    `${home}/.nvm/versions/node/v20.20.2/bin`,
-    `${home}/.nvm/versions/node/v22.0.0/bin`,
-    `${home}/.nvm/versions/node/v24.0.0/bin`,
-    `${home}/.nvm/versions/node/v18.0.0/bin`,
-    `${home}/.volta/bin`,
-    `${home}/.fnm/aliases/default/bin`,
+    process.env.NVM_BIN ?? '',          // currently active nvm version (set in shells)
+    ...nvmPaths,                         // all installed nvm versions
+    join(home, '.volta', 'bin'),
+    join(home, '.fnm', 'aliases', 'default', 'bin'),
     '/opt/homebrew/bin',
     '/usr/local/bin',
-  ].join(sep);
+  ].filter(Boolean).join(sep);
+
   return { ...process.env, PATH: `${extra}${sep}${process.env.PATH ?? ''}`, FORCE_COLOR: '0' };
 }
 
-const RUNNER_ENV = buildEnv();
+export const RUNNER_ENV = buildEnv();
 
 const execFileAsync = promisify(execFile);
 
@@ -78,13 +86,67 @@ export class ThesmosParseError extends Error {
  * Throws ThesmosNotFoundError if neither is available.
  */
 export function resolveBinary(workspaceRoot: string, override?: string): string {
+  // 1. User override (settings → thesmos.binaryPath)
   if (override && override.trim()) {
     if (existsSync(override.trim())) return override.trim();
     throw new ThesmosNotFoundError(workspaceRoot);
   }
 
+  // 2. Project-local node_modules/.bin/thesmos
   const local = join(workspaceRoot, 'node_modules', '.bin', 'thesmos');
   if (existsSync(local)) return local;
+
+  // 3. Global PATH — catches `npm link`, volta global installs, homebrew, etc.
+  //    Uses RUNNER_ENV so nvm-managed node bins are on PATH.
+  try {
+    const cmd = process.platform === 'win32' ? 'where.exe' : 'which';
+    const found = execFileSync(cmd, ['thesmos'], {
+      encoding: 'utf8',
+      env: RUNNER_ENV,
+      timeout: 3000,
+    }).trim().split('\n')[0].trim();
+    if (found && existsSync(found)) return found;
+  } catch {
+    // not on PATH — continue to well-known paths
+  }
+
+  // 4. Well-known nvm / volta global bin locations (for VS Code launched from Dock)
+  const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
+  const candidates: string[] = [];
+  const nvmVersionsDir = join(home, '.nvm', 'versions', 'node');
+  try {
+    for (const v of readdirSync(nvmVersionsDir)) {
+      candidates.push(join(nvmVersionsDir, v, 'bin', 'thesmos'));
+    }
+  } catch { /* nvm not installed */ }
+  candidates.push(
+    join(home, '.volta', 'bin', 'thesmos'),
+    join(home, '.fnm', 'aliases', 'default', 'bin', 'thesmos'),
+  );
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
+
+  throw new ThesmosNotFoundError(workspaceRoot);
+}
+
+/**
+ * Resolves the absolute path to the thesmos JS entry point (dist/cli.js).
+ * Used by the LSP client's NodeModule transport so spawn never depends on PATH.
+ * Follows the node_modules/.bin/thesmos symlink to the real .js file, then
+ * falls back to a direct package path lookup.
+ */
+export function resolveServerModule(workspaceRoot: string, override?: string): string {
+  // Follow the symlink that resolveBinary returns → real .js path (no shebang lookup)
+  try {
+    const bin = resolveBinary(workspaceRoot, override);
+    const real = realpathSync(bin);
+    if (real.endsWith('.js')) return real;
+  } catch { /* fall through */ }
+
+  // Direct package path fallback
+  const direct = join(workspaceRoot, 'node_modules', 'thesmos-governance', 'dist', 'cli.js');
+  if (existsSync(direct)) return direct;
 
   throw new ThesmosNotFoundError(workspaceRoot);
 }
@@ -204,6 +266,22 @@ export async function runAdapters(
 }
 
 /**
+ * Runs `thesmos fix --apply [--rule=<category>]`.
+ * Returns human-readable stdout showing what was changed.
+ * A "no changes" result is a valid exit 0 — never throws for that case.
+ */
+export async function runFix(
+  workspaceRoot: string,
+  binaryOverride: string | undefined,
+  ruleCategory?: string,
+): Promise<string> {
+  const bin = resolveBinary(workspaceRoot, binaryOverride);
+  const args = ['fix', '--apply'];
+  if (ruleCategory) args.push(`--rule=${ruleCategory}`);
+  return exec(bin, args, workspaceRoot);
+}
+
+/**
  * Generic CLI runner for autopilot subcommands (revert, open-pr, etc.).
  * Resolves the binary from the workspace, passes arbitrary args.
  */
@@ -214,4 +292,36 @@ export async function runThesmos(
 ): Promise<string> {
   const bin = resolveBinary(workspaceRoot, binaryOverride);
   return exec(bin, args, workspaceRoot);
+}
+
+export interface TokenReport {
+  sessionCostUSD: number;
+  todayCostUSD: number;
+  projectCostUSD: number;
+}
+
+/**
+ * Runs `thesmos tokens:report --json` and returns a parsed cost summary.
+ * Returns null if token tracking has no data yet (first run, no events file).
+ */
+export async function runTokensReport(
+  workspaceRoot: string,
+  binaryOverride?: string,
+): Promise<TokenReport | null> {
+  const bin = resolveBinary(workspaceRoot, binaryOverride);
+  try {
+    const stdout = await exec(bin, ['tokens:report', '--json'], workspaceRoot);
+    const data = JSON.parse(stdout) as {
+      session?: { cost?: number };
+      today?: { cost?: number };
+      project?: { cost?: number };
+    };
+    return {
+      sessionCostUSD: data.session?.cost ?? 0,
+      todayCostUSD: data.today?.cost ?? 0,
+      projectCostUSD: data.project?.cost ?? 0,
+    };
+  } catch {
+    return null;
+  }
 }

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos Baseline System — lets large existing repos adopt governance gradually.
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos review engine.
  * Pure functions: scan + config + changed files → Finding[].

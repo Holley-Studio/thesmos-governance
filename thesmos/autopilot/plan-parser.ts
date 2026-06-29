@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Parses a MASTER_PLAN.md file into a structured AutopilotPlan.
  *

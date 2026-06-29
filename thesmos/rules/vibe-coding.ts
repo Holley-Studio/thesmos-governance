@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Vibe-Coding Security Rules — VIBE_001–025
  *

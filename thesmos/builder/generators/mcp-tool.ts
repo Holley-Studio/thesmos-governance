@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * MCP tool generator — creates a new Thesmos MCP server tool from wizard answers.
  *

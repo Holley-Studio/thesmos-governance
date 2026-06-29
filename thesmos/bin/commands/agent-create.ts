@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos agent:create <name> — scaffold a new agent file in .thesmos/agents/
  *

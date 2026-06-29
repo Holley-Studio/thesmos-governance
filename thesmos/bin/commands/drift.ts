@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos drift — detect governance drift across adapter files, docs, and registry.
  *

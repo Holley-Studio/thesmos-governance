@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Agent Scope Enforcement — blast radius limiter for Claude Code Auto Mode.
  *

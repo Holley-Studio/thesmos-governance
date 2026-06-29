@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Agent generator — creates Pantheon-style AI agent artifacts from wizard answers.
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Automation generator — creates CI/CD automation from wizard answers.
  *

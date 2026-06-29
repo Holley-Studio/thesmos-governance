@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Kubernetes and Docker Compose security rules (K8S_001–010).
  *

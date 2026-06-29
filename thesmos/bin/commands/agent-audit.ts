@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos agent:audit:log     — append an audit entry (called from hooks)
  * thesmos agent:audit:verify  — verify hash chain integrity

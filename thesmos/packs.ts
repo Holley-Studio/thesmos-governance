@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos Rule Packs — installable bundles of rules, agents, skills, playbooks, and profiles.
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos doctor command.
  * Verifies that Thesmos is correctly installed and usable in any repo.

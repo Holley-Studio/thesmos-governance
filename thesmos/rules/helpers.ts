@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /** Shared helpers for Thesmos rule detect() functions. */
 
 export const SOURCE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs)$/;

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heracles — CRM & Pipeline Agent · Thesmos Business Pack</title>
+  <meta name="description" content="Heracles is the CRM & Sales Pipeline Agent of the Thesmos Business Pack. Salesforce and HubSpot data hygiene, pipeline stage definitions, lead scoring, forecast accuracy, and revenue-at-risk management.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #E74C3C; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
+    html { scroll-behavior: smooth; }
+    body { background: var(--navy); color: var(--t1); font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; min-height: 100vh; }
+    nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px,5vw,80px); height: 60px; background: rgba(5,4,8,.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: .16em; color: rgba(255,255,255,.7); }
+    .nav-brand svg { width: 28px; height: 32px; }
+    .nav-back { font-size: 13px; color: var(--t2); text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 180ms ease; }
+    .nav-back:hover { color: var(--t1); }
+    .agent-hero { padding: clamp(60px,8vw,120px) clamp(20px,5vw,80px) clamp(40px,6vw,80px); max-width: 960px; margin: 0 auto; }
+    .agent-breadcrumb { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); letter-spacing: .1em; margin-bottom: 32px; display: flex; align-items: center; gap: 8px; }
+    .agent-breadcrumb a { color: var(--t3); text-decoration: none; transition: color 180ms; }
+    .agent-breadcrumb a:hover { color: var(--gold); }
+    .agent-breadcrumb span { color: var(--agent); }
+    .agent-header { display: flex; gap: clamp(24px,4vw,56px); align-items: flex-start; margin-bottom: 40px; }
+    .agent-avatar-lg { flex-shrink: 0; width: clamp(72px,10vw,112px); height: clamp(72px,10vw,112px); }
+    .agent-avatar-lg svg { width: 100%; height: 100%; }
+    .agent-meta { flex: 1; }
+    .agent-name { font-family: 'Cinzel', serif; font-size: clamp(28px,5vw,52px); font-weight: 700; color: var(--agent); line-height: 1.1; margin-bottom: 6px; }
+    .agent-role-title { font-size: clamp(14px,2vw,18px); color: var(--t2); font-weight: 300; letter-spacing: .04em; margin-bottom: 16px; }
+    .agent-pantheon-tag { display: inline-block; padding: 4px 12px; background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 20px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); letter-spacing: .08em; }
+    .content { max-width: 960px; margin: 0 auto; padding: 0 clamp(20px,5vw,80px); }
+    .section { margin-bottom: clamp(48px,6vw,80px); }
+    .section-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .14em; color: var(--agent); text-transform: uppercase; margin-bottom: 16px; opacity: .8; }
+    .section-title { font-family: 'Cinzel', serif; font-size: clamp(18px,2.5vw,26px); font-weight: 400; color: var(--t1); margin-bottom: 20px; line-height: 1.3; }
+    .prose { font-size: 16px; line-height: 1.75; color: var(--t2); font-weight: 300; max-width: 680px; }
+    .lore-block { background: rgba(255,255,255,.02); border: 1px solid var(--border); border-left: 3px solid var(--agent); border-radius: 4px; padding: 24px 28px; margin-bottom: 20px; }
+    .lore-block p { font-size: 15px; line-height: 1.72; color: var(--t2); font-style: italic; }
+    .lore-channel { margin-top: 16px; font-style: normal !important; font-size: 14px !important; color: var(--t3) !important; }
+    .resp-list { list-style: none; display: flex; flex-direction: column; gap: 10px; max-width: 680px; }
+    .resp-list li { display: flex; gap: 12px; font-size: 15px; line-height: 1.6; color: var(--t2); }
+    .resp-list li::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--agent); flex-shrink: 0; margin-top: 8px; opacity: .7; }
+    .resume-card { background: rgba(255,255,255,.025); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .resume-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; }
+    .resume-avatar { width: 44px; height: 44px; }
+    .resume-name { font-family: 'Cinzel', serif; font-size: 16px; color: var(--agent); }
+    .resume-subtitle { font-size: 12px; color: var(--t3); margin-top: 2px; }
+    .resume-body { padding: 24px; display: flex; flex-direction: column; gap: 28px; }
+    .resume-section-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .12em; color: var(--t3); text-transform: uppercase; margin-bottom: 12px; }
+    .skills-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .skill-tag { display: inline-block; padding: 5px 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; font-size: 13px; color: var(--t2); }
+    .methodology-badge { display: inline-block; padding: 6px 14px; background: color-mix(in srgb, var(--agent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--agent) 30%, transparent); border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--agent); letter-spacing: .04em; }
+    .deliverables-list { display: flex; flex-direction: column; gap: 14px; }
+    .deliverable { padding: 14px 16px; background: rgba(255,255,255,.02); border: 1px solid var(--border); border-radius: 6px; }
+    .del-label { font-size: 13px; font-weight: 500; color: var(--t1); margin-bottom: 4px; }
+    .del-desc { font-size: 13px; color: var(--t3); line-height: 1.6; }
+    .invoke-block { background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 16px 18px; }
+    .invoke-block code { display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--parch); line-height: 2; white-space: pre; }
+    .paired-agents { display: flex; flex-wrap: wrap; gap: 10px; }
+    .pair-link { display: inline-block; padding: 6px 14px; background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 20px; font-size: 13px; color: var(--t2); text-decoration: none; transition: border-color 180ms, color 180ms; }
+    .pair-link:hover { border-color: var(--agent); color: var(--agent); }
+    .agent-nav { max-width: 960px; margin: 0 auto; padding: clamp(40px,5vw,64px) clamp(20px,5vw,80px); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); gap: 16px; }
+    .nav-arrow { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 13px; color: var(--t2); transition: color 180ms ease; }
+    .nav-arrow:hover { color: var(--gold); }
+    .nav-all { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .12em; color: var(--t3); text-decoration: none; transition: color 180ms; }
+    .nav-all:hover { color: var(--gold); }
+    .agent-counter { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); }
+    hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+    @media (max-width: 600px) { .agent-header { flex-direction: column; gap: 20px; } .agent-nav { flex-direction: column; text-align: center; gap: 20px; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-brand">
+    <svg viewBox="0 0 80 90" fill="none" aria-hidden="true">
+      <path d="M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linejoin="round"/>
+      <circle cx="40" cy="48" r="19" stroke="currentColor" stroke-width="2.5" fill="none"/>
+      <line x1="23" y1="48" x2="57" y2="48" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    THESMOS
+  </a>
+  <a href="../index.html#pantheon" class="nav-back">← All Agents</a>
+</nav>
+
+<div class="agent-hero">
+  <div class="agent-breadcrumb">
+    <a href="../index.html">Thesmos</a>
+    <span>·</span>
+    <a href="../index.html#pantheon">Pantheon</a>
+    <span>·</span>
+    <span>Heracles (CRM)</span>
+  </div>
+  <div class="agent-header">
+    <div class="agent-avatar-lg">
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="46" fill="#E74C3C15"/>
+        <path d="M18 22 L82 22 L70 44 L30 44 Z" stroke="#E74C3C" stroke-width="2" fill="none" stroke-linejoin="round"/>
+        <path d="M30 44 L26 64 L74 64 L70 44 Z" stroke="#E74C3C" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+        <line x1="24" y1="33" x2="76" y2="33" stroke="#E74C3C" stroke-width="1.2" opacity=".4" stroke-linecap="round"/>
+        <line x1="28" y1="54" x2="72" y2="54" stroke="#E74C3C" stroke-width="1.2" opacity=".4" stroke-linecap="round"/>
+        <line x1="50" y1="64" x2="50" y2="76" stroke="#E74C3C" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="50" cy="76" r="3" fill="#E74C3C"/>
+      </svg>
+    </div>
+    <div class="agent-meta">
+      <div class="agent-name">Heracles</div>
+      <div class="agent-role-title">CRM & Sales Pipeline Agent · Data Hygiene, Lead Scoring & Forecast Operations</div>
+      <div class="agent-pantheon-tag">THESMOS BUSINESS PACK</div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<div class="content">
+
+  <div class="section" style="margin-top:48px">
+    <div class="section-label">Mythology</div>
+    <div class="lore-block">
+      <p>Heracles completed twelve labors — not twelve glorious battles, but twelve systematic, unglamorous tasks that required method over strength. Cleaning the Augean stables in a single day was not a feat of force; it required redirecting two rivers. Heracles solved problems through relentless, structured effort that others found beneath them.</p>
+      <p class="lore-channel">Thesmos channels Heracles as CRM and sales pipeline management. CRM data hygiene is the Augean stable: the accumulation of duplicate contacts, stale opportunities, and missing field values that make forecasts meaningless. Heracles does not complain about the mess — he builds the system that clears it systematically and keeps it clean.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Purpose</div>
+    <div class="section-title">What Heracles does</div>
+    <p class="prose">Heracles designs and operates the CRM infrastructure that makes revenue predictable. He audits data hygiene, defines pipeline stages with objective exit criteria, builds lead scoring models that separate qualified from noise, and configures forecast categories that leadership can actually trust. Where other agents build the product or close the deal, Heracles ensures the system of record reflects reality — and that revenue operations run on signal, not noise.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Responsibilities</div>
+    <div class="section-title">Heracles's domain</div>
+    <ul class="resp-list">
+      <li>CRM data hygiene audit: duplicate detection, field completion rates, stale opportunity identification, and enrichment gaps</li>
+      <li>Pipeline stage definitions with objective entry and exit criteria — eliminates deals sitting in "Proposal" for 90 days</li>
+      <li>Lead scoring model design: behavioral + firmographic scoring, MQL/SQL threshold calibration, and routing rules</li>
+      <li>Forecast category configuration: Commit / Best Case / Pipeline / Omit with confidence weighting per stage</li>
+      <li>Salesforce and HubSpot configuration audits: field mapping, workflow automation, lifecycle stage sync, and reporting accuracy</li>
+      <li>CRM data architecture for new product lines or market segments: object model, custom fields, and relationship mapping</li>
+      <li>Revenue operations reporting: pipeline coverage ratios, win rate by segment/source/rep, average cycle length, and leading indicators</li>
+    </ul>
+  </div>
+
+  <hr style="margin-bottom:48px">
+
+  <div class="section">
+    <div class="section-label">Resume</div>
+    <div class="section-title">What Heracles brings</div>
+    <div class="resume-card">
+      <div class="resume-header">
+        <div class="resume-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="46" fill="#E74C3C15"/>
+          <path d="M18 22 L82 22 L70 44 L30 44 Z" stroke="#E74C3C" stroke-width="2" fill="none" stroke-linejoin="round"/>
+          <path d="M30 44 L26 64 L74 64 L70 44 Z" stroke="#E74C3C" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+          <line x1="24" y1="33" x2="76" y2="33" stroke="#E74C3C" stroke-width="1.2" opacity=".4" stroke-linecap="round"/>
+          <line x1="28" y1="54" x2="72" y2="54" stroke="#E74C3C" stroke-width="1.2" opacity=".4" stroke-linecap="round"/>
+          <line x1="50" y1="64" x2="50" y2="76" stroke="#E74C3C" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="50" cy="76" r="3" fill="#E74C3C"/>
+        </svg></div>
+        <div>
+          <div class="resume-name">Heracles</div>
+          <div class="resume-subtitle">CRM & Sales Pipeline Agent · Thesmos Business Pack</div>
+        </div>
+      </div>
+      <div class="resume-body">
+
+        <div>
+          <div class="resume-section-title">Core methodology</div>
+          <div class="methodology-badge">Forecast accuracy as the primary CRM success metric</div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Skills</div>
+          <div class="skills-grid">
+            <span class="skill-tag">Salesforce</span>
+            <span class="skill-tag">HubSpot</span>
+            <span class="skill-tag">Pipeline hygiene</span>
+            <span class="skill-tag">Lead scoring</span>
+            <span class="skill-tag">Forecast categories</span>
+            <span class="skill-tag">Data enrichment</span>
+            <span class="skill-tag">CRM architecture</span>
+            <span class="skill-tag">Revenue operations</span>
+            <span class="skill-tag">Win/loss analysis</span>
+            <span class="skill-tag">Lifecycle stages</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Example deliverables</div>
+          <div class="deliverables-list">
+            <div class="deliverable">
+              <div class="del-label">CRM data hygiene audit report</div>
+              <div class="del-desc">Duplicate contact count, field completion rates by record type, stale opportunity analysis (days since last activity by stage), and a prioritized cleanup backlog with the revenue impact of each fix.</div>
+            </div>
+            <div class="deliverable">
+              <div class="del-label">Pipeline stage definitions with exit criteria</div>
+              <div class="del-desc">Named stages with objective entry requirements, exit criteria that any rep can verify independently, and the CRM field or activity that triggers each stage transition — eliminates the subjective pipeline that produces inaccurate forecasts.</div>
+            </div>
+            <div class="deliverable">
+              <div class="del-label">Lead scoring model + MQL/SQL thresholds</div>
+              <div class="del-desc">Behavioral and firmographic scoring weights, threshold definitions for MQL and SQL with the specific data points that inform each, routing rules to the correct rep or queue, and a 90-day recalibration schedule.</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">How to invoke</div>
+          <div class="invoke-block">
+            <code>// Claude Code — sub-agent
+Agent({
+  subagent_type: "Heracles",
+  prompt: "your task here"
+})
+
+// CLI
+npx thesmos pantheon:invoke heracles-crm --prompt "your task"</code>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Best paired with</div>
+          <div class="paired-agents">
+            <a href="ares.html" class="pair-link">Ares</a>
+            <a href="hermes.html" class="pair-link">Hermes</a>
+            <a href="plutus-billing.html" class="pair-link">Plutus (Billing)</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="agent-nav">
+  <a href="atlas.html" class="nav-arrow">← Atlas</a>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+    <a href="../index.html#pantheon" class="nav-all">ALL AGENTS</a>
+    <div class="agent-counter">47 / 51</div>
+  </div>
+  <a href="psyche-seo.html" class="nav-arrow">Psyche →</a>
+</div>
+
+</body>
+</html>

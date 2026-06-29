@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos init — generates and updates the .thesmos/ folder contract.
  *

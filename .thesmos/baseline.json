@@ -1,0 +1,55 @@
+{
+  "version": "1",
+  "createdAt": "2026-06-26T18:30:14.987Z",
+  "updatedAt": "2026-06-26T18:30:14.987Z",
+  "entries": [
+    {
+      "fingerprint": "3ec73a907a23b540",
+      "ruleCategory": "lic_unknown_license",
+      "severity": "HIGH",
+      "file": "package.json",
+      "message": "\"@thesmos-governance/pr-review\" has no license — usage rights are unclear.",
+      "recordedAt": "2026-06-26T18:30:14.987Z"
+    },
+    {
+      "fingerprint": "752c8e3690b88541",
+      "ruleCategory": "lic_unknown_license",
+      "severity": "HIGH",
+      "file": "package.json",
+      "message": "\"actions/pr-review\" has no license — usage rights are unclear.",
+      "recordedAt": "2026-06-26T18:30:14.987Z"
+    },
+    {
+      "fingerprint": "64841f03bc7ff6aa",
+      "ruleCategory": "lic_unknown_license",
+      "severity": "HIGH",
+      "file": "package.json",
+      "message": "\"thesmos-governance-vscode\" has no license — usage rights are unclear.",
+      "recordedAt": "2026-06-26T18:30:14.987Z"
+    },
+    {
+      "fingerprint": "1bbcfe33a5339751",
+      "ruleCategory": "lic_unknown_license",
+      "severity": "HIGH",
+      "file": "package.json",
+      "message": "\"thesmos-governance\" has no license — usage rights are unclear.",
+      "recordedAt": "2026-06-26T18:30:14.987Z"
+    },
+    {
+      "fingerprint": "d667c9f785e2a6dd",
+      "ruleCategory": "dep_no_integrity",
+      "severity": "MEDIUM",
+      "file": "package-lock.json",
+      "message": "package-lock.json has 3 entries missing integrity hashes.",
+      "recordedAt": "2026-06-26T18:30:14.987Z"
+    },
+    {
+      "fingerprint": "1f38e66952a86c1c",
+      "ruleCategory": "lic_missing_attribution",
+      "severity": "LOW",
+      "file": "THIRD_PARTY_LICENSES.md",
+      "message": "592 MIT/BSD dependencies require attribution but no THIRD_PARTY_LICENSES file exists.",
+      "recordedAt": "2026-06-26T18:30:14.987Z"
+    }
+  ]
+}

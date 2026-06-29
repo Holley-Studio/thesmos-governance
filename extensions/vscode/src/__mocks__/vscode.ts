@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Minimal vscode module mock for unit tests.
  * The real vscode API is only available inside the Extension Host; this stub

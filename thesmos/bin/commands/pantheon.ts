@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos pantheon:list        — list all 38 God Agents
  * thesmos pantheon:install     — add agents to .thesmos/registry.json
@@ -15,8 +16,13 @@ import { createContext } from '../lib/context.ts';
 import { parseArgs, flag } from '../lib/args.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PANTHEON_DIR = join(__dirname, '../../catalog/agents/pantheon');
-const AGENTS_DIR = join(__dirname, '../../catalog/agents');
+// Resolve catalog path for both dev (bin/commands/) and bundle (dist/) locations.
+const _agentsDirCandidates = [
+  join(__dirname, '../../catalog/agents'), // dev: bin/commands/ → thesmos/
+  join(__dirname, '../catalog/agents'),    // bundle: dist/ → thesmos/
+];
+const AGENTS_DIR = _agentsDirCandidates.find(p => existsSync(p)) ?? _agentsDirCandidates[0];
+const PANTHEON_DIR = join(AGENTS_DIR, 'pantheon');
 const MEMORY_DIR_REL = '.thesmos/pantheon/memory';
 
 // The 13 God Agents that live at catalog/agents root (outside pantheon/ subdir)
@@ -555,7 +561,7 @@ function cmdCouncil(agents: PantheonAgent[], argv: string[]): void {
     lines.push('');
     lines.push(`  ${voice}`);
     lines.push('');
-    lines.push(`  Invoke: Agent({ subagent_type: "${agent.id}", prompt: "${task.replace(/"/g, "'")}" })`);
+    lines.push(`  Invoke **${agent.name}**: Agent({ subagent_type: "${agent.id}", prompt: "${task.replace(/"/g, "'")}" })`);
     lines.push('');
   }
 
@@ -571,6 +577,27 @@ function cmdCouncil(agents: PantheonAgent[], argv: string[]): void {
     console.log(`\n  ✓ Council brief written to ${outFile}\n`);
   } else {
     process.stdout.write(output);
+  }
+
+  // Always save council output to .thesmos/active-plan.md for session continuity
+  if (!flags['no-save']) {
+    try {
+      const { root } = createContext();
+      const activePlanPath = join(root, '.thesmos', 'active-plan.md');
+      mkdirSync(join(root, '.thesmos'), { recursive: true });
+      const header =
+        `<!-- thesmos:active-plan generated ${new Date().toISOString()} -->\n` +
+        `# Active Plan\n\n` +
+        `**Task:** ${task}\n` +
+        `**Council convened:** ${agentIds.length} agents\n` +
+        `**Generated:** ${new Date().toLocaleString()}\n\n`;
+      writeFileSync(activePlanPath, header + output + '\n', 'utf8');
+      if (!outFile) {
+        console.log(`  ✓ Active plan saved → .thesmos/active-plan.md\n`);
+      }
+    } catch {
+      // Non-fatal — don't block council output if save fails
+    }
   }
 }
 

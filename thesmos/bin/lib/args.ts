@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Pure CLI argument parsing — no process.argv access here.
  * Callers pass the slice of argv they want parsed.

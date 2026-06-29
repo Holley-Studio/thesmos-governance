@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * RAG & Vector Security Rules — RAG_001–015
  *

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Agents sidebar panel — lists all 40 Pantheon agents grouped by domain.
  *
@@ -92,9 +93,16 @@ export class AgentsTreeProvider
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private domainGroups: Map<string, AgentEntry[]> = new Map();
+  private activeAgents = new Set<string>();
 
   constructor() {
     this.rebuild();
+  }
+
+  setActive(agentId: string, active: boolean): void {
+    if (active) this.activeAgents.add(agentId);
+    else this.activeAgents.delete(agentId);
+    this._onDidChangeTreeData.fire();
   }
 
   private rebuild(): void {
@@ -129,14 +137,15 @@ export class AgentsTreeProvider
     if (element.kind === 'domain') {
       const agents = this.domainGroups.get(element.label as string) ?? [];
       return agents.map((agent) => {
+        const isActive = this.activeAgents.has(agent.id);
         const item = new AgentTreeItem(agent.name, 'agent', agent);
-        item.description = agent.role;
+        item.description = isActive ? 'working…' : agent.role;
         item.tooltip = new vscode.MarkdownString(
           `**${agent.name}** — ${agent.role}\n\n` +
           `Model: \`${agent.model}\`\n\n` +
           `Invoke via Claude Code:\n\`\`\`\nAgent({ subagent_type: "${agent.id}", prompt: "<task>" })\n\`\`\``,
         );
-        item.iconPath = new vscode.ThemeIcon('person');
+        item.iconPath = new vscode.ThemeIcon(isActive ? 'sync~spin' : 'person');
         item.command = {
           command: 'thesmos.agents.invoke',
           title: 'Invoke Agent',

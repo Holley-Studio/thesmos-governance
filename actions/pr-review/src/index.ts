@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos Governance PR Review — GitHub Action entry point.
  * by Holley Studios
@@ -15,7 +16,7 @@
 
 import * as core from '@actions/core';
 import * as gh from '@actions/github';
-import { existsSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // thesmos-governance is bundled into dist/index.js by esbuild
@@ -31,6 +32,7 @@ import {
   formatSummaryComment,
   buildInlineComments,
   shouldFail,
+  computeScore,
 } from './formatter.js';
 import {
   getPullRequestContext,
@@ -169,7 +171,32 @@ async function run(): Promise<void> {
       await upsertSummaryComment(octokit, ctx, summaryBody);
     }
 
-    // ── 8. Post inline comments ────────────────────────────────────────────
+    // ── 8. Record PR score in history ─────────────────────────────────────
+
+    const prScore = computeScore(findings);
+    core.setOutput('health-score', String(prScore));
+
+    try {
+      const thesmosDir = join(workspace, '.thesmos');
+      mkdirSync(thesmosDir, { recursive: true });
+      const historyPath = join(thesmosDir, 'pr-history.jsonl');
+      const entry = JSON.stringify({
+        ts: new Date().toISOString(),
+        repo: ctx.repoName,
+        pr: ctx.pullNumber,
+        sha: ctx.headSha,
+        score: prScore,
+        findings: findings.length,
+        blockers: findings.filter((f) => f.severity === 'BLOCKER').length,
+        highs: findings.filter((f) => f.severity === 'HIGH').length,
+      });
+      appendFileSync(historyPath, entry + '\n', 'utf8');
+      core.debug(`PR score ${prScore}/100 appended to .thesmos/pr-history.jsonl`);
+    } catch (err) {
+      core.debug(`Could not write PR history: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    // ── 9. Post inline comments ────────────────────────────────────────────
 
     if (inputs.postInlineComments && findings.length > 0) {
       const changedFilePaths = new Set(changedFiles.map((f) => f.path));
@@ -183,7 +210,7 @@ async function run(): Promise<void> {
       }
     }
 
-    // ── 9. Set outputs ─────────────────────────────────────────────────────
+    // ── 10. Set outputs ────────────────────────────────────────────────────
 
     const blockerCount = findings.filter((f) => f.severity === 'BLOCKER').length;
     core.setOutput('finding-count', String(findings.length));
@@ -202,7 +229,7 @@ async function run(): Promise<void> {
       }
     }
 
-    // ── 10. Exit code ──────────────────────────────────────────────────────
+    // ── 11. Exit code ──────────────────────────────────────────────────────
 
     if (shouldFail(findings, inputs.failOnSeverity)) {
       const blockers = findings.filter((f) => f.severity === 'BLOCKER');

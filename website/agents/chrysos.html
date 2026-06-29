@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chrysos — Stripe Integration Agent · Thesmos Pantheon</title>
+  <meta name="description" content="Chrysos is the Stripe Integration Agent of the Thesmos Pantheon. Webhook verification, idempotency, subscription lifecycle, PCI-DSS compliance — the agent that handles money without errors.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --navy: #050408; --gold: #C9A84C; --parch: #F5F0E8; --blue: #1B4F8A; --agent: #6772E5; --t1: rgba(255,255,255,.92); --t2: rgba(255,255,255,.55); --t3: rgba(255,255,255,.35); --border: rgba(255,255,255,.07); }
+    html { scroll-behavior: smooth; }
+    body { background: var(--navy); color: var(--t1); font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; min-height: 100vh; }
+    nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px,5vw,80px); height: 60px; background: rgba(5,4,8,.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: .16em; color: rgba(255,255,255,.7); }
+    .nav-brand svg { width: 28px; height: 32px; }
+    .nav-back { font-size: 13px; color: var(--t2); text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 180ms ease; }
+    .nav-back:hover { color: var(--t1); }
+    .agent-hero { padding: clamp(60px,8vw,120px) clamp(20px,5vw,80px) clamp(40px,6vw,80px); max-width: 960px; margin: 0 auto; }
+    .agent-breadcrumb { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); letter-spacing: .1em; margin-bottom: 32px; display: flex; align-items: center; gap: 8px; }
+    .agent-breadcrumb a { color: var(--t3); text-decoration: none; transition: color 180ms; }
+    .agent-breadcrumb a:hover { color: var(--gold); }
+    .agent-breadcrumb span { color: var(--agent); }
+    .agent-header { display: flex; gap: clamp(24px,4vw,56px); align-items: flex-start; margin-bottom: 40px; }
+    .agent-avatar-lg { flex-shrink: 0; width: clamp(72px,10vw,112px); height: clamp(72px,10vw,112px); }
+    .agent-avatar-lg svg { width: 100%; height: 100%; }
+    .agent-meta { flex: 1; }
+    .agent-name { font-family: 'Cinzel', serif; font-size: clamp(28px,5vw,52px); font-weight: 700; color: var(--agent); line-height: 1.1; margin-bottom: 6px; }
+    .agent-role-title { font-size: clamp(14px,2vw,18px); color: var(--t2); font-weight: 300; letter-spacing: .04em; margin-bottom: 16px; }
+    .agent-pantheon-tag { display: inline-block; padding: 4px 12px; background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 20px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); letter-spacing: .08em; }
+    .content { max-width: 960px; margin: 0 auto; padding: 0 clamp(20px,5vw,80px); }
+    .section { margin-bottom: clamp(48px,6vw,80px); }
+    .section-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .14em; color: var(--agent); text-transform: uppercase; margin-bottom: 16px; opacity: .8; }
+    .section-title { font-family: 'Cinzel', serif; font-size: clamp(18px,2.5vw,26px); font-weight: 400; color: var(--t1); margin-bottom: 20px; line-height: 1.3; }
+    .prose { font-size: 16px; line-height: 1.75; color: var(--t2); font-weight: 300; max-width: 680px; }
+    .lore-block { background: rgba(255,255,255,.02); border: 1px solid var(--border); border-left: 3px solid var(--agent); border-radius: 4px; padding: 24px 28px; margin-bottom: 20px; }
+    .lore-block p { font-size: 15px; line-height: 1.72; color: var(--t2); font-style: italic; }
+    .lore-channel { margin-top: 16px; font-style: normal !important; font-size: 14px !important; color: var(--t3) !important; }
+    .resp-list { list-style: none; display: flex; flex-direction: column; gap: 10px; max-width: 680px; }
+    .resp-list li { display: flex; gap: 12px; font-size: 15px; line-height: 1.6; color: var(--t2); }
+    .resp-list li::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--agent); flex-shrink: 0; margin-top: 8px; opacity: .7; }
+    .resume-card { background: rgba(255,255,255,.025); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .resume-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; }
+    .resume-avatar { width: 44px; height: 44px; }
+    .resume-name { font-family: 'Cinzel', serif; font-size: 16px; color: var(--agent); }
+    .resume-subtitle { font-size: 12px; color: var(--t3); margin-top: 2px; }
+    .resume-body { padding: 24px; display: flex; flex-direction: column; gap: 28px; }
+    .resume-section-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .12em; color: var(--t3); text-transform: uppercase; margin-bottom: 12px; }
+    .skills-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .skill-tag { display: inline-block; padding: 5px 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; font-size: 13px; color: var(--t2); }
+    .methodology-badge { display: inline-block; padding: 6px 14px; background: color-mix(in srgb, var(--agent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--agent) 30%, transparent); border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--agent); letter-spacing: .04em; }
+    .deliverables-list { display: flex; flex-direction: column; gap: 14px; }
+    .deliverable { padding: 14px 16px; background: rgba(255,255,255,.02); border: 1px solid var(--border); border-radius: 6px; }
+    .del-label { font-size: 13px; font-weight: 500; color: var(--t1); margin-bottom: 4px; }
+    .del-desc { font-size: 13px; color: var(--t3); line-height: 1.6; }
+    .invoke-block { background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 16px 18px; }
+    .invoke-block code { display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--parch); line-height: 2; white-space: pre; }
+    .paired-agents { display: flex; flex-wrap: wrap; gap: 10px; }
+    .pair-link { display: inline-block; padding: 6px 14px; background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 20px; font-size: 13px; color: var(--t2); text-decoration: none; transition: border-color 180ms, color 180ms; }
+    .pair-link:hover { border-color: var(--agent); color: var(--agent); }
+    .agent-nav { max-width: 960px; margin: 0 auto; padding: clamp(40px,5vw,64px) clamp(20px,5vw,80px); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); gap: 16px; }
+    .nav-arrow { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 13px; color: var(--t2); transition: color 180ms ease; }
+    .nav-arrow:hover { color: var(--gold); }
+    .nav-all { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .12em; color: var(--t3); text-decoration: none; transition: color 180ms; }
+    .nav-all:hover { color: var(--gold); }
+    .agent-counter { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); }
+    hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+    @media (max-width: 600px) { .agent-header { flex-direction: column; gap: 20px; } .agent-nav { flex-direction: column; text-align: center; gap: 20px; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-brand">
+    <svg viewBox="0 0 80 90" fill="none" aria-hidden="true">
+      <path d="M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linejoin="round"/>
+      <circle cx="40" cy="48" r="19" stroke="currentColor" stroke-width="2.5" fill="none"/>
+      <line x1="23" y1="48" x2="57" y2="48" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    THESMOS
+  </a>
+  <a href="../index.html#pantheon" class="nav-back">← All Agents</a>
+</nav>
+
+<div class="agent-hero">
+  <div class="agent-breadcrumb">
+    <a href="../index.html">Thesmos</a>
+    <span>·</span>
+    <a href="../index.html#pantheon">Pantheon</a>
+    <span>·</span>
+    <span>Chrysos</span>
+  </div>
+  <div class="agent-header">
+    <div class="agent-avatar-lg">
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="46" fill="#6772E515"/>
+        <!-- Payment card outline -->
+        <rect x="18" y="30" width="54" height="34" rx="4" stroke="#6772E5" stroke-width="2" fill="none"/>
+        <!-- Card magnetic stripe -->
+        <rect x="18" y="38" width="54" height="8" fill="#6772E5" opacity=".25"/>
+        <!-- Card chip -->
+        <rect x="26" y="50" width="10" height="8" rx="1.5" stroke="#6772E5" stroke-width="1.6" fill="none"/>
+        <!-- Shield/lock overlay (top right) -->
+        <path d="M70 18 C70 18 78 20 78 26 L78 32 Q78 38 70 40 Q62 38 62 32 L62 26 C62 20 70 18 70 18 Z" stroke="#6772E5" stroke-width="1.8" fill="none"/>
+        <!-- Lock shackle -->
+        <path d="M66 26 Q66 22 70 22 Q74 22 74 26" stroke="#6772E5" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <!-- Lock body keyhole -->
+        <circle cx="70" cy="31" r="2" stroke="#6772E5" stroke-width="1.4" fill="none"/>
+        <line x1="70" y1="33" x2="70" y2="36" stroke="#6772E5" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="agent-meta">
+      <div class="agent-name">Chrysos</div>
+      <div class="agent-role-title">Stripe Integration Agent · Webhooks, Idempotency & PCI-DSS Compliance</div>
+      <div class="agent-pantheon-tag">THESMOS PANTHEON</div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<div class="content">
+
+  <div class="section" style="margin-top:48px">
+    <div class="section-label">Mythology</div>
+    <div class="lore-block">
+      <p>Chrysos was the personification of gold — the most precious substance in the ancient world, the standard against which all things were measured. Gold did not lie. It did not double-count. It did not lose value between transactions. Its precision was its virtue: exact, indestructible, and accountable.</p>
+      <p class="lore-channel">Thesmos channels Chrysos as Stripe integration expertise. Webhook signature verification, idempotency-by-design, subscription lifecycle management, PCI-DSS scope minimization. Money systems must be correct, not merely fast — and a billing bug that charges a customer twice is not a performance issue, it is a trust crisis.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Purpose</div>
+    <div class="section-title">What Chrysos does</div>
+    <p class="prose">Chrysos designs, implements, and audits Stripe integrations. He writes webhook handlers where signature verification is the first line — before any routing. He builds idempotency into every state change that has monetary consequence, using database unique constraints on stripe_event_id. He treats Stripe as the source of truth: when subscription status diverges between Stripe and your database, Stripe is right, always. Raw card numbers never touch application code.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Responsibilities</div>
+    <div class="section-title">Chrysos's domain</div>
+    <ul class="resp-list">
+      <li>Webhook handler architecture: constructEvent() signature verification, idempotency check, event routing with structured error responses</li>
+      <li>Subscription lifecycle: checkout.session.completed, customer.subscription.updated, invoice.payment_failed — with fresh state fetching from Stripe API</li>
+      <li>Products and Prices structure: named Products, lookup_key values, trial configuration, and Stripe metadata to feature flag mapping</li>
+      <li>PCI-DSS compliance: scope minimization via Stripe Elements, no raw card data in application code or logs</li>
+      <li>Idempotency strategy: which operations use Stripe idempotency keys, which use database deduplication, and how they interact</li>
+      <li>Customer Portal configuration: self-service subscription management, payment method updates, invoice downloads</li>
+      <li>Stripe Connect: marketplace payment routing for platforms with connected accounts</li>
+    </ul>
+  </div>
+
+  <hr style="margin-bottom:48px">
+
+  <div class="section">
+    <div class="section-label">Resume</div>
+    <div class="section-title">What Chrysos brings</div>
+    <div class="resume-card">
+      <div class="resume-header">
+        <div class="resume-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="46" fill="#6772E515"/>
+          <rect x="18" y="30" width="54" height="34" rx="4" stroke="#6772E5" stroke-width="2" fill="none"/>
+          <rect x="18" y="38" width="54" height="8" fill="#6772E5" opacity=".25"/>
+          <rect x="26" y="50" width="10" height="8" rx="1.5" stroke="#6772E5" stroke-width="1.6" fill="none"/>
+          <path d="M70 18 C70 18 78 20 78 26 L78 32 Q78 38 70 40 Q62 38 62 32 L62 26 C62 20 70 18 70 18 Z" stroke="#6772E5" stroke-width="1.8" fill="none"/>
+          <path d="M66 26 Q66 22 70 22 Q74 22 74 26" stroke="#6772E5" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <circle cx="70" cy="31" r="2" stroke="#6772E5" stroke-width="1.4" fill="none"/>
+          <line x1="70" y1="33" x2="70" y2="36" stroke="#6772E5" stroke-width="1.4" stroke-linecap="round"/>
+        </svg></div>
+        <div>
+          <div class="resume-name">Chrysos</div>
+          <div class="resume-subtitle">Stripe Integration Agent · Thesmos Pantheon</div>
+        </div>
+      </div>
+      <div class="resume-body">
+
+        <div>
+          <div class="resume-section-title">Core methodology</div>
+          <div class="methodology-badge">Idempotency by Design + Stripe as Source of Truth + PCI Scope Minimization</div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Skills</div>
+          <div class="skills-grid">
+            <span class="skill-tag">Stripe webhooks</span>
+            <span class="skill-tag">Idempotency keys</span>
+            <span class="skill-tag">Subscription lifecycle</span>
+            <span class="skill-tag">PCI-DSS compliance</span>
+            <span class="skill-tag">Stripe Elements</span>
+            <span class="skill-tag">Customer Portal</span>
+            <span class="skill-tag">Stripe Connect</span>
+            <span class="skill-tag">Radar fraud rules</span>
+            <span class="skill-tag">Raw body handling</span>
+            <span class="skill-tag">Checkout Sessions</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Example deliverables</div>
+          <div class="deliverables-list">
+            <div class="deliverable">
+              <div class="del-label">Complete Stripe webhook handler</div>
+              <div class="del-desc">TypeScript handler with constructEvent() as the first operation, idempotency check via stripe_event_id unique constraint, event routing with fresh state fetching, and SEC_007/SEC_008/DATA_001 compliance.</div>
+            </div>
+            <div class="deliverable">
+              <div class="del-label">Products and Prices architecture</div>
+              <div class="del-desc">Named Products with lookup_key values, monthly/annual pricing, trial period configuration, and the exact correspondence between Stripe metadata fields and application feature flags.</div>
+            </div>
+            <div class="deliverable">
+              <div class="del-label">PCI-DSS audit report</div>
+              <div class="del-desc">Scan for raw card data in logs, secret key exposure patterns, webhook signature gaps, and any code path that could bring card data into application scope — with SEC_007, SEC_008, and DATA_001 status for each finding.</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">How to invoke</div>
+          <div class="invoke-block">
+            <code>// Claude Code — sub-agent
+Agent({
+  subagent_type: "Chrysos",
+  prompt: "your task here"
+})
+
+// CLI
+npx thesmos pantheon:invoke chrysos --prompt "your task"</code>
+          </div>
+        </div>
+
+        <div>
+          <div class="resume-section-title">Best paired with</div>
+          <div class="paired-agents">
+            <a href="talos.html" class="pair-link">Talos</a>
+            <a href="plutus.html" class="pair-link">Plutus</a>
+            <a href="themis.html" class="pair-link">Themis</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="agent-nav">
+  <a href="notus.html" class="nav-arrow">← Notus</a>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+    <a href="../index.html#pantheon" class="nav-all">ALL AGENTS</a>
+    <div class="agent-counter">45 / 46</div>
+  </div>
+  <a href="atlas.html" class="nav-arrow">Atlas →</a>
+</div>
+
+</body>
+</html>

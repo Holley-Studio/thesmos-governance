@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * thesmos github:comment — post or update a governance summary comment on a GitHub PR.
  *

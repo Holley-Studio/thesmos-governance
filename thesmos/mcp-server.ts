@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Thesmos MCP Server — JSON-RPC 2.0 over stdio (NDJSON transport).
  *
@@ -172,6 +173,36 @@ const TOOL_DEFINITIONS = [
         session: { type: 'string', description: 'Optional session ID for audit correlation' },
       },
       required: ['tool', 'path'],
+    },
+  },
+  {
+    name: 'get_compliance_status',
+    description:
+      'Returns compliance pass/fail status for a given regulatory framework (GDPR, EU AI Act, HIPAA, DORA, SOC 2, NIST AI RMF). Runs the relevant rule set against the current scan and returns a summary with pass rate, finding counts by severity, and top blockers.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        framework: {
+          type: 'string',
+          enum: ['gdpr', 'eu-ai-act', 'hipaa', 'dora', 'soc2', 'nist-ai-rmf'],
+          description: 'Regulatory framework to evaluate',
+        },
+        root: { type: 'string', description: 'Workspace root path (defaults to process.cwd())' },
+      },
+      required: ['framework'],
+    },
+  },
+  {
+    name: 'check_framework_coverage',
+    description:
+      'Lists all Thesmos rules tagged to a given compliance framework and whether each rule is currently passing or failing. Use to identify coverage gaps before a compliance review.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        framework: { type: 'string', description: 'Framework tag to filter on (e.g. "gdpr", "eu-ai-act", "hipaa", "dora", "nist-ai-rmf")' },
+        root: { type: 'string', description: 'Workspace root path (defaults to process.cwd())' },
+      },
+      required: ['framework'],
     },
   },
 ];
@@ -477,6 +508,78 @@ function handleResourceRead(root: string, uri: string): unknown {
   return null;
 }
 
+function handleGetComplianceStatus(root: string, params: { framework: string }): unknown {
+  const config = (() => { try { return loadConfig(root); } catch { return CONFIG_DEFAULTS; } })();
+  const { framework } = params;
+
+  // Determine which rules belong to this framework
+  const frameworkRules = THESMOS_RULES.filter((r) =>
+    r.frameworks?.includes(framework) || r.id.startsWith(framework.toUpperCase().replace(/-/g, '_') + '_'),
+  );
+
+  const allFindings = runReview({ scan: makeEmptyScan(), config, changedFiles: [] });
+  const frameworkFindings = allFindings.filter((f) =>
+    frameworkRules.some((r) => r.category === f.category),
+  );
+
+  const passed = frameworkRules.filter((r) => !frameworkFindings.some((f) => f.category === r.category)).length;
+  const total = frameworkRules.length;
+  const complianceScore = total > 0 ? Math.round((passed / total) * 100) : 100;
+
+  const blockers = frameworkFindings.filter((f) => f.severity === 'BLOCKER');
+  const highs = frameworkFindings.filter((f) => f.severity === 'HIGH');
+
+  return {
+    framework,
+    pass: frameworkFindings.length === 0,
+    complianceScore,
+    rulesEvaluated: total,
+    rulesPassed: passed,
+    rulesFailed: total - passed,
+    findings: frameworkFindings,
+    topBlockers: blockers.slice(0, 5).map((f) => ({ category: f.category, file: f.file, message: f.message })),
+    topHighs: highs.slice(0, 5).map((f) => ({ category: f.category, file: f.file, message: f.message })),
+    summary: frameworkFindings.length === 0
+      ? `✅ ${framework} compliance: ${complianceScore}% (${passed}/${total} rules passed — no violations detected)`
+      : `⚠️ ${framework} compliance: ${complianceScore}% (${passed}/${total} rules passed, ${blockers.length} blockers, ${highs.length} highs)`,
+  };
+}
+
+function handleCheckFrameworkCoverage(root: string, params: { framework: string }): unknown {
+  const config = (() => { try { return loadConfig(root); } catch { return CONFIG_DEFAULTS; } })();
+  const { framework } = params;
+
+  const frameworkRules = THESMOS_RULES.filter((r) => r.frameworks?.includes(framework));
+  const allFindings = runReview({ scan: makeEmptyScan(), config, changedFiles: [] });
+
+  const coverage = frameworkRules.map((r) => {
+    const ruleFinding = allFindings.find((f) => f.category === r.category);
+    return {
+      id: r.id,
+      category: r.category,
+      severity: r.severity,
+      description: r.description,
+      status: ruleFinding ? 'FAILING' : 'PASSING',
+      finding: ruleFinding ?? null,
+    };
+  });
+
+  const passing = coverage.filter((c) => c.status === 'PASSING').length;
+  const failing = coverage.filter((c) => c.status === 'FAILING').length;
+
+  return {
+    framework,
+    totalRules: frameworkRules.length,
+    passing,
+    failing,
+    coveragePercent: frameworkRules.length > 0 ? Math.round((passing / frameworkRules.length) * 100) : 100,
+    rules: coverage,
+    note: frameworkRules.length === 0
+      ? `No rules explicitly tagged with framework "${framework}". Use get_compliance_status for prefix-based matching.`
+      : undefined,
+  };
+}
+
 // ── JSON-RPC dispatch ─────────────────────────────────────────────────────────
 
 function dispatch(root: string, request: JsonRpcRequest): JsonRpcResponse {
@@ -574,6 +677,18 @@ function dispatch(root: string, request: JsonRpcRequest): JsonRpcResponse {
             const domainFilter = (toolInput['domain'] as string | undefined)?.toLowerCase();
             const result = handleGetActiveAgents(domainFilter);
             return respond({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
+          }
+          case 'get_compliance_status': {
+            const gcRoot = (toolInput['root'] as string | undefined) ?? root;
+            const gcFramework = (toolInput['framework'] as string | undefined) ?? '';
+            const gcResult = handleGetComplianceStatus(gcRoot, { framework: gcFramework });
+            return respond({ content: [{ type: 'text', text: JSON.stringify(gcResult, null, 2) }] });
+          }
+          case 'check_framework_coverage': {
+            const cfRoot = (toolInput['root'] as string | undefined) ?? root;
+            const cfFramework = (toolInput['framework'] as string | undefined) ?? '';
+            const cfResult = handleCheckFrameworkCoverage(cfRoot, { framework: cfFramework });
+            return respond({ content: [{ type: 'text', text: JSON.stringify(cfResult, null, 2) }] });
           }
           default:
             return error(-32601, `Unknown tool: ${name}`);

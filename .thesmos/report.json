@@ -1,0 +1,447 @@
+{
+  "_generatedSections": [
+    "_generatedSections",
+    "apiRoutes",
+    "clientBoundaryRisks",
+    "componentCount",
+    "designSystemFiles",
+    "detectedStacks",
+    "detector",
+    "envFiles",
+    "generatedAt",
+    "languages",
+    "largeFiles",
+    "pages",
+    "riskyFiles",
+    "scanVersion",
+    "scriptFiles",
+    "sharedUiFiles",
+    "storeFiles",
+    "testFiles"
+  ],
+  "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
+  "generatedAt": "2026-06-26T18:30:29.328Z",
+  "scanVersion": "2.0.0",
+  "pages": [],
+  "apiRoutes": [],
+  "componentCount": 0,
+  "sharedUiFiles": [],
+  "designSystemFiles": [
+    "thesmos/catalog/agents/figma/techne-design-system.md",
+    "thesmos/catalog/agents/reviewers/design-system-reviewer.md",
+    "thesmos/catalog/skills/design-token-audit.md"
+  ],
+  "storeFiles": [
+    "thesmos/brain-store.ts"
+  ],
+  "testFiles": [
+    "actions/pr-review/src/formatter.test.ts",
+    "extensions/vscode/src/__tests__/sanitizer.test.ts",
+    "extensions/vscode/src/__tests__/watcher.test.ts",
+    "thesmos/adapters.test.ts",
+    "thesmos/ai-lint.test.ts",
+    "thesmos/autopilot/calibration.test.ts",
+    "thesmos/autopilot/conventions.test.ts",
+    "thesmos/autopilot/plan-parser.test.ts",
+    "thesmos/autopilot/recon.test.ts",
+    "thesmos/baseline.test.ts",
+    "thesmos/bin/commands/audit.test.ts",
+    "thesmos/bin/commands/ci-check.test.ts",
+    "thesmos/bin/commands/diff.test.ts",
+    "thesmos/bin/commands/pack-create.test.ts",
+    "thesmos/bin/commands/pack-publish.test.ts",
+    "thesmos/bin/commands/review.test.ts",
+    "thesmos/bin/commands/scan.test.ts",
+    "thesmos/bin/lib/args.test.ts",
+    "thesmos/catalog.test.ts",
+    "thesmos/ci-check.test.ts",
+    "thesmos/config.test.ts",
+    "thesmos/context-capsule.test.ts",
+    "thesmos/detector.test.ts",
+    "thesmos/doctor.test.ts",
+    "thesmos/drift.test.ts",
+    "thesmos/explain.test.ts",
+    "thesmos/fix.test.ts",
+    "thesmos/hardening.test.ts",
+    "thesmos/health.test.ts",
+    "thesmos/hooks.test.ts",
+    "thesmos/import-scan.test.ts",
+    "thesmos/init.test.ts",
+    "thesmos/interactive.test.ts",
+    "thesmos/metrics.test.ts",
+    "thesmos/output.test.ts",
+    "thesmos/packs.test.ts",
+    "thesmos/registry.test.ts",
+    "thesmos/report.test.ts",
+    "thesmos/review.test.ts",
+    "thesmos/rules/commits.test.ts",
+    "thesmos/rules/csharp.test.ts",
+    "thesmos/rules/dast.test.ts",
+    "thesmos/rules/debt.test.ts",
+    "thesmos/rules/design.test.ts",
+    "thesmos/rules/django.test.ts",
+    "thesmos/rules/dockerfile.test.ts",
+    "thesmos/rules/github-actions.test.ts",
+    "thesmos/rules/go.test.ts",
+    "thesmos/rules/java.test.ts",
+    "thesmos/rules/jwt.test.ts",
+    "thesmos/rules/k8s.test.ts",
+    "thesmos/rules/mcp.test.ts",
+    "thesmos/rules/php.test.ts",
+    "thesmos/rules/prototype.test.ts",
+    "thesmos/rules/python.test.ts",
+    "thesmos/rules/rag.test.ts",
+    "thesmos/rules/registry.test.ts",
+    "thesmos/rules/ruby.test.ts",
+    "thesmos/rules/rust.test.ts",
+    "thesmos/rules/self.test.ts",
+    "thesmos/rules/supply-chain.test.ts",
+    "thesmos/rules/terraform.test.ts",
+    "thesmos/rules/vercel.test.ts",
+    "thesmos/rules/websocket.test.ts",
+    "thesmos/scanner/files.test.ts",
+    "thesmos/scanner/routes.test.ts",
+    "thesmos/scanner/walker.test.ts",
+    "thesmos/scope.test.ts",
+    "thesmos/secrets.test.ts",
+    "thesmos/severity.test.ts",
+    "thesmos/suppress.test.ts",
+    "thesmos/token-budget.test.ts",
+    "thesmos/watcher.test.ts"
+  ],
+  "largeFiles": [
+    {
+      "file": "thesmos/rules/python.ts",
+      "lines": 1737
+    },
+    {
+      "file": "thesmos/rules/security.ts",
+      "lines": 1698
+    },
+    {
+      "file": "thesmos/rules/nextjs.ts",
+      "lines": 1606
+    },
+    {
+      "file": "thesmos/fix.ts",
+      "lines": 1440
+    },
+    {
+      "file": "thesmos/rules/vibe-coding.ts",
+      "lines": 1403
+    },
+    {
+      "file": "thesmos/rules/database.ts",
+      "lines": 1350
+    },
+    {
+      "file": "thesmos/rules/ai.ts",
+      "lines": 1333
+    },
+    {
+      "file": "thesmos/rules/typescript.ts",
+      "lines": 1220
+    },
+    {
+      "file": "thesmos/fix.test.ts",
+      "lines": 1187
+    },
+    {
+      "file": "thesmos/rules/debt.ts",
+      "lines": 1153
+    },
+    {
+      "file": "thesmos/rules/java.test.ts",
+      "lines": 1126
+    },
+    {
+      "file": "thesmos/rules/react.ts",
+      "lines": 1122
+    },
+    {
+      "file": "thesmos/rules/node.ts",
+      "lines": 1101
+    },
+    {
+      "file": "thesmos/rules/performance.ts",
+      "lines": 1089
+    },
+    {
+      "file": "thesmos/rules/prisma.ts",
+      "lines": 1086
+    },
+    {
+      "file": "thesmos/rules/zod.ts",
+      "lines": 1078
+    },
+    {
+      "file": "thesmos/rules/terraform.ts",
+      "lines": 1002
+    },
+    {
+      "file": "thesmos/rules/slopsquatting.ts",
+      "lines": 998
+    },
+    {
+      "file": "thesmos/bin/commands/build.ts",
+      "lines": 990
+    },
+    {
+      "file": "thesmos/rules/design.test.ts",
+      "lines": 961
+    },
+    {
+      "file": "thesmos/rules/ruby.test.ts",
+      "lines": 951
+    },
+    {
+      "file": "thesmos/rules/csharp.ts",
+      "lines": 947
+    },
+    {
+      "file": "thesmos/rules/graphql.ts",
+      "lines": 943
+    },
+    {
+      "file": "thesmos/rules/mcp.ts",
+      "lines": 939
+    },
+    {
+      "file": "thesmos/rules/go.test.ts",
+      "lines": 938
+    },
+    {
+      "file": "thesmos/drift.test.ts",
+      "lines": 933
+    },
+    {
+      "file": "thesmos/rules/errors.ts",
+      "lines": 916
+    },
+    {
+      "file": "thesmos/init.ts",
+      "lines": 906
+    },
+    {
+      "file": "thesmos/rules/go.ts",
+      "lines": 871
+    },
+    {
+      "file": "thesmos/rules/trpc.ts",
+      "lines": 870
+    },
+    {
+      "file": "thesmos/rules/rust.ts",
+      "lines": 856
+    },
+    {
+      "file": "thesmos/rules/design.ts",
+      "lines": 855
+    },
+    {
+      "file": "thesmos/rules/ruby.ts",
+      "lines": 852
+    },
+    {
+      "file": "thesmos/rules/agents.ts",
+      "lines": 845
+    },
+    {
+      "file": "thesmos/rules/java.ts",
+      "lines": 842
+    },
+    {
+      "file": "thesmos/rules/django.ts",
+      "lines": 828
+    },
+    {
+      "file": "thesmos/rules/php.ts",
+      "lines": 828
+    },
+    {
+      "file": "thesmos/rules/rust.test.ts",
+      "lines": 818
+    },
+    {
+      "file": "thesmos/rules/php.test.ts",
+      "lines": 810
+    },
+    {
+      "file": "extensions/vscode/src/commands.ts",
+      "lines": 805
+    },
+    {
+      "file": "thesmos/rules/csharp.test.ts",
+      "lines": 805
+    }
+  ],
+  "riskyFiles": [],
+  "scriptFiles": [
+    "scripts/github-setup.sh"
+  ],
+  "envFiles": [],
+  "clientBoundaryRisks": [
+    {
+      "file": "thesmos/review.test.ts",
+      "risk": "admin-client"
+    },
+    {
+      "file": "thesmos/rules/ai.ts",
+      "risk": "server-only-import"
+    },
+    {
+      "file": "thesmos/rules/database.ts",
+      "risk": "direct-env-access"
+    },
+    {
+      "file": "thesmos/rules/imports.ts",
+      "risk": "server-only-import"
+    },
+    {
+      "file": "thesmos/rules/jwt.test.ts",
+      "risk": "direct-env-access"
+    },
+    {
+      "file": "thesmos/rules/jwt.ts",
+      "risk": "direct-env-access"
+    },
+    {
+      "file": "thesmos/rules/nextjs.ts",
+      "risk": "server-only-import"
+    },
+    {
+      "file": "thesmos/rules/registry.ts",
+      "risk": "server-only-import"
+    },
+    {
+      "file": "thesmos/rules/state.ts",
+      "risk": "server-only-import"
+    },
+    {
+      "file": "thesmos/scanner/files.test.ts",
+      "risk": "admin-client"
+    },
+    {
+      "file": "thesmos/scanner/files.ts",
+      "risk": "admin-client"
+    },
+    {
+      "file": "thesmos/secrets.test.ts",
+      "risk": "admin-client"
+    },
+    {
+      "file": "thesmos/secrets.ts",
+      "risk": "admin-client"
+    },
+    {
+      "file": "thesmos/types.ts",
+      "risk": "server-only-import"
+    }
+  ],
+  "languages": [
+    {
+      "language": "Other",
+      "extension": "",
+      "fileCount": 652,
+      "lineCount": 111759
+    },
+    {
+      "language": "TypeScript",
+      "extension": ".ts",
+      "fileCount": 286,
+      "lineCount": 113729
+    },
+    {
+      "language": "JavaScript",
+      "extension": ".js",
+      "fileCount": 2,
+      "lineCount": 77
+    }
+  ],
+  "detectedStacks": [
+    "Node.js"
+  ],
+  "detector": {
+    "framework": "unknown",
+    "auth": "none",
+    "envVars": [
+      "${match[1]}",
+      "ADMIN_PASSWORD",
+      "AI_MODEL",
+      "ALLOWED_ORIGIN",
+      "ALLOWED_ORIGINS",
+      "ANTHROPIC_API_KEY",
+      "ANTHROPIC_KEY",
+      "API_BASE_URL",
+      "API_KEY",
+      "API_SECRET",
+      "APP_URL",
+      "ASSEMBLYAI_API_KEY",
+      "ASSISTANT_SYSTEM_PROMPT",
+      "A_VAR",
+      "BASE_URL",
+      "BRACKET_VAR",
+      "CI",
+      "CRON_SECRET",
+      "DATABASE_URL",
+      "DEEPGRAM_API_KEY",
+      "DOT_VAR",
+      "ELEVENLABS_API_KEY",
+      "FOO",
+      "HOME",
+      "INTERNAL_API_URL",
+      "JWT_KEY",
+      "JWT_SECRET",
+      "KEY",
+      "LOG_LEVEL",
+      "MCP_RESTRICTED_KEY",
+      "MCP_SECRET",
+      "MY_KEY",
+      "MY_URL",
+      "MY_VAR",
+      "NEXTAUTH_SECRET",
+      "NEXT_PUBLIC_API_KEY",
+      "NEXT_PUBLIC_API_SECRET",
+      "NEXT_PUBLIC_API_URL",
+      "NEXT_PUBLIC_APP_NAME",
+      "NEXT_PUBLIC_DATABASE_PASSWORD",
+      "NEXT_PUBLIC_OPENAI_KEY",
+      "NEXT_PUBLIC_SERVICE_ROLE_KEY",
+      "NEXT_PUBLIC_SITE_URL",
+      "NEXT_PUBLIC_STRIPE_SECRET_KEY",
+      "NEXT_PUBLIC_SYSTEM_PROMPT",
+      "NEXT_PUBLIC_URL",
+      "NODE_ENV",
+      "OPENAI_API_KEY",
+      "OPENAI_KEY",
+      "OPENAI_MODEL",
+      "PATH",
+      "PORT",
+      "REVALIDATE_SECRET",
+      "SECRET",
+      "SHARED",
+      "SHARED_KEY",
+      "STRIPE_SECRET",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "USERPROFILE",
+      "VAR",
+      "VAR_A",
+      "VAR_B",
+      "VAR_NAME",
+      "VITE_API_KEY",
+      "VITE_VAR",
+      "YOUR_API_KEY",
+      "Z_VAR",
+      "npm_package_version"
+    ],
+    "testingFramework": "none",
+    "deployment": "vercel",
+    "apiConvention": "unknown",
+    "typescript": true,
+    "packageManager": "npm",
+    "cssFramework": "none",
+    "uiLibrary": "none"
+  }
+}
