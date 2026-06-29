@@ -5,7 +5,9 @@
   "version": "1.3.0",
   "publisher": "holley-studios",
   "author": {
-    "name": "Holley Studios"
+    "name": "Matthew Holley",
+    "email": "holley42@yahoo.com",
+    "url": "https://holley.studio"
   },
   "license": "MIT",
   "repository": {
