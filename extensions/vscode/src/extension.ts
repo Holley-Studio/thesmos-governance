@@ -29,6 +29,7 @@ import { FindingsTreeProvider } from './treeView.js';
 import { AutopilotWatcher } from './autopilotWatcher.js';
 import { AutopilotTreeProvider } from './autopilotView.js';
 import { AgentsTreeProvider, invokeAgentCommand } from './agentsPanel.js';
+import { AgentActivityWatcher, AgentActivityTreeProvider } from './agentActivityPanel.js';
 import { AutoModeGovernor } from './autoModeGovernor.js';
 import { ThesmosCodeLensProvider } from './codeLens.js';
 import { InlineDiagnosticsManager } from './inlineDiagnostics.js';
@@ -76,6 +77,8 @@ class ThesmosExtension implements vscode.Disposable {
   private readonly autopilotWatcher: AutopilotWatcher;
   private readonly autopilotView: AutopilotTreeProvider;
   private readonly agentsView: AgentsTreeProvider;
+  private readonly agentActivityWatcher: AgentActivityWatcher;
+  private readonly agentActivityView: AgentActivityTreeProvider;
   private readonly autoModeGovernor: AutoModeGovernor;
   private readonly codeLensProvider: ThesmosCodeLensProvider;
   private readonly inlineDiagnostics: InlineDiagnosticsManager;
@@ -96,7 +99,9 @@ class ThesmosExtension implements vscode.Disposable {
     this.treeProvider = new FindingsTreeProvider();
     this.autopilotWatcher = new AutopilotWatcher(workspaceRoot);
     this.autopilotView = new AutopilotTreeProvider(workspaceRoot, this.autopilotWatcher);
-    this.agentsView = new AgentsTreeProvider();
+    this.agentsView = new AgentsTreeProvider(workspaceRoot);
+    this.agentActivityWatcher = new AgentActivityWatcher(workspaceRoot);
+    this.agentActivityView = new AgentActivityTreeProvider(this.agentActivityWatcher);
     this.autoModeGovernor = new AutoModeGovernor(workspaceRoot);
     this.codeLensProvider = new ThesmosCodeLensProvider();
     this.inlineDiagnostics = new InlineDiagnosticsManager();
@@ -108,6 +113,8 @@ class ThesmosExtension implements vscode.Disposable {
       this.autopilotWatcher,
       this.autopilotView,
       this.agentsView,
+      this.agentActivityWatcher,
+      this.agentActivityView,
       this.autoModeGovernor,
       this.codeLensProvider,
       this.inlineDiagnostics,
@@ -178,6 +185,13 @@ class ThesmosExtension implements vscode.Disposable {
       showCollapseAll: true,
     });
     this.disposables.push(agentsTreeView);
+
+    // Register agent activity timeline view
+    const agentActivityTreeView = vscode.window.createTreeView('thesmos.agentActivity', {
+      treeDataProvider: this.agentActivityView,
+      showCollapseAll: false,
+    });
+    this.disposables.push(agentActivityTreeView);
 
     // Agents invoke command — opens terminal with claude, shows spinning indicator
     this.disposables.push(
