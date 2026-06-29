@@ -96,9 +96,15 @@ function makeEmptyScan(): ScanResult {
 function scanFile(filePath: string, content: string, config: ThesmosConfig): Finding[] {
   const scan = makeEmptyScan();
   const changedFiles = [{ path: filePath, content }];
-  return THESMOS_RULES.flatMap((rule) =>
-    rule.detect({ scan, config, changedFiles }),
-  );
+  const findings: Finding[] = [];
+  for (const rule of THESMOS_RULES) {
+    try {
+      findings.push(...rule.detect({ scan, config, changedFiles }));
+    } catch (err) {
+      log.warn('rule detect threw', { ruleId: rule.id, error: String(err) });
+    }
+  }
+  return findings;
 }
 
 function findingsToDiagnostics(findings: Finding[], content: string): Diagnostic[] {
@@ -357,6 +363,12 @@ function dispatch(msg: LspRequest): void {
 // ── stdio transport (header-framed) ──────────────────────────────────────────
 
 export function startLspServer(): void {
+  process.on('uncaughtException', (err: Error) => {
+    log.error('uncaught exception', { message: err.message });
+  });
+  process.on('unhandledRejection', (reason: unknown) => {
+    log.error('unhandled rejection', { reason: String(reason) });
+  });
   log.info('server started', { rules: THESMOS_RULES.length });
 
   let buffer = '';
@@ -383,7 +395,15 @@ export function startLspServer(): void {
 
       try {
         const msg = JSON.parse(body) as LspRequest;
-        dispatch(msg);
+        try {
+          dispatch(msg);
+        } catch (err) {
+          log.error('dispatch error', { error: String(err) });
+          const msgId = msg.id;
+          if (msgId !== undefined && msgId !== null) {
+            send({ jsonrpc: '2.0', id: msgId, error: { code: -32603, message: 'Internal error' } });
+          }
+        }
       } catch {
         // malformed JSON — ignore
       }
