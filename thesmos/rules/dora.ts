@@ -50,6 +50,15 @@ const DORA_001: ThesmosRule = {
   tags: ['dora', 'incident', 'resilience'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 18 requires EU financial entities to classify ICT incidents by impact severity. Without a documented classification scheme, you cannot determine which incidents require regulatory reporting (Art. 19) within the 4-hour initial notification window. Fines can reach €10M or 5% of total annual worldwide turnover.',
+    commonViolations: ['Payment processing service with no .thesmos/incident-classification.md', 'Financial API with no severity matrix or escalation paths documented'],
+    goodExample: '// .thesmos/incident-classification.md\n// P1 (Major): >€5M impact, user data breach, service unavailable > 15min → report to NCA in 4h\n// P2 (Significant): degraded performance, partial outage → internal escalation, report if 24h+',
+    badExample: '// Financial trading service in production, no incident classification doc — Art. 18/19 non-compliant',
+    relatedPlaybooks: ['dora.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -77,6 +86,15 @@ const DORA_002: ThesmosRule = {
   tags: ['dora', 'third-party', 'supply-chain'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 28 requires financial entities to maintain a comprehensive register of all contractual arrangements with third-party ICT providers. Regulators can request this register at any time — missing entries mean you cannot demonstrate supply chain risk oversight.',
+    commonViolations: ['Using Stripe, Twilio, or Datadog in a financial service with no .thesmos/third-party-ict-register.md', 'AWS/Azure dependencies with no documented SLA, exit strategy, or concentration risk assessment'],
+    goodExample: '// .thesmos/third-party-ict-register.md\n// | Provider | Service | Criticality | Contract Exp | SLA | Exit Plan |\n// | Stripe | Payments | Critical | 2026-12 | 99.99% | documented |',
+    badExample: '// import { stripe } from "@stripe/stripe-js"  // in payment service, no ICT register maintained',
+    relatedPlaybooks: ['dora.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -103,6 +121,15 @@ const DORA_003: ThesmosRule = {
   tags: ['dora', 'resilience', 'testing'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 25 requires financial entities to conduct digital operational resilience testing at least annually, including vulnerability assessments and penetration testing. Significant institutions must additionally perform threat-led penetration testing (TLPT) every 3 years. Missing this documentation blocks supervisory review.',
+    commonViolations: ['Financial service with no .thesmos/resilience-testing.md defining test scope and schedule', 'Payment processing system with no documented BCP test or DR drill results'],
+    goodExample: '// .thesmos/resilience-testing.md\n// Annual: vulnerability scan, BCP tabletop, failover drill\n// Every 3 years: TLPT by approved provider\n// Last test: 2025-Q4, next: 2026-Q4',
+    badExample: '// Payment API deployed to production, no resilience test plan or DR drill documented — Art. 25 gap',
+    relatedPlaybooks: ['dora.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -129,6 +156,15 @@ const DORA_004: ThesmosRule = {
   tags: ['dora', 'rto', 'rpo', 'continuity'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 11 requires financial entities to have ICT business continuity policies with defined recovery time objectives (RTO) and recovery point objectives (RPO). Without documented RTO/RPO, there is no measurable target for incident recovery and no basis for compliance audits.',
+    commonViolations: ['Payment service with no .thesmos/business-continuity.md or docs/business-continuity.md', 'Financial API deployed with no defined maximum acceptable downtime or data loss targets'],
+    goodExample: '// .thesmos/business-continuity.md\n// RTO: 2 hours for payment processing (critical), 24 hours for reporting (non-critical)\n// RPO: 15 minutes (transaction data), 1 hour (audit logs)',
+    badExample: '// Trading platform live, no BCP doc, no RTO/RPO defined — Art. 11 violation, supervisory finding likely',
+    relatedPlaybooks: ['dora.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -160,6 +196,15 @@ const DORA_005: ThesmosRule = {
   tags: ['dora', 'threat-intelligence', 'sharing'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 45 encourages financial entities to voluntarily share cyber threat intelligence and information within the financial sector to strengthen collective defenses. While voluntary, regulators view participation in ISAC/ISAO frameworks as a signal of mature operational resilience posture.',
+    commonViolations: ['Large financial ICT footprint with no .thesmos/threat-intelligence.md', 'Multiple payment and trading services with no documented threat-sharing membership or procedures'],
+    goodExample: '// .thesmos/threat-intelligence.md\n// Member: FS-ISAC (Financial Services ISAC)\n// Feeds: FS-ISAC TLP:GREEN alerts, ENISA threat landscape reports\n// Sharing: anonymized IOCs shared monthly via FS-ISAC portal',
+    badExample: '// Substantial financial services code base, no threat intel sharing framework documented — Art. 45 gap',
+    relatedPlaybooks: ['dora.md'],
+    relatedAgents: ['compliance-reviewer', 'security-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -189,6 +234,15 @@ const DORA_006: ThesmosRule = {
   tags: ['dora', 'change-management', 'resilience'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 9 requires financial entities to have ICT change management procedures that ensure changes are tested, authorized, and documented before implementation. Undocumented change processes in financial systems are a regulatory finding — regulators expect evidence of pre-change risk assessment and rollback plans.',
+    commonViolations: ['Deployment workflow in a payment service with no .thesmos/change-management.md', 'Migration scripts for financial data with no change advisory board or approval evidence'],
+    goodExample: '// .thesmos/change-management.md\n// Standard change: PR review + CI + staging deploy + 24h soak\n// Emergency change: CISO approval + immediate rollback plan required\n// CAB review: weekly for financial-critical services',
+    badExample: '// GitHub workflow deploys to payment production on merge, no change management policy documented — Art. 9 gap',
+    relatedPlaybooks: ['dora.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const allFiles = (input.changedFiles ?? []);
