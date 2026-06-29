@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Canonical rule registry — single source of truth for all Thesmos rules.
  *
@@ -69,6 +70,10 @@ import { SUPPLY_CHAIN_RULES } from './supply-chain';
 import { DAST_RULES } from './dast';
 import { K8S_RULES } from './k8s';
 import { SELF_RULES } from './self';
+import { EU_AI_ACT_RULES } from './eu-ai-act';
+import { HIPAA_RULES } from './hipaa';
+import { DORA_RULES } from './dora';
+import { LOCAL_LLM_RULES } from './local-llm';
 
 // ── Local helpers (used inside detect() methods) ──────────────────────────────
 
@@ -677,4 +682,10 @@ export const THESMOS_RULES: ThesmosRule[] = [
   ...K8S_RULES,
   // ── Self-governance (v2.3.1) ─────────────────────────────────────────────────
   ...SELF_RULES,
+  // ── Compliance frameworks (v2.1.0) ───────────────────────────────────────────
+  ...EU_AI_ACT_RULES,
+  ...HIPAA_RULES,
+  ...DORA_RULES,
+  // ── Local LLM governance (v2.4.0) ────────────────────────────────────────────
+  ...LOCAL_LLM_RULES,
 ];
