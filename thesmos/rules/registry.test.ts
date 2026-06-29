@@ -64,8 +64,8 @@ describe('registry structure', () => {
     }
   });
 
-  it('has exactly 1125 rules (update this when adding new rules)', () => {
-    expect(THESMOS_RULES).toHaveLength(1125);
+  it('has exactly 1130 rules (update this when adding new rules)', () => {
+    expect(THESMOS_RULES).toHaveLength(1130);
   });
 });
 

@@ -608,6 +608,15 @@ const GDPR_016: ThesmosRule = {
   tags: ['gdpr', 'consent', 'compliance'],
   frameworks: ['gdpr'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 7(3) requires consent withdrawal to be as easy as granting it. If users can opt-in via a UI but cannot easily opt-out, you are in direct breach. Regulators treat asymmetric consent as evidence of deceptive design.',
+    commonViolations: ['POST /consent endpoint exists but no DELETE /consent or revocation route', 'Cookie consent banner with "Accept All" but no "Withdraw" flow'],
+    goodExample: '// DELETE /api/consent — removes all stored consent records for the authenticated user',
+    badExample: '// POST /api/consent/accept — persists consent, no withdrawal endpoint exists',
+    relatedPlaybooks: ['data-handling.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const files = (input.changedFiles ?? []).filter((cf) => isApiRoute(cf.path));
     if (files.length === 0) return [];
@@ -634,6 +643,15 @@ const GDPR_017: ThesmosRule = {
   tags: ['gdpr', 'portability', 'compliance'],
   frameworks: ['gdpr'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 20 gives users the right to receive a copy of their personal data in a machine-readable format. If your app stores user PII but has no export route, you cannot fulfil Subject Access Requests (SARs) within the 30-day deadline.',
+    commonViolations: ['App has /user/profile route but no /user/export or /account/download', 'Export implemented as a manual process instead of an automated API endpoint'],
+    goodExample: '// GET /api/user/export — returns all stored user data as JSON or CSV, authenticated',
+    badExample: '// No export route; SARs handled via email — too slow, not GDPR-compliant',
+    relatedPlaybooks: ['data-handling.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const routes = input.scan.apiRoutes ?? [];
     if (routes.length === 0) return [];
@@ -658,6 +676,15 @@ const GDPR_018: ThesmosRule = {
   tags: ['gdpr', 'lawful-basis', 'compliance'],
   frameworks: ['gdpr'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 6 requires every personal data processing activity to have a documented lawful basis (consent, contract, legal obligation, legitimate interest, etc.). Routes that collect or process PII without a declared basis cannot demonstrate compliance in a DPA audit.',
+    commonViolations: ['API route collects email/phone without referencing contract or consent basis', 'Marketing route processes PII under "legitimate interest" but it is not documented in the code or policy'],
+    goodExample: '// Lawful basis: contract (Art. 6(1)(b)) — processing is necessary for service delivery\nconst user = await db.user.update({ where: { id }, data: { email } });',
+    badExample: '// No lawful basis comment or config — GDPR Art. 6 compliance unverifiable\nexport async function POST(req) { const { email } = await req.json(); await db.user.create({ data: { email } }); }',
+    relatedPlaybooks: ['data-handling.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
@@ -685,6 +712,15 @@ const GDPR_019: ThesmosRule = {
   tags: ['gdpr', 'data-transfer', 'compliance'],
   frameworks: ['gdpr'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 46 prohibits transferring personal data to third countries (non-EEA) without an appropriate safeguard — Standard Contractual Clauses (SCCs), Binding Corporate Rules (BCRs), or an adequacy decision. Undocumented transfers to US-based APIs (OpenAI, AWS us-east) are a common violation flagged in DPA audits.',
+    commonViolations: ['fetch("https://api.openai.com/...") with user PII and no SCC comment', 'Storing user data in AWS us-east-1 bucket without a Transfer Impact Assessment'],
+    goodExample: '// Transfer safeguard: SCCs (EU 2021/914) signed with OpenAI Ireland Ltd — see compliance/data-transfer-agreements/openai-sccs.pdf\nawait openai.chat.completions.create({ messages: [{ role: "user", content: sanitizedInput }] });',
+    badExample: '// No transfer safeguard documented\nawait fetch("https://api.openai.com/v1/chat/completions", { body: JSON.stringify({ messages: [{ role: "user", content: userData }] }) });',
+    relatedPlaybooks: ['data-handling.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     const THIRD_COUNTRY_RE = /fetch\s*\(\s*["'`][^"'`]*(?:amazonaws\.com|openai\.com|api\.anthropic\.com|googleapis\.com\/(?!europe)|us-east|us-west)[^"'`]*/i;
@@ -717,6 +753,15 @@ const GDPR_020: ThesmosRule = {
   tags: ['gdpr', 'dpia', 'compliance'],
   frameworks: ['gdpr'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 35 mandates a Data Protection Impact Assessment (DPIA) before processing special-category data at scale — biometrics, health data, genetic data, criminal convictions, etc. Processing without a DPIA is a BLOCKER: supervisory authorities can issue an emergency suspension order until the DPIA is complete.',
+    commonViolations: ['Health app processes medical records with no DPIA document referenced', 'Biometric authentication introduced without a completed DPIA — even in an MVP'],
+    goodExample: '// DPIA completed 2026-01-15 by DPO — ref: compliance/dpias/biometric-auth-dpia-v1.pdf\n// Art. 9(2)(a) explicit consent basis documented\nawait biometricService.enroll(userId, biometricData);',
+    badExample: 'const result = await processHealthRecord(patient);  // no DPIA, no Art. 9 basis — GDPR Art. 35 violation',
+    relatedPlaybooks: ['data-handling.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
   detect(input: DetectInput): Finding[] {
     const findings: Finding[] = [];
     const HIGH_RISK_RE = /\b(?:biometric|health.?data|medical.?record|genetic|racial.?origin|political.?opinion|religious.?belief|sex.?life|criminal.?conviction)\b/i;
