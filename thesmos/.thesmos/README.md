@@ -4,7 +4,7 @@
 
 
 <!-- THESMOS:GENERATED START overview -->
-**Project:** unknown  
+**Project:** thesmos-governance  
 **Thesmos:** v2.0.0
 
 This `.thesmos/` folder is the governance contract for this repository.
