@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Holley Studios. All rights reserved.
 /**
  * Agent Governance Rules — AGNT_001–012
  *
@@ -815,6 +816,309 @@ const AGNT_022: ThesmosRule = {
   },
 };
 
+// ── Phase 2 — AGNT_023–030 ───────────────────────────────────────────────────
+
+const AGNT_023: ThesmosRule = {
+  id: 'AGNT_023',
+  category: 'agent_privilege_over_grant',
+  severity: 'BLOCKER',
+  description: 'Agent bash/edit tool granted without path restrictions — full filesystem access.',
+  tags: ['agent', 'security', 'privilege'],
+  frameworks: ['eu-ai-act', 'nist-ai-rmf'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Granting unrestricted Bash access to an agent gives it the same filesystem permissions as the user running it — including the ability to read secrets, modify system files, or delete the entire repository. Path-scoped Bash permissions limit the blast radius if the agent misbehaves or is prompt-injected.',
+    commonViolations: [
+      '{ "permissions": { "allow": ["Bash"] } }  // no path restriction — full filesystem access',
+      '{ "permissions": { "allow": ["Bash", "Edit"] } }  // unrestricted edit anywhere',
+    ],
+    goodExample: '{ "permissions": { "allow": ["Bash(path:/workspace/myrepo/**)", "Edit(path:/workspace/myrepo/src/**)"] } }',
+    badExample: '{ "permissions": { "allow": ["Bash"] } }  // agent can run any command on the full filesystem',
+    relatedPlaybooks: ['agent-security.md'],
+    relatedAgents: ['security-reviewer'],
+    relatedSkills: [],
+  },
+  detect(input: DetectInput): Finding[] {
+    const settingsContent = contentOf(input, 'settings.json');
+    if (!settingsContent) return [];
+    const settingsFile = findFile(input, 'settings.json');
+    if (!settingsFile?.path.includes('.claude')) return [];
+    const settings = parseJson(settingsContent);
+    if (!settings) return [];
+    const permissions = settings.permissions as Record<string, unknown> | undefined;
+    const allow = permissions?.allow as string[] | undefined;
+    if (!allow) return [];
+    if (allow.includes('Bash') && !allow.some((r) => r.startsWith('Bash('))) {
+      return [f('agent_privilege_over_grant', 'BLOCKER',
+        'Bash allowed without path restrictions in .claude/settings.json',
+        'Add Bash(path:/your/repo/**) pattern to restrict scope',
+        '.claude/settings.json')];
+    }
+    return [];
+  },
+};
+
+const AGNT_024: ThesmosRule = {
+  id: 'AGNT_024',
+  category: 'agent_consent_lifecycle_missing',
+  severity: 'HIGH',
+  description: 'Agent scope declares PII categories but has no consent lifecycle hook.',
+  tags: ['agent', 'gdpr', 'consent', 'pii'],
+  frameworks: ['gdpr', 'eu-ai-act'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 7 requires that consent is specific, informed, and freely given — and can be withdrawn at any time. If an agent processes PII categories without a consent lifecycle hook, there is no mechanism to check, record, or revoke consent before processing begins.',
+    commonViolations: [
+      '{ "piiCategories": ["email", "phone"] }  // no consentHook in scope.json',
+      '{ "piiCategories": ["health"], "consentHook": "" }  // empty consentHook',
+    ],
+    goodExample: '{ "piiCategories": ["email", "phone"], "consentHook": "hooks/check-consent.ts" }',
+    badExample: '{ "piiCategories": ["email", "financial"] }  // agent processes PII with no consent check',
+    relatedPlaybooks: ['gdpr.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
+  detect(input: DetectInput): Finding[] {
+    const scopeContent = contentOf(input, 'scope.json');
+    if (!scopeContent) return [];
+    const scope = parseJson(scopeContent);
+    if (!scope) return [];
+    const piiCategories = scope.piiCategories as string[] | undefined;
+    if (!piiCategories || piiCategories.length === 0) return [];
+    const consentHook = scope.consentHook as string | undefined;
+    if (!consentHook) {
+      return [f('agent_consent_lifecycle_missing', 'HIGH',
+        'scope.json declares piiCategories but has no consentHook — no consent lifecycle enforced',
+        'Add consentHook field to .thesmos/scope.json pointing to your consent-check function',
+        '.thesmos/scope.json')];
+    }
+    return [];
+  },
+};
+
+const AGNT_025: ThesmosRule = {
+  id: 'AGNT_025',
+  category: 'agent_dpia_missing',
+  severity: 'HIGH',
+  description: 'Agent processes high-risk data categories with no DPIA reference in scope.json.',
+  tags: ['agent', 'gdpr', 'dpia', 'compliance'],
+  frameworks: ['gdpr', 'eu-ai-act'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'GDPR Art. 35 mandates a Data Protection Impact Assessment before processing high-risk data (health, financial, biometric, criminal, children). Without a DPIA reference, you cannot demonstrate that risks were identified and mitigated before the agent went live.',
+    commonViolations: [
+      '{ "piiCategories": ["health", "biometric"] }  // no dpia field in scope.json',
+      '{ "piiCategories": ["children"], "dpia": "" }  // empty DPIA reference',
+    ],
+    goodExample: '{ "piiCategories": ["health"], "dpia": "docs/dpia-health-agent-2024.pdf", "consentHook": "hooks/consent.ts" }',
+    badExample: '{ "piiCategories": ["financial", "biometric"] }  // processes high-risk data with no impact assessment',
+    relatedPlaybooks: ['gdpr.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
+  detect(input: DetectInput): Finding[] {
+    const scopeContent = contentOf(input, 'scope.json');
+    if (!scopeContent) return [];
+    const scope = parseJson(scopeContent);
+    if (!scope) return [];
+    const HIGH_RISK = ['health', 'financial', 'biometric', 'criminal', 'children'];
+    const categories = scope.piiCategories as string[] | undefined;
+    const hasHighRisk = categories?.some((c) =>
+      HIGH_RISK.some((h) => c.toLowerCase().includes(h)),
+    );
+    if (!hasHighRisk) return [];
+    const dpia = scope.dpia as string | undefined;
+    if (!dpia) {
+      return [f('agent_dpia_missing', 'HIGH',
+        'scope.json includes high-risk data categories but no DPIA reference — GDPR Art. 35 / EU AI Act Art. 9',
+        'Add dpia field to .thesmos/scope.json referencing your Data Protection Impact Assessment',
+        '.thesmos/scope.json')];
+    }
+    return [];
+  },
+};
+
+const AGNT_026: ThesmosRule = {
+  id: 'AGNT_026',
+  category: 'agent_model_card_missing',
+  severity: 'HIGH',
+  description: 'No .thesmos/model-card.md found — EU AI Act Art. 13 transparency requirement.',
+  tags: ['agent', 'transparency', 'eu-ai-act', 'documentation'],
+  frameworks: ['eu-ai-act', 'nist-ai-rmf'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 13 requires that high-risk AI systems provide users with sufficient information about capabilities, limitations, and intended use. A model card codifies this — without one, stakeholders cannot make informed decisions about when to trust or override the agent.',
+    commonViolations: [
+      '// No .thesmos/model-card.md file exists — agent deployed with no transparency documentation',
+      '// model-card.md exists but is empty or only has a title',
+    ],
+    goodExample: '# Model Card\n## Intended Use\nCode review assistant for TypeScript monorepos.\n## Limitations\nMay miss domain-specific patterns. Always requires human sign-off on security findings.\n## Risk Mitigations\nBLOCKER findings escalated to human; no auto-merge without approval.',
+    badExample: '// Deploy agent with .thesmos/ config but no model-card.md — no documented limitations or oversight path',
+    relatedPlaybooks: ['ai-governance.md', 'eu-ai-act.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
+  detect(input: DetectInput): Finding[] {
+    const root = input.root ?? process.cwd();
+    if (!existsSync(join(root, '.claude')) || !existsSync(join(root, '.thesmos'))) return [];
+    if (!existsSync(join(root, '.thesmos', 'model-card.md'))) {
+      return [f('agent_model_card_missing', 'HIGH',
+        'No .thesmos/model-card.md found — EU AI Act Art. 13 requires AI system transparency documentation',
+        'Create .thesmos/model-card.md with model details, intended use, limitations, and risk mitigations',
+        '.thesmos/model-card.md')];
+    }
+    return [];
+  },
+};
+
+const AGNT_027: ThesmosRule = {
+  id: 'AGNT_027',
+  category: 'agent_audit_trail_immutable',
+  severity: 'HIGH',
+  description: '.thesmos/audit.jsonl is being modified by the agent — audit trail must be append-only.',
+  tags: ['agent', 'audit', 'compliance', 'integrity'],
+  frameworks: ['eu-ai-act', 'hipaa', 'dora'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'EU AI Act Art. 12, HIPAA §164.312(b), and DORA require tamper-evident audit logs. If an agent can modify or overwrite audit.jsonl, there is no reliable record of what the agent did — making incident reconstruction, compliance audits, and legal discovery impossible.',
+    commonViolations: [
+      '// Agent has Edit permission on .thesmos/audit.jsonl — can overwrite past entries',
+      '// audit.jsonl in changedFiles means the agent rewrote it rather than appending',
+    ],
+    goodExample: '// Use a write-protected append-only logging service or restrict audit.jsonl to append-only OS permissions\n// Agent only calls auditLog.append() — never writes directly to the file',
+    badExample: 'fs.writeFileSync(".thesmos/audit.jsonl", JSON.stringify(entries));  // overwrites entire log',
+    relatedPlaybooks: ['ai-governance.md', 'hipaa.md'],
+    relatedAgents: ['compliance-reviewer', 'security-reviewer'],
+    relatedSkills: [],
+  },
+  detect(input: DetectInput): Finding[] {
+    const auditFile = findFile(input, 'audit.jsonl');
+    if (auditFile) {
+      return [f('agent_audit_trail_immutable', 'HIGH',
+        '.thesmos/audit.jsonl is in changedFiles — audit trail must be append-only and not directly writable by agent',
+        'Restrict write access to audit.jsonl; use a write-protected append-only logging service',
+        auditFile.path)];
+    }
+    return [];
+  },
+};
+
+const AGNT_028: ThesmosRule = {
+  id: 'AGNT_028',
+  category: 'agent_cross_agent_auth_missing',
+  severity: 'HIGH',
+  description: 'Sub-agent spawned without forwarding parent session token — auth gap in agent chain.',
+  tags: ['agent', 'auth', 'security', 'sub-agent'],
+  frameworks: ['nist-ai-rmf', 'eu-ai-act'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'When a parent agent spawns a sub-agent without forwarding the session token, the sub-agent operates without the auth context established by the user. This breaks auditability (actions cannot be attributed to the originating user) and may allow the sub-agent to escalate privileges or bypass per-user rate limits.',
+    commonViolations: [
+      'Agent({ prompt: "review this file" })  // no sessionToken or authToken passed',
+      'spawnSubAgent({ task, model })  // session context not forwarded',
+    ],
+    goodExample: 'Agent({ prompt: "review this file", sessionToken: ctx.sessionToken, userId: ctx.userId })',
+    badExample: 'Agent({ prompt: subTask })  // sub-agent acts without user auth context — actions unattributable',
+    relatedPlaybooks: ['agent-security.md'],
+    relatedAgents: ['security-reviewer'],
+    relatedSkills: [],
+  },
+  detect(input: DetectInput): Finding[] {
+    const findings: Finding[] = [];
+    for (const cf of input.changedFiles ?? []) {
+      if (!/\.(ts|tsx|js|jsx)$/.test(cf.path)) continue;
+      const lines = cf.content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (/\bAgent\s*\(\s*\{/.test(line) && !/sessionToken|authToken|Authorization|token/.test(line)) {
+          findings.push(f('agent_cross_agent_auth_missing', 'HIGH',
+            'Sub-agent spawned without session token forwarding — creates auth gap in agent chain',
+            'Pass sessionToken or Authorization context when spawning sub-agents',
+            cf.path));
+          break;
+        }
+      }
+    }
+    return findings;
+  },
+};
+
+const AGNT_029: ThesmosRule = {
+  id: 'AGNT_029',
+  category: 'agent_pii_in_context_window',
+  severity: 'MEDIUM',
+  description: 'Agent context assembler may concatenate raw PII fields into the context window.',
+  tags: ['agent', 'pii', 'gdpr', 'privacy'],
+  frameworks: ['gdpr', 'hipaa'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Raw PII included in an LLM context window is transmitted to the model provider and may appear in training data, logs, or debug outputs. GDPR Art. 5(1)(c) data minimisation and HIPAA minimum necessary rules require that only necessary data is disclosed — redact before including in context.',
+    commonViolations: [
+      'const ctx = `User: ${user.email}, Phone: ${user.phone}`;  // raw PII in context string',
+      'messages.push({ role: "user", content: `Patient DOB: ${patient.dateOfBirth}` })',
+    ],
+    goodExample: 'const ctx = `User ID: ${user.id}`;  // reference by ID, not PII fields\nconst ctx2 = `User: ${redact(user.email)}`;  // or redact',
+    badExample: 'const prompt = `${user.firstName} ${user.lastName} ${user.ssn} — should I approve the loan?`;',
+    relatedPlaybooks: ['gdpr.md', 'hipaa.md'],
+    relatedAgents: ['security-reviewer', 'compliance-reviewer'],
+    relatedSkills: [],
+  },
+  detect(input: DetectInput): Finding[] {
+    const findings: Finding[] = [];
+    const PII_FIELDS_RE = /\b(email|phone|ssn|dateOfBirth|creditCard|password|address)\s*[+:]/i;
+    for (const cf of input.changedFiles ?? []) {
+      if (!/\.(ts|tsx|js|jsx)$/.test(cf.path)) continue;
+      if (!/(context|prompt|message)\s*[+=]/.test(cf.content)) continue;
+      if (PII_FIELDS_RE.test(cf.content)) {
+        findings.push(f('agent_pii_in_context_window', 'MEDIUM',
+          'Agent context assembler concatenates raw PII fields — data leaks into LLM context window',
+          'Redact or mask PII fields (email, phone, SSN, etc.) before including in agent context',
+          cf.path));
+      }
+    }
+    return findings;
+  },
+};
+
+const AGNT_030: ThesmosRule = {
+  id: 'AGNT_030',
+  category: 'agent_no_rollback_plan',
+  severity: 'MEDIUM',
+  description: 'Autopilot config has no rollbackStrategy — no recovery path if agent breaks production.',
+  tags: ['agent', 'autopilot', 'resilience', 'dora'],
+  frameworks: ['dora', 'nist-ai-rmf'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA requires that automated change processes include recovery mechanisms. An agent operating in autopilot mode with no rollbackStrategy has no defined path to undo harmful changes — a single bad commit or deploy can leave production in an unknown state with no recovery plan.',
+    commonViolations: [
+      '{ "autopilot": { "enabled": true } }  // no rollbackStrategy defined',
+      '{ "autopilot": { "enabled": true, "rollbackStrategy": "" } }  // empty rollback',
+    ],
+    goodExample: '{ "autopilot": { "enabled": true, "rollbackStrategy": "git-revert", "maxChangesPerRun": 3, "requiresApproval": true } }',
+    badExample: '{ "autopilot": { "enabled": true, "autoMerge": true } }  // auto-merges with no rollback or approval gate',
+    relatedPlaybooks: ['agent-security.md'],
+    relatedAgents: ['compliance-reviewer'],
+    relatedSkills: [],
+  },
+  detect(input: DetectInput): Finding[] {
+    const configContent = contentOf(input, 'config.json');
+    if (!configContent) return [];
+    const configFile = findFile(input, 'config.json');
+    if (!configFile?.path.includes('.thesmos')) return [];
+    const config = parseJson(configContent);
+    if (!config) return [];
+    const autopilot = config.autopilot as Record<string, unknown> | undefined;
+    if (!autopilot) return [];
+    if (!autopilot.rollbackStrategy) {
+      return [f('agent_no_rollback_plan', 'MEDIUM',
+        'Autopilot config has no rollbackStrategy — no recovery path if agent breaks production',
+        'Add "rollbackStrategy": "git-revert" (or "branch-delete" | "manual") to autopilot config',
+        configFile.path)];
+    }
+    return [];
+  },
+};
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 export const AGENT_RULES: ThesmosRule[] = [
@@ -840,4 +1144,12 @@ export const AGENT_RULES: ThesmosRule[] = [
   AGNT_020,
   AGNT_021,
   AGNT_022,
+  AGNT_023,
+  AGNT_024,
+  AGNT_025,
+  AGNT_026,
+  AGNT_027,
+  AGNT_028,
+  AGNT_029,
+  AGNT_030,
 ];
