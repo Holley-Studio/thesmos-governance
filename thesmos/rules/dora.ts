@@ -50,6 +50,17 @@ const DORA_001: ThesmosRule = {
   tags: ['dora', 'incident', 'resilience'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 18 requires financial entities to classify ICT incidents by type, impact, and severity within documented timeframes. Without a policy, incident response is ad hoc and non-compliant.',
+    commonViolations: [
+      'No incident classification policy document in the repository',
+        'Incident response runbook exists but lacks severity classification criteria',
+        'On-call runbook classifies incidents but not per DORA Art. 18 taxonomy',
+    ],
+    goodExample: `// See docs/incident-classification-policy.md (DORA Art. 18 compliant)
+await classifyIncident(event, policyRef);`,
+    badExample: `// No classification policy — incident response is ad hoc`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -77,6 +88,17 @@ const DORA_002: ThesmosRule = {
   tags: ['dora', 'third-party', 'supply-chain'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 28 requires financial entities to maintain a register of all ICT third-party service providers and assess their concentration risk. Without a register, supply chain risk is invisible.',
+    commonViolations: [
+      'External API dependencies not documented in any ICT supplier register',
+        'Cloud providers and SaaS tools not enumerated in DORA register',
+        'No contractual provisions for ICT resilience with third-party providers',
+    ],
+    goodExample: `// Third-party ICT register: docs/ict-supplier-register.md
+// Vendor: OpenAI — contractual resilience provisions in place`,
+    badExample: `import OpenAI from "openai"; // no supplier register entry for this dependency`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -103,6 +125,16 @@ const DORA_003: ThesmosRule = {
   tags: ['dora', 'resilience', 'testing'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 25 requires financial entities to test digital operational resilience annually, including advanced threat-led penetration testing (TLPT) every 3 years.',
+    commonViolations: [
+      'No penetration testing or resilience testing schedule documented',
+        'Annual DR test exists but not aligned with DORA Art. 25 requirements',
+        'No threat-led penetration test in the past 3 years',
+    ],
+    goodExample: `// See docs/resilience-testing-plan.md — Art. 25 TLPT scheduled 2026-Q3`,
+    badExample: `// No resilience testing plan documented — DORA Art. 25 non-compliance`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -129,6 +161,16 @@ const DORA_004: ThesmosRule = {
   tags: ['dora', 'rto', 'rpo', 'continuity'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 11 requires ICT business continuity policies to include specific Recovery Time Objectives (RTO) and Recovery Point Objectives (RPO) for critical systems.',
+    commonViolations: [
+      'Business continuity policy exists but lacks RTO/RPO values',
+        'DR runbook has recovery steps but no time targets',
+        'BCP refers to "reasonable time" rather than specific RTO hours',
+    ],
+    goodExample: `// BCP: docs/bcp.md — RTO: 4 hours, RPO: 1 hour (DORA Art. 11 compliant)`,
+    badExample: `// BCP has no RTO/RPO — non-compliant with DORA Art. 11`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -160,6 +202,16 @@ const DORA_005: ThesmosRule = {
   tags: ['dora', 'threat-intelligence', 'sharing'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 45 encourages financial entities to participate in threat intelligence sharing arrangements to improve collective cyber resilience.',
+    commonViolations: [
+      'No threat intelligence sharing framework or membership configured',
+        'Security team receives threat intel but does not share back',
+        'No ISAC membership or sector intelligence sharing documented',
+    ],
+    goodExample: `// Threat intel sharing: FS-ISAC membership active — see docs/threat-intel-sharing.md`,
+    badExample: `// No threat intelligence sharing configured — DORA Art. 45 recommendation unmet`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
@@ -189,6 +241,16 @@ const DORA_006: ThesmosRule = {
   tags: ['dora', 'change-management', 'resilience'],
   frameworks: ['dora'],
   sinceVersion: '2.1.0',
+  explain: {
+    why: 'DORA Art. 30 requires contracts with ICT third-party service providers to include specific provisions on availability, continuity, and exit strategies.',
+    commonViolations: [
+      'SaaS vendor contract missing SLA for ICT resilience',
+        'Cloud provider agreement lacks DORA-required exit assistance clause',
+        'Third-party API used without reviewing contract for DORA Art. 30 provisions',
+    ],
+    goodExample: `// Vendor contract reviewed for DORA Art. 30: docs/vendor-review-dora.pdf`,
+    badExample: `// No DORA contract review documented for this third-party dependency`,
+  },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const allFiles = (input.changedFiles ?? []);
