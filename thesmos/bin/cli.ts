@@ -533,7 +533,7 @@ const cliStart = Date.now();
 log.info('command start', { command });
 
 // Skip update check for machine-readable commands and update itself
-const SKIP_UPDATE_CHECK = new Set(['tokens:report', 'health', 'self:check', 'self:update', 'self:improve', 'profile:view', 'license:status']);
+const SKIP_UPDATE_CHECK = new Set(['tokens:report', 'health', 'self:check', 'self:update', 'self:improve', 'profile:view', 'license:status', 'lsp']);
 
 handler(argv.slice(1))
   .then(() => {

@@ -150,7 +150,11 @@ function uriToPath(uri: string): string {
 function send(msg: LspResponse | LspNotification): void {
   const body = JSON.stringify(msg);
   const header = `Content-Length: ${Buffer.byteLength(body)}\r\n\r\n`;
-  process.stdout.write(header + body);
+  try {
+    process.stdout.write(header + body);
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'EPIPE') process.exit(0);
+  }
 }
 
 function publishDiagnostics(uri: string, content: string, findings: Finding[]): void {
@@ -363,7 +367,11 @@ function dispatch(msg: LspRequest): void {
 // ── stdio transport (header-framed) ──────────────────────────────────────────
 
 export function startLspServer(): void {
+  process.stdout.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EPIPE') process.exit(0);
+  });
   process.on('uncaughtException', (err: Error) => {
+    if ((err as NodeJS.ErrnoException).code === 'EPIPE') process.exit(0);
     log.error('uncaught exception', { message: err.message });
   });
   process.on('unhandledRejection', (reason: unknown) => {
