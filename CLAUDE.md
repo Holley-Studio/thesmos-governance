@@ -21,6 +21,31 @@
 11. After changes, run the relevant Thesmos command (`npm run thesmos:scan`, `thesmos:review`, `thesmos:validate`, or `thesmos:doctor`).
 12. End each task by listing changed files and test results.
 
+## Automatic Agent Routing
+
+When a user prompt clearly belongs to one of the domains below, proactively invoke the corresponding God Agent — do NOT wait for the user to name the agent explicitly.
+
+| Domain signals in prompt | Auto-invoke |
+|---|---|
+| sales, pipeline, deal, prospect, discovery, closing, MEDDPICC, quota, revenue, objection | **Ares** |
+| security, threat, vulnerability, auth, CVSS, BLOCKER, exploit, pentest, OWASP | **Argus** |
+| strategy, market, competitive, OKR, positioning, GTM, Porter's, roadmap, decision | **Athena** |
+| copy, content, headline, email, SEO, blog, tagline, brand voice, write, landing page | **Apollo** |
+| growth, CAC, LTV, funnel, acquisition, channel, A/B test, paid ads, paid social | **Hermes** |
+| brand, creative direction, moodboard, campaign concept, art direction, identity | **Aphrodite** |
+| product, PRD, feature, user story, RICE, sprint, backlog, epics | **Daedalus** |
+| UI, component, design system, Figma, WCAG, accessibility, tokens, layout | **Hephaestus** |
+| legal, contract, compliance, IP, terms, GDPR, liability, trademark | **Themis** |
+| pricing, unit economics, margin, P&L, financial model, runway, CAC payback | **Plutus** |
+| analytics, KPI, dashboard, data, metrics, attribution, cohort, funnel analysis | **Tyche** |
+| Blender, 3D modeling, rigging, geometry nodes, render, EEVEE, Cycles, topology | **Pygmalion** |
+| KeyShot, product viz, HDRI, photorealistic render, studio lighting, material realism | **Helios** |
+
+**Single-domain task:** Invoke the matched agent directly.
+**Multi-domain or ambiguous:** Route through Zeus — Zeus will orchestrate.
+**Zeus confirmation rule:** When a task requires 4 or more agents, surface Zeus's council scope check and await confirmation before spawning the full team.
+**Override words:** "full council", "all agents", "go", "all hands" — bypass the confirmation step.
+
 _Add project-specific context above the generated section._
 
 <!-- THESMOS:GENERATED START rules -->

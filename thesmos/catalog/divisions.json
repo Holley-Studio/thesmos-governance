@@ -1,0 +1,129 @@
+[
+  {
+    "id": "pantheon",
+    "label": "Pantheon",
+    "icon": "⚡",
+    "color": "#6366F1",
+    "description": "Core executive, strategy, and cross-functional gods — the primary orchestration layer",
+    "agents": [
+      "zeus-executive-agent",
+      "athena-strategy-agent",
+      "argus-security-agent",
+      "apollo-content-agent",
+      "hermes-marketing-agent",
+      "ares-sales-agent",
+      "nike-leadgen-agent",
+      "daedalus-product-agent",
+      "hephaestus-design-agent",
+      "aphrodite-creative-agent",
+      "themis-legal-agent",
+      "plutus-finance-agent",
+      "tyche-analytics-agent",
+      "mnemosyne-knowledge-agent",
+      "pheme-pr-agent",
+      "hestia-cx-agent",
+      "heracles-bd-agent",
+      "morpheus-animation-agent",
+      "dionysus-video-agent",
+      "iris-photography-agent",
+      "hera-operations-agent",
+      "dike-ethics-agent",
+      "demeter-cs-agent",
+      "eidos-figma-agent",
+      "proteus-drift-agent",
+      "pythia-data-agent"
+    ]
+  },
+  {
+    "id": "sales",
+    "label": "Sales",
+    "icon": "⚔️",
+    "color": "#10B981",
+    "description": "Ares sales cluster — orchestrator plus three motion specialists",
+    "agents": [
+      "ares-sales-agent",
+      "ares-discovery-agent",
+      "ares-deal-strategy-agent",
+      "ares-pipeline-agent"
+    ]
+  },
+  {
+    "id": "figma",
+    "label": "Figma",
+    "icon": "🎭",
+    "color": "#EC4899",
+    "description": "9-agent Figma design system cluster orchestrated by Eidos",
+    "agents": [
+      "eidos-figma-agent",
+      "mnemon-figma-agent",
+      "techne-figma-agent",
+      "ergon-figma-agent",
+      "harmonia-figma-agent",
+      "kairos-figma-agent",
+      "morphe-figma-agent",
+      "stoa-figma-agent",
+      "zephyros-figma-agent"
+    ]
+  },
+  {
+    "id": "creative",
+    "label": "Creative",
+    "icon": "🎨",
+    "color": "#8B5CF6",
+    "description": "Brand voice, content, animation, photography, video, and 3D specialists",
+    "agents": [
+      "apollo-content-agent",
+      "aphrodite-creative-agent",
+      "erato-brand-voice-agent",
+      "morpheus-animation-agent",
+      "pygmalion-blender-agent",
+      "helios-keyshot-agent",
+      "dionysus-video-agent",
+      "iris-photography-agent",
+      "calliope-email-agent"
+    ]
+  },
+  {
+    "id": "platform",
+    "label": "Platform",
+    "icon": "🏗️",
+    "color": "#F59E0B",
+    "description": "Infrastructure, development, DevOps, QA, and platform integrations",
+    "agents": [
+      "talos-web-dev-agent",
+      "chiron-architecture-agent",
+      "kratos-devops-agent",
+      "cassandra-qa-agent",
+      "eos-automation-agent",
+      "aether-ai-agent",
+      "polyhymnia-docs-agent"
+    ]
+  },
+  {
+    "id": "knowledge",
+    "label": "Knowledge",
+    "icon": "📚",
+    "color": "#0EA5E9",
+    "description": "Documentation, case studies, institutional memory, and drift detection",
+    "agents": [
+      "mnemosyne-knowledge-agent",
+      "clio-casestudy-agent",
+      "polyhymnia-docs-agent",
+      "proteus-drift-agent"
+    ]
+  },
+  {
+    "id": "compliance",
+    "label": "Compliance",
+    "icon": "⚖️",
+    "color": "#EF4444",
+    "description": "Legal, ethics, GRC, finance, and regulatory governance",
+    "agents": [
+      "themis-legal-agent",
+      "dike-ethics-agent",
+      "nemesis-compliance-agent",
+      "plutus-finance-agent",
+      "psyche-research-agent"
+    ]
+  }
+]

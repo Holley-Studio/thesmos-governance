@@ -150,7 +150,15 @@
     "thesmos:context:health":          "tsx bin/cli.ts context:health",
     "thesmos:commit:lint":             "tsx bin/cli.ts commit:lint",
     "thesmos:commit:create":           "tsx bin/cli.ts commit:create",
-    "thesmos:vercel:lint":             "tsx bin/cli.ts vercel:lint"
+    "thesmos:vercel:lint":             "tsx bin/cli.ts vercel:lint",
+    "agents:export":                   "tsx scripts/export-agents.ts",
+    "agents:export:cursor":            "tsx scripts/export-agents.ts --format=cursor",
+    "agents:export:copilot":           "tsx scripts/export-agents.ts --format=copilot",
+    "agents:export:gpt":               "tsx scripts/export-agents.ts --format=gpt",
+    "agents:export:gemini":            "tsx scripts/export-agents.ts --format=gemini",
+    "agents:pack":                     "tsx scripts/package-agents.ts",
+    "gumroad:sync":                    "tsx scripts/gumroad-sync.ts",
+    "gumroad:publish":                 "npm run agents:pack && npm run gumroad:sync"
   },
   "optionalDependencies": {
     "lightningcss-linux-x64-gnu": "1.32.0",
