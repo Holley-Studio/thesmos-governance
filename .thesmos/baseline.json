@@ -1,7 +1,7 @@
 {
   "version": "1",
   "createdAt": "2026-06-26T18:30:14.987Z",
-  "updatedAt": "2026-06-26T18:30:14.987Z",
+  "updatedAt": "2026-07-01T21:23:37.784Z",
   "entries": [
     {
       "fingerprint": "3ec73a907a23b540",
@@ -36,12 +36,356 @@
       "recordedAt": "2026-06-26T18:30:14.987Z"
     },
     {
+      "fingerprint": "29220b249c47ba17",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "extensions/vscode/src/commands.ts",
+      "message": "File has 805 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
       "fingerprint": "d667c9f785e2a6dd",
       "ruleCategory": "dep_no_integrity",
       "severity": "MEDIUM",
       "file": "package-lock.json",
       "message": "package-lock.json has 3 entries missing integrity hashes.",
       "recordedAt": "2026-06-26T18:30:14.987Z"
+    },
+    {
+      "fingerprint": "6344d9d2f4e12ca5",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/bin/commands/build.ts",
+      "message": "File has 990 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "50c572e4a00b2858",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/bin/commands/pantheon.ts",
+      "message": "File has 816 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "c03cdb28a954db4e",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/drift.test.ts",
+      "message": "File has 933 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "5f954a69f9cb0e3f",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/fix.test.ts",
+      "message": "File has 1187 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "6992d0a4674dfd99",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/fix.ts",
+      "message": "File has 1440 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "7654a63e267632f0",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/init.ts",
+      "message": "File has 906 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "8078eca6323959fe",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/agents.ts",
+      "message": "File has 1156 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "499399757b4ba446",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/ai.ts",
+      "message": "File has 1672 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "f20b7af21f8b5cf5",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/csharp.test.ts",
+      "message": "File has 805 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "39de8cf4e3c86a05",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/csharp.ts",
+      "message": "File has 947 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "4ad9aa66c047e452",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/database.ts",
+      "message": "File has 1350 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "4b2acd1e5d3e0be9",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/debt.ts",
+      "message": "File has 1153 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "d699c62eefd50f08",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/design.test.ts",
+      "message": "File has 961 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "d74c2ed492ef8bed",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/design.ts",
+      "message": "File has 855 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "625416af5f52e53c",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/django.ts",
+      "message": "File has 828 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "931428ccbd965f87",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/errors.ts",
+      "message": "File has 916 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "7066487f7415dac1",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/gdpr.ts",
+      "message": "File has 811 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "3bdc545400217b5b",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/go.test.ts",
+      "message": "File has 938 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "7102992a69450a5d",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/go.ts",
+      "message": "File has 871 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "1780eb4f7c1f1506",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/graphql.ts",
+      "message": "File has 943 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "aca3a08ea04e8b86",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/java.test.ts",
+      "message": "File has 1126 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "dbfcf15f4fdf5fff",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/java.ts",
+      "message": "File has 842 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "c02de764e907f956",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/mcp.ts",
+      "message": "File has 939 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "6b7f541ff3b65676",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/nextjs.ts",
+      "message": "File has 1606 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "74d5e16e322e603b",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/node.ts",
+      "message": "File has 1101 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "a7065d0aad1e565b",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/performance.ts",
+      "message": "File has 1089 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "31f65bbb50e9d4f5",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/php.test.ts",
+      "message": "File has 810 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "0b15a24f8039f33a",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/php.ts",
+      "message": "File has 828 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "1ad1e4f49714d069",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/prisma.ts",
+      "message": "File has 1086 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "3817c8c77ce1f210",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/python.ts",
+      "message": "File has 1737 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "d77b7006e783d25d",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/react.ts",
+      "message": "File has 1122 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "2c1fce3941c992f3",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/ruby.test.ts",
+      "message": "File has 951 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "cac6f1d339e7113e",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/ruby.ts",
+      "message": "File has 852 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "658a28365203d8f9",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/rust.test.ts",
+      "message": "File has 818 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "8caff19885bc5e33",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/rust.ts",
+      "message": "File has 856 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "a942b4d49f5ac76e",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/security.ts",
+      "message": "File has 1698 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "e18d1e1cded34cc9",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/slopsquatting.ts",
+      "message": "File has 998 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "1ddbeadee8cbc424",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/terraform.ts",
+      "message": "File has 1002 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "9026f86c54592007",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/trpc.ts",
+      "message": "File has 870 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "2f272ff289e27090",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/typescript.ts",
+      "message": "File has 1220 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "ffc0f086efac366e",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/vibe-coding.ts",
+      "message": "File has 1403 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
+    },
+    {
+      "fingerprint": "b47d7efab1c6f550",
+      "ruleCategory": "large_file",
+      "severity": "MEDIUM",
+      "file": "thesmos/rules/zod.ts",
+      "message": "File has 1078 lines (threshold: 800).",
+      "recordedAt": "2026-07-01T21:23:37.784Z"
     },
     {
       "fingerprint": "1f38e66952a86c1c",

@@ -1,5 +1,6 @@
 {
   "typescript.tsdk": "thesmos/node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
-  "github-actions.workflows.pinning.enabled": false
+  "github-actions.workflows.pinning.enabled": false,
+  "vitest.nodeExecutable": "/Users/MHolley/.nvm/versions/node/v20.20.2/bin/node"
 }

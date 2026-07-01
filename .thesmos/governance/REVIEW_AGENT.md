@@ -54,6 +54,7 @@ When reviewing code in this repository:
 - **[AI_028]** LLM output rendered directly as HTML without sanitization — XSS via AI response.
 - **[AI_029]** System prompt concatenated directly with user input — adversarial prompt can override system instructions.
 - **[AI_030]** LLM output used directly as a shell command or SQL query without validation — command/SQL injection via AI.
+- **[AI_038]** LLM used for high-risk decisions (credit, hiring, health) without mandatory human review gate.
 - **[DB_001]** `DROP TABLE` in a migration permanently destroys data and is unrecoverable without a backup.
 - **[DB_002]** Storing passwords in plaintext or with reversible encoding is a critical security vulnerability.
 - **[DB_005]** SQL constructed with template literals and user input is vulnerable to SQL injection.
@@ -193,11 +194,14 @@ When reviewing code in this repository:
 - **[AGNT_003]** .claude/settings.json has no bash deny patterns — agent can run arbitrary shell commands.
 - **[AGNT_013]** Agent loop uses alert/warn on token usage but has no hard stop — cost runaway if alert is ignored.
 - **[AGNT_014]** Agent autopilot config has no maxIterationsPerTask — tasks can loop indefinitely.
+- **[AGNT_023]** Agent bash/edit tool granted without path restrictions — full filesystem access.
 - **[DEP_001]** Dependency has a CRITICAL CVE — immediate upgrade required.
 - **[LIC_001]** GPL/AGPL dependency found in a project with a commercial or permissive license — copyleft contamination.
 - **[LIC_009]** Project is open source (GPL) but has a permissive dep that conflicts with GPL requirements.
 - **[GDPR_007]** PII sent to external logging service (Sentry/Datadog/LogRocket) — third-party data transfer.
 - **[GDPR_011]** API error response may include user object fields — PII leak via error messages.
+- **[GDPR_016]** No consent revocation endpoint — GDPR Art. 7(3) requires withdrawal to be as easy as granting.
+- **[GDPR_020]** High-risk special-category data processed with no DPIA referenced — GDPR Art. 35.
 - **[MCP_001]** MCP tool description contains instruction-like patterns — potential tool poisoning (CVE-2025-54136).
 - **[MCP_002]** MCP server response passed directly into a prompt or eval — enables indirect prompt injection.
 - **[MCP_003]** MCP tool output passed directly to exec/eval/spawn — remote code execution if server is compromised.
@@ -219,6 +223,15 @@ When reviewing code in this repository:
 - **[DAST_008]** Template engine render called with user-controlled template string — Server-Side Template Injection (SSTI) risk.
 - **[K8S_003]** Kubernetes container runs with privileged: true — equivalent to root access on the host node.
 - **[K8S_005]** Kubernetes secret value appears as a literal string in env: rather than using secretKeyRef.
+- **[EU_AI_001]** High-risk AI system (Annex III) deployed without a conformity assessment — EU AI Act Art. 43.
+- **[EU_AI_002]** Biometric categorization or real-time remote biometric identification — prohibited practice under EU AI Act Art. 5.
+- **[HIPAA_001]** PHI fields stored in database without encryption at rest — HIPAA §164.312(a)(2)(iv).
+- **[HIPAA_002]** PHI transmitted over HTTP (non-TLS) — HIPAA §164.312(e)(2)(ii) requires encryption in transit.
+- **[HIPAA_003]** API route accessing PHI with no authentication check — HIPAA §164.312(a)(1).
+- **[DORA_001]** No ICT incident classification policy found — DORA Art. 18 requires a documented classification scheme.
+- **[LOCAL_LLM_001]** User input interpolated directly into an Ollama prompt or messages without sanitization — prompt injection.
+- **[LOCAL_LLM_002]** model: field sourced from user input — attacker can load any model on the server.
+- **[LOCAL_LLM_003]** OLLAMA_HOST=0.0.0.0 in .env — exposes the inference API to the entire network without authentication.
 
 **HIGH — flag before completing review:**
 
@@ -291,6 +304,10 @@ When reviewing code in this repository:
 - **[AI_033]** System prompt stored or transmitted in a client-accessible location — prompt leakage (OWASP LLM07).
 - **[AI_034]** LLM response returned to user without content moderation filter — harmful output risk.
 - **[AI_035]** AI-generated code snippets executed without human review gate — supply chain and code injection risk.
+- **[AI_039]** AI-generated output displayed to end users with no disclosure that AI produced it.
+- **[AI_040]** No append-only audit log of AI decisions — EU AI Act Art. 12 + HIPAA §164.312.
+- **[AI_041]** Model used for classification/scoring with no bias or fairness evaluation documented.
+- **[AI_042]** PII sent to external LLM API with no Data Processing Agreement reference in config.
 - **[PERF_001]** `fs.readFileSync` and `fs.writeFileSync` in async request handlers block the Node.js event loop.
 - **[PERF_003]** Database query inside a loop causes N+1 queries — one per iteration instead of one batched query.
 - **[A11Y_001]** <img> elements must have an `alt` attribute for screen readers and SEO.
@@ -567,6 +584,11 @@ When reviewing code in this repository:
 - **[AGNT_015]** Autopilot config has no maxCostUSD — no financial ceiling on agent sessions.
 - **[AGNT_016]** Agent tool chain has no AbortController — long-running tool calls cannot be cancelled.
 - **[AGNT_017]** Agent can perform destructive or high-cost operations without human-in-the-loop approval.
+- **[AGNT_024]** Agent scope declares PII categories but has no consent lifecycle hook.
+- **[AGNT_025]** Agent processes high-risk data categories with no DPIA reference in scope.json.
+- **[AGNT_026]** No .thesmos/model-card.md found — EU AI Act Art. 13 transparency requirement.
+- **[AGNT_027]** .thesmos/audit.jsonl is being modified by the agent — audit trail must be append-only.
+- **[AGNT_028]** Sub-agent spawned without forwarding parent session token — auth gap in agent chain.
 - **[DEP_002]** Dependency has a HIGH severity CVE.
 - **[DEP_004]** Dependency not updated in 2+ years AND has a known CVE — no fix expected.
 - **[DEP_006]** Dependency points to a git URL instead of a semver version — no integrity guarantee.
@@ -580,6 +602,9 @@ When reviewing code in this repository:
 - **[GDPR_005]** PII stored in localStorage without encryption — accessible to any JavaScript on the page.
 - **[GDPR_010]** Third-party tracking script loaded without consent wrapper.
 - **[GDPR_014]** Test fixtures contain real-looking email or phone numbers — use synthetic data.
+- **[GDPR_017]** No data export endpoint — GDPR Art. 20 grants users the right to data portability.
+- **[GDPR_018]** Data processing route with no lawful basis declaration — GDPR Art. 6 requires a legal ground.
+- **[GDPR_019]** Data sent to a non-EEA endpoint with no SCCs or adequacy decision referenced.
 - **[MCP_004]** MCP server registered from external/untrusted source without an integrity check.
 - **[MCP_005]** MCP tool performs a destructive action (delete/drop/truncate/destroy) without a confirmation gate.
 - **[MCP_006]** MCP server implementation exposes tools without authentication.
@@ -635,4 +660,24 @@ When reviewing code in this repository:
 - **[SELF_001]** Installed thesmos-governance is behind the latest npm release by ≥ 1 minor version.
 - **[SELF_003]** Git hook installed by Thesmos references thesmos-governance but the package may not be installed.
 - **[SELF_004]** .thesmos/config.json uses an old schema (missing required fields from the current version).
+- **[EU_AI_003]** High-risk AI system with no risk management documentation — EU AI Act Art. 9.
+- **[EU_AI_004]** High-risk AI with no training data governance plan — EU AI Act Art. 10 requires data quality criteria.
+- **[EU_AI_005]** AI system with no technical documentation (model card) — EU AI Act Art. 11 requirement.
+- **[EU_AI_006]** High-risk AI decision without append-only audit logging — EU AI Act Art. 12 traceability requirement.
+- **[EU_AI_007]** High-risk AI outcome applied automatically with no human review gate — EU AI Act Art. 14.
+- **[HIPAA_004]** PHI accessed in API route with no audit log — HIPAA §164.312(b) requires hardware/software activity records.
+- **[HIPAA_005]** API response may return full PHI record without minimum-necessary filtering — HIPAA §164.502(b).
+- **[HIPAA_006]** PHI sent to an external LLM API with no Business Associate Agreement referenced.
+- **[HIPAA_007]** PHI access route with no session timeout configuration — HIPAA §164.312(a)(2)(iii).
+- **[DORA_002]** Third-party ICT provider dependency found with no contract/register maintained — DORA Art. 28.
+- **[DORA_003]** No digital operational resilience testing plan — DORA Art. 25 requires annual resilience testing.
+- **[DORA_004]** ICT business continuity policy has no documented RTO/RPO — DORA Art. 11 requirement.
+- **[DORA_005]** No threat intelligence sharing framework configured — DORA Art. 45 encourages voluntary sharing.
+- **[LOCAL_LLM_004]** OLLAMA_ORIGINS=* in .env — any website can call localhost:11434 from the browser via CORS.
+- **[LOCAL_LLM_005]** Ollama call without AbortController signal — generation can hang indefinitely, exhausting VRAM.
+- **[LOCAL_LLM_006]** model: 'llama3' (no :tag) resolves to the changing 'latest' digest — behavioral drift on every Ollama update.
+- **[LOCAL_LLM_007]** API route calling Ollama with no rate limiting — VRAM DoS via parallel generation requests.
+- **[LOCAL_LLM_008]** OLLAMA_HOST points to a non-localhost address — data assumed "local" is actually sent to a remote server.
+- **[LOCAL_LLM_009]** Ollama response returned to users with no content moderation check — no built-in safety filter.
+- **[LOCAL_LLM_010]** Ollama JSON response used in structured logic without schema validation — crashes when model format drifts.
 <!-- THESMOS:GENERATED END instructions -->

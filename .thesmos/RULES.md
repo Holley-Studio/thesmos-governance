@@ -217,6 +217,14 @@
 | AI_035 | `ai_generated_code_auto_executed` | 🟠 HIGH | AI-generated code snippets executed without human review gate — supply chain and code injection risk. |
 | AI_036 | `ai_hallucination_no_grounding` | 🟡 MEDIUM | LLM used for factual queries without retrieval grounding — misinformation risk (OWASP LLM09). |
 | AI_037 | `ai_model_not_pinned` | 🟡 MEDIUM | LLM model string not pinned to a specific version — silent behavioral drift on model updates. |
+| AI_038 | `ai_high_risk_no_human_oversight` | 🔴 BLOCKER | LLM used for high-risk decisions (credit, hiring, health) without mandatory human review gate. |
+| AI_039 | `ai_transparency_missing` | 🟠 HIGH | AI-generated output displayed to end users with no disclosure that AI produced it. |
+| AI_040 | `ai_immutable_audit_log_missing` | 🟠 HIGH | No append-only audit log of AI decisions — EU AI Act Art. 12 + HIPAA §164.312. |
+| AI_041 | `ai_bias_check_missing` | 🟠 HIGH | Model used for classification/scoring with no bias or fairness evaluation documented. |
+| AI_042 | `ai_pii_to_llm_no_dpa` | 🟠 HIGH | PII sent to external LLM API with no Data Processing Agreement reference in config. |
+| AI_043 | `ai_explainability_missing` | 🟡 MEDIUM | High-stakes AI decisions (score, rank, classify) returned without explanation to the user. |
+| AI_044 | `ai_training_data_lineage` | 🟡 MEDIUM | Fine-tuning pipeline ingests user data with no lineage or consent record. |
+| AI_045 | `ai_output_schema_drift` | 🟡 MEDIUM | LLM output schema not versioned — silent drift when prompt or model changes. |
 | PERF_001 | `sync_fs_in_handler` | 🟠 HIGH | `fs.readFileSync` and `fs.writeFileSync` in async request handlers block the Node.js event loop. |
 | PERF_002 | `regex_in_function_body` | 🔵 LOW | Regex literals created inside function bodies are recompiled on every call. Move to module scope. |
 | PERF_003 | `n_plus_one_query` | 🟠 HIGH | Database query inside a loop causes N+1 queries — one per iteration instead of one batched query. |
@@ -936,6 +944,14 @@
 | AGNT_020 | `agent_no_cost_metrics` | 🟡 MEDIUM | No cost/token metric export configured — agent spend is invisible to monitoring. |
 | AGNT_021 | `agent_no_daily_spend_cap` | 🟡 MEDIUM | No daily or weekly spend cap configured — multiple session overruns can compound costs. |
 | AGNT_022 | `agent_battery_runaway_risk` | 🔵 LOW | Autopilot can run when the machine is on battery — risks unintended overnight runs. |
+| AGNT_023 | `agent_privilege_over_grant` | 🔴 BLOCKER | Agent bash/edit tool granted without path restrictions — full filesystem access. |
+| AGNT_024 | `agent_consent_lifecycle_missing` | 🟠 HIGH | Agent scope declares PII categories but has no consent lifecycle hook. |
+| AGNT_025 | `agent_dpia_missing` | 🟠 HIGH | Agent processes high-risk data categories with no DPIA reference in scope.json. |
+| AGNT_026 | `agent_model_card_missing` | 🟠 HIGH | No .thesmos/model-card.md found — EU AI Act Art. 13 transparency requirement. |
+| AGNT_027 | `agent_audit_trail_immutable` | 🟠 HIGH | .thesmos/audit.jsonl is being modified by the agent — audit trail must be append-only. |
+| AGNT_028 | `agent_cross_agent_auth_missing` | 🟠 HIGH | Sub-agent spawned without forwarding parent session token — auth gap in agent chain. |
+| AGNT_029 | `agent_pii_in_context_window` | 🟡 MEDIUM | Agent context assembler may concatenate raw PII fields into the context window. |
+| AGNT_030 | `agent_no_rollback_plan` | 🟡 MEDIUM | Autopilot config has no rollbackStrategy — no recovery path if agent breaks production. |
 | DEP_001 | `dep_critical_cve` | 🔴 BLOCKER | Dependency has a CRITICAL CVE — immediate upgrade required. |
 | DEP_002 | `dep_high_cve` | 🟠 HIGH | Dependency has a HIGH severity CVE. |
 | DEP_003 | `dep_medium_cve` | 🟡 MEDIUM | Dependency has a MEDIUM severity CVE. |
@@ -971,6 +987,11 @@
 | GDPR_013 | `gdpr_session_no_expiry` | 🟡 MEDIUM | Session cookie configured without maxAge or expires — session may persist indefinitely. |
 | GDPR_014 | `gdpr_pii_in_test_fixtures` | 🟠 HIGH | Test fixtures contain real-looking email or phone numbers — use synthetic data. |
 | GDPR_015 | `gdpr_ip_stored_without_consent` | 🟡 MEDIUM | IP address stored to database — under GDPR, IP is considered personal data. |
+| GDPR_016 | `gdpr_consent_revocation_missing` | 🔴 BLOCKER | No consent revocation endpoint — GDPR Art. 7(3) requires withdrawal to be as easy as granting. |
+| GDPR_017 | `gdpr_data_portability_missing` | 🟠 HIGH | No data export endpoint — GDPR Art. 20 grants users the right to data portability. |
+| GDPR_018 | `gdpr_lawful_basis_undeclared` | 🟠 HIGH | Data processing route with no lawful basis declaration — GDPR Art. 6 requires a legal ground. |
+| GDPR_019 | `gdpr_cross_border_transfer_no_safeguard` | 🟠 HIGH | Data sent to a non-EEA endpoint with no SCCs or adequacy decision referenced. |
+| GDPR_020 | `gdpr_dpia_missing_high_risk` | 🔴 BLOCKER | High-risk special-category data processed with no DPIA referenced — GDPR Art. 35. |
 | MCP_001 | `mcp_tool_description_injection` | 🔴 BLOCKER | MCP tool description contains instruction-like patterns — potential tool poisoning (CVE-2025-54136). |
 | MCP_002 | `mcp_response_as_instructions` | 🔴 BLOCKER | MCP server response passed directly into a prompt or eval — enables indirect prompt injection. |
 | MCP_003 | `mcp_tool_output_exec` | 🔴 BLOCKER | MCP tool output passed directly to exec/eval/spawn — remote code execution if server is compromised. |
@@ -1081,6 +1102,40 @@
 | SELF_008 | `self_ci_pinned_old_version` | 🔵 LOW | GitHub Actions workflow pins thesmos-governance to an old version via npx or npm install. |
 | SELF_009 | `self_orphaned_suppression` | 🟡 MEDIUM | Suppression comment references a rule ID that does not exist in the current rule set. |
 | SELF_010 | `self_not_in_devdeps` | 🔵 LOW | thesmos-governance is not in devDependencies — it is installed globally, making the version uncontrolled. |
+| EU_AI_001 | `eu_ai_high_risk_no_conformity` | 🔴 BLOCKER | High-risk AI system (Annex III) deployed without a conformity assessment — EU AI Act Art. 43. |
+| EU_AI_002 | `eu_ai_prohibited_biometric` | 🔴 BLOCKER | Biometric categorization or real-time remote biometric identification — prohibited practice under EU AI Act Art. 5. |
+| EU_AI_003 | `eu_ai_no_risk_management_system` | 🟠 HIGH | High-risk AI system with no risk management documentation — EU AI Act Art. 9. |
+| EU_AI_004 | `eu_ai_training_data_governance_missing` | 🟠 HIGH | High-risk AI with no training data governance plan — EU AI Act Art. 10 requires data quality criteria. |
+| EU_AI_005 | `eu_ai_no_technical_documentation` | 🟠 HIGH | AI system with no technical documentation (model card) — EU AI Act Art. 11 requirement. |
+| EU_AI_006 | `eu_ai_no_decision_audit_log` | 🟠 HIGH | High-risk AI decision without append-only audit logging — EU AI Act Art. 12 traceability requirement. |
+| EU_AI_007 | `eu_ai_no_human_oversight` | 🟠 HIGH | High-risk AI outcome applied automatically with no human review gate — EU AI Act Art. 14. |
+| EU_AI_008 | `eu_ai_gpai_no_capability_eval` | 🟡 MEDIUM | General-purpose AI model used without a capability evaluation — EU AI Act Art. 51. |
+| HIPAA_001 | `hipaa_phi_unencrypted_at_rest` | 🔴 BLOCKER | PHI fields stored in database without encryption at rest — HIPAA §164.312(a)(2)(iv). |
+| HIPAA_002 | `hipaa_phi_no_tls` | 🔴 BLOCKER | PHI transmitted over HTTP (non-TLS) — HIPAA §164.312(e)(2)(ii) requires encryption in transit. |
+| HIPAA_003 | `hipaa_phi_no_access_control` | 🔴 BLOCKER | API route accessing PHI with no authentication check — HIPAA §164.312(a)(1). |
+| HIPAA_004 | `hipaa_phi_no_audit_log` | 🟠 HIGH | PHI accessed in API route with no audit log — HIPAA §164.312(b) requires hardware/software activity records. |
+| HIPAA_005 | `hipaa_phi_minimum_necessary_missing` | 🟠 HIGH | API response may return full PHI record without minimum-necessary filtering — HIPAA §164.502(b). |
+| HIPAA_006 | `hipaa_phi_to_llm_no_baa` | 🟠 HIGH | PHI sent to an external LLM API with no Business Associate Agreement referenced. |
+| HIPAA_007 | `hipaa_phi_session_no_timeout` | 🟠 HIGH | PHI access route with no session timeout configuration — HIPAA §164.312(a)(2)(iii). |
+| HIPAA_008 | `hipaa_phi_backup_undocumented` | 🟡 MEDIUM | PHI stored in database with no backup/recovery plan documented — HIPAA §164.308(a)(7). |
+| DORA_001 | `dora_incident_classification_missing` | 🔴 BLOCKER | No ICT incident classification policy found — DORA Art. 18 requires a documented classification scheme. |
+| DORA_002 | `dora_third_party_ict_no_register` | 🟠 HIGH | Third-party ICT provider dependency found with no contract/register maintained — DORA Art. 28. |
+| DORA_003 | `dora_resilience_testing_missing` | 🟠 HIGH | No digital operational resilience testing plan — DORA Art. 25 requires annual resilience testing. |
+| DORA_004 | `dora_rto_undocumented` | 🟠 HIGH | ICT business continuity policy has no documented RTO/RPO — DORA Art. 11 requirement. |
+| DORA_005 | `dora_threat_intel_sharing_missing` | 🟠 HIGH | No threat intelligence sharing framework configured — DORA Art. 45 encourages voluntary sharing. |
+| DORA_006 | `dora_change_management_missing` | 🟡 MEDIUM | ICT changes deployed without a documented change management procedure — DORA Art. 9. |
+| LOCAL_LLM_001 | `local_llm_prompt_injection` | 🔴 BLOCKER | User input interpolated directly into an Ollama prompt or messages without sanitization — prompt injection. |
+| LOCAL_LLM_002 | `local_llm_model_injection` | 🔴 BLOCKER | model: field sourced from user input — attacker can load any model on the server. |
+| LOCAL_LLM_003 | `local_llm_host_network_exposed` | 🔴 BLOCKER | OLLAMA_HOST=0.0.0.0 in .env — exposes the inference API to the entire network without authentication. |
+| LOCAL_LLM_004 | `local_llm_cors_wildcard` | 🟠 HIGH | OLLAMA_ORIGINS=* in .env — any website can call localhost:11434 from the browser via CORS. |
+| LOCAL_LLM_005 | `local_llm_no_timeout` | 🟠 HIGH | Ollama call without AbortController signal — generation can hang indefinitely, exhausting VRAM. |
+| LOCAL_LLM_006 | `local_llm_model_not_pinned` | 🟠 HIGH | model: 'llama3' (no :tag) resolves to the changing 'latest' digest — behavioral drift on every Ollama update. |
+| LOCAL_LLM_007 | `local_llm_no_rate_limit` | 🟠 HIGH | API route calling Ollama with no rate limiting — VRAM DoS via parallel generation requests. |
+| LOCAL_LLM_008 | `local_llm_pii_to_remote` | 🟠 HIGH | OLLAMA_HOST points to a non-localhost address — data assumed "local" is actually sent to a remote server. |
+| LOCAL_LLM_009 | `local_llm_no_content_filter` | 🟠 HIGH | Ollama response returned to users with no content moderation check — no built-in safety filter. |
+| LOCAL_LLM_010 | `local_llm_response_unvalidated` | 🟠 HIGH | Ollama JSON response used in structured logic without schema validation — crashes when model format drifts. |
+| LOCAL_LLM_011 | `local_llm_no_context_limit` | 🟡 MEDIUM | No num_predict or num_ctx limit — unbounded generation exhausts VRAM and causes OOM crashes. |
+| LOCAL_LLM_012 | `local_llm_streaming_no_error` | 🟡 MEDIUM | Streaming Ollama call (stream: true) without try/catch — network drops and model OOM are not handled. |
 
 ---
 
@@ -1254,6 +1309,10 @@ System prompt concatenated directly with user input — adversarial prompt can o
 **[AI_030] `ai_output_used_as_command`** — 🔴 BLOCKER
 
 LLM output used directly as a shell command or SQL query without validation — command/SQL injection via AI.
+
+**[AI_038] `ai_high_risk_no_human_oversight`** — 🔴 BLOCKER
+
+LLM used for high-risk decisions (credit, hiring, health) without mandatory human review gate.
 
 **[DB_001] `drop_table_migration`** — 🔴 BLOCKER
 
@@ -1811,6 +1870,10 @@ Agent loop uses alert/warn on token usage but has no hard stop — cost runaway 
 
 Agent autopilot config has no maxIterationsPerTask — tasks can loop indefinitely.
 
+**[AGNT_023] `agent_privilege_over_grant`** — 🔴 BLOCKER
+
+Agent bash/edit tool granted without path restrictions — full filesystem access.
+
 **[DEP_001] `dep_critical_cve`** — 🔴 BLOCKER
 
 Dependency has a CRITICAL CVE — immediate upgrade required.
@@ -1830,6 +1893,14 @@ PII sent to external logging service (Sentry/Datadog/LogRocket) — third-party 
 **[GDPR_011] `gdpr_pii_in_error_response`** — 🔴 BLOCKER
 
 API error response may include user object fields — PII leak via error messages.
+
+**[GDPR_016] `gdpr_consent_revocation_missing`** — 🔴 BLOCKER
+
+No consent revocation endpoint — GDPR Art. 7(3) requires withdrawal to be as easy as granting.
+
+**[GDPR_020] `gdpr_dpia_missing_high_risk`** — 🔴 BLOCKER
+
+High-risk special-category data processed with no DPIA referenced — GDPR Art. 35.
 
 **[MCP_001] `mcp_tool_description_injection`** — 🔴 BLOCKER
 
@@ -1914,6 +1985,42 @@ Kubernetes container runs with privileged: true — equivalent to root access on
 **[K8S_005] `k8s_secret_as_env_literal`** — 🔴 BLOCKER
 
 Kubernetes secret value appears as a literal string in env: rather than using secretKeyRef.
+
+**[EU_AI_001] `eu_ai_high_risk_no_conformity`** — 🔴 BLOCKER
+
+High-risk AI system (Annex III) deployed without a conformity assessment — EU AI Act Art. 43.
+
+**[EU_AI_002] `eu_ai_prohibited_biometric`** — 🔴 BLOCKER
+
+Biometric categorization or real-time remote biometric identification — prohibited practice under EU AI Act Art. 5.
+
+**[HIPAA_001] `hipaa_phi_unencrypted_at_rest`** — 🔴 BLOCKER
+
+PHI fields stored in database without encryption at rest — HIPAA §164.312(a)(2)(iv).
+
+**[HIPAA_002] `hipaa_phi_no_tls`** — 🔴 BLOCKER
+
+PHI transmitted over HTTP (non-TLS) — HIPAA §164.312(e)(2)(ii) requires encryption in transit.
+
+**[HIPAA_003] `hipaa_phi_no_access_control`** — 🔴 BLOCKER
+
+API route accessing PHI with no authentication check — HIPAA §164.312(a)(1).
+
+**[DORA_001] `dora_incident_classification_missing`** — 🔴 BLOCKER
+
+No ICT incident classification policy found — DORA Art. 18 requires a documented classification scheme.
+
+**[LOCAL_LLM_001] `local_llm_prompt_injection`** — 🔴 BLOCKER
+
+User input interpolated directly into an Ollama prompt or messages without sanitization — prompt injection.
+
+**[LOCAL_LLM_002] `local_llm_model_injection`** — 🔴 BLOCKER
+
+model: field sourced from user input — attacker can load any model on the server.
+
+**[LOCAL_LLM_003] `local_llm_host_network_exposed`** — 🔴 BLOCKER
+
+OLLAMA_HOST=0.0.0.0 in .env — exposes the inference API to the entire network without authentication.
 
 ## HIGH
 
@@ -2196,6 +2303,22 @@ LLM response returned to user without content moderation filter — harmful outp
 **[AI_035] `ai_generated_code_auto_executed`** — 🟠 HIGH
 
 AI-generated code snippets executed without human review gate — supply chain and code injection risk.
+
+**[AI_039] `ai_transparency_missing`** — 🟠 HIGH
+
+AI-generated output displayed to end users with no disclosure that AI produced it.
+
+**[AI_040] `ai_immutable_audit_log_missing`** — 🟠 HIGH
+
+No append-only audit log of AI decisions — EU AI Act Art. 12 + HIPAA §164.312.
+
+**[AI_041] `ai_bias_check_missing`** — 🟠 HIGH
+
+Model used for classification/scoring with no bias or fairness evaluation documented.
+
+**[AI_042] `ai_pii_to_llm_no_dpa`** — 🟠 HIGH
+
+PII sent to external LLM API with no Data Processing Agreement reference in config.
 
 **[PERF_001] `sync_fs_in_handler`** — 🟠 HIGH
 
@@ -3301,6 +3424,26 @@ Agent tool chain has no AbortController — long-running tool calls cannot be ca
 
 Agent can perform destructive or high-cost operations without human-in-the-loop approval.
 
+**[AGNT_024] `agent_consent_lifecycle_missing`** — 🟠 HIGH
+
+Agent scope declares PII categories but has no consent lifecycle hook.
+
+**[AGNT_025] `agent_dpia_missing`** — 🟠 HIGH
+
+Agent processes high-risk data categories with no DPIA reference in scope.json.
+
+**[AGNT_026] `agent_model_card_missing`** — 🟠 HIGH
+
+No .thesmos/model-card.md found — EU AI Act Art. 13 transparency requirement.
+
+**[AGNT_027] `agent_audit_trail_immutable`** — 🟠 HIGH
+
+.thesmos/audit.jsonl is being modified by the agent — audit trail must be append-only.
+
+**[AGNT_028] `agent_cross_agent_auth_missing`** — 🟠 HIGH
+
+Sub-agent spawned without forwarding parent session token — auth gap in agent chain.
+
 **[DEP_002] `dep_high_cve`** — 🟠 HIGH
 
 Dependency has a HIGH severity CVE.
@@ -3352,6 +3495,18 @@ Third-party tracking script loaded without consent wrapper.
 **[GDPR_014] `gdpr_pii_in_test_fixtures`** — 🟠 HIGH
 
 Test fixtures contain real-looking email or phone numbers — use synthetic data.
+
+**[GDPR_017] `gdpr_data_portability_missing`** — 🟠 HIGH
+
+No data export endpoint — GDPR Art. 20 grants users the right to data portability.
+
+**[GDPR_018] `gdpr_lawful_basis_undeclared`** — 🟠 HIGH
+
+Data processing route with no lawful basis declaration — GDPR Art. 6 requires a legal ground.
+
+**[GDPR_019] `gdpr_cross_border_transfer_no_safeguard`** — 🟠 HIGH
+
+Data sent to a non-EEA endpoint with no SCCs or adequacy decision referenced.
 
 **[MCP_004] `mcp_no_server_allowlist`** — 🟠 HIGH
 
@@ -3572,6 +3727,86 @@ Git hook installed by Thesmos references thesmos-governance but the package may 
 **[SELF_004] `self_config_schema_old`** — 🟠 HIGH
 
 .thesmos/config.json uses an old schema (missing required fields from the current version).
+
+**[EU_AI_003] `eu_ai_no_risk_management_system`** — 🟠 HIGH
+
+High-risk AI system with no risk management documentation — EU AI Act Art. 9.
+
+**[EU_AI_004] `eu_ai_training_data_governance_missing`** — 🟠 HIGH
+
+High-risk AI with no training data governance plan — EU AI Act Art. 10 requires data quality criteria.
+
+**[EU_AI_005] `eu_ai_no_technical_documentation`** — 🟠 HIGH
+
+AI system with no technical documentation (model card) — EU AI Act Art. 11 requirement.
+
+**[EU_AI_006] `eu_ai_no_decision_audit_log`** — 🟠 HIGH
+
+High-risk AI decision without append-only audit logging — EU AI Act Art. 12 traceability requirement.
+
+**[EU_AI_007] `eu_ai_no_human_oversight`** — 🟠 HIGH
+
+High-risk AI outcome applied automatically with no human review gate — EU AI Act Art. 14.
+
+**[HIPAA_004] `hipaa_phi_no_audit_log`** — 🟠 HIGH
+
+PHI accessed in API route with no audit log — HIPAA §164.312(b) requires hardware/software activity records.
+
+**[HIPAA_005] `hipaa_phi_minimum_necessary_missing`** — 🟠 HIGH
+
+API response may return full PHI record without minimum-necessary filtering — HIPAA §164.502(b).
+
+**[HIPAA_006] `hipaa_phi_to_llm_no_baa`** — 🟠 HIGH
+
+PHI sent to an external LLM API with no Business Associate Agreement referenced.
+
+**[HIPAA_007] `hipaa_phi_session_no_timeout`** — 🟠 HIGH
+
+PHI access route with no session timeout configuration — HIPAA §164.312(a)(2)(iii).
+
+**[DORA_002] `dora_third_party_ict_no_register`** — 🟠 HIGH
+
+Third-party ICT provider dependency found with no contract/register maintained — DORA Art. 28.
+
+**[DORA_003] `dora_resilience_testing_missing`** — 🟠 HIGH
+
+No digital operational resilience testing plan — DORA Art. 25 requires annual resilience testing.
+
+**[DORA_004] `dora_rto_undocumented`** — 🟠 HIGH
+
+ICT business continuity policy has no documented RTO/RPO — DORA Art. 11 requirement.
+
+**[DORA_005] `dora_threat_intel_sharing_missing`** — 🟠 HIGH
+
+No threat intelligence sharing framework configured — DORA Art. 45 encourages voluntary sharing.
+
+**[LOCAL_LLM_004] `local_llm_cors_wildcard`** — 🟠 HIGH
+
+OLLAMA_ORIGINS=* in .env — any website can call localhost:11434 from the browser via CORS.
+
+**[LOCAL_LLM_005] `local_llm_no_timeout`** — 🟠 HIGH
+
+Ollama call without AbortController signal — generation can hang indefinitely, exhausting VRAM.
+
+**[LOCAL_LLM_006] `local_llm_model_not_pinned`** — 🟠 HIGH
+
+model: 'llama3' (no :tag) resolves to the changing 'latest' digest — behavioral drift on every Ollama update.
+
+**[LOCAL_LLM_007] `local_llm_no_rate_limit`** — 🟠 HIGH
+
+API route calling Ollama with no rate limiting — VRAM DoS via parallel generation requests.
+
+**[LOCAL_LLM_008] `local_llm_pii_to_remote`** — 🟠 HIGH
+
+OLLAMA_HOST points to a non-localhost address — data assumed "local" is actually sent to a remote server.
+
+**[LOCAL_LLM_009] `local_llm_no_content_filter`** — 🟠 HIGH
+
+Ollama response returned to users with no content moderation check — no built-in safety filter.
+
+**[LOCAL_LLM_010] `local_llm_response_unvalidated`** — 🟠 HIGH
+
+Ollama JSON response used in structured logic without schema validation — crashes when model format drifts.
 
 ## MEDIUM / LOW / TECH_DEBT
 
@@ -3978,6 +4213,18 @@ LLM used for factual queries without retrieval grounding — misinformation risk
 **[AI_037] `ai_model_not_pinned`** — 🟡 MEDIUM
 
 LLM model string not pinned to a specific version — silent behavioral drift on model updates.
+
+**[AI_043] `ai_explainability_missing`** — 🟡 MEDIUM
+
+High-stakes AI decisions (score, rank, classify) returned without explanation to the user.
+
+**[AI_044] `ai_training_data_lineage`** — 🟡 MEDIUM
+
+Fine-tuning pipeline ingests user data with no lineage or consent record.
+
+**[AI_045] `ai_output_schema_drift`** — 🟡 MEDIUM
+
+LLM output schema not versioned — silent drift when prompt or model changes.
 
 **[PERF_002] `regex_in_function_body`** — 🔵 LOW
 
@@ -5195,6 +5442,14 @@ No daily or weekly spend cap configured — multiple session overruns can compou
 
 Autopilot can run when the machine is on battery — risks unintended overnight runs.
 
+**[AGNT_029] `agent_pii_in_context_window`** — 🟡 MEDIUM
+
+Agent context assembler may concatenate raw PII fields into the context window.
+
+**[AGNT_030] `agent_no_rollback_plan`** — 🟡 MEDIUM
+
+Autopilot config has no rollbackStrategy — no recovery path if agent breaks production.
+
 **[DEP_003] `dep_medium_cve`** — 🟡 MEDIUM
 
 Dependency has a MEDIUM severity CVE.
@@ -5398,4 +5653,24 @@ Suppression comment references a rule ID that does not exist in the current rule
 **[SELF_010] `self_not_in_devdeps`** — 🔵 LOW
 
 thesmos-governance is not in devDependencies — it is installed globally, making the version uncontrolled.
+
+**[EU_AI_008] `eu_ai_gpai_no_capability_eval`** — 🟡 MEDIUM
+
+General-purpose AI model used without a capability evaluation — EU AI Act Art. 51.
+
+**[HIPAA_008] `hipaa_phi_backup_undocumented`** — 🟡 MEDIUM
+
+PHI stored in database with no backup/recovery plan documented — HIPAA §164.308(a)(7).
+
+**[DORA_006] `dora_change_management_missing`** — 🟡 MEDIUM
+
+ICT changes deployed without a documented change management procedure — DORA Art. 9.
+
+**[LOCAL_LLM_011] `local_llm_no_context_limit`** — 🟡 MEDIUM
+
+No num_predict or num_ctx limit — unbounded generation exhausts VRAM and causes OOM crashes.
+
+**[LOCAL_LLM_012] `local_llm_streaming_no_error`** — 🟡 MEDIUM
+
+Streaming Ollama call (stream: true) without try/catch — network drops and model OOM are not handled.
 <!-- THESMOS:GENERATED END rules -->

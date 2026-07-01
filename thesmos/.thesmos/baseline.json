@@ -1,16 +1,8 @@
 {
   "version": "1",
   "createdAt": "2026-06-25T04:10:23.221Z",
-  "updatedAt": "2026-06-25T04:10:23.221Z",
+  "updatedAt": "2026-07-01T21:17:40.722Z",
   "entries": [
-    {
-      "fingerprint": "01b4e8a8eb57c631",
-      "ruleCategory": "agent_no_audit_trail",
-      "severity": "MEDIUM",
-      "file": ".thesmos/audit.jsonl",
-      "message": "No .thesmos/audit.jsonl — agent actions are not being logged.",
-      "recordedAt": "2026-06-25T04:10:23.221Z"
-    },
     {
       "fingerprint": "645879472373f0ca",
       "ruleCategory": "large_file",
@@ -74,6 +66,14 @@
       "file": "bin/commands/build.ts",
       "message": "File has 989 lines (threshold: 500).",
       "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "479389f9bb317fa5",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "bin/commands/compliance.ts",
+      "message": "File has 719 lines (threshold: 500).",
+      "recordedAt": "2026-07-01T21:17:40.722Z"
     },
     {
       "fingerprint": "a4bb171549603031",
@@ -370,6 +370,14 @@
       "file": "rules/jwt.ts",
       "message": "File has 553 lines (threshold: 500).",
       "recordedAt": "2026-06-25T04:10:23.221Z"
+    },
+    {
+      "fingerprint": "23dd2c814eaed7e2",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "rules/local-llm.ts",
+      "message": "File has 579 lines (threshold: 500).",
+      "recordedAt": "2026-07-01T21:17:40.722Z"
     },
     {
       "fingerprint": "a1b13d4a1bca74e8",
