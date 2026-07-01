@@ -238,6 +238,33 @@ function collectAgentIds(srcDir: string, ext: string, filterFn?: (id: string) =>
     .filter(id => filterFn ? filterFn(id) : true)
 }
 
+const VSIX_PATH = resolve(__dirname, '../../extensions/vscode/thesmos-governance-vscode-1.5.0.vsix')
+
+const VSIX_INSTALL_GUIDE = `# Thesmos Governance — VS Code Extension
+
+The included .vsix file adds real-time governance findings directly into VS Code.
+
+## How to install
+
+1. Open VS Code
+2. Press Cmd+Shift+P (Mac) or Ctrl+Shift+P (Windows/Linux)
+3. Type: Install from VSIX
+4. Select thesmos-governance-vscode-1.5.0.vsix from this folder
+5. Reload VS Code when prompted
+
+## What you get
+
+- Inline BLOCKER / HIGH / MEDIUM findings as you code
+- Agent Activity sidebar panel
+- Adapter sync status
+- Health score display
+- 1,075 rules across security, AI, performance, accessibility, and more
+
+## Updates
+
+Check https://github.com/Holley-Studio/thesmos-governance/releases for new versions.
+`
+
 function buildBundle(
   bundleName: string,
   filterFn: (id: string) => boolean,
@@ -266,6 +293,14 @@ function buildBundle(
 
   const tier = filterFn === freeFilter ? 'starter' : 'pantheon'
   writeFileSync(join(bundleDir, 'README.md'), ROOT_README(maxAgentCount, tier), 'utf-8')
+
+  // Include VS Code extension in full Pantheon bundle only
+  if (tier === 'pantheon' && existsSync(VSIX_PATH)) {
+    const vsixDir = join(bundleDir, 'for-vscode')
+    ensureDir(vsixDir)
+    copyFileSync(VSIX_PATH, join(vsixDir, 'thesmos-governance-vscode-1.5.0.vsix'))
+    writeFileSync(join(vsixDir, 'INSTALL.md'), VSIX_INSTALL_GUIDE, 'utf-8')
+  }
 
   ensureDir(DOWNLOADS_DIR)
   const zipPath = join(DOWNLOADS_DIR, `${bundleName}.zip`)

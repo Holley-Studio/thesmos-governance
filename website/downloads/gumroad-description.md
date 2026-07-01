@@ -40,7 +40,7 @@ HDRI lighting, material realism, photorealistic product renders.
 
 ---
 
-## 5 platforms. Ready to install.
+## 5 platforms + VS Code extension
 
 | Folder | Platform | Format |
 |---|---|---|
@@ -49,8 +49,11 @@ HDRI lighting, material realism, photorealistic product renders.
 | for-gemini/ | Gemini Gems | .txt |
 | for-cursor/ | Cursor | .mdc |
 | for-copilot/ | GitHub Copilot | .md |
+| for-vscode/ | VS Code Extension | .vsix |
 
 Each folder includes a step-by-step **INSTALL.md**. Setup takes under 5 minutes.
+
+The VS Code extension adds real-time inline governance findings (BLOCKER / HIGH / MEDIUM) directly in your editor as you code.
 
 ---
 
