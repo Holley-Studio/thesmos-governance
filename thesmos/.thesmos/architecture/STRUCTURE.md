@@ -21,14 +21,14 @@
 **Store files:** 1
 
 **Large files (above threshold):**
-- `dist/chunk-SVE6NZBV.js` — 42549 lines
-- `dist/chunk-FFZCCMLT.js` — 42094 lines
-- `dist/cli.js` — 22892 lines
-- `dist/index.js` — 6331 lines
-- `rules/python.ts` — 1736 lines
-- `rules/security.ts` — 1697 lines
-- `rules/nextjs.ts` — 1605 lines
-- `dist/index.d.ts` — 1596 lines
-- `rules/vibe-coding.ts` — 1402 lines
-- `rules/database.ts` — 1349 lines
+- `rules/python.ts` — 1737 lines
+- `rules/security.ts` — 1698 lines
+- `rules/nextjs.ts` — 1606 lines
+- `rules/ai.ts` — 1576 lines
+- `fix.ts` — 1440 lines
+- `rules/vibe-coding.ts` — 1403 lines
+- `rules/database.ts` — 1350 lines
+- `rules/typescript.ts` — 1220 lines
+- `fix.test.ts` — 1187 lines
+- `rules/debt.ts` — 1153 lines
 <!-- THESMOS:GENERATED END detected -->

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=600">
+<title>Thesmos Pantheon — Thumbnail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 600px;
+    height: 600px;
+    overflow: hidden;
+    background: #050408;
+    font-family: 'Inter', -apple-system, sans-serif;
+    position: relative;
+  }
+
+  /* Grid */
+  .grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(201,168,76,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201,168,76,.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Bottom bloom glow */
+  .glow-bottom {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 500px;
+    height: 300px;
+    background: radial-gradient(ellipse at 50% 100%,
+      rgba(240,128,32,.14) 0%,
+      rgba(200,56,8,.06) 42%,
+      transparent 72%);
+  }
+
+  /* Top gold ambient */
+  .glow-top {
+    position: absolute;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 500px;
+    height: 340px;
+    background: radial-gradient(ellipse at center,
+      rgba(201,168,76,.09) 0%,
+      transparent 65%);
+  }
+
+  /* Vignette */
+  .vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,.6) 100%);
+  }
+
+  /* Corner ornaments */
+  .corner { position: absolute; width: 22px; height: 22px; }
+  .corner--tl { top: 24px; left: 24px; border-top: 1px solid rgba(201,168,76,.45); border-left: 1px solid rgba(201,168,76,.45); }
+  .corner--tr { top: 24px; right: 24px; border-top: 1px solid rgba(201,168,76,.45); border-right: 1px solid rgba(201,168,76,.45); }
+  .corner--bl { bottom: 24px; left: 24px; border-bottom: 1px solid rgba(201,168,76,.45); border-left: 1px solid rgba(201,168,76,.45); }
+  .corner--br { bottom: 24px; right: 24px; border-bottom: 1px solid rgba(201,168,76,.45); border-right: 1px solid rgba(201,168,76,.45); }
+
+  /* Content */
+  .content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Shield crest SVG */
+  .crest {
+    width: 52px;
+    height: 58px;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 0 20px rgba(201,168,76,.5)) drop-shadow(0 0 44px rgba(201,168,76,.2));
+  }
+
+  /* Eyebrow */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: rgba(201,168,76,.6);
+    margin-bottom: 20px;
+  }
+  .eyebrow::before, .eyebrow::after {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 1px;
+    background: rgba(201,168,76,.4);
+  }
+
+  /* Main heading */
+  .heading {
+    font-family: 'Cinzel', serif;
+    font-size: 88px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    line-height: .9;
+    color: #F5F0E8;
+    margin-bottom: 28px;
+    text-shadow: 0 0 100px rgba(201,168,76,.15);
+  }
+  .heading .gold { color: #C9A84C; }
+
+  /* Divider */
+  .divider {
+    width: 36px;
+    height: 1px;
+    background: rgba(201,168,76,.35);
+    margin-bottom: 20px;
+  }
+
+  /* Count line */
+  .count {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 300;
+    letter-spacing: .04em;
+    color: rgba(255,255,255,.4);
+  }
+  .count strong {
+    color: rgba(255,255,255,.7);
+    font-weight: 400;
+  }
+
+  /* Brand */
+  .brand {
+    position: absolute;
+    bottom: 26px;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.18);
+  }
+</style>
+</head>
+<body>
+
+  <div class="grid"></div>
+  <div class="glow-top"></div>
+  <div class="glow-bottom"></div>
+  <div class="vignette"></div>
+
+  <div class="corner corner--tl"></div>
+  <div class="corner corner--tr"></div>
+  <div class="corner corner--bl"></div>
+  <div class="corner corner--br"></div>
+
+  <div class="content">
+
+    <!-- Shield crest — same SVG as site favicon -->
+    <svg class="crest" viewBox="0 0 80 90" xmlns="http://www.w3.org/2000/svg">
+      <path d="M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z" stroke="#C9A84C" stroke-width="2.8" fill="none"/>
+      <path d="M40 39 C36 32 31 25 34 15 C36 10 39 8 37 5 C45 10 47 22 42 31 C47 23 48 14 45 9 C52 20 50 32 44 39 Z" fill="#C9A84C"/>
+    </svg>
+
+    <div class="eyebrow">Thesmos</div>
+
+    <div class="heading">
+      <span class="gold">Pan</span>theon
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="count"><strong>77 AI Agents</strong> &nbsp;·&nbsp; 5 Platforms</div>
+
+  </div>
+
+  <div class="brand">Holley Studio</div>
+
+</body>
+</html>

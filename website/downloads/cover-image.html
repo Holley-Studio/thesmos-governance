@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>Thesmos Pantheon — Cover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    background: #050408;
+    font-family: 'Inter', -apple-system, sans-serif;
+    position: relative;
+  }
+
+  /* Subtle grid */
+  .grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(201,168,76,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201,168,76,.04) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  /* Edge vignette — matches site body::after */
+  .vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.55) 100%);
+  }
+
+  /* Centre glow — warm amber like hero-bloom */
+  .glow-centre {
+    position: absolute;
+    bottom: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 900px;
+    height: 420px;
+    background: radial-gradient(ellipse at 50% 100%,
+      rgba(240,128,32,.12) 0%,
+      rgba(200,56,8,.05) 42%,
+      transparent 72%);
+  }
+
+  /* Top ambient gold */
+  .glow-top {
+    position: absolute;
+    top: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 700px;
+    height: 400px;
+    background: radial-gradient(ellipse at center,
+      rgba(201,168,76,.08) 0%,
+      transparent 65%);
+  }
+
+  /* Vertical side lines */
+  .line-left, .line-right {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 1px;
+  }
+  .line-left {
+    left: 64px;
+    background: linear-gradient(to bottom, transparent, rgba(201,168,76,.25) 30%, rgba(201,168,76,.25) 70%, transparent);
+  }
+  .line-right {
+    right: 64px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,.06) 30%, rgba(255,255,255,.06) 70%, transparent);
+  }
+
+  /* Corner ornaments */
+  .corner { position: absolute; width: 28px; height: 28px; }
+  .corner--tl { top: 36px; left: 92px; border-top: 1px solid rgba(201,168,76,.4); border-left: 1px solid rgba(201,168,76,.4); }
+  .corner--tr { top: 36px; right: 92px; border-top: 1px solid rgba(201,168,76,.4); border-right: 1px solid rgba(201,168,76,.4); }
+  .corner--bl { bottom: 36px; left: 92px; border-bottom: 1px solid rgba(201,168,76,.4); border-left: 1px solid rgba(201,168,76,.4); }
+  .corner--br { bottom: 36px; right: 92px; border-bottom: 1px solid rgba(201,168,76,.4); border-right: 1px solid rgba(201,168,76,.4); }
+
+  /* Content */
+  .content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Brand eyebrow — matches .eyebrow on site */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: rgba(201,168,76,.6);
+    margin-bottom: 28px;
+  }
+  .eyebrow::before, .eyebrow::after {
+    content: '';
+    display: block;
+    width: 28px;
+    height: 1px;
+    background: rgba(201,168,76,.4);
+  }
+
+  /* Heading — matches .hero h1 */
+  .heading {
+    font-family: 'Cinzel', serif;
+    font-size: 110px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    line-height: .9;
+    color: #F5F0E8;
+    margin-bottom: 32px;
+    text-shadow: 0 0 140px rgba(201,168,76,.15);
+  }
+  .heading .gold { color: #C9A84C; }
+
+  /* Tagline — matches .hero-sub */
+  .tagline {
+    font-family: 'Inter', sans-serif;
+    font-size: 20px;
+    font-weight: 300;
+    letter-spacing: .01em;
+    color: rgba(255,255,255,.55);
+    margin-bottom: 52px;
+  }
+  .tagline strong {
+    color: rgba(255,255,255,.85);
+    font-weight: 400;
+  }
+
+  /* Stats — matches .hs-n / .hs-l */
+  .stats {
+    display: flex;
+    align-items: center;
+    margin-bottom: 44px;
+  }
+  .stat { padding: 0 44px; text-align: center; }
+  .stat-num {
+    display: block;
+    font-family: 'Cinzel', serif;
+    font-size: 44px;
+    font-weight: 400;
+    color: #C9A84C;
+    line-height: 1;
+    margin-bottom: 8px;
+    text-shadow: 0 0 28px rgba(201,168,76,.28);
+  }
+  .stat-label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.3);
+  }
+  .stat-divider {
+    width: 1px;
+    height: 48px;
+    background: rgba(255,255,255,.07);
+  }
+
+  /* Platform pills */
+  .platforms {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pill-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.25);
+    margin-right: 8px;
+  }
+  .pill {
+    padding: 5px 16px;
+    border-radius: 980px;
+    border: 1px solid rgba(255,255,255,.1);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    color: rgba(255,255,255,.45);
+    background: rgba(255,255,255,.03);
+    letter-spacing: .01em;
+  }
+
+  /* Bottom brand */
+  .brand {
+    position: absolute;
+    bottom: 28px;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.18);
+  }
+</style>
+</head>
+<body>
+
+  <div class="grid"></div>
+  <div class="glow-top"></div>
+  <div class="glow-centre"></div>
+  <div class="vignette"></div>
+
+  <div class="line-left"></div>
+  <div class="line-right"></div>
+
+  <div class="corner corner--tl"></div>
+  <div class="corner corner--tr"></div>
+  <div class="corner corner--bl"></div>
+  <div class="corner corner--br"></div>
+
+  <div class="content">
+
+    <div class="eyebrow">Thesmos</div>
+
+    <div class="heading">
+      <span class="gold">Pan</span>theon
+    </div>
+
+    <div class="tagline">
+      <strong>77 specialist AI agents.</strong> Every domain. Every platform.
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-num">77</span>
+        <span class="stat-label">Agents</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-num">5</span>
+        <span class="stat-label">Platforms</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-num">1</span>
+        <span class="stat-label">System</span>
+      </div>
+    </div>
+
+    <div class="platforms">
+      <span class="pill-label">Works with</span>
+      <span class="pill">Claude Code</span>
+      <span class="pill">ChatGPT</span>
+      <span class="pill">Gemini</span>
+      <span class="pill">Cursor</span>
+      <span class="pill">Copilot</span>
+    </div>
+
+  </div>
+
+  <div class="brand">Holley Studio</div>
+
+</body>
+</html>

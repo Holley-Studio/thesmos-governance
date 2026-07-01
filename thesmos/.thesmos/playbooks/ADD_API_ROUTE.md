@@ -16,7 +16,7 @@
 <!-- THESMOS:GENERATED START context -->
 | Field | Value |
 |---|---|
-| Project | unknown |
+| Project | thesmos-governance |
 | Framework | `unknown` |
 | Auth | `none` |
 | Testing | `vitest` |

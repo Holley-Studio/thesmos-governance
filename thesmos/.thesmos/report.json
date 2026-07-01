@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-06-26T18:32:57.260Z",
+  "generatedAt": "2026-07-01T17:32:13.513Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -116,6 +116,10 @@
       "lines": 1698
     },
     {
+      "file": "rules/ai.ts",
+      "lines": 1672
+    },
+    {
       "file": "rules/nextjs.ts",
       "lines": 1606
     },
@@ -132,16 +136,16 @@
       "lines": 1350
     },
     {
-      "file": "rules/ai.ts",
-      "lines": 1333
-    },
-    {
       "file": "rules/typescript.ts",
       "lines": 1220
     },
     {
       "file": "fix.test.ts",
       "lines": 1187
+    },
+    {
+      "file": "rules/agents.ts",
+      "lines": 1156
     },
     {
       "file": "rules/debt.ts",
@@ -240,10 +244,6 @@
       "lines": 852
     },
     {
-      "file": "rules/agents.ts",
-      "lines": 845
-    },
-    {
       "file": "rules/java.ts",
       "lines": 842
     },
@@ -260,6 +260,14 @@
       "lines": 818
     },
     {
+      "file": "bin/commands/pantheon.ts",
+      "lines": 816
+    },
+    {
+      "file": "rules/gdpr.ts",
+      "lines": 811
+    },
+    {
       "file": "rules/php.test.ts",
       "lines": 810
     },
@@ -268,8 +276,8 @@
       "lines": 805
     },
     {
-      "file": "bin/commands/pantheon.ts",
-      "lines": 785
+      "file": "mcp-server.ts",
+      "lines": 767
     },
     {
       "file": "rules/quality.ts",
@@ -286,6 +294,10 @@
     {
       "file": "rules/state.ts",
       "lines": 724
+    },
+    {
+      "file": "bin/commands/compliance.ts",
+      "lines": 719
     },
     {
       "file": "rules/forms.ts",
@@ -308,6 +320,10 @@
       "lines": 699
     },
     {
+      "file": "rules/registry.ts",
+      "lines": 692
+    },
+    {
       "file": "rules/logging.ts",
       "lines": 691
     },
@@ -324,16 +340,8 @@
       "lines": 682
     },
     {
-      "file": "rules/registry.ts",
-      "lines": 682
-    },
-    {
       "file": "catalog.test.ts",
       "lines": 677
-    },
-    {
-      "file": "mcp-server.ts",
-      "lines": 653
     },
     {
       "file": "rules/rag.ts",
@@ -344,20 +352,20 @@
       "lines": 624
     },
     {
-      "file": "rules/gdpr.ts",
-      "lines": 620
+      "file": "adapters.test.ts",
+      "lines": 594
     },
     {
       "file": "rules/django.test.ts",
       "lines": 592
     },
     {
-      "file": "adapters.test.ts",
-      "lines": 589
-    },
-    {
       "file": "bin/commands/report.ts",
       "lines": 583
+    },
+    {
+      "file": "rules/local-llm.ts",
+      "lines": 579
     },
     {
       "file": "bin/cli.ts",
@@ -405,7 +413,10 @@
     }
   ],
   "riskyFiles": [],
-  "scriptFiles": [],
+  "scriptFiles": [
+    "scripts/export-agents.ts",
+    "scripts/package-agents.ts"
+  ],
   "envFiles": [],
   "clientBoundaryRisks": [
     {
@@ -469,14 +480,14 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 381,
-      "lineCount": 48510
+      "fileCount": 390,
+      "lineCount": 56764
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 261,
-      "lineCount": 108613
+      "fileCount": 268,
+      "lineCount": 112321
     }
   ],
   "detectedStacks": [

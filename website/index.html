@@ -959,6 +959,97 @@
     }
     .pantheon-footer a.btn-ghost:hover { color: rgba(255,255,255,.95); border-color: rgba(255,255,255,.3); }
 
+    /* Tier badges */
+    .pa-tier-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .pa-badge--free {
+      background: rgba(16,185,129,.12);
+      border: 1px solid rgba(16,185,129,.35);
+      color: #10B981;
+    }
+    .pa-badge--pro {
+      background: rgba(245,197,24,.08);
+      border: 1px solid rgba(245,197,24,.25);
+      color: rgba(245,197,24,.8);
+    }
+    .pa-pro-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 14px;
+      background: rgba(245,197,24,.06);
+      border: 1px solid rgba(245,197,24,.2);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(245,197,24,.75);
+      text-decoration: none;
+      transition: all 180ms ease;
+      margin-bottom: 12px;
+    }
+    .pa-pro-btn:hover { background: rgba(245,197,24,.12); border-color: rgba(245,197,24,.4); color: rgba(245,197,24,1); }
+
+    /* Download tier CTA section */
+    .dl-tier-section {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      margin-bottom: 56px;
+    }
+    .dl-tier-card {
+      flex: 1; min-width: 220px;
+      padding: 24px;
+      border-radius: 10px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .dl-tier-card.free-t {
+      background: rgba(16,185,129,.06);
+      border: 1px solid rgba(16,185,129,.2);
+    }
+    .dl-tier-card.pro-t {
+      background: rgba(245,197,24,.05);
+      border: 1px solid rgba(245,197,24,.18);
+    }
+    .dl-tier-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+    }
+    .free-t .dl-tier-label { color: #10B981; }
+    .pro-t .dl-tier-label { color: rgba(245,197,24,.8); }
+    .dl-tier-title {
+      font-family: 'Cinzel', serif;
+      font-size: 18px; font-weight: 700;
+      color: rgba(255,255,255,.9);
+    }
+    .dl-tier-desc { font-size: 13px; color: rgba(255,255,255,.45); line-height: 1.6; }
+    .dl-tier-btn {
+      display: inline-block;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 13px; font-weight: 500;
+      text-decoration: none;
+      text-align: center;
+      transition: all 180ms ease;
+      margin-top: 4px;
+    }
+    .free-t .dl-tier-btn {
+      background: rgba(16,185,129,.15);
+      border: 1px solid rgba(16,185,129,.35);
+      color: #10B981;
+    }
+    .free-t .dl-tier-btn:hover { background: rgba(16,185,129,.25); }
+    .pro-t .dl-tier-btn {
+      background: rgba(245,197,24,.12);
+      border: 1px solid rgba(245,197,24,.3);
+      color: rgba(245,197,24,.9);
+    }
+    .pro-t .dl-tier-btn:hover { background: rgba(245,197,24,.22); }
+
     @media(max-width:1024px) {
       .pantheon-grid { grid-template-columns: repeat(3,1fr); }
     }
@@ -969,6 +1060,7 @@
     @media(max-width:500px) {
       .pantheon-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
       .pa-card { padding: 20px 16px 18px; }
+      .dl-tier-section { flex-direction: column; }
     }
   </style>
 </head>
@@ -1334,6 +1426,22 @@
       <div class="pantheon-cmd" data-r data-d="3">thesmos pantheon:orchestrate "launch our product to fintech CTOs"</div>
     </div>
 
+    <!-- Download tier CTA -->
+    <div class="dl-tier-section" data-r data-d="4">
+      <div class="dl-tier-card free-t">
+        <div class="dl-tier-label">⚡ Free</div>
+        <div class="dl-tier-title">Starter Pack</div>
+        <div class="dl-tier-desc">5 agents — Zeus, Athena, Argus, Apollo, Hephaestus. All platforms. No account required.</div>
+        <a href="downloads/thesmos-starter-agents.zip" class="dl-tier-btn">⬇ Download Free</a>
+      </div>
+      <div class="dl-tier-card pro-t">
+        <div class="dl-tier-label">🏛️ Pro</div>
+        <div class="dl-tier-title">Full Pantheon</div>
+        <div class="dl-tier-desc">50+ agents. Every specialist. Claude, ChatGPT, Gemini, Cursor, and Copilot — with install guides.</div>
+        <a href="https://holleystudio.gumroad.com/l/thesmos-pantheon" class="dl-tier-btn" target="_blank" rel="noopener">Get Full Pantheon →</a>
+      </div>
+    </div>
+
     <div class="pantheon-grid">
 
       <!-- Zeus -->
@@ -1424,6 +1532,60 @@
           </div>
         </div>
         <a href="agents/ares.html" class="pa-resume-link">View Resume →</a>
+      </div>
+
+      <!-- Ares Discovery -->
+      <div class="pa-card" style="--pa-color:#10B981" data-r data-d="2">
+        <div class="pa-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" fill="#10B98115"/><circle cx="44" cy="44" r="16" stroke="#10B981" stroke-width="2.2" fill="none"/><line x1="55" y1="55" x2="70" y2="70" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"/><circle cx="44" cy="44" r="5" fill="#10B98140"/></svg></div>
+        <div class="pa-god">Ares Discovery</div>
+        <div class="pa-role">Discovery Coach & ICP Qualification</div>
+        <div class="pa-desc">ICP scorecards, SPIN question banks, call scripts. Qualifies hard so you only work deals you can win.</div>
+        <div class="pa-dl">
+          <button class="pa-dl-btn" onclick="toggleDl(this)">Download for <svg viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+          <div class="pa-dl-menu">
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/ares-discovery-agent.md" target="_blank" rel="noopener">Claude Code <span>.md</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/chatgpt/ares-discovery-agent-chatgpt.txt" target="_blank" rel="noopener">ChatGPT <span>.txt</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/cursor/ares-discovery-agent.mdc" target="_blank" rel="noopener">Cursor <span>.mdc</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/gemini/ares-discovery-agent-gemini.txt" target="_blank" rel="noopener">Gemini <span>.txt</span></a>
+          </div>
+        </div>
+        <a href="agents/ares-discovery.html" class="pa-resume-link">View Resume →</a>
+      </div>
+
+      <!-- Ares Deal Strategy -->
+      <div class="pa-card" style="--pa-color:#10B981" data-r data-d="3">
+        <div class="pa-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" fill="#10B98115"/><line x1="28" y1="28" x2="72" y2="72" stroke="#10B981" stroke-width="2.2" stroke-linecap="round"/><line x1="72" y1="28" x2="28" y2="72" stroke="#10B981" stroke-width="2.2" stroke-linecap="round"/><circle cx="50" cy="50" r="8" fill="#10B98130" stroke="#10B981" stroke-width="1.5"/></svg></div>
+        <div class="pa-god">Ares Deal Strategy</div>
+        <div class="pa-role">Deal Strategist & Competitive Intel</div>
+        <div class="pa-desc">MEDDPICC scorecards, competitive battlecards, 3-move advancement sequences. Every dimension scored on evidence.</div>
+        <div class="pa-dl">
+          <button class="pa-dl-btn" onclick="toggleDl(this)">Download for <svg viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+          <div class="pa-dl-menu">
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/ares-deal-strategy-agent.md" target="_blank" rel="noopener">Claude Code <span>.md</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/chatgpt/ares-deal-strategy-agent-chatgpt.txt" target="_blank" rel="noopener">ChatGPT <span>.txt</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/cursor/ares-deal-strategy-agent.mdc" target="_blank" rel="noopener">Cursor <span>.mdc</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/gemini/ares-deal-strategy-agent-gemini.txt" target="_blank" rel="noopener">Gemini <span>.txt</span></a>
+          </div>
+        </div>
+        <a href="agents/ares-deal-strategy.html" class="pa-resume-link">View Resume →</a>
+      </div>
+
+      <!-- Ares Pipeline -->
+      <div class="pa-card" style="--pa-color:#10B981" data-r data-d="4">
+        <div class="pa-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" fill="#10B98115"/><rect x="22" y="62" width="12" height="22" rx="2" fill="#10B98130" stroke="#10B981" stroke-width="1.8"/><rect x="40" y="48" width="12" height="36" rx="2" fill="#10B98140" stroke="#10B981" stroke-width="1.8"/><rect x="58" y="32" width="12" height="52" rx="2" fill="#10B98155" stroke="#10B981" stroke-width="1.8"/><polyline points="28,60 46,46 64,30" stroke="#10B981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3,3"/></svg></div>
+        <div class="pa-god">Ares Pipeline</div>
+        <div class="pa-role">Pipeline Analyst & Forecast Accuracy</div>
+        <div class="pa-desc">Pipeline health audits, deal health scorecards, stage exit criteria. Pipeline is data, not narrative.</div>
+        <div class="pa-dl">
+          <button class="pa-dl-btn" onclick="toggleDl(this)">Download for <svg viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+          <div class="pa-dl-menu">
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/ares-pipeline-agent.md" target="_blank" rel="noopener">Claude Code <span>.md</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/chatgpt/ares-pipeline-agent-chatgpt.txt" target="_blank" rel="noopener">ChatGPT <span>.txt</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/cursor/ares-pipeline-agent.mdc" target="_blank" rel="noopener">Cursor <span>.mdc</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/gemini/ares-pipeline-agent-gemini.txt" target="_blank" rel="noopener">Gemini <span>.txt</span></a>
+          </div>
+        </div>
+        <a href="agents/ares-pipeline.html" class="pa-resume-link">View Resume →</a>
       </div>
 
       <!-- Apollo -->
@@ -1676,6 +1838,42 @@
           </div>
         </div>
         <a href="agents/morpheus.html" class="pa-resume-link">View Resume →</a>
+      </div>
+
+      <!-- Pygmalion -->
+      <div class="pa-card" style="--pa-color:#F4791F" data-r data-d="4">
+        <div class="pa-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" fill="#F4791F15"/><polygon points="50,20 70,40 65,70 35,70 30,40" stroke="#F4791F" stroke-width="2.2" fill="none" stroke-linejoin="round"/><line x1="50" y1="20" x2="35" y2="70" stroke="#F4791F" stroke-width="1" stroke-dasharray="3,4"/><line x1="50" y1="20" x2="65" y2="70" stroke="#F4791F" stroke-width="1" stroke-dasharray="3,4"/><line x1="30" y1="40" x2="70" y2="40" stroke="#F4791F" stroke-width="1" stroke-dasharray="3,4"/></svg></div>
+        <div class="pa-god">Pygmalion</div>
+        <div class="pa-role">Blender 3D Artist & Technical Director</div>
+        <div class="pa-desc">Modeling briefs, PBR materials, render configs, Python scripts. Non-destructive workflow. Every vertex intentional.</div>
+        <div class="pa-dl">
+          <button class="pa-dl-btn" onclick="toggleDl(this)">Download for <svg viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+          <div class="pa-dl-menu">
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/pygmalion-blender-agent.md" target="_blank" rel="noopener">Claude Code <span>.md</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/chatgpt/pygmalion-blender-agent-chatgpt.txt" target="_blank" rel="noopener">ChatGPT <span>.txt</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/cursor/pygmalion-blender-agent.mdc" target="_blank" rel="noopener">Cursor <span>.mdc</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/gemini/pygmalion-blender-agent-gemini.txt" target="_blank" rel="noopener">Gemini <span>.txt</span></a>
+          </div>
+        </div>
+        <a href="agents/pygmalion.html" class="pa-resume-link">View Resume →</a>
+      </div>
+
+      <!-- Helios -->
+      <div class="pa-card" style="--pa-color:#FFB830" data-r data-d="1">
+        <div class="pa-avatar"><svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" fill="#FFB83015"/><circle cx="50" cy="50" r="15" stroke="#FFB830" stroke-width="2.2" fill="#FFB83020"/><line x1="50" y1="18" x2="50" y2="26" stroke="#FFB830" stroke-width="2" stroke-linecap="round"/><line x1="50" y1="74" x2="50" y2="82" stroke="#FFB830" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="50" x2="26" y2="50" stroke="#FFB830" stroke-width="2" stroke-linecap="round"/><line x1="74" y1="50" x2="82" y2="50" stroke="#FFB830" stroke-width="2" stroke-linecap="round"/><line x1="27" y1="27" x2="33" y2="33" stroke="#FFB830" stroke-width="2" stroke-linecap="round"/><line x1="67" y1="67" x2="73" y2="73" stroke="#FFB830" stroke-width="2" stroke-linecap="round"/><line x1="73" y1="27" x2="67" y2="33" stroke="#FFB830" stroke-width="2" stroke-linecap="round"/><line x1="33" y1="67" x2="27" y2="73" stroke="#FFB830" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <div class="pa-god">Helios</div>
+        <div class="pa-role">KeyShot Visualization Artist & Lighting Designer</div>
+        <div class="pa-desc">Lighting setups, material assignments, camera configs, KeyShot XR. Light is the material. Everything else is geometry.</div>
+        <div class="pa-dl">
+          <button class="pa-dl-btn" onclick="toggleDl(this)">Download for <svg viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+          <div class="pa-dl-menu">
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/helios-keyshot-agent.md" target="_blank" rel="noopener">Claude Code <span>.md</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/chatgpt/helios-keyshot-agent-chatgpt.txt" target="_blank" rel="noopener">ChatGPT <span>.txt</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/cursor/helios-keyshot-agent.mdc" target="_blank" rel="noopener">Cursor <span>.mdc</span></a>
+            <a href="https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/gemini/helios-keyshot-agent-gemini.txt" target="_blank" rel="noopener">Gemini <span>.txt</span></a>
+          </div>
+        </div>
+        <a href="agents/helios.html" class="pa-resume-link">View Resume →</a>
       </div>
 
       <!-- Dionysus -->
@@ -2844,6 +3042,44 @@ document.querySelectorAll('.tool-card').forEach(c => {
     c.style.setProperty('--my', ((e.clientY - r.top)  / r.height * 100) + '%');
   });
 });
+</script>
+
+<script>
+// Tier enforcement: 5 free agents get FREE badge; all others get PRO badge + locked download
+(function() {
+  var FREE_GODS = new Set(['Zeus', 'Athena', 'Argus', 'Apollo', 'Hephaestus']);
+  var PRO_HREF = 'https://holleystudio.gumroad.com/l/thesmos-pantheon';
+
+  document.querySelectorAll('.pa-card').forEach(function(card) {
+    var godEl = card.querySelector('.pa-god');
+    if (!godEl) return;
+    var godName = godEl.textContent.trim();
+
+    var badge = document.createElement('span');
+    badge.className = 'pa-tier-badge';
+
+    if (FREE_GODS.has(godName)) {
+      badge.textContent = 'FREE';
+      badge.classList.add('pa-badge--free');
+      godEl.before(badge);
+    } else {
+      badge.textContent = 'PRO';
+      badge.classList.add('pa-badge--pro');
+      godEl.before(badge);
+
+      var dlEl = card.querySelector('.pa-dl');
+      if (dlEl) {
+        var proBtn = document.createElement('a');
+        proBtn.href = PRO_HREF;
+        proBtn.className = 'pa-pro-btn';
+        proBtn.textContent = '🔒 Unlock Pro';
+        proBtn.target = '_blank';
+        proBtn.rel = 'noopener';
+        dlEl.replaceWith(proBtn);
+      }
+    }
+  });
+})();
 </script>
 </body>
 </html>

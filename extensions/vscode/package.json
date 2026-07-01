@@ -281,6 +281,11 @@
           "id": "thesmos.agentsView",
           "name": "Agents",
           "icon": "$(person-add)"
+        },
+        {
+          "id": "thesmos.agentActivity",
+          "name": "Agent Activity",
+          "icon": "$(comment-discussion)"
         }
       ]
     },
