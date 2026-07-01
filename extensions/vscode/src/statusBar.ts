@@ -82,6 +82,19 @@ export class StatusBarManager implements vscode.Disposable {
     );
   }
 
+  /**
+   * Live Pantheon routing chain while god agents run:
+   *   ⚡ Zeus → 👁 Argus
+   *   ⚡ Zeus → 👁 Argus + 🦉 Athena
+   */
+  showAgentRouting(chain: string): void {
+    this.item.text = `$(sync~spin) ${chain}`;
+    this.item.tooltip = new vscode.MarkdownString(
+      `**Thesmos Pantheon — routing in progress**\n\n${chain}\n\n_Gods are at work. Results land in the Agent Activity panel._`,
+    );
+    this.item.backgroundColor = undefined;
+  }
+
   showScanNeeded(): void {
     this.item.text = '$(warning) Thesmos: scan needed';
     this.item.tooltip =

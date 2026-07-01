@@ -20,13 +20,19 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-01T21:23:14.158Z",
+  "generatedAt": "2026-07-01T22:57:54.140Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
   "componentCount": 0,
   "sharedUiFiles": [],
   "designSystemFiles": [
+    "pantheon/exports/chatgpt/techne-design-system-chatgpt.txt",
+    "pantheon/exports/claude-code/techne-design-system.md",
+    "pantheon/exports/claude-project/techne-design-system-claude-project.txt",
+    "pantheon/exports/copilot/techne-design-system.md",
+    "pantheon/exports/cursor/techne-design-system.mdc",
+    "pantheon/exports/gemini/techne-design-system-gemini.txt",
     "thesmos/catalog/agents/figma/techne-design-system.md",
     "thesmos/catalog/agents/reviewers/design-system-reviewer.md",
     "thesmos/catalog/skills/design-token-audit.md"
@@ -352,20 +358,20 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 894,
-      "lineCount": 193363
+      "fileCount": 1016,
+      "lineCount": 258731
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
       "fileCount": 296,
-      "lineCount": 118045
+      "lineCount": 118594
     },
     {
       "language": "JavaScript",
       "extension": ".js",
-      "fileCount": 2,
-      "lineCount": 77
+      "fileCount": 3,
+      "lineCount": 229
     }
   ],
   "detectedStacks": [
