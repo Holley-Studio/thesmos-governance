@@ -81,6 +81,11 @@ export async function getChangedFiles(
     'actions/pr-review/dist/',
     'coverage/',
     'node_modules/',
+    // Agent persona files — they intentionally contain example attack patterns
+    // (SQL injection lessons, threat-model snippets) as teaching material.
+    'pantheon/',
+    'thesmos/catalog/agents/',
+    'website/downloads/',
   ];
 
   // Paginate through all changed files (PRs can have >100 files)

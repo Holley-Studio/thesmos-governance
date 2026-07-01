@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-01T22:57:54.140Z",
+  "generatedAt": "2026-07-01T23:08:53.341Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -359,13 +359,13 @@
       "language": "Other",
       "extension": "",
       "fileCount": 1016,
-      "lineCount": 258731
+      "lineCount": 258737
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
       "fileCount": 296,
-      "lineCount": 118594
+      "lineCount": 118599
     },
     {
       "language": "JavaScript",

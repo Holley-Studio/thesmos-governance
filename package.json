@@ -10,6 +10,12 @@
     "build:ext": "npm run build --workspace=extensions/vscode",
     "typecheck": "npm run typecheck --workspace=thesmos && npm run typecheck --workspace=actions/pr-review && npm run typecheck --workspace=extensions/vscode",
     "test": "npm test --workspace=thesmos",
+    "thesmos:scan": "tsx thesmos/bin/cli.ts scan",
+    "thesmos:ci-check": "tsx thesmos/bin/cli.ts ci-check",
+    "thesmos:review": "tsx thesmos/bin/cli.ts review",
+    "thesmos:validate": "tsx thesmos/bin/cli.ts validate",
+    "thesmos:doctor": "tsx thesmos/bin/cli.ts doctor",
+    "thesmos:adapters": "tsx thesmos/bin/cli.ts adapters",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "npm run build:lib && changeset publish"
