@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-06-26T18:30:29.328Z",
+  "generatedAt": "2026-07-01T21:23:14.158Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -119,6 +119,10 @@
       "lines": 1698
     },
     {
+      "file": "thesmos/rules/ai.ts",
+      "lines": 1672
+    },
+    {
       "file": "thesmos/rules/nextjs.ts",
       "lines": 1606
     },
@@ -135,16 +139,16 @@
       "lines": 1350
     },
     {
-      "file": "thesmos/rules/ai.ts",
-      "lines": 1333
-    },
-    {
       "file": "thesmos/rules/typescript.ts",
       "lines": 1220
     },
     {
       "file": "thesmos/fix.test.ts",
       "lines": 1187
+    },
+    {
+      "file": "thesmos/rules/agents.ts",
+      "lines": 1156
     },
     {
       "file": "thesmos/rules/debt.ts",
@@ -243,10 +247,6 @@
       "lines": 852
     },
     {
-      "file": "thesmos/rules/agents.ts",
-      "lines": 845
-    },
-    {
       "file": "thesmos/rules/java.ts",
       "lines": 842
     },
@@ -261,6 +261,14 @@
     {
       "file": "thesmos/rules/rust.test.ts",
       "lines": 818
+    },
+    {
+      "file": "thesmos/bin/commands/pantheon.ts",
+      "lines": 816
+    },
+    {
+      "file": "thesmos/rules/gdpr.ts",
+      "lines": 811
     },
     {
       "file": "thesmos/rules/php.test.ts",
@@ -279,7 +287,9 @@
   "scriptFiles": [
     "scripts/github-setup.sh"
   ],
-  "envFiles": [],
+  "envFiles": [
+    ".env"
+  ],
   "clientBoundaryRisks": [
     {
       "file": "thesmos/review.test.ts",
@@ -342,14 +352,14 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 652,
-      "lineCount": 111759
+      "fileCount": 894,
+      "lineCount": 193363
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 286,
-      "lineCount": 113729
+      "fileCount": 296,
+      "lineCount": 118045
     },
     {
       "language": "JavaScript",
@@ -412,6 +422,7 @@
       "NEXT_PUBLIC_SYSTEM_PROMPT",
       "NEXT_PUBLIC_URL",
       "NODE_ENV",
+      "NVM_BIN",
       "OPENAI_API_KEY",
       "OPENAI_KEY",
       "OPENAI_MODEL",
