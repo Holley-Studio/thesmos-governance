@@ -29,7 +29,7 @@ import { FindingsTreeProvider } from './treeView.js';
 import { AutopilotWatcher } from './autopilotWatcher.js';
 import { AutopilotTreeProvider } from './autopilotView.js';
 import { AgentsTreeProvider, invokeAgentCommand } from './agentsPanel.js';
-import { AgentActivityWatcher, AgentActivityTreeProvider } from './agentActivityPanel.js';
+import { AgentActivityWatcher, AgentActivityTreeProvider, buildRoutingChain } from './agentActivityPanel.js';
 import { AutoModeGovernor } from './autoModeGovernor.js';
 import { ThesmosCodeLensProvider } from './codeLens.js';
 import { InlineDiagnosticsManager } from './inlineDiagnostics.js';
@@ -79,6 +79,7 @@ class ThesmosExtension implements vscode.Disposable {
   private readonly agentsView: AgentsTreeProvider;
   private readonly agentActivityWatcher: AgentActivityWatcher;
   private readonly agentActivityView: AgentActivityTreeProvider;
+  private routingChainActive = false;
   private readonly autoModeGovernor: AutoModeGovernor;
   private readonly codeLensProvider: ThesmosCodeLensProvider;
   private readonly inlineDiagnostics: InlineDiagnosticsManager;
@@ -152,6 +153,18 @@ class ThesmosExtension implements vscode.Disposable {
     } else {
       this.statusBar.showAutoModeUngoverned();
     }
+
+    // Live Pantheon routing chain in the status bar while god agents run
+    this.agentActivityWatcher.onDidChange((events) => {
+      const chain = buildRoutingChain(events);
+      if (chain) {
+        this.routingChainActive = true;
+        this.statusBar.showAgentRouting(chain);
+      } else if (this.routingChainActive) {
+        this.routingChainActive = false;
+        void this.refreshStatusBar(readConfig());
+      }
+    });
   }
 
   async activate(): Promise<void> {

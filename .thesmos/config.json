@@ -23,7 +23,9 @@
     ".claude",
     ".thesmos",
     ".cursor",
-    "coverage"
+    "coverage",
+    "pantheon",
+    "downloads"
   ],
   "largeFileThreshold": 800,
   "failOnSeverity": ["BLOCKER"],

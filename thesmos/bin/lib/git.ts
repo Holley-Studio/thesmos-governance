@@ -15,7 +15,11 @@ const log = makeLogger('git');
  * Return changed files by diffing HEAD against `base`.
  * Files deleted in HEAD are excluded (they no longer exist on disk).
  */
-export function getChangedFiles(root: string, base: string): ChangedFile[] {
+export function getChangedFiles(
+  root: string,
+  base: string,
+  ignoredFolders: string[] = [],
+): ChangedFile[] {
   let names: string[];
   try {
     const out = execSync(`git diff "${base}"...HEAD --name-only`, {
@@ -26,6 +30,14 @@ export function getChangedFiles(root: string, base: string): ChangedFile[] {
   } catch (e) {
     log.warn('git diff failed', { base, error: e instanceof Error ? e.message : String(e) });
     return [];
+  }
+
+  // Respect config.ignoredFolders — committed dist/ bundles and persona
+  // catalogs intentionally contain bad-pattern examples and must not be
+  // reviewed as application code.
+  if (ignoredFolders.length > 0) {
+    const ignored = new Set(ignoredFolders);
+    names = names.filter((path) => !path.split('/').some((seg) => ignored.has(seg)));
   }
 
   return names.flatMap((path) => {
