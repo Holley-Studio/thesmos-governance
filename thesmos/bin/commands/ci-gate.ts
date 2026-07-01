@@ -69,7 +69,7 @@ export async function cmdCiGate(argv: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const changedFiles = base ? getChangedFiles(root, base) : undefined;
+  const changedFiles = base ? getChangedFiles(root, base, config.ignoredFolders ?? []) : undefined;
   const allFindings = runReview({ scan, config, changedFiles });
 
   // Baseline partition
