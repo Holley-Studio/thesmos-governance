@@ -215,7 +215,7 @@ export async function cmdDiff(argv: string[]): Promise<void> {
     const { readFilesFromPaths } = await import('../lib/git.ts');
     changedFiles = readFilesFromPaths(root, positionals);
   } else if (base) {
-    changedFiles = getChangedFiles(root, base);
+    changedFiles = getChangedFiles(root, base, config.ignoredFolders ?? []);
   } else if (!allFiles) {
     // Default: scan-based checks only (no per-file content)
     changedFiles = undefined;
