@@ -53,3 +53,11 @@ extensions/vscode/*.vsix
 .thesmos/token-session-id
 .thesmos/active-plan.md
 thesmos/.thesmos/active-plan.md
+
+# Paid Pantheon bundles — sold via Gumroad, not distributed from the public
+# repo. Only the free starter pack is committed. package-agents.ts writes
+# these to dist-packs/ (also gitignored) for local upload to Gumroad.
+website/downloads/thesmos-pantheon-agents.zip
+website/downloads/thesmos-pantheon-founders.zip
+website/downloads/thesmos-pantheon-agencies.zip
+dist-packs/

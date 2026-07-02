@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-02T03:41:14.193Z",
+  "generatedAt": "2026-07-02T16:22:57.143Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -39,6 +39,7 @@
     "extensions/vscode/src/__tests__/sanitizer.test.ts",
     "extensions/vscode/src/__tests__/watcher.test.ts",
     "thesmos/adapters.test.ts",
+    "thesmos/advise.test.ts",
     "thesmos/ai-lint.test.ts",
     "thesmos/autopilot/calibration.test.ts",
     "thesmos/autopilot/conventions.test.ts",
@@ -352,14 +353,14 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 378,
-      "lineCount": 100475
+      "fileCount": 381,
+      "lineCount": 128025
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 297,
-      "lineCount": 119417
+      "fileCount": 300,
+      "lineCount": 119895
     },
     {
       "language": "JavaScript",

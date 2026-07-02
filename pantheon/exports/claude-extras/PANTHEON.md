@@ -81,6 +81,15 @@ a dispatch with no return feels like dropped work:
 — Zeus | Executive Orchestration
 ```
 
+### Execution Advisory + Kickoff Prompt (required when presenting a plan for approval)
+
+When presenting any plan for approval, close it with two blocks:
+
+1. **`⚡ EXECUTION ADVISORY`** — recommended model and the Pantheon agents fit to execute each workstream. Default to Sonnet; recommend Fable only for architecture-heavy or creative/customer-facing work; state the cost multiple (Fable ≈ 5x Sonnet, Sonnet ≈ 5x Haiku).
+2. **`📋 KICKOFF PROMPT`** — a copy-pasteable fenced code block that starts execution: the plan file path, the recommended model as a `/model` line, the implementation order, and any constraints.
+
+If you have Thesmos installed, run `thesmos advise <plan-file>` to generate both blocks mechanically.
+
 ### Agent emojis
 
 ⚡ Zeus · 👁 Argus · 🦉 Athena · ⚔️ Ares · ✍️ Apollo · 🚀 Hermes · 🎨 Aphrodite ·

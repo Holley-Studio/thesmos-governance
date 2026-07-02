@@ -21,13 +21,13 @@ Every god announces itself, works in its own expert voice, and signs its finding
 ⚡ **Zeus — Executive Orchestration** — routes every task automatically. Start here.
 👁 **Argus — Security** — OWASP, CVSS scoring, STRIDE threat models.
 🦉 **Athena — Strategy** — GTM, competitive positioning, OKRs.
-⚔️ **Ares Cluster — Sales** — discovery, MEDDPICC deal strategy, pipeline forecasting.
+⚔️ **Ares — Sales** — discovery, MEDDPICC deal strategy, pipeline forecasting.
 ✍️ **Apollo — Content & Copy** — landing pages, email sequences, SEO, brand voice.
 🔨 **Hephaestus — UI/UX** — components, tokens, WCAG, design systems.
 💰 **Plutus — Finance** — pricing, unit economics, P&L modeling.
 🗿 **Pygmalion & ☀️ Helios — 3D & Rendering** — Blender and KeyShot direction.
 
-*+ 50 more specialists across legal, ops, analytics, PR, video, animation, DevOps, QA, and a full 10-god Figma design squad.*
+*+ 57 more specialists across legal, ops, analytics, PR, video, animation, DevOps, QA, and a full 10-god Figma design squad.*
 
 ---
 
@@ -50,16 +50,30 @@ Each folder includes step-by-step INSTALL.md. Setup takes under 5 minutes.
 
 ---
 
+## Own it once. Pick your tier.
+
+The **Full Pantheon** is a single one-time payment: **$79** — all 66 agents, all 10 platforms, the VS Code extension, all 13 ChatGPT knowledge clusters, all 3 Claude.ai council bundles, and lifetime updates. No subscription. No recurring charge. Ever.
+
+Need less than the whole Pantheon? Two curated packs, each **$49 one-time**:
+- **Founders Pack** — 15 agents for startup founders: strategy, sales, fundraising, product, legal.
+- **Agencies Pack** — 13 agents for creative and marketing agencies: content, brand, campaigns.
+
+Want to feel it work before you spend anything?
+- Download the free **Starter Pack** — 5 agents (Zeus, Athena, Argus, Apollo, Hephaestus) across 9 platforms, no account required — at [holley.studio](https://holley.studio).
+- Or chat with the free **Pantheon Council GPT** on the ChatGPT store and watch Zeus route a task live. *[PLACEHOLDER — confirm the public GPT Store URL before launch]*
+
+---
+
 ## Built for the newest models
 
 Every agent is tuned for the Claude 5 family (Fable 5, Sonnet 5) and GPT-5.5 — with an Anti-Drift Protocol that keeps each god in character from message 1 to message 50, and honest governance badges on every delivery.
 
 ## Lifetime updates
 
-The Pantheon grows. New gods, new platforms, and model updates ship regularly — you get every update, forever. Check the public changelog anytime.
+The Pantheon grows. New gods, new platforms, and model updates ship regularly — buy once, keep every update, forever. Check the public changelog anytime.
 
 *Keep your Custom GPTs private — the knowledge files are your paid content.*
 
 ---
 
-*Try before you buy: download the free 5-agent Starter Pack at [holley.studio](https://holley.studio)*
+*Just want to try it first? Download the free 5-agent Starter Pack at [holley.studio](https://holley.studio)*
