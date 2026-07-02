@@ -424,7 +424,7 @@ function collectAgentIds(srcDir: string, ext: string, filterFn?: (id: string) =>
     .filter(id => filterFn ? filterFn(id) : true)
 }
 
-const VSIX_VERSION = '1.7.0'
+const VSIX_VERSION = '1.7.1'
 const VSIX_PATH = resolve(__dirname, `../../extensions/vscode/thesmos-governance-vscode-${VSIX_VERSION}.vsix`)
 const CLAUDE_EXTRAS_DIR = resolve(__dirname, '../../pantheon/exports/claude-extras')
 
