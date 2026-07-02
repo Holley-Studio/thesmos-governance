@@ -51,6 +51,13 @@ const techDebt: Finding = {
   message: 'Magic number should be a named constant.',
 };
 
+const preExistingFinding: Finding = {
+  severity: 'MEDIUM',
+  file: 'legacy/old-module.ts',
+  category: 'debt_magic_number',
+  message: 'Magic number should be a named constant.',
+};
+
 // ── SUMMARY_MARKER ─────────────────────────────────────────────────────────────
 
 describe('SUMMARY_MARKER', () => {
@@ -373,6 +380,80 @@ describe('dedup — categories spanning many files', () => {
   });
 });
 
+// ── formatSummaryComment — pre-existing section & baseline note (Task 4a/4b) ───
+
+describe('formatSummaryComment — pre-existing findings section', () => {
+  it('omits the pre-existing section entirely when there are no pre-existing findings', () => {
+    const out = formatSummaryComment([blocker], 'repo', 1, { preExisting: [] });
+    expect(out).not.toContain('Pre-existing findings in touched files');
+  });
+
+  it('renders the collapsed pre-existing section when present', () => {
+    const out = formatSummaryComment([blocker], 'repo', 1, { preExisting: [preExistingFinding] });
+    expect(out).toContain('Pre-existing findings in touched files');
+    expect(out).toContain('1 finding');
+    expect(out).toContain('not blocking');
+  });
+
+  it('pre-existing section contains the finding file and category', () => {
+    const out = formatSummaryComment([blocker], 'repo', 1, { preExisting: [preExistingFinding] });
+    expect(out).toContain('legacy/old-module.ts');
+    expect(out).toContain('debt_magic_number');
+  });
+
+  it('the pre-existing section is a plain (collapsed) <details>, not <details open>', () => {
+    const out = formatSummaryComment([], 'repo', 1, { preExisting: [preExistingFinding] });
+    expect(out).toContain('<details>\n<summary>📋');
+    expect(out).not.toContain('<details open>\n<summary>📋');
+  });
+
+  it('respects reportPreexisting: false — section is suppressed even when findings exist', () => {
+    const out = formatSummaryComment([blocker], 'repo', 1, {
+      preExisting: [preExistingFinding],
+      reportPreexisting: false,
+    });
+    expect(out).not.toContain('Pre-existing findings in touched files');
+  });
+
+  it('main findings sections are unaffected by the pre-existing bucket', () => {
+    const out = formatSummaryComment([blocker], 'repo', 1, { preExisting: [preExistingFinding] });
+    expect(out).toContain('sec_sql_injection');
+  });
+
+  it('omitting options entirely behaves exactly as before (backward compatible)', () => {
+    const out = formatSummaryComment([blocker, high], 'repo', 5);
+    expect(out).toContain('2 findings');
+    expect(out).not.toContain('Pre-existing findings in touched files');
+  });
+});
+
+describe('formatSummaryComment — baseline suppression note', () => {
+  it('omits the baseline note when baselinedCount is 0 or absent', () => {
+    const out = formatSummaryComment([blocker], 'repo', 1);
+    expect(out).not.toContain('suppressed as accepted baseline debt');
+  });
+
+  it('shows the baseline note with the correct count (plural)', () => {
+    const out = formatSummaryComment([blocker], 'repo', 1, { baselinedCount: 5 });
+    expect(out).toContain('5 findings suppressed as accepted baseline debt');
+    expect(out).toContain('thesmos baseline:report');
+  });
+
+  it('shows the baseline note with singular wording for count of 1', () => {
+    const out = formatSummaryComment([blocker], 'repo', 1, { baselinedCount: 1 });
+    expect(out).toContain('1 finding suppressed as accepted baseline debt');
+  });
+
+  it('shows both the pre-existing section and the baseline note together', () => {
+    const out = formatSummaryComment([blocker], 'repo', 1, {
+      preExisting: [preExistingFinding],
+      baselinedCount: 3,
+    });
+    expect(out).toContain('Pre-existing findings in touched files');
+    expect(out).toContain('3 findings suppressed as accepted baseline debt');
+  });
+});
+
 // ── shouldFail ─────────────────────────────────────────────────────────────────
 
 describe('shouldFail', () => {
@@ -424,5 +505,34 @@ describe('shouldFail', () => {
 
   it('returns false for mixed low/tech-debt when threshold is HIGH', () => {
     expect(shouldFail([low, techDebt], 'HIGH')).toBe(false);
+  });
+});
+
+// ── governance-tamper warning (Argus, Phase 4b item 3) ────────────────────────
+
+describe('formatSummaryComment — governance control file warning', () => {
+  it('renders a prominent warning when the PR modifies the baseline', () => {
+    const out = formatSummaryComment([], 'acme/app', 7, {
+      governanceFilesModified: ['.thesmos/baseline.json'],
+    });
+    expect(out).toContain('modifies governance control files');
+    expect(out).toContain('.thesmos/baseline.json');
+    // Must not be inside a collapsed <details> block
+    const warnIdx = out.indexOf('modifies governance control files');
+    const detailsIdx = out.indexOf('<details>');
+    expect(detailsIdx === -1 || warnIdx < detailsIdx).toBe(true);
+  });
+
+  it('lists config.json too when both control files are touched', () => {
+    const out = formatSummaryComment([], 'acme/app', 7, {
+      governanceFilesModified: ['.thesmos/baseline.json', '.thesmos/config.json'],
+    });
+    expect(out).toContain('.thesmos/baseline.json');
+    expect(out).toContain('.thesmos/config.json');
+  });
+
+  it('renders no warning when governance files are untouched', () => {
+    const out = formatSummaryComment([], 'acme/app', 7, {});
+    expect(out).not.toContain('modifies governance control files');
   });
 });

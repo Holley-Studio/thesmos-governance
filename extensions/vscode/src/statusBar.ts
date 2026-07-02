@@ -90,7 +90,7 @@ export class StatusBarManager implements vscode.Disposable {
     this.item.backgroundColor = undefined;
   }
 
-  showHealth(health: HealthScore, findingCount: number): void {
+  showHealth(health: HealthScore, findingCount: number, baselinedCount = 0): void {
     const { score, grade } = health;
 
     if (grade === 'A+' || grade === 'A') {
@@ -113,10 +113,16 @@ export class StatusBarManager implements vscode.Disposable {
         ? 'No findings'
         : `${findingCount} finding${findingCount === 1 ? '' : 's'}`;
 
+    // Subtle, non-nagging line — accepted debt is informational, not a badge.
+    const baselineLine =
+      baselinedCount > 0
+        ? `\n\n${baselinedCount} accepted finding${baselinedCount === 1 ? '' : 's'} in baseline`
+        : '';
+
     this.item.tooltip = new vscode.MarkdownString(
       `**Thesmos Governance** — Health Score\n\n` +
         `Grade: **${grade}**   Score: **${score}/100**\n\n` +
-        `${issueText}\n\n` +
+        `${issueText}${baselineLine}\n\n` +
         `_Click to open health dashboard_`,
     );
   }
