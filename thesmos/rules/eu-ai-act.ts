@@ -39,8 +39,17 @@ function findLineNumber(content: string, searchStr: string): number | undefined 
 
 // Signals that high-risk AI decisions are being made without a human gate
 const HIGH_RISK_DECISION_RE = /\b(?:credit.?scor|loan.?approv|hire|recruit|dismiss|medical.?diagnos|benefit.?eligib|risk.?scor|fraud.?scor)\b/i;
-const BIOMETRIC_RE = /\b(?:facial.?recogn|fingerprint|iris.?scan|biometric.?verif|real.?time.?remote.?biometric|voice.?print)\b/i;
-const LLM_CALL_RE = /openai|anthropic|bedrock|vertex|azureopenai|gemini|llm|completion|chat\.completions/i;
+// Fingerprint terms require biometric context (scan/verify/auth/etc.) so that
+// code-authorship terms (ai-fingerprint, cmdAiFingerprint, fingerprintFinding)
+// never match while fingerprintScanner / verifyFingerprint / fingerprint_auth do.
+const BIOMETRIC_RE = /facial.?recogn|iris.?scan|biometric.?verif|real.?time.?remote.?biometric|voice.?print|(?:finger|thumb).?print.?(?:scan|match|verif|recogn|reader|sensor|auth)|(?:scan|match|verif|recogn|read|sens|auth)\w*.?(?:finger|thumb).?print/i;
+// API-shaped identifiers only — bare vendor/product words ("llm", "gemini",
+// "completion") appear in help text and docs and are not evidence of an API call.
+const LLM_CALL_RE = /openai\.|anthropic\.|new\s+(?:OpenAI|Anthropic)|chat\.completions|messages\.create\s*\(|generateContent\s*\(|bedrock|vertexai|azureopenai/i;
+// Import/require lines name modules, not runtime biometric capability.
+const IMPORT_LINE_RE = /^\s*(?:import|export)\b|require\s*\(/;
+// Biometric + LLM signals must co-occur within this many lines to count as one system.
+const BIOMETRIC_LLM_WINDOW = 10;
 const HUMAN_GATE_RE = /human.?review|human.?in.?the.?loop|hitl|manual.?approv|operator.?confirm|humanOversight/i;
 const AUDIT_LOG_RE = /audit.?log|append.?only|immutable.?log|auditTrail|audit_trail/i;
 
@@ -102,13 +111,23 @@ const EU_AI_002: ThesmosRule = {
     const findings: Finding[] = [];
     for (const cf of (input.changedFiles ?? [])) {
       if (!isSourceFile(cf.path) || isTestFile(cf.path)) continue;
-      if (!BIOMETRIC_RE.test(cf.content)) continue;
-      if (!LLM_CALL_RE.test(cf.content)) continue;
-      const line = findLineNumber(cf.content, 'biometric') ?? findLineNumber(cf.content, 'facial');
+      const lines = cf.content.split('\n');
+      const biometricLines: number[] = [];
+      const llmLines: number[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]!;
+        if (BIOMETRIC_RE.test(line) && !IMPORT_LINE_RE.test(line)) biometricLines.push(i);
+        if (LLM_CALL_RE.test(line)) llmLines.push(i);
+      }
+      if (biometricLines.length === 0 || llmLines.length === 0) continue;
+      // Same window pattern as csharp.ts — signals must be within ±N lines.
+      const hit = biometricLines.find((bi) =>
+        llmLines.some((li) => Math.abs(li - bi) <= BIOMETRIC_LLM_WINDOW));
+      if (hit === undefined) continue;
       findings.push(f('eu_ai_prohibited_biometric', 'BLOCKER',
         'Biometric AI capability combined with LLM call — real-time biometric ID is prohibited under EU AI Act Art. 5.',
         'Remove this capability or obtain a narrowly scoped law-enforcement exemption with documented legal basis.',
-        cf.path, line));
+        cf.path, hit + 1));
     }
     return findings;
   },

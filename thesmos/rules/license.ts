@@ -97,14 +97,22 @@ function isCommercialProject(pkg: Record<string, unknown>): boolean {
 }
 
 function extractLockDeps(lock: Record<string, unknown>): Array<{ name: string; license?: string }> {
-  const packages = (lock.packages ?? lock.dependencies) as Record<string, { license?: string }> | undefined;
-  if (!packages) return [];
-  return Object.entries(packages)
-    .filter(([key]) => key !== '' && key !== 'node_modules')
-    .map(([key, val]) => {
-      const name = key.replace(/^node_modules\//, '');
-      return { name, license: val.license };
-    });
+  // Lockfile v2/v3: keys are paths. First-party workspace source entries
+  // (keys not under node_modules/) and their symlink aliases (link: true)
+  // are governed by the repo's own LICENSE (LIC_004/LIC_006) — treating them
+  // as unlicensed third-party dependencies is a self-flagging false positive.
+  const v2 = lock.packages as Record<string, { license?: string; link?: boolean }> | undefined;
+  if (v2) {
+    return Object.entries(v2)
+      .filter(([key, val]) => key.startsWith('node_modules/') && !val.link)
+      .map(([key, val]) => ({ name: key.replace(/^node_modules\//, ''), license: val.license }));
+  }
+  // Lockfile v1: keys are bare package names (all third-party).
+  const v1 = lock.dependencies as Record<string, { license?: string }> | undefined;
+  if (!v1) return [];
+  return Object.entries(v1)
+    .filter(([key]) => key !== '')
+    .map(([key, val]) => ({ name: key, license: val.license }));
 }
 
 // ── Rule: LIC_001 — GPL in commercial project ─────────────────────────────────

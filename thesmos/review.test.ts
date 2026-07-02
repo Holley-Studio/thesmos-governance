@@ -452,3 +452,55 @@ describe('formatFindingsJson', () => {
     expect(json.findings).toHaveLength(1);
   });
 });
+
+// ── runReview — inline suppression wiring ─────────────────────────────────────
+
+describe('runReview — inline suppressions', () => {
+  it('filters a finding when a thesmos-disable-next-line comment precedes the violation', () => {
+    const files: ChangedFile[] = [{
+      path: 'lib/config.ts',
+      content: [
+        '// thesmos-disable-next-line direct_env_access -- reason: test fixture -- owner: @test',
+        'const url = process.env.DATABASE_URL;',
+      ].join('\n'),
+    }];
+    const findings = runReview(makeInput({}, files));
+    expect(findings.filter((f) => f.category === 'direct_env_access')).toHaveLength(0);
+  });
+
+  it('keeps the finding when no suppression comment is present', () => {
+    const files: ChangedFile[] = [{
+      path: 'lib/config.ts',
+      content: 'const url = process.env.DATABASE_URL;',
+    }];
+    const findings = runReview(makeInput({}, files));
+    expect(findings.filter((f) => f.category === 'direct_env_access').length).toBeGreaterThan(0);
+  });
+
+  it('suppresses two different rules on one line via stacked comments', () => {
+    const files: ChangedFile[] = [{
+      path: 'scripts/pack.ts',
+      content: [
+        'import { execSync } from "node:child_process";',
+        '// thesmos-disable-next-line shell_injection -- reason: static build constants -- owner: @test',
+        '// thesmos-disable-next-line child_process_shell_injection -- reason: static build constants -- owner: @test',
+        'execSync(`cd "${dir}" && zip -r "${zipPath}" "${name}"`, { stdio: "pipe" });',
+      ].join('\n'),
+    }];
+    const findings = runReview(makeInput({}, files));
+    expect(findings.filter((f) => f.category === 'shell_injection')).toHaveLength(0);
+    expect(findings.filter((f) => f.category === 'child_process_shell_injection')).toHaveLength(0);
+  });
+
+  it('does not apply an expired suppression', () => {
+    const files: ChangedFile[] = [{
+      path: 'lib/config.ts',
+      content: [
+        '// thesmos-disable-next-line direct_env_access -- reason: expired -- expires: 2020-01-01',
+        'const url = process.env.DATABASE_URL;',
+      ].join('\n'),
+    }];
+    const findings = runReview(makeInput({}, files));
+    expect(findings.filter((f) => f.category === 'direct_env_access').length).toBeGreaterThan(0);
+  });
+});

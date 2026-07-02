@@ -1361,6 +1361,9 @@ const AGNT_037: ThesmosRule = {
       if (!/\.(md|json|ts|js|jsonc|yaml|yml)$/.test(cf.path)) continue;
       const lines = cf.content.split('\n');
       for (let i = 0; i < lines.length; i++) {
+        // Markdown table rows document the pattern (e.g. this rule's own summary
+        // in a generated rules table) — they do not enable a 1M context window.
+        if (/^\s*\|.*\|\s*$/.test(lines[i])) continue;
         if (/\[1m\]|context-1m-\d{4}/.test(lines[i])) {
           findings.push({ ...f('agent_context_1m_unguarded', severity,
             allow1M
