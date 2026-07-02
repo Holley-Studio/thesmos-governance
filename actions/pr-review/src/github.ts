@@ -68,12 +68,16 @@ export async function getChangedFiles(
   octokit: Octokit,
   ctx: PullRequestContext,
   workspace: string,
+  reviewIgnorePaths: string[] = [],
 ): Promise<ChangedFile[]> {
   const files: ChangedFile[] = [];
 
   // Directories whose contents should never be reviewed — they contain
   // governance rule templates that intentionally describe bad patterns.
+  // The repo's own config.reviewIgnorePaths (prefix-match) merges in so
+  // the action honors the same exclusions as the CLI gates.
   const IGNORED_PREFIXES = [
+    ...reviewIgnorePaths,
     '.claude/',
     '.thesmos/',
     '.cursor/',
