@@ -46,6 +46,7 @@ export const CONFIG_DEFAULTS: ThesmosConfig = {
 
   ignoredFolders: ['node_modules', '.next', '.git', 'out', '.vercel'],
   reviewIgnorePaths: [],
+  gate: { minConfidence: 'medium' },
   largeFileThreshold: 300,
   criticalLibPaths: [],
   requiredFiles: [
@@ -162,6 +163,13 @@ export function loadConfig(
     reviewIgnorePaths: Array.isArray(raw.reviewIgnorePaths)
       ? (raw.reviewIgnorePaths as string[])
       : CONFIG_DEFAULTS.reviewIgnorePaths,
+    gate: (() => {
+      const g = raw.gate as { minConfidence?: string } | undefined;
+      const valid = ['high', 'medium', 'low'];
+      return g && typeof g.minConfidence === 'string' && valid.includes(g.minConfidence)
+        ? { minConfidence: g.minConfidence as 'high' | 'medium' | 'low' }
+        : CONFIG_DEFAULTS.gate;
+    })(),
     secretPatterns: Array.isArray(raw.secretPatterns)
       ? (raw.secretPatterns as string[])
       : CONFIG_DEFAULTS.secretPatterns,

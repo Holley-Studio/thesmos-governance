@@ -342,8 +342,17 @@ const SEVERITY_RANK: Record<Severity, number> = {
 export function shouldFail(
   findings: Finding[],
   threshold: Severity | 'none',
+  minConfidence: 'high' | 'medium' | 'low' = 'medium',
 ): boolean {
   if (threshold === 'none') return false;
   const rank = SEVERITY_RANK[threshold];
-  return findings.some((f) => SEVERITY_RANK[f.severity] >= rank);
+  // Gate semantics match the CLI (thesmos/gate.ts): findings below the
+  // repo's gate.minConfidence report but never block.
+  const confRank = { low: 0, medium: 1, high: 2 } as const;
+  const minRank = confRank[minConfidence];
+  return findings.some(
+    (f) =>
+      SEVERITY_RANK[f.severity] >= rank &&
+      confRank[(f as Finding & { confidence?: 'high' | 'medium' | 'low' }).confidence ?? 'high'] >= minRank,
+  );
 }

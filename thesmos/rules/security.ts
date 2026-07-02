@@ -373,6 +373,9 @@ export const SECURITY_RULES: ThesmosRule[] = [
 
   {
     id: 'SEC_014',
+    // Shape heuristic — can misfire on innocent code; reports but does not gate
+    // unless gate.minConfidence is lowered. See thesmos/gate.ts.
+    confidence: 'medium',
     category: 'ssrf_fetch',
     description: 'Server-side fetch with a user-controlled URL enables SSRF — attackers can reach internal services.',
     severity: 'BLOCKER',
@@ -443,6 +446,9 @@ export const SECURITY_RULES: ThesmosRule[] = [
 
   {
     id: 'SEC_016',
+    // Shape heuristic — can misfire on innocent code; reports but does not gate
+    // unless gate.minConfidence is lowered. See thesmos/gate.ts.
+    confidence: 'medium',
     category: 'shell_injection',
     description: 'child_process.exec / execSync with template literals or concatenation enables command injection.',
     severity: 'BLOCKER',

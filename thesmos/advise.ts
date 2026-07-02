@@ -121,17 +121,28 @@ export function recommendModel(c: Classification): ModelRecommendation {
   };
 }
 
+interface ScoreOptions {
+  /** Weight per direct name mention (default 10 — a named god is a strong signal). */
+  nameWeight?: number;
+  /** Require at least one domain-vocabulary hit — filters out gods who are
+   * merely DISCUSSED (e.g. "delete the iris files") rather than fit for the
+   * work. */
+  requireDomainHit?: boolean;
+}
+
 /**
  * Score how well a god matches the plan text. Being named directly (e.g. a
- * plan that says "Apollo (pricing page + Gumroad copy)") is a much stronger
- * signal than incidental domain-vocabulary overlap, so name mentions are
- * weighted heavily above keyword hits.
+ * plan that says "Apollo (pricing page + Gumroad copy)") is a strong signal,
+ * but mention frequency is not fitness — callers assigning WORK (assignPhases)
+ * lower the name weight and require a domain hit.
  */
 export function suggestAgents(
   text: string,
   gods: Record<string, GodEntry>,
   limit = 5,
+  options: ScoreOptions = {},
 ): AgentSuggestion[] {
+  const { nameWeight = 10, requireDomainHit = false } = options;
   const lower = text.toLowerCase();
   const scored: AgentSuggestion[] = [];
 
@@ -140,16 +151,19 @@ export function suggestAgents(
 
     const nameLower = god.name.toLowerCase();
     const nameMentions = lower.split(nameLower).length - 1;
-    score += nameMentions * 10;
+    score += nameMentions * nameWeight;
 
     const domainWords = god.domain
       .toLowerCase()
       .split(/[^a-z0-9]+/)
       .filter((w) => w.length > 3);
+    let domainHits = 0;
     for (const word of domainWords) {
-      if (lower.includes(word)) score++;
+      if (lower.includes(word)) domainHits++;
     }
+    score += domainHits;
 
+    if (requireDomainHit && domainHits === 0) continue;
     if (score > 0) scored.push({ key, emoji: god.emoji, name: god.name, domain: god.domain, score });
   }
 
@@ -202,20 +216,149 @@ export function formatAdvisoryConsole(advisory: Advisory): string {
   return lines.join('\n');
 }
 
-export function formatKickoffPrompt(planPath: string, advisory: Advisory): string {
-  const modelLabel = { haiku: 'claude-haiku-4-5', sonnet: 'claude-sonnet-5', fable: 'claude-fable-5' }[advisory.recommendation.model];
-  const agentList = advisory.agents.map((a) => `${a.emoji} ${a.name} (${a.domain})`).join(', ');
-  const lines: string[] = [];
-  lines.push('📋 KICKOFF PROMPT (copy-paste to start execution)');
-  lines.push('');
-  lines.push('```');
-  lines.push(`/model ${modelLabel}`);
-  lines.push('');
-  lines.push(`Execute the approved plan at`);
-  lines.push(planPath);
-  lines.push('');
-  if (agentList) lines.push(`Agents suggested for this plan: ${agentList}`);
-  lines.push('Follow the plan\'s stated implementation order and verification section.');
-  lines.push('```');
-  return lines.join('\n');
+// ── Operation names ───────────────────────────────────────────────────────────
+
+const OPERATION_ADJECTIVES = [
+  'Rising', 'Silent', 'Bronze', 'Marble', 'Golden', 'Iron', 'Clear', 'Swift',
+  'Burning', 'Hidden', 'Sovereign', 'Radiant', 'Thundering', 'Watchful',
+  'Unbroken', 'Crowned', 'First', 'Final', 'Twin', 'Distant', 'Sacred',
+  'Storm', 'Winter', 'Summer', 'Dawn', 'Dusk', 'North', 'Amber', 'Ivory',
+  'Obsidian', 'Crimson', 'Azure', 'Gilded', 'Vigilant', 'Steadfast',
+  'Boundless', 'Eternal', 'Luminous', 'Tempered', 'Fabled',
+];
+
+const OPERATION_NOUNS = [
+  'Aegis', 'Temple', 'Forge', 'Council', 'Olympus', 'Oracle', 'Colossus',
+  'Labyrinth', 'Trident', 'Lyre', 'Chariot', 'Anvil', 'Beacon', 'Citadel',
+  'Compass', 'Covenant', 'Crown', 'Ember', 'Gate', 'Harbor', 'Helm',
+  'Horizon', 'Lantern', 'Meridian', 'Monolith', 'Pillar', 'Sentinel',
+  'Spear', 'Summit', 'Threshold', 'Torch', 'Vanguard', 'Vault', 'Watch',
+  'Accord', 'Ascent', 'Decree', 'Mandate', 'Reckoning', 'Restoration',
+];
+
+/**
+ * Deterministic mythic operation name for a plan — the same plan text always
+ * yields the same name, so re-running advise agrees with itself.
+ */
+export function generateOperationName(planText: string): string {
+  let hash = 0;
+  for (let i = 0; i < planText.length; i++) {
+    hash = (hash * 31 + planText.charCodeAt(i)) | 0;
+  }
+  const h = Math.abs(hash);
+  const adj = OPERATION_ADJECTIVES[h % OPERATION_ADJECTIVES.length];
+  const noun = OPERATION_NOUNS[Math.floor(h / OPERATION_ADJECTIVES.length) % OPERATION_NOUNS.length];
+  return `${adj} ${noun}`;
+}
+
+// ── Phase → god assignments ───────────────────────────────────────────────────
+
+export interface PhaseAssignment {
+  heading: string;
+  god: AgentSuggestion | null;
+}
+
+/**
+ * Split a plan into phases by `## Phase N` / `## W<N>` style headings and
+ * suggest the best-matching god for each phase's own text.
+ */
+export function assignPhases(
+  planText: string,
+  gods: Record<string, GodEntry>,
+): PhaseAssignment[] {
+  const phaseRe = /^##+\s+((?:Phase|W)\s*\d+[^\n]*)$/gim;
+  const matches = [...planText.matchAll(phaseRe)];
+  if (matches.length === 0) return [];
+
+  const assignments: PhaseAssignment[] = [];
+  for (let i = 0; i < matches.length; i++) {
+    const start = matches[i].index! + matches[i][0].length;
+    const end = i + 1 < matches.length ? matches[i + 1].index! : planText.length;
+    const body = planText.slice(start, end);
+    // Work assignment routes by domain fit, not mention frequency — a phase
+    // that says "delete the iris files" discusses Iris without needing her.
+    const [top] = suggestAgents(body, gods, 1, { nameWeight: 3, requireDomainHit: true });
+    assignments.push({ heading: matches[i][1].trim(), god: top ?? null });
+  }
+  return assignments;
+}
+
+// ── Kickoff prompt v2 ─────────────────────────────────────────────────────────
+
+/**
+ * Per-platform model strings for the human-run STEP 1. Slash commands are
+ * tool-level CLI commands — they can NEVER appear inside the paste body
+ * (a paste starting with /model is intercepted and rejected wholesale).
+ */
+const PLATFORM_MODELS: Record<ModelTier, { claude: string; codex: string }> = {
+  haiku: { claude: 'claude-haiku-4-5', codex: 'gpt-5.5-instant' },
+  sonnet: { claude: 'claude-sonnet-5', codex: 'gpt-5.5' },
+  fable: { claude: 'claude-fable-5', codex: 'gpt-5.5-pro' },
+};
+
+const TIER_LABEL: Record<ModelTier, string> = {
+  haiku: 'a fast, high-throughput model',
+  sonnet: 'a capable mid-tier model',
+  fable: 'a top-tier reasoning model',
+};
+
+export function formatKickoffPrompt(
+  planPath: string,
+  advisory: Advisory,
+  planText = '',
+  gods: Record<string, GodEntry> = {},
+): string {
+  const tier = advisory.recommendation.model;
+  const models = PLATFORM_MODELS[tier];
+  const opName = generateOperationName(planText || planPath);
+  const phases = planText ? assignPhases(planText, gods) : [];
+
+  const out: string[] = [];
+  out.push(`📋 KICKOFF — Operation ${opName}`);
+  out.push('');
+  out.push('STEP 1 · Set your model first (run in your tool — NOT part of the paste):');
+  out.push(`  Claude Code : /model ${models.claude}`);
+  out.push(`  Codex CLI   : /model ${models.codex}`);
+  out.push(`  Gemini CLI  : equivalent tier via /model`);
+  out.push(`  Cursor/IDE  : pick the equivalent tier in the model dropdown`);
+  out.push('');
+  out.push('STEP 2 · Paste everything below the line as your first message:');
+  out.push('────────────────────────────────────────────────');
+  out.push(`⚡ ZEUS — DISPATCH ORDER · Operation ${opName}`);
+  out.push('');
+  out.push('You are executing an approved plan under Zeus\'s command.');
+  out.push(`Plan file: ${planPath}`);
+  out.push('');
+  out.push(`Model check: this operation was scoped for ${TIER_LABEL[tier]}`);
+  out.push(`(${advisory.recommendation.rationale.split('—')[0].trim()}). State your`);
+  out.push('model; if you are a lighter tier, flag it before starting rather');
+  out.push('than silently proceeding.');
+  out.push('');
+  if (advisory.agents.length > 0) {
+    out.push('God assignments (spawn as subagents where your platform supports');
+    out.push('them — Claude Code: the Agent tool; elsewhere channel each god\'s');
+    out.push('persona, banner and signature included):');
+    if (phases.length > 0) {
+      for (const p of phases) {
+        const g = p.god;
+        out.push(g
+          ? `  ${p.heading} → ${g.emoji} ${g.name} — ${g.domain}`
+          : `  ${p.heading} → handle directly`);
+      }
+    } else {
+      for (const a of advisory.agents) {
+        out.push(`  ${a.emoji} ${a.name} — ${a.domain}`);
+      }
+    }
+    out.push('');
+    out.push('Delegation doctrine: one god per single-domain phase; councils only');
+    out.push('for genuinely cross-domain work; close each phase with');
+    out.push('⚡ ZEUS — COUNCIL REPORT before starting the next.');
+    out.push('');
+  }
+  out.push('Follow the plan\'s stated implementation order. Run each phase\'s');
+  out.push('Verification block before its PR; report failures rather than');
+  out.push('skipping them.');
+  out.push('────────────────────────────────────────────────');
+  return out.join('\n');
 }

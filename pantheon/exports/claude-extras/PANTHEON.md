@@ -86,7 +86,7 @@ a dispatch with no return feels like dropped work:
 When presenting any plan for approval, close it with two blocks:
 
 1. **`⚡ EXECUTION ADVISORY`** — recommended model and the Pantheon agents fit to execute each workstream. Default to Sonnet; recommend Fable only for architecture-heavy or creative/customer-facing work; state the cost multiple (Fable ≈ 5x Sonnet, Sonnet ≈ 5x Haiku).
-2. **`📋 KICKOFF PROMPT`** — a copy-pasteable fenced code block that starts execution: the plan file path, the recommended model as a `/model` line, the implementation order, and any constraints.
+2. **`📋 KICKOFF — Operation <Name>`** — every plan gets a mythic operation name, and the kickoff has TWO steps that are never mixed: STEP 1 lists per-platform model commands the HUMAN runs first (`/model <id>` for Claude Code/Codex CLI, dropdown guidance for IDEs) — slash commands are tool-level and a paste starting with one is rejected wholesale, so no slash command may ever appear inside the paste body; STEP 2 is the paste body — a `⚡ ZEUS — DISPATCH ORDER` block with the plan path, a model self-check line, per-phase god assignments with spawn timing, and the verify-before-PR constraint.
 
 If you have Thesmos installed, run `thesmos advise <plan-file>` to generate both blocks mechanically.
 

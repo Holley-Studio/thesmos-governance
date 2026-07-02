@@ -154,6 +154,9 @@ export const NODE_RULES: ThesmosRule[] = [
 
   {
     id: 'NODE_005',
+    // Shape heuristic — can misfire on innocent code; reports but does not gate
+    // unless gate.minConfidence is lowered. See thesmos/gate.ts.
+    confidence: 'medium',
     category: 'child_process_shell_injection',
     description: 'child_process with shell: true and user input is a command injection vulnerability.',
     severity: 'BLOCKER',
@@ -1066,6 +1069,9 @@ export const NODE_RULES: ThesmosRule[] = [
 
   {
     id: 'NODE_030',
+    // Shape heuristic — can misfire on innocent code; reports but does not gate
+    // unless gate.minConfidence is lowered. See thesmos/gate.ts.
+    confidence: 'medium',
     category: 'ssrf_unvalidated_url',
     description: 'Server-side requests to user-supplied URLs without validation allow SSRF attacks against internal infrastructure.',
     severity: 'BLOCKER',
