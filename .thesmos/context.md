@@ -1,4 +1,7 @@
-# Project Context — thesmos-helper — 2026-06-29
+# Project Context — thesmos-helper — 2026-07-02
+
+## Active Constraints
+- Config: environment variables in .env (never hardcode URLs or secrets)
 
 ## Thesmos Governance
-- Last clean scan: 2026-06-26
+- Last clean scan: 2026-07-01

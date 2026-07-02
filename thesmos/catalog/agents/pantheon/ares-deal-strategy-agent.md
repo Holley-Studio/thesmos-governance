@@ -24,7 +24,8 @@ governance:
   delegates_to: []
   reports_to: ares-sales-agent
 platforms:
-  claude_model: claude-sonnet-4-6
+  claude_model: claude-sonnet-5
+  openai_model: gpt-5.5
   cursor_globs: "**/*.md,**/*.json"
   chatgpt_model: gpt-4o
 ---

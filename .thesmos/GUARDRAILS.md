@@ -584,6 +584,7 @@
 - 🟠 **[AGNT_026]** No .thesmos/model-card.md found — EU AI Act Art. 13 transparency requirement.
 - 🟠 **[AGNT_027]** .thesmos/audit.jsonl is being modified by the agent — audit trail must be append-only.
 - 🟠 **[AGNT_028]** Sub-agent spawned without forwarding parent session token — auth gap in agent chain.
+- 🟠 **[AGNT_037]** 1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; cost runaway risk.
 - 🟠 **[DEP_002]** Dependency has a HIGH severity CVE.
 - 🟠 **[DEP_004]** Dependency not updated in 2+ years AND has a known CVE — no fix expected.
 - 🟠 **[DEP_006]** Dependency points to a git URL instead of a semver version — no integrity guarantee.

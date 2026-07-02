@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "anthropic.claude-code",
+    "holleystudio.thesmos-governance-vscode",
+    "usernamehw.errorlens",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "eamodio.gitlens",
+    "vitest.explorer"
+  ],
+  "unwantedRecommendations": [
+    "holley-studios.thesmos-governance-vscode"
+  ]
+}

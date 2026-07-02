@@ -27,7 +27,8 @@ governance:
     - morpheus-animation-agent
   reports_to: zeus-executive-agent
 platforms:
-  claude_model: claude-haiku-4-5-20251001
+  claude_model: claude-haiku-4-5
+  openai_model: gpt-5.5-instant
   cursor_globs: "**/*.md"
   chatgpt_model: gpt-4o
 ---

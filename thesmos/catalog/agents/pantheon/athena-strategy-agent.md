@@ -28,7 +28,8 @@ governance:
     - daedalus-product-agent
   reports_to: zeus-executive-agent
 platforms:
-  claude_model: claude-opus-4-8
+  claude_model: claude-fable-5
+  openai_model: gpt-5.5
   cursor_globs: "**/*.md"
   chatgpt_model: gpt-4o
 ---

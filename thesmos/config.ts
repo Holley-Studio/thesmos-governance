@@ -80,6 +80,15 @@ export const CONFIG_DEFAULTS: ThesmosConfig = {
     notifyOnBlock: true,
   },
 
+  routing: {
+    mode: 'auto',
+    councilConfirmThreshold: 4,
+  },
+
+  context1M: {
+    allow1M: false,
+  },
+
   doctor: {
     reportMaxAgeDays: 7,
     requiredScripts: [
