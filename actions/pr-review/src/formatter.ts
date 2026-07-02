@@ -105,14 +105,61 @@ function renderBucket(group: Finding[]): string {
   return rows.join('\n');
 }
 
+/**
+ * Renders the collapsed "Pre-existing findings in touched files" section
+ * (Task 4a #3) — grouped by severity, reusing the same per-category dedup as
+ * the blocking sections, but always collapsed and always labeled non-blocking.
+ */
+function renderPreExistingSection(findings: Finding[]): string {
+  if (findings.length === 0) return '';
+
+  const byGroup = groupBySeverity(findings);
+  const body = SEVERITY_ORDER.filter((sev) => (byGroup.get(sev)?.length ?? 0) > 0)
+    .map((sev) => {
+      const group = byGroup.get(sev) ?? [];
+      return `**${SEVERITY_EMOJI[sev]} ${sev}** &nbsp;·&nbsp; ${plural(group.length, 'finding')}\n\n${renderBucket(group)}`;
+    })
+    .join('\n\n');
+
+  return (
+    `<details>\n` +
+    `<summary>📋 <strong>Pre-existing findings in touched files</strong> &nbsp;·&nbsp; ` +
+    `${plural(findings.length, 'finding')} — not blocking</summary>\n\n` +
+    `${body}\n\n` +
+    `</details>`
+  );
+}
+
 // ── Summary comment ───────────────────────────────────────────────────────────
+
+/** Options controlling optional summary comment sections (Task 4a/4b). */
+export interface SummaryOptions {
+  /** Findings pre-dating this PR in touched files — rendered collapsed, non-blocking. */
+  preExisting?: Finding[];
+  /** Count of findings suppressed because they matched .thesmos/baseline.json (accepted debt). */
+  baselinedCount?: number;
+  /** Whether to render the pre-existing findings section at all. Default true. */
+  reportPreexisting?: boolean;
+  /** Governance files (.thesmos/baseline.json, .thesmos/config.json) modified
+   *  by THIS PR. The baseline is loaded from the PR's own checkout, so a PR
+   *  can add entries that suppress its own findings — this warning puts the
+   *  reviewer's eyes on exactly that surface. (Argus ruling, Phase 4b item 3.) */
+  governanceFilesModified?: string[];
+}
 
 /** Formats the full-PR summary comment (markdown). */
 export function formatSummaryComment(
   findings: Finding[],
   repoName: string,
   prNumber: number,
+  options: SummaryOptions = {},
 ): string {
+  const {
+    preExisting = [],
+    baselinedCount = 0,
+    reportPreexisting = true,
+    governanceFilesModified = [],
+  } = options;
   const byGroup = groupBySeverity(findings);
 
   const blockers = byGroup.get('BLOCKER')?.length ?? 0;
@@ -168,9 +215,28 @@ export function formatSummaryComment(
           ? `> ✅ No governance violations found.`
           : `> ℹ️ ${plural(findings.length, 'finding')} found — no blockers.`;
 
+  const preExistingSection =
+    reportPreexisting && preExisting.length > 0 ? renderPreExistingSection(preExisting) : '';
+
+  const baselineNote =
+    baselinedCount > 0
+      ? `_${plural(baselinedCount, 'finding')} suppressed as accepted baseline debt — run \`thesmos baseline:report\` for details._`
+      : '';
+
+  // Never collapsed, always above the fold: this PR edits the very files that
+  // decide what this review suppresses or fails on.
+  const governanceWarning =
+    governanceFilesModified.length > 0
+      ? `> ⚠️ **This PR modifies governance control files:** ${governanceFilesModified
+          .map((f) => `\`${f}\``)
+          .join(', ')}. Baseline or config changes can suppress this PR's own findings — review those changes deliberately.`
+      : '';
+
   return [
     SUMMARY_MARKER,
     `## 🔱 Thesmos Governance Review`,
+    governanceWarning ? `` : undefined,
+    governanceWarning || undefined,
     ``,
     status,
     ``,
@@ -183,6 +249,10 @@ export function formatSummaryComment(
     severityTable,
     ``,
     findingSections,
+    preExistingSection ? `` : undefined,
+    preExistingSection || undefined,
+    baselineNote ? `` : undefined,
+    baselineNote || undefined,
     ``,
     `---`,
     `<sub>🔱 **Thesmos Governance** by Holley Studios · PR #${prNumber} in \`${repoName}\` · ` +

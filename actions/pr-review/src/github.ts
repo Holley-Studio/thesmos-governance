@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { stripGeneratedRegions } from 'thesmos-governance';
 import type { ChangedFile, InlineComment } from './types.js';
 import { SUMMARY_MARKER } from './formatter.js';
+import { resolveChangedLines } from './diff-lines.js';
 
 type Octokit = ReturnType<typeof gh.getOctokit>;
 
@@ -69,8 +70,15 @@ export async function getChangedFiles(
   ctx: PullRequestContext,
   workspace: string,
   reviewIgnorePaths: string[] = [],
-): Promise<ChangedFile[]> {
+): Promise<{ files: ChangedFile[]; governanceFilesModified: string[] }> {
   const files: ChangedFile[] = [];
+
+  // Governance control files: the baseline and config this very review loads
+  // from the PR's own checkout. They live under .thesmos/ which is filtered
+  // out of `files` below — so tampering MUST be detected here, on the raw
+  // API list, before the prefix filter. (Argus ruling, Phase 4b item 3.)
+  const GOVERNANCE_CONTROL_FILES = new Set(['.thesmos/baseline.json', '.thesmos/config.json']);
+  const governanceFilesModified: string[] = [];
 
   // Directories whose contents should never be reviewed — they contain
   // governance rule templates that intentionally describe bad patterns.
@@ -104,6 +112,10 @@ export async function getChangedFiles(
     },
   )) {
     for (const file of response.data) {
+      if (GOVERNANCE_CONTROL_FILES.has(file.filename)) {
+        governanceFilesModified.push(file.filename);
+      }
+
       // Skip deleted files — nothing to review
       if (file.status === 'removed') continue;
 
@@ -130,15 +142,31 @@ export async function getChangedFiles(
         continue;
       }
 
+      if (file.patch == null && file.status !== 'added') {
+        // GitHub omitted the patch (file too large or binary) — diff-aware
+        // gating fails CLOSED for this file: every finding in it is treated
+        // as NEW and can block. Surface why, so a "legacy" finding blocking
+        // the gate is explainable. (Argus ruling, Phase 4a item 1.)
+        core.info(
+          `No patch data for ${file.filename} (large/binary) — ` +
+            `treating ALL lines as changed; findings in it will gate.`,
+        );
+      }
       files.push({
         path: file.filename,
         content,
         diff: file.patch,
+        // Diff-aware gating (Task 4a): status distinguishes brand-new files
+        // (everything in them is "introduced by this PR") from modified
+        // existing files, and changedLines pinpoints exactly which lines in
+        // an existing file were touched — see partition.ts.
+        status: file.status,
+        changedLines: resolveChangedLines(file.patch),
       });
     }
   }
 
-  return files;
+  return { files, governanceFilesModified };
 }
 
 // ── Summary comment (upsert) ──────────────────────────────────────────────────

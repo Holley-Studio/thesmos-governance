@@ -51,6 +51,7 @@ import {
   ThesmosReportMissingError,
 } from './runner.js';
 import { fixWithAi } from './fixWithAi.js';
+import { filterBySeverity } from './severityFilter.js';
 
 import type { ExtensionConfig, Finding } from './types.js';
 
@@ -65,6 +66,7 @@ function readConfig(): ExtensionConfig {
     showStatusBar: cfg.get<boolean>('showStatusBar', true),
     binaryPath: cfg.get<string>('binaryPath', ''),
     autoScan: cfg.get<boolean>('autoScan', false),
+    minSeverity: cfg.get<string>('minSeverity', 'ALL'),
   };
 }
 
@@ -88,6 +90,7 @@ class ThesmosExtension implements vscode.Disposable {
 
   private workspaceRoot: string;
   private allFindings: Finding[] = [];
+  private lastBaselinedCount = 0;
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
@@ -203,6 +206,7 @@ class ThesmosExtension implements vscode.Disposable {
     if (!allow1M) {
       for (const rel of ['.claude/settings.local.json', '.claude/settings.json']) {
         const raw = readJson(rel);
+        // thesmos-disable-next-line agent_context_1m_unguarded -- reason: this IS the 1M-context detector — the literal [1m] here is the pattern being searched for, not a model opt-in -- owner: @MHolley
         if (raw && JSON.stringify(raw).includes('[1m]')) {
           this.statusBar.show1MContextBadge(rel);
           return;
@@ -414,6 +418,15 @@ class ThesmosExtension implements vscode.Disposable {
           this.statusBar.hide();
         }
       }
+
+      // thesmos.minSeverity changed — re-filter the already-fetched findings and
+      // refresh diagnostics + the tree in place. No CLI rescan needed.
+      if (e.affectsConfiguration('thesmos.minSeverity')) {
+        const updated = readConfig();
+        const displayFindings = filterBySeverity(this.allFindings, updated.minSeverity);
+        this.diagnostics.setAll(displayFindings, this.workspaceRoot);
+        this.treeProvider.refresh(displayFindings, this.workspaceRoot);
+      }
     });
     this.disposables.push(cfgWatcher);
 
@@ -480,12 +493,18 @@ class ThesmosExtension implements vscode.Disposable {
         cfg.binaryPath || undefined,
       );
       this.allFindings = output.findings;
+      this.lastBaselinedCount = output.baselinedCount ?? 0;
+
+      // thesmos.minSeverity filters what's *displayed* — diagnostics squiggles and
+      // the findings tree — without discarding the underlying data (hover, CodeLens,
+      // and the activity badge still reflect the true, unfiltered finding set).
+      const displayFindings = filterBySeverity(this.allFindings, cfg.minSeverity);
 
       // Update diagnostics for all files
-      this.diagnostics.setAll(this.allFindings, this.workspaceRoot);
+      this.diagnostics.setAll(displayFindings, this.workspaceRoot);
 
       // Update tree view
-      this.treeProvider.refresh(this.allFindings, this.workspaceRoot);
+      this.treeProvider.refresh(displayFindings, this.workspaceRoot);
 
       // Update CodeLens, inline decorations, and activity bar badge
       this.codeLensProvider.update(this.allFindings, this.workspaceRoot);
@@ -524,8 +543,10 @@ class ThesmosExtension implements vscode.Disposable {
         ...output.findings,
       ];
 
-      this.diagnostics.setForFile(uri, output.findings);
-      this.treeProvider.refresh(this.allFindings, this.workspaceRoot);
+      // Same minSeverity filter as the full review path (extension.ts runFullReview) —
+      // applies to the squiggles for this file and the tree, not the underlying data.
+      this.diagnostics.setForFile(uri, filterBySeverity(output.findings, cfg.minSeverity));
+      this.treeProvider.refresh(filterBySeverity(this.allFindings, cfg.minSeverity), this.workspaceRoot);
       this.codeLensProvider.update(this.allFindings, this.workspaceRoot);
       for (const editor of vscode.window.visibleTextEditors) {
         this.inlineDiagnostics.applyToEditor(editor, this.allFindings, this.workspaceRoot);
@@ -550,7 +571,7 @@ class ThesmosExtension implements vscode.Disposable {
         this.workspaceRoot,
         cfg.binaryPath || undefined,
       );
-      this.statusBar.showHealth(health, this.allFindings.length);
+      this.statusBar.showHealth(health, this.allFindings.length, this.lastBaselinedCount);
 
       // Persist for trend chart (capped at 30 entries per workspace)
       const hist = this.context.workspaceState.get<HealthEntry[]>('thesmos.healthHistory', []);

@@ -1,8 +1,10 @@
 name: 'Thesmos Governance PR Review'
 description: >
   Runs thesmos review on every pull request and posts inline findings as
-  review comments — BLOCKER and HIGH violations block the merge check.
-  Powered by Holley Studios.
+  review comments — BLOCKER and HIGH violations INTRODUCED BY THE PR block the
+  merge check. Diff-aware: pre-existing findings in touched files (debt this
+  PR didn't create) are reported separately and never block. Baseline-accepted
+  debt is suppressed entirely. Powered by Holley Studios.
 author: 'Holley Studios'
 
 branding:
@@ -22,6 +24,9 @@ inputs:
       Fail the CI check when findings at this severity or above are present.
       Accepts: BLOCKER | HIGH | MEDIUM | LOW | TECH_DEBT | none
       Set to "none" to always exit 0 (report-only mode).
+      Diff-aware gating: only findings this PR introduced (on an added/modified
+      line, or in a brand-new file) count toward this threshold. Pre-existing
+      findings in touched files and baseline-accepted debt never fail the check.
     required: false
     default: 'BLOCKER'
 
@@ -39,15 +44,34 @@ inputs:
     required: false
     default: 'true'
 
+  report-preexisting:
+    description: >
+      Include a collapsed "Pre-existing findings in touched files" section in
+      the summary comment, listing debt this PR did not introduce (found in
+      files it touched, but not on a line it changed). These findings never
+      block the merge regardless of this setting — it only controls whether
+      they're shown. Set to "false" to omit the section entirely.
+    required: false
+    default: 'true'
+
 outputs:
   finding-count:
-    description: 'Total number of findings found.'
+    description: 'Number of NEW findings — introduced by this PR (gates the merge check).'
   blocker-count:
-    description: 'Number of BLOCKER-severity findings.'
+    description: 'Number of NEW BLOCKER-severity findings.'
+  preexisting-finding-count:
+    description: >
+      Number of PRE-EXISTING findings in files this PR touched — debt this PR
+      did not introduce. Informational only; never affects blocker-count or
+      the exit code.
+  baselined-finding-count:
+    description: 'Number of findings suppressed because they matched .thesmos/baseline.json (accepted debt).'
   health-grade:
     description: 'Governance health grade (A+, A, B, C, D, F) if report.json is present.'
   health-score:
-    description: 'PR health score (0–100). BLOCKER=-15, HIGH=-3, MEDIUM=-1, floor 0.'
+    description: >
+      PR health score (0-100), computed from NEW findings only. BLOCKER=-15,
+      HIGH=-3, MEDIUM=-1, floor 0.
 
 runs:
   using: 'node20'
