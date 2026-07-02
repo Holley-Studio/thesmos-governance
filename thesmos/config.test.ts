@@ -75,3 +75,21 @@ describe('CONFIG_DEFAULTS', () => {
     expect(CONFIG_DEFAULTS.protectedBranches).toContain('main');
   });
 });
+
+describe('reviewIgnorePaths', () => {
+  it('defaults to an empty array (customers exclude nothing by default)', () => {
+    const cfg = loadConfig('/any/path', {});
+    expect(cfg.reviewIgnorePaths).toEqual([]);
+    expect(CONFIG_DEFAULTS.reviewIgnorePaths).toEqual([]);
+  });
+
+  it('loads path prefixes from raw config', () => {
+    const cfg = loadConfig('/any/path', { reviewIgnorePaths: ['thesmos/rules/'] });
+    expect(cfg.reviewIgnorePaths).toEqual(['thesmos/rules/']);
+  });
+
+  it('falls back to default when the field is not an array', () => {
+    const cfg = loadConfig('/any/path', { reviewIgnorePaths: 'thesmos/rules/' });
+    expect(cfg.reviewIgnorePaths).toEqual([]);
+  });
+});

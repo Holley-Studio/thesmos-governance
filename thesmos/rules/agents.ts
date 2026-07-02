@@ -14,6 +14,7 @@
  */
 
 import type { ThesmosRule, DetectInput, Finding } from '../types.js';
+import { isTestPath } from './helpers.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -1359,11 +1360,16 @@ const AGNT_037: ThesmosRule = {
     const findings: Finding[] = [];
     for (const cf of input.changedFiles ?? []) {
       if (!/\.(md|json|ts|js|jsonc|yaml|yml)$/.test(cf.path)) continue;
+      // Test fixtures embed [1m] patterns as string literals — not live model config.
+      if (isTestPath(cf.path)) continue;
       const lines = cf.content.split('\n');
       for (let i = 0; i < lines.length; i++) {
         // Markdown table rows document the pattern (e.g. this rule's own summary
         // in a generated rules table) — they do not enable a 1M context window.
         if (/^\s*\|.*\|\s*$/.test(lines[i])) continue;
+        // In source files, [1m] inside a comment is documentation (e.g. the
+        // context1M config docs in types.ts) — live model config is a string value.
+        if (/\.(ts|tsx|js|jsx)$/.test(cf.path) && /^\s*(?:\/\/|\/?\*)/.test(lines[i])) continue;
         if (/\[1m\]|context-1m-\d{4}/.test(lines[i])) {
           findings.push({ ...f('agent_context_1m_unguarded', severity,
             allow1M

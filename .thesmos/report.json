@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-02T16:30:53.804Z",
+  "generatedAt": "2026-07-02T17:17:22.547Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -75,6 +75,7 @@
     "thesmos/registry.test.ts",
     "thesmos/report.test.ts",
     "thesmos/review.test.ts",
+    "thesmos/rules/agents.test.ts",
     "thesmos/rules/commits.test.ts",
     "thesmos/rules/csharp.test.ts",
     "thesmos/rules/dast.test.ts",
@@ -82,11 +83,14 @@
     "thesmos/rules/design.test.ts",
     "thesmos/rules/django.test.ts",
     "thesmos/rules/dockerfile.test.ts",
+    "thesmos/rules/eu-ai-act.test.ts",
     "thesmos/rules/github-actions.test.ts",
     "thesmos/rules/go.test.ts",
+    "thesmos/rules/helpers.test.ts",
     "thesmos/rules/java.test.ts",
     "thesmos/rules/jwt.test.ts",
     "thesmos/rules/k8s.test.ts",
+    "thesmos/rules/license.test.ts",
     "thesmos/rules/mcp.test.ts",
     "thesmos/rules/php.test.ts",
     "thesmos/rules/prototype.test.ts",
@@ -133,7 +137,7 @@
     },
     {
       "file": "thesmos/rules/agents.ts",
-      "lines": 1421
+      "lines": 1424
     },
     {
       "file": "thesmos/rules/vibe-coding.ts",
@@ -359,8 +363,8 @@
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 300,
-      "lineCount": 119895
+      "fileCount": 304,
+      "lineCount": 120512
     },
     {
       "language": "JavaScript",

@@ -64,6 +64,27 @@ describe('AGNT_037 — agent_context_1m_unguarded', () => {
     expect(findings[0]?.line).toBe(2);
   });
 
+  it('does NOT fire on a [1m] fixture inside a .test.ts path', () => {
+    const findings = detect('AGNT_037', [{
+      path: 'src/client.test.ts',
+      content: 'const model = "claude-fable-5[1m]";',
+    }]);
+    expect(findings).toHaveLength(0);
+  });
+
+  it('does NOT fire on a [1m] mention inside a source-file comment', () => {
+    const findings = detect('AGNT_037', [{
+      path: 'src/types.ts',
+      content: [
+        'export interface Config {',
+        '  /** Allow the 1M-token context window ([1m] model variants). */',
+        '  allow1M?: boolean;',
+        '}',
+      ].join('\n'),
+    }]);
+    expect(findings).toHaveLength(0);
+  });
+
   it('fires on a context-1m beta flag outside a table row', () => {
     const findings = detect('AGNT_037', [{
       path: 'src/client.ts',

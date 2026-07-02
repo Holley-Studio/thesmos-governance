@@ -175,3 +175,42 @@ describe('LLM_CALL_RE precision — dependent rules still fire on real API calls
     expect(findings).toHaveLength(1);
   });
 });
+
+// ── EU_AI_003 / EU_AI_004 — presence-rule precision ───────────────────────────
+
+describe('EU_AI_003 — requires an AI signal, not a bare keyword', () => {
+  it('does NOT fire on "dismiss" in PR-review code with no LLM call', () => {
+    const findings = detect('EU_AI_003', [{
+      path: 'src/github.ts',
+      content: '// block the merge (REQUEST_CHANGES requires explicit dismiss).\nawait dismissReview(id);',
+    }]);
+    expect(findings).toHaveLength(0);
+  });
+
+  it('fires on a hiring decision alongside a real LLM API call (no risk-management doc)', () => {
+    const findings = detect('EU_AI_003', [{
+      path: 'src/hiring.ts',
+      content: 'const rec = await openai.chat.completions.create({});\nawait hire(candidate);',
+    }]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.severity).toBe('HIGH');
+  });
+});
+
+describe('EU_AI_004 — TRAINING_RE word boundaries', () => {
+  it('does NOT fire on "constraints" (contains t-r-a-i-n mid-word)', () => {
+    const findings = detect('EU_AI_004', [{
+      path: 'src/types.ts',
+      content: 'export interface Scope { constraints: string[]; restraints: number; }',
+    }]);
+    expect(findings).toHaveLength(0);
+  });
+
+  it('fires on a real training pipeline (no data-governance doc)', () => {
+    const findings = detect('EU_AI_004', [{
+      path: 'src/pipeline.ts',
+      content: 'const trainingData = await loadDataset();\nawait model.train(trainingData);',
+    }]);
+    expect(findings).toHaveLength(1);
+  });
+});

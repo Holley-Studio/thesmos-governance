@@ -213,9 +213,9 @@ export async function cmdDiff(argv: string[]): Promise<void> {
     // Explicit file list supplied on command line — not imported here to keep
     // the command file lean; we delegate to the same helper validate uses.
     const { readFilesFromPaths } = await import('../lib/git.ts');
-    changedFiles = readFilesFromPaths(root, positionals);
+    changedFiles = readFilesFromPaths(root, positionals, config.reviewIgnorePaths ?? []);
   } else if (base) {
-    changedFiles = getChangedFiles(root, base, config.ignoredFolders ?? []);
+    changedFiles = getChangedFiles(root, base, config.ignoredFolders ?? [], config.reviewIgnorePaths ?? []);
   } else if (!allFiles) {
     // Default: scan-based checks only (no per-file content)
     changedFiles = undefined;
