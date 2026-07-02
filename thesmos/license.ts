@@ -270,7 +270,7 @@ export function deactivateLicense(): void {
 
 /**
  * Pro tier features (not available in community):
- *   - All 1,075+ rules (community: 500 core rules)
+ *   - All 1,137 rules
  *   - All 54 Pantheon + Specialty agents (community: 10 core agents)
  *   - Inline PR review comments + Checks API
  *   - VS Code inline diagnostics + Fix button

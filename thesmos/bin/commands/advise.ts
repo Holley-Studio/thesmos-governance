@@ -61,6 +61,6 @@ export async function cmdAdvise(argv: string[]): Promise<void> {
 
   process.stdout.write(formatAdvisoryConsole(advisory) + '\n\n');
   if (planPath !== '(inline --text)') {
-    process.stdout.write(formatKickoffPrompt(planPath, advisory) + '\n');
+    process.stdout.write(formatKickoffPrompt(planPath, advisory, planText, gods) + '\n');
   }
 }

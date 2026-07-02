@@ -164,6 +164,46 @@ function checkReportHealth(input: DoctorInput): DoctorCheck[] {
   return [existsCheck, freshCheck];
 }
 
+/**
+ * Warn when the baseline hasn't been refreshed in over 30 days. A drifted
+ * baseline is the main reason "new" findings appear on PRs that didn't
+ * introduce them — the debt ledger stops matching reality. Repos without a
+ * baseline skip the check entirely (baselining is opt-in).
+ */
+const BASELINE_MAX_AGE_DAYS = 30;
+
+function checkBaselineFreshness(input: DoctorInput): DoctorCheck[] {
+  const baselinePath = '.thesmos/baseline.json';
+  if (!input.fileExists(baselinePath)) return [];
+
+  const baseline = input.readJsonSafe(baselinePath);
+  const updatedAt = baseline?.['updatedAt'] as string | undefined;
+
+  let ageDays: number | null = null;
+  let stale = true;
+
+  if (updatedAt) {
+    const ageMs = input.now.getTime() - new Date(updatedAt).getTime();
+    ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+    stale = ageDays > BASELINE_MAX_AGE_DAYS;
+  }
+
+  const ageLabel =
+    ageDays === null ? 'no updatedAt timestamp' : `${ageDays} day${ageDays === 1 ? '' : 's'} old`;
+
+  return [
+    {
+      name: 'baseline:fresh',
+      group: DOCTOR_GROUPS.REPORT,
+      pass: !stale,
+      message: stale
+        ? `baseline.json is stale (${ageLabel}, limit ${BASELINE_MAX_AGE_DAYS} days) — drifted baselines resurface accepted findings on unrelated PRs`
+        : `baseline.json is fresh (${ageLabel})`,
+      fixHint: stale ? 'Run npm run thesmos:baseline:update to re-sync the accepted-debt ledger' : undefined,
+    },
+  ];
+}
+
 /** Check that config.json is present, parseable, and structurally valid. */
 function checkConfiguration(input: DoctorInput): DoctorCheck[] {
   const configPath = '.thesmos/config.json';
@@ -271,6 +311,7 @@ export function runDoctor(input: DoctorInput): DoctorCheck[] {
     ...checkPackageScripts(input),
     ...checkAdapterFiles(input),
     ...checkReportHealth(input),
+    ...checkBaselineFreshness(input),
     ...checkConfiguration(input),
     ...checkIdeDirs(input),
     ...checkGitHubIntegration(input),

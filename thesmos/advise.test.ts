@@ -4,6 +4,9 @@ import {
   recommendModel,
   suggestAgents,
   buildAdvisory,
+  generateOperationName,
+  assignPhases,
+  formatKickoffPrompt,
 } from './advise.ts';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -157,5 +160,77 @@ describe('buildAdvisory', () => {
     expect(['haiku', 'sonnet', 'fable']).toContain(advisory.recommendation.model);
     expect(advisory.classification.mechanicalPct + advisory.classification.creativePct +
       advisory.classification.architecturePct + advisory.classification.bulkPct).toBe(100);
+  });
+});
+
+// ── generateOperationName ─────────────────────────────────────────────────────
+
+describe('generateOperationName', () => {
+  it('is deterministic — same plan text yields the same name', () => {
+    expect(generateOperationName(MIXED_PLAN)).toBe(generateOperationName(MIXED_PLAN));
+  });
+
+  it('different plans get (usually) different names', () => {
+    // Not guaranteed by hashing, but these fixtures should differ.
+    expect(generateOperationName(MECHANICAL_PLAN)).not.toBe(generateOperationName(CREATIVE_PLAN));
+  });
+
+  it('produces an "Adjective Noun" shape', () => {
+    expect(generateOperationName(MIXED_PLAN)).toMatch(/^[A-Z][a-z]+ [A-Z][a-z]+$/);
+  });
+});
+
+// ── assignPhases ──────────────────────────────────────────────────────────────
+
+describe('assignPhases', () => {
+  const PHASED_PLAN = [
+    '# Plan',
+    '## Phase 1 — Fix the pricing copy',
+    'Rewrite the landing page copywriting and marketing tone.',
+    '## Phase 2 — Web implementation',
+    'Web development implementation work in typescript and react.',
+  ].join('\n');
+
+  it('splits by phase headings and assigns the best god per phase body', () => {
+    const phases = assignPhases(PHASED_PLAN, PANTHEON_MAP);
+    expect(phases).toHaveLength(2);
+    expect(phases[0].god?.name).toBe('Apollo');
+    expect(phases[1].god?.name).toBe('Talos');
+  });
+
+  it('returns empty for a plan without phase headings', () => {
+    expect(assignPhases('just some text with no headings', PANTHEON_MAP)).toEqual([]);
+  });
+});
+
+// ── formatKickoffPrompt v2 ────────────────────────────────────────────────────
+
+describe('formatKickoffPrompt (v2)', () => {
+  const prompt = formatKickoffPrompt('/tmp/plan.md', buildAdvisory(MIXED_PLAN, PANTHEON_MAP), MIXED_PLAN, PANTHEON_MAP);
+
+  it('never places a slash command inside the paste body', () => {
+    // Slash commands are CLI-level; a paste starting with one is intercepted
+    // and rejected wholesale. Everything after the divider is the paste body.
+    const body = prompt.split('────')[1] ?? '';
+    for (const line of body.split('\n')) {
+      expect(line.trimStart().startsWith('/')).toBe(false);
+    }
+  });
+
+  it('puts per-platform model commands in STEP 1, outside the paste', () => {
+    const step1 = prompt.split('STEP 2')[0];
+    expect(step1).toContain('Claude Code : /model claude-');
+    expect(step1).toContain('Codex CLI   : /model gpt-');
+    expect(step1).toContain('Cursor/IDE');
+  });
+
+  it('frames the paste as a Zeus dispatch order with an operation name', () => {
+    expect(prompt).toContain('⚡ ZEUS — DISPATCH ORDER · Operation ');
+    expect(prompt).toContain('Model check:');
+  });
+
+  it('includes plan path and verification instruction in the body', () => {
+    expect(prompt).toContain('Plan file: /tmp/plan.md');
+    expect(prompt).toContain('Verification block');
   });
 });

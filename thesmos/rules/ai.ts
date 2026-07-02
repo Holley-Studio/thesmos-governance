@@ -455,6 +455,9 @@ export const AI_RULES: ThesmosRule[] = [
 
   {
     id: 'AI_013',
+    // Shape heuristic — can misfire on innocent code; reports but does not gate
+    // unless gate.minConfidence is lowered. See thesmos/gate.ts.
+    confidence: 'medium',
     category: 'prompt_injection_user_input',
     description: "Interpolating unsanitized user input directly into a system prompt enables prompt injection attacks.",
     severity: 'BLOCKER',

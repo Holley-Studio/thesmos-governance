@@ -1006,6 +1006,9 @@ const AGNT_027: ThesmosRule = {
 
 const AGNT_028: ThesmosRule = {
   id: 'AGNT_028',
+  // Shape heuristic — can misfire on innocent code; reports but does not gate
+  // unless gate.minConfidence is lowered. See thesmos/gate.ts.
+  confidence: 'medium',
   category: 'agent_cross_agent_auth_missing',
   severity: 'HIGH',
   description: 'Sub-agent spawned without forwarding parent session token — auth gap in agent chain.',
