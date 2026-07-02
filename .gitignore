@@ -1,10 +1,6 @@
 # Dependencies
 node_modules/
 
-# Prometheus package build output
-# (built at publish time via `npm run build` in release.yml — not committed)
-prometheus/dist/
-
 # Next.js / general build output
 .next/
 out/
@@ -44,15 +40,18 @@ coverage/
 # VS Code extension build artifacts (packaged .vsix files)
 extensions/vscode/*.vsix
 
-# Prometheus local brain / cache (project-specific, not committed)
-.prometheus/.scan-cache.json
-.prometheus/brain.json
-
 # Thesmos session runtime artifacts (per-machine)
 .thesmos/agent-activity.jsonl
 .thesmos/token-session-id
 .thesmos/active-plan.md
-thesmos/.thesmos/active-plan.md
+
+# Nested dogfood governance tree + generated adapters inside the package —
+# regenerable via `thesmos init && thesmos adapters` from thesmos/; the
+# canonical governance tree lives at the repo root.
+thesmos/.thesmos/
+thesmos/CLAUDE.md
+thesmos/AGENTS.md
+thesmos/GEMINI.md
 
 # Paid Pantheon bundles — sold via Gumroad, not distributed from the public
 # repo. Only the free starter pack is committed. package-agents.ts writes
