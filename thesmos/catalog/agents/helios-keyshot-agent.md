@@ -28,7 +28,8 @@ governance:
     - pygmalion-blender-agent
   reports_to: morpheus-animation-agent
 platforms:
-  claude_model: claude-sonnet-4-6
+  claude_model: claude-sonnet-5
+  openai_model: gpt-5.5
   cursor_globs: "**/*.ksp,**/*.bip,**/*.md,**/*.json"
   chatgpt_model: gpt-4o
 ---

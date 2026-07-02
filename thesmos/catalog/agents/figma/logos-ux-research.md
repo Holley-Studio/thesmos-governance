@@ -23,7 +23,8 @@ governance:
     - techne-design-system
   reports_to: eidos-figma-orchestrator
 platforms:
-  claude_model: claude-sonnet-4-6
+  claude_model: claude-sonnet-5
+  openai_model: gpt-5.5
   cursor_globs: "**/*.fig,research/**,ux/**,flows/**"
   chatgpt_model: gpt-4o
 ---

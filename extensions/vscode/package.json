@@ -2,7 +2,7 @@
   "name": "thesmos-governance-vscode",
   "displayName": "Thesmos Governance",
   "description": "Real-time AI repo governance — inline findings, health scores, and adapter sync for Claude, Gemini, Cursor, Copilot, and Codex.",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "publisher": "holleystudio",
   "author": {
     "name": "Matthew Holley",
@@ -254,6 +254,12 @@
         "title": "Fix with AI",
         "category": "Thesmos",
         "icon": "$(sparkle)"
+      },
+      {
+        "command": "thesmos.pantheon.routingMode",
+        "title": "Pantheon Routing Mode",
+        "category": "Thesmos Agents",
+        "icon": "$(zap)"
       }
     ],
     "viewsContainers": {
@@ -294,6 +300,10 @@
         "view": "thesmos.findingsView",
         "contents": "No Thesmos report found.\n[Run Thesmos Scan](command:thesmos.scan)\n\nLearn more at [holley.studio/thesmos](https://holley.studio/thesmos)",
         "when": "!thesmos.active"
+      },
+      {
+        "view": "thesmos.agentActivity",
+        "contents": "No agent activity yet — god dispatches appear here live.\n\nSummon the full Pantheon: 66 specialist agents orchestrated by Zeus.\n[Get the Full Pantheon](https://holley.studio/thesmos)"
       }
     ],
     "menus": {
@@ -472,7 +482,12 @@
         },
         "thesmos.minSeverity": {
           "type": "string",
-          "enum": ["ALL", "MEDIUM", "HIGH", "BLOCKER"],
+          "enum": [
+            "ALL",
+            "MEDIUM",
+            "HIGH",
+            "BLOCKER"
+          ],
           "enumDescriptions": [
             "Show all findings",
             "Show MEDIUM and above",

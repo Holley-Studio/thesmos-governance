@@ -964,6 +964,13 @@
 | AGNT_028 | `agent_cross_agent_auth_missing` | 🟠 HIGH | Sub-agent spawned without forwarding parent session token — auth gap in agent chain. |
 | AGNT_029 | `agent_pii_in_context_window` | 🟡 MEDIUM | Agent context assembler may concatenate raw PII fields into the context window. |
 | AGNT_030 | `agent_no_rollback_plan` | 🟡 MEDIUM | Autopilot config has no rollbackStrategy — no recovery path if agent breaks production. |
+| AGNT_031 | `agent_model_task_depth_mismatch` | 🟡 MEDIUM | Agent model tier does not match task depth — orchestrators need high-reasoning models; bulk/routine agents must not burn premium models. |
+| AGNT_032 | `agent_routing_no_tier_doctrine` | 🟡 MEDIUM | Agent routing table exists but no tier doctrine — single-domain tasks may over-spawn councils. |
+| AGNT_033 | `agent_full_council_no_intent_gate` | 🟡 MEDIUM | Routing config has no councilConfirmThreshold — mass agent spawns need explicit user intent. |
+| AGNT_034 | `agent_planning_execution_split_missing` | 🟡 MEDIUM | Governance docs do not document the planning-vs-execution model split — deep models produce specs, fast models produce changes. |
+| AGNT_035 | `agent_bulk_on_premium_model` | 🟡 MEDIUM | Batch/bulk processing code pins a premium reasoning model — throughput work belongs on fast models. |
+| AGNT_036 | `agent_output_no_ownership` | 🟡 MEDIUM | Agent definition missing identity/ownership protocol — every agent must declare who speaks, its scope, and its signature. |
+| AGNT_037 | `agent_context_1m_unguarded` | 🟠 HIGH | 1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; cost runaway risk. |
 | DEP_001 | `dep_critical_cve` | 🔴 BLOCKER | Dependency has a CRITICAL CVE — immediate upgrade required. |
 | DEP_002 | `dep_high_cve` | 🟠 HIGH | Dependency has a HIGH severity CVE. |
 | DEP_003 | `dep_medium_cve` | 🟡 MEDIUM | Dependency has a MEDIUM severity CVE. |

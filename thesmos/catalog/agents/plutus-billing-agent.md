@@ -32,7 +32,8 @@ governance:
     - tyche-analytics-agent
   reports_to: zeus-executive-agent
 platforms:
-  claude_model: claude-sonnet-4-6
+  claude_model: claude-sonnet-5
+  openai_model: gpt-5.5
   cursor_globs: "**/*.md,**/billing/**,**/invoices/**"
   chatgpt_model: gpt-4o
 ---

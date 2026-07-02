@@ -14,7 +14,7 @@
  */
 
 import type { ThesmosRule, DetectInput, Finding } from '../types.js';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1119,6 +1119,264 @@ const AGNT_030: ThesmosRule = {
   },
 };
 
+// ── Rule: AGNT_031 — model/task-depth mismatch ────────────────────────────────
+
+const AGNT_031: ThesmosRule = {
+  id: 'AGNT_031',
+  category: 'agent_model_task_depth_mismatch',
+  severity: 'MEDIUM',
+  description: 'Agent model tier does not match task depth — orchestrators need high-reasoning models; bulk/routine agents must not burn premium models.',
+  tags: ['agent', 'pantheon', 'cost', 'routing'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Overusing deep-reasoning models increases spend without improving simple task outcomes; underpowering an orchestrator degrades every downstream routing decision. Model selection must match task depth.',
+    commonViolations: [
+      'Orchestrator agent pinned to a haiku-class model',
+      'Bulk-processing agent pinned to a fable/opus-class model',
+    ],
+    goodExample: 'platforms:\n  claude_model: claude-fable-5   # orchestration agent\n---\nplatforms:\n  claude_model: claude-sonnet-5  # implementation agent',
+    badExample: 'platforms:\n  claude_model: claude-haiku-4-5 # on a Zeus-style orchestrator',
+  },
+  detect(input: DetectInput): Finding[] {
+    const findings: Finding[] = [];
+    for (const cf of input.changedFiles ?? []) {
+      if (!cf.path.includes('catalog/agents') || !cf.path.endsWith('.md')) continue;
+      const model = cf.content.match(/claude_model:\s*(\S+)/)?.[1] ?? '';
+      const isOrchestrator = /tags:[\s\S]{0,200}?-\s*(orchestration|executive)/.test(cf.content);
+      const isBulk = /tags:[\s\S]{0,200}?-\s*(bulk|batch|throughput)/.test(cf.content);
+      if (isOrchestrator && model.includes('haiku')) {
+        findings.push(f('agent_model_task_depth_mismatch', 'MEDIUM',
+          'Orchestration agent pinned to a haiku-class model — routing quality degrades',
+          'Use claude-fable-5 or claude-opus-class for orchestration/planning agents',
+          cf.path));
+      }
+      if (isBulk && (model.includes('fable') || model.includes('opus'))) {
+        findings.push(f('agent_model_task_depth_mismatch', 'MEDIUM',
+          'Bulk-processing agent pinned to a premium reasoning model — cost without benefit',
+          'Use claude-sonnet-5 or claude-haiku-4-5 for bulk/routine agents',
+          cf.path));
+      }
+    }
+    return findings;
+  },
+};
+
+// ── Rule: AGNT_032 — routing doctrine missing tier rules ──────────────────────
+
+const AGNT_032: ThesmosRule = {
+  id: 'AGNT_032',
+  category: 'agent_routing_no_tier_doctrine',
+  severity: 'MEDIUM',
+  description: 'Agent routing table exists but no tier doctrine — single-domain tasks may over-spawn councils.',
+  tags: ['agent', 'pantheon', 'routing', 'cost'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Without an explicit tier doctrine (most tasks → one specialist; councils are the exception), an orchestrating assistant defaults to spawning multiple agents per prompt — cost and latency multiply with no quality gain on single-domain tasks.',
+    commonViolations: ['CLAUDE.md has an agent routing table but no single-vs-council rules'],
+    goodExample: '**Tier doctrine:** most tasks belong to ONE specialist... Councils are the exception.',
+    badExample: '(routing table present, no doctrine about when NOT to spawn)',
+  },
+  detect(input: DetectInput): Finding[] {
+    const claudeMd = input.changedFiles?.find((cf) => cf.path === 'CLAUDE.md' || cf.path.endsWith('/CLAUDE.md'));
+    if (!claudeMd) return [];
+    const hasRoutingTable = /Auto-invoke|Automatic Agent Routing/i.test(claudeMd.content);
+    if (!hasRoutingTable) return [];
+    const hasTierDoctrine = /ONE specialist|single-domain task|councils are the exception/i.test(claudeMd.content);
+    if (!hasTierDoctrine) {
+      return [f('agent_routing_no_tier_doctrine', 'MEDIUM',
+        'Agent routing table present but no tier doctrine — councils may spawn for single-domain tasks',
+        'Add tier doctrine: most tasks route to ONE specialist; councils only for genuinely cross-domain work',
+        claudeMd.path)];
+    }
+    return [];
+  },
+};
+
+// ── Rule: AGNT_033 — full council has no intent gate ──────────────────────────
+
+const AGNT_033: ThesmosRule = {
+  id: 'AGNT_033',
+  category: 'agent_full_council_no_intent_gate',
+  severity: 'MEDIUM',
+  description: 'Routing config has no councilConfirmThreshold — mass agent spawns need explicit user intent.',
+  tags: ['agent', 'pantheon', 'routing', 'cost'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'A full council (4+ agents) multiplies token cost per prompt. Without a confirmation threshold, an ambiguous prompt can silently fan out to the whole pantheon.',
+    commonViolations: ['{ "routing": { "mode": "auto" } }  // no councilConfirmThreshold'],
+    goodExample: '{ "routing": { "mode": "auto", "councilConfirmThreshold": 4 } }',
+    badExample: '{ "routing": { "mode": "auto" } }',
+  },
+  detect(input: DetectInput): Finding[] {
+    const configFile = findFile(input, 'config.json');
+    if (!configFile?.path.includes('.thesmos')) return [];
+    const config = parseJson(configFile.content);
+    if (!config) return [];
+    const routing = config.routing as Record<string, unknown> | undefined;
+    if (!routing) return [];
+    if (typeof routing.councilConfirmThreshold !== 'number') {
+      return [f('agent_full_council_no_intent_gate', 'MEDIUM',
+        'routing config has no councilConfirmThreshold — full councils can spawn without user confirmation',
+        'Add "councilConfirmThreshold": 4 to the routing block',
+        configFile.path)];
+    }
+    return [];
+  },
+};
+
+// ── Rule: AGNT_034 — planning/execution model split undocumented ──────────────
+
+const AGNT_034: ThesmosRule = {
+  id: 'AGNT_034',
+  category: 'agent_planning_execution_split_missing',
+  severity: 'MEDIUM',
+  description: 'Governance docs do not document the planning-vs-execution model split — deep models produce specs, fast models produce changes.',
+  tags: ['agent', 'pantheon', 'cost', 'doctrine'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Teams that document "planning uses deep models, execution uses fast models" consistently avoid the two failure modes: premium models grinding through mechanical edits, and fast models making architectural calls.',
+    commonViolations: ['GUARDRAILS.md or CLAUDE.md never mentions model selection doctrine'],
+    goodExample: 'Use Fable for system planning; use Sonnet for implementation.',
+    badExample: '(no model-selection guidance anywhere in governance docs)',
+  },
+  detect(input: DetectInput): Finding[] {
+    const guardrails = input.changedFiles?.find((cf) => cf.path.endsWith('GUARDRAILS.md'));
+    if (!guardrails) return [];
+    const hasDoctrine = /planning.*model|model.*task depth|deep model|reasoning model/i.test(guardrails.content);
+    if (!hasDoctrine) {
+      return [f('agent_planning_execution_split_missing', 'MEDIUM',
+        'GUARDRAILS.md has no model-selection doctrine — planning/execution model split undocumented',
+        'Document: high-reasoning models for planning/orchestration; fast models for implementation and bulk work',
+        guardrails.path)];
+    }
+    return [];
+  },
+};
+
+// ── Rule: AGNT_035 — bulk processing on premium model ─────────────────────────
+
+const AGNT_035: ThesmosRule = {
+  id: 'AGNT_035',
+  category: 'agent_bulk_on_premium_model',
+  severity: 'MEDIUM',
+  description: 'Batch/bulk processing code pins a premium reasoning model — throughput work belongs on fast models.',
+  tags: ['agent', 'cost', 'models'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Bulk pipelines multiply per-call cost by volume. A premium reasoning model on a classification or extraction loop can cost 10x a fast model with no measurable quality gain.',
+    commonViolations: ["for (const item of items) { await llm.complete({ model: 'claude-fable-5', ... }) }"],
+    goodExample: "model: 'claude-haiku-4-5'  // bulk classification loop",
+    badExample: "model: 'claude-fable-5'    // inside a 10,000-item batch loop",
+  },
+  detect(input: DetectInput): Finding[] {
+    const findings: Finding[] = [];
+    for (const cf of input.changedFiles ?? []) {
+      if (!/\.(ts|js|py)$/.test(cf.path)) continue;
+      const lines = cf.content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!/(model['"]?\s*[:=]\s*['"])(claude-fable|claude-opus|gpt-5\.5-pro)/.test(line)) continue;
+        const context = lines.slice(Math.max(0, i - 10), i).join('\n');
+        if (/\bfor\s*\(|\.map\s*\(|\bwhile\s*\(|batch|bulk/i.test(context)) {
+          findings.push({ ...f('agent_bulk_on_premium_model', 'MEDIUM',
+            'Premium reasoning model pinned inside a loop/batch context — throughput work belongs on fast models',
+            'Use a fast model (haiku/sonnet-class) for bulk processing; reserve premium models for planning',
+            cf.path), line: i + 1 });
+        }
+      }
+    }
+    return findings;
+  },
+};
+
+// ── Rule: AGNT_036 — agent output has no ownership declaration ────────────────
+
+const AGNT_036: ThesmosRule = {
+  id: 'AGNT_036',
+  category: 'agent_output_no_ownership',
+  severity: 'MEDIUM',
+  description: 'Agent definition missing identity/ownership protocol — every agent must declare who speaks, its scope, and its signature.',
+  tags: ['agent', 'pantheon', 'governance', 'identity'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Auditable multi-agent systems require every output to name its owner and scope. An agent definition without a Response Identity Protocol produces anonymous work that cannot be attributed or audited in a council.',
+    commonViolations: ['Agent .md file with no Response Identity Protocol section'],
+    goodExample: '## Response Identity Protocol\nOpen every response with your banner; close with your signature.',
+    badExample: '(agent definition with methodology but no identity protocol)',
+  },
+  detect(input: DetectInput): Finding[] {
+    const findings: Finding[] = [];
+    for (const cf of input.changedFiles ?? []) {
+      if (!cf.path.includes('catalog/agents') || !cf.path.endsWith('.md') || cf.path.includes('README')) continue;
+      if (!/Response Identity Protocol|Anti-Drift Protocol/.test(cf.content)) {
+        findings.push(f('agent_output_no_ownership', 'MEDIUM',
+          'Agent definition has no Response Identity Protocol — outputs cannot be attributed in a council',
+          'Add the Response Identity Protocol (banner + signature) or regenerate via the export pipeline which injects it',
+          cf.path));
+      }
+    }
+    return findings;
+  },
+};
+
+// ── Rule: AGNT_037 — 1M context window guard ──────────────────────────────────
+
+const AGNT_037: ThesmosRule = {
+  id: 'AGNT_037',
+  category: 'agent_context_1m_unguarded',
+  severity: 'HIGH',
+  description: '1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; cost runaway risk.',
+  tags: ['agent', 'cost', 'models', 'context'],
+  sinceVersion: '2.1.0',
+  explain: {
+    why: 'Long-context requests above the standard window bill at premium rates. The 1M window must be a deliberate, visible choice — set context1M.allow1M in .thesmos/config.json — never a silent default in an agent file or settings.',
+    commonViolations: [
+      "model: claude-fable-5[1m]  // in agent frontmatter or settings",
+      "'anthropic-beta': 'context-1m-2025-08-07'",
+    ],
+    goodExample: '{ "context1M": { "allow1M": true } }  // deliberate opt-in in .thesmos/config.json',
+    badExample: 'claude-fable-5[1m] with no context1M block in config',
+  },
+  detect(input: DetectInput): Finding[] {
+    // Read the toggle from the live config (root), falling back to changedFiles.
+    let allow1M = false;
+    const cfgFile = findFile(input, 'config.json');
+    if (cfgFile?.path.includes('.thesmos')) {
+      const cfg = parseJson(cfgFile.content);
+      allow1M = Boolean((cfg?.context1M as Record<string, unknown> | undefined)?.allow1M);
+    } else {
+      const root = input.root ?? process.cwd();
+      const p = join(root, '.thesmos', 'config.json');
+      if (existsSync(p)) {
+        try {
+          const cfg = JSON.parse(readFileSync(p, 'utf8')) as Record<string, unknown>;
+          allow1M = Boolean((cfg.context1M as Record<string, unknown> | undefined)?.allow1M);
+        } catch { /* default false */ }
+      }
+    }
+
+    const severity: Finding['severity'] = allow1M ? 'LOW' : 'HIGH';
+    const findings: Finding[] = [];
+    for (const cf of input.changedFiles ?? []) {
+      if (!/\.(md|json|ts|js|jsonc|yaml|yml)$/.test(cf.path)) continue;
+      const lines = cf.content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        if (/\[1m\]|context-1m-\d{4}/.test(lines[i])) {
+          findings.push({ ...f('agent_context_1m_unguarded', severity,
+            allow1M
+              ? '1M context window in use (context1M.allow1M is enabled — informational)'
+              : '1M context window enabled without context1M.allow1M — premium long-context pricing',
+            allow1M
+              ? 'Intentional per config — monitor spend via thesmos tokens report'
+              : 'Remove the [1m] suffix / context-1m flag, or deliberately enable via "context1M": { "allow1M": true } in .thesmos/config.json',
+            cf.path), line: i + 1 });
+        }
+      }
+    }
+    return findings;
+  },
+};
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 export const AGENT_RULES: ThesmosRule[] = [
@@ -1152,4 +1410,11 @@ export const AGENT_RULES: ThesmosRule[] = [
   AGNT_028,
   AGNT_029,
   AGNT_030,
+  AGNT_031,
+  AGNT_032,
+  AGNT_033,
+  AGNT_034,
+  AGNT_035,
+  AGNT_036,
+  AGNT_037,
 ];

@@ -29,7 +29,8 @@ governance:
     - helios-keyshot-agent
   reports_to: morpheus-animation-agent
 platforms:
-  claude_model: claude-sonnet-4-6
+  claude_model: claude-sonnet-5
+  openai_model: gpt-5.5
   cursor_globs: "**/*.blend,**/*.py,**/*.json,**/*.md"
   chatgpt_model: gpt-4o
 ---
