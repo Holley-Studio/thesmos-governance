@@ -111,6 +111,15 @@ export interface ThesmosConfig {
 
   // Folder scanning
   ignoredFolders: string[];
+  /**
+   * Repo-relative path PREFIXES excluded from review/validate diffs
+   * (e.g. "thesmos/rules/"). Unlike ignoredFolders (which matches any path
+   * segment by name), a prefix targets one specific subtree. Intended for
+   * sources that intentionally contain detection patterns — rule definitions,
+   * governance templates — which would otherwise self-trigger the rules they
+   * describe. Default: [] (nothing excluded).
+   */
+  reviewIgnorePaths: string[];
   largeFileThreshold: number;
   criticalLibPaths: string[];
   requiredFiles: string[];

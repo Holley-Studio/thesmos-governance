@@ -172,7 +172,8 @@ export const NODE_RULES: ThesmosRule[] = [
       const severity = classifySeverity('child_process_shell_injection', config.severityRules);
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
-        if (!SOURCE_EXT.test(path)) continue;
+        // Test fixtures embed exec patterns as string literals — not production code.
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]!;

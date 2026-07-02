@@ -13,6 +13,9 @@
     "mcp_cursor_rules_external_url",
     "mcp_tool_description_injection"
   ],
+  "reviewIgnorePaths": [
+    "thesmos/rules/"
+  ],
   "ignoredFolders": [
     "node_modules",
     ".git",

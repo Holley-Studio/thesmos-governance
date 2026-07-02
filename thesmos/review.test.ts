@@ -504,3 +504,25 @@ describe('runReview — inline suppressions', () => {
     expect(findings.filter((f) => f.category === 'direct_env_access').length).toBeGreaterThan(0);
   });
 });
+
+// ── shell-injection rules — test-fixture paths are exempt ─────────────────────
+
+describe('shell_injection rules skip test fixture paths', () => {
+  const EXEC_CONTENT = 'execSync(`cd "${dir}" && zip -r "${zipPath}" "${name}"`, { stdio: "pipe" });';
+
+  it('SEC_016/NODE_005 do NOT fire on the same content in a .test.ts path', () => {
+    const findings = runReview(makeInput({}, [
+      { path: 'scripts/pack.test.ts', content: EXEC_CONTENT },
+    ]));
+    expect(findings.filter((f) => f.category === 'shell_injection')).toHaveLength(0);
+    expect(findings.filter((f) => f.category === 'child_process_shell_injection')).toHaveLength(0);
+  });
+
+  it('SEC_016/NODE_005 still fire on a production .ts path', () => {
+    const findings = runReview(makeInput({}, [
+      { path: 'scripts/pack.ts', content: EXEC_CONTENT },
+    ]));
+    expect(findings.filter((f) => f.category === 'shell_injection').length).toBeGreaterThan(0);
+    expect(findings.filter((f) => f.category === 'child_process_shell_injection').length).toBeGreaterThan(0);
+  });
+});

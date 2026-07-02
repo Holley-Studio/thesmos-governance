@@ -155,7 +155,10 @@ const EU_AI_003: ThesmosRule = {
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
-    const hasAiDecision = files.some((cf) => HIGH_RISK_DECISION_RE.test(cf.content));
+    // Art. 9 governs AI systems: require an AI call signal alongside the
+    // high-risk decision keyword, same as EU_AI_001/006/007 — words like
+    // "hire" or "dismiss" alone appear in ordinary non-AI business code.
+    const hasAiDecision = files.some((cf) => HIGH_RISK_DECISION_RE.test(cf.content) && LLM_CALL_RE.test(cf.content));
     if (!hasAiDecision) return [];
     const hasRiskMgmt = existsSync(join(root, '.thesmos', 'risk-management.md'))
       || existsSync(join(root, 'docs', 'risk-management.md'))
@@ -189,7 +192,9 @@ const EU_AI_004: ThesmosRule = {
   },
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
-    const TRAINING_RE = /fine.?tun|train(?:ing)?|dataset|embedding.*ingest|createFineTune|fine_tune/i;
+    // Prefix word boundaries: "training"/"trainModel" match, but "constraints"
+    // ("s-train") and "restrain" do not.
+    const TRAINING_RE = /\bfine.?tun|\btrain|\bdataset|embedding.*ingest|createFineTune|fine_tune/i;
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
     const hasTraining = files.some((cf) => TRAINING_RE.test(cf.content));
     if (!hasTraining) return [];

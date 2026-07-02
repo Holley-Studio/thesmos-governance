@@ -43,9 +43,9 @@ export async function cmdValidate(argv: string[]): Promise<void> {
 
   let changedFiles;
   if (positionals.length > 0) {
-    changedFiles = readFilesFromPaths(root, positionals);
+    changedFiles = readFilesFromPaths(root, positionals, config.reviewIgnorePaths ?? []);
   } else if (base) {
-    changedFiles = getChangedFiles(root, base, config.ignoredFolders ?? []);
+    changedFiles = getChangedFiles(root, base, config.ignoredFolders ?? [], config.reviewIgnorePaths ?? []);
   }
 
   const registry = await getActiveRules(root);
