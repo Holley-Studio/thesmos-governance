@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Local secrets vault — AES-256-GCM encrypted, key stored in the system keychain.
  *

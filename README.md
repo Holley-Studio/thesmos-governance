@@ -3,13 +3,15 @@
 [![CI](https://github.com/Holley-Studio/thesmos-governance/actions/workflows/ci.yml/badge.svg)](https://github.com/Holley-Studio/thesmos-governance/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/thesmos-governance?color=blue)](https://www.npmjs.com/package/thesmos-governance)
 [![npm downloads](https://img.shields.io/npm/dm/thesmos-governance)](https://www.npmjs.com/package/thesmos-governance)
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/holley-studios.thesmos-governance-vscode)](https://marketplace.visualstudio.com/items?itemName=holley-studios.thesmos-governance-vscode)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/holleystudio.thesmos-governance-vscode)](https://marketplace.visualstudio.com/items?itemName=holleystudio.thesmos-governance-vscode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Node ≥20](https://img.shields.io/node/v/thesmos-governance)](https://nodejs.org)
 
 **1,137 rules. Zero config. Built for the AI-assisted engineering era.**
 
 Thesmos is an open-source code governance toolkit that watches AI-generated code for security holes, broken patterns, and architectural mistakes — before they reach production.
+
+Built by [Holley Studio](https://holley.studio) — Thesmos governs its own repository; every PR merged here passed its own gate. Check the [Actions tab](https://github.com/Holley-Studio/thesmos-governance/actions) for proof.
 
 ---
 
@@ -106,6 +108,27 @@ The rules engine is the front door — behind it ships a full governance platfor
 
 ---
 
+## How detection works
+
+Say this plainly, because it matters for how much you should trust a finding: Thesmos's 1,137 rules are **primarily line- and pattern-based** — regex and light structural heuristics applied to file content and diffs. This is not full AST parsing or cross-file data-flow analysis, and we don't market it as one. Pattern-based detection is fast, has zero runtime dependencies, and runs anywhere — but it can be fooled by aliasing, indirection, or code shaped differently than a pattern expects, the same tradeoff every scanner in this class makes.
+
+That admission is exactly why no finding gates blindly:
+
+- **Confidence tiers** — every rule is tagged `high` (near-certain proof, e.g. a committed secret or disabled TLS check), `medium` (a shape heuristic that can misfire, e.g. `exec()` with a template literal whose interpolants might be constants), or `low` (a keyword/presence signal that suggests rather than proves). Only `medium`-confidence and above can fail a build by default; `low`-confidence findings are reported with a visible tag but never flip the exit code.
+- **Diff-aware gating** — only findings on a line your PR actually changed (or in a file it added) can block the merge. Everything else in a touched file is reported, never blocking.
+- **Suppression system** — a single inline comment (`// thesmos-disable-next-line <rule> -- reason: <why> -- owner: @who`) removes a specific false positive for good. Suppressions require a reason and an owner, and `thesmos suppressions:audit` reports unused, expired, or blanket ones.
+- **Baseline** — `.thesmos/baseline.json` is an accepted-debt ledger, so gates only ever fire on *new* problems, never the ones you inherited.
+
+The full policy — including exactly which findings can block a merge and which can't — is documented in [docs/gating.md](docs/gating.md), the single source of truth every gate (`thesmos validate`, `thesmos ci`, and the GitHub Action) follows identically.
+
+### Who audits the auditor
+
+Every pull request merged into *this* repository passes the same `thesmos validate` gate a customer's PR would face — including this one. That's not a promise, it's a public record: [github.com/Holley-Studio/thesmos-governance/actions](https://github.com/Holley-Studio/thesmos-governance/actions).
+
+This codebase is also AI-accelerated, human-directed development — Holley Studio builds Thesmos with Claude Code and other AI assistants throughout. We consider that a strength, not a disclosure to bury: every AI-assisted change that lands here passes through the exact gate we sell you.
+
+---
+
 ## The 1,137 Rules
 
 Rules are organized into 17 categories:
@@ -129,6 +152,8 @@ Rules are organized into 17 categories:
 | CSS | 20 | Magic numbers, specificity wars |
 | Imports | 20 | Barrel file cycles, deep internal imports |
 | Database | 23 | Missing transactions, unindexed foreign keys |
+
+Every rule ships with a paired regression test — a false-positive fixture that must **not** fire and a true-positive fixture that must fire (policy in [CONTRIBUTING.md](CONTRIBUTING.md)). As of this writing that's **2,827 passing tests** across 79 test files, verified on every PR.
 
 ---
 
@@ -202,4 +227,4 @@ MIT — [LICENSE](LICENSE)
 
 ---
 
-*Built by [Holley Studios](https://github.com/Holley-Studio)*
+*Built by [Holley Studio](https://github.com/Holley-Studio)*

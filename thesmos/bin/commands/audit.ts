@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * thesmos audit — combined doctor + scan-based review (no changed-file content).
  * Gives a full health snapshot: installation check + rule findings from the last scan.

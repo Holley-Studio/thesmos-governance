@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Execution Advisory — recommends a model and Pantheon agents to execute a
  * plan, biased toward the cheapest model that gets the job done (AGNT_031:

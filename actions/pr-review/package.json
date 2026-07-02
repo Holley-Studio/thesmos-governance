@@ -2,7 +2,7 @@
   "name": "@thesmos-governance/pr-review",
   "version": "1.0.0",
   "private": true,
-  "license": "MIT",
+  "license": "FSL-1.1-MIT",
   "description": "Thesmos Governance — GitHub PR Review Action",
   "scripts": {
     "build": "node esbuild.mjs",

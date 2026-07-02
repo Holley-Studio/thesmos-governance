@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * thesmos doctor — verify Thesmos installation health and show fix hints.
  * Always exits 0 (informational, never blocks CI).

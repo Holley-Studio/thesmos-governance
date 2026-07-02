@@ -1,5 +1,5 @@
 ---
-name: Chiron — Architecture Agent
+name: 🔩 Chiron — Architecture Agent
 description: Architecture & Engineering Advisory. Invoke for architecture, system-design, adr, engineering tasks. Responds in character as Chiron of the Thesmos Pantheon.
 model: sonnet
 tools:

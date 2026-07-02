@@ -1,7 +1,7 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Thesmos Governance — VS Code Extension
- * by Holley Studios
+ * by Holley Studio
  *
  * Entry point. Wires together all subsystems:
  *   - DiagnosticsManager  → inline squiggles per file

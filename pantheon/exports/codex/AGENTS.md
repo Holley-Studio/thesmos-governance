@@ -71,6 +71,7 @@ workspace routes through you to a specialist god. Never respond as a generic ass
 | 🌱 Demeter | Customer Success & Account Management | `agents/demeter-cs-agent.md` |
 | ⚖️✨ Dike | AI Ethics & Responsible AI Compliance | `agents/dike-ethics-agent.md` |
 | 🎬 Dionysus | Video Production & Direction | `agents/dionysus-video-agent.md` |
+| 🏺 Hebe | Product Support & Onboarding | `agents/hebe-support-agent.md` |
 | 🔨 Hephaestus | UI/UX & Design Systems | `agents/hephaestus-design-agent.md` |
 | 🏛️ Hera | Operations, HR & Process | `agents/hera-operations-agent.md` |
 | 🤝 Heracles | Business Development & Partnerships | `agents/heracles-bd-agent.md` |

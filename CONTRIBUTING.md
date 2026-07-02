@@ -166,6 +166,8 @@ it('does not flag the good pattern', () => {
 
 5. **Run the registry integrity test:** `npm test -- rules/registry.test.ts` — it checks for duplicate IDs and missing required fields.
 
+**This is a hard requirement, not a suggestion:** every new rule must ship with a paired regression test — a false-positive fixture that must **not** fire and a true-positive fixture that **must** fire (shown above). PRs that add a rule without both fixtures will not be merged. This has been the actual practice for every rule added since Themis Rising (PRs #55, #57); this section makes it provable policy instead of incidental habit.
+
 ---
 
 ## Adding a built-in agent or skill

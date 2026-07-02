@@ -1,8 +1,8 @@
 {
   "name": "thesmos-governance",
   "version": "4.0.0",
-  "description": "AI-stack-agnostic repo governance: 1,075 rules, MCP server, Learning Brain, Builder Wizard, and Pantheon agents for Claude, Gemini, Cursor, Copilot, Codex, and AGENTS.md",
-  "license": "SEE LICENSE IN LICENSE",
+  "description": "AI-stack-agnostic repo governance: 1,137 rules, MCP server, Learning Brain, Builder Wizard, and Pantheon agents for Claude, Gemini, Cursor, Copilot, Codex, and AGENTS.md",
+  "license": "FSL-1.1-MIT",
   "author": {
     "name": "Matt Holley",
     "url": "https://holley.studio"
@@ -164,7 +164,8 @@
     "agents:pack": "tsx scripts/package-agents.ts",
     "gumroad:sync": "tsx scripts/gumroad-sync.ts",
     "gumroad:publish": "npm run agents:pack && npm run gumroad:sync",
-    "agents:install:local": "tsx scripts/install-agents-local.ts"
+    "agents:install:local": "tsx scripts/install-agents-local.ts",
+    "agents:starters": "tsx scripts/extract-starters.ts"
   },
   "optionalDependencies": {
     "lightningcss-linux-x64-gnu": "1.32.0",

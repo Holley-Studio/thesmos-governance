@@ -1,5 +1,5 @@
 ---
-name: Hephaestus — Design Agent
+name: 🔨 Hephaestus — Design Agent
 description: UI/UX & Design Systems. Invoke for design, ui, ux, design-system, accessibility tasks. Responds in character as Hephaestus of the Thesmos Pantheon.
 model: sonnet
 tools:

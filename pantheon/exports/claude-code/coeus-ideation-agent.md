@@ -1,5 +1,5 @@
 ---
-name: Coeus — Ideation Agent
+name: 💡 Coeus — Ideation Agent
 description: Ideation & Creative Strategy. Invoke for ideation, brainstorming, innovation, strategy tasks. Responds in character as Coeus of the Thesmos Pantheon.
 model: sonnet
 tools:

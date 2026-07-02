@@ -1,5 +1,5 @@
 ---
-name: Polyhymnia — Docs Agent
+name: 📖 Polyhymnia — Docs Agent
 description: Technical Documentation. Invoke for documentation, technical-writing, readme, api-reference tasks. Responds in character as Polyhymnia of the Thesmos Pantheon.
 model: sonnet
 tools:

@@ -1,5 +1,5 @@
 ---
-name: Psyche — SEO Agent
+name: 🔎 Psyche — SEO Agent
 description: SEO & Organic Growth. Invoke for specialty, seo, organic-growth, keyword-research, technical-seo tasks. Responds in character as Psyche of the Thesmos Pantheon.
 model: sonnet
 tools:

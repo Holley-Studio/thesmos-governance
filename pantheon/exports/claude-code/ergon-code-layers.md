@@ -1,5 +1,5 @@
 ---
-name: Ergon — Ergon — Code Layers Principal
+name: 🧱 Ergon — Ergon — Code Layers Principal
 description: Code Layers Principal & Design-to-Code Direction Explorer. Invoke for figma, code-layers, design-to-code, prototype, engineering-handoff tasks. Responds in character as Ergon of the Thesmos Pantheon.
 model: sonnet
 tools:

@@ -34,6 +34,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 const CATALOG_DIR = resolve(__dirname, '../catalog/agents')
+const SKILLS_CATALOG_DIR = resolve(__dirname, '../catalog/skills')
 const PANTHEON_MAP_PATH = resolve(__dirname, '../catalog/pantheon-map.json')
 const EXPORTS_DIR = resolve(__dirname, '../../pantheon/exports')
 
@@ -47,6 +48,7 @@ type Format =
   | 'gpt-clusters'
   | 'openai-assistants'
   | 'codex'
+  | 'skills'
 
 interface AgentMeta {
   id: string
@@ -400,7 +402,7 @@ function toClaudeCodeAgent(agent: AgentMeta): string {
 
   return [
     '---',
-    `name: ${name} — ${agent.name.replace(/^God Agent \w+ — /, '')}`,
+    `name: ${godEmoji(agent)} ${name} — ${agent.name.replace(/^God Agent \w+ — /, '')}`,
     `description: ${description.replace(/:/g, ' —')}`,
     `model: ${claudeCodeAlias(agent.claudeModel)}`,
     'tools:',
@@ -495,7 +497,7 @@ const CLUSTERS: Record<string, string[]> = {
   'people-ops': [
     'hera-operations-agent', 'hera-recruiting-agent', 'hestia-cx-agent',
     'demeter-cs-agent', 'heracles-bd-agent', 'mnemosyne-knowledge-agent',
-    'polyhymnia-docs-agent',
+    'polyhymnia-docs-agent', 'hebe-support-agent',
   ],
   'creative-visual': [
     'artemis-photography-agent', 'dionysus-video-agent', 'morpheus-animation-agent',
@@ -573,6 +575,98 @@ function exportClusters(agents: AgentMeta[]): { exported: number; skipped: numbe
 }
 
 // ---------------------------------------------------------------------------
+// Skills export — thesmos/catalog/skills/*.md -> pantheon/exports/skills/
+// ---------------------------------------------------------------------------
+
+interface SkillMeta {
+  id: string
+  name: string
+  /** Full markdown body after the frontmatter block (Purpose, When to use, etc.) */
+  rawBody: string
+}
+
+function collectSkillFiles(): string[] {
+  if (!existsSync(SKILLS_CATALOG_DIR)) return []
+  return readdirSync(SKILLS_CATALOG_DIR)
+    .filter((f) => f.endsWith('.md') && !f.includes('README'))
+    .map((f) => join(SKILLS_CATALOG_DIR, f))
+}
+
+function extractSkillMeta(source: string): SkillMeta {
+  const { meta, body } = parseFrontmatter(source)
+  return {
+    id: String(meta['id'] ?? ''),
+    name: String(meta['name'] ?? ''),
+    rawBody: body,
+  }
+}
+
+/**
+ * First paragraph after "## Purpose" — used as the Claude Code Agent Skill
+ * `description` field (required, <=1024 chars). The catalog skill format has
+ * no dedicated description field, so this is synthesised rather than copied.
+ */
+function extractSkillPurpose(body: string): string {
+  const match = body.match(/##\s*Purpose\s*\n+([^\n]+(?:\n(?!\s*\n|##)[^\n]+)*)/i)
+  const text = match ? match[1].replace(/\s+/g, ' ').trim() : ''
+  return text.slice(0, 500)
+}
+
+/**
+ * Claude Code Agent Skills format: one directory per skill containing
+ * SKILL.md with required `name` + `description` frontmatter. This is a
+ * near-passthrough of the catalog source with two deliberate changes:
+ *  - `name` uses the catalog `id` (already lowercase-hyphen — matches the
+ *    Skill naming convention) instead of the catalog's Title Case `name`
+ *  - `description` is synthesised from the "## Purpose" section since the
+ *    catalog frontmatter has no description field
+ * Everything else — Purpose, When to use, Workflow steps, Thesmos commands,
+ * Related agents/rule packs — ships verbatim as the SKILL.md body.
+ *
+ * ASSUMPTION [flagged for Zeus]: Claude Code's Agent Skills spec (as of this
+ * writing) expects a directory-per-skill layout (<skill>/SKILL.md). If a
+ * future spec revision changes this, only this function needs to change —
+ * the catalog source and packager consumption (skill IDs, directory names)
+ * are unaffected.
+ */
+function toSkillMd(skill: SkillMeta): string {
+  const description = extractSkillPurpose(skill.rawBody) || skill.name
+  return (
+    [
+      '---',
+      `name: ${skill.id}`,
+      `description: ${description.replace(/:/g, ' —')}`,
+      '---',
+      '',
+      skill.rawBody,
+    ].join('\n') + '\n'
+  )
+}
+
+function exportSkills(): { exported: number; skipped: number } {
+  const files = collectSkillFiles()
+  const outDir = join(EXPORTS_DIR, 'skills')
+  ensureDir(outDir)
+
+  let exported = 0
+  let skipped = 0
+
+  for (const fp of files) {
+    const skill = extractSkillMeta(readFileSync(fp, 'utf-8'))
+    if (!skill.id) {
+      skipped++
+      continue
+    }
+    const skillDir = join(outDir, skill.id)
+    ensureDir(skillDir)
+    writeFileSync(join(skillDir, 'SKILL.md'), toSkillMd(skill), 'utf-8')
+    exported++
+  }
+
+  return { exported, skipped }
+}
+
+// ---------------------------------------------------------------------------
 // File discovery
 // ---------------------------------------------------------------------------
 
@@ -599,7 +693,7 @@ function ensureDir(dir: string): void {
 }
 
 /** Maps logical format name → {dir, ext, filenameFn} */
-function formatConfig(format: Exclude<Format, 'gpt-clusters'>): {
+function formatConfig(format: Exclude<Format, 'gpt-clusters' | 'skills'>): {
   dir: string
   ext: string
   filename: (id: string) => string
@@ -685,7 +779,7 @@ Thesmos Pantheon · https://holley.studio/thesmos
 
 function exportFormat(
   agents: AgentMeta[],
-  format: Exclude<Format, 'gpt-clusters'>,
+  format: Exclude<Format, 'gpt-clusters' | 'skills'>,
 ): { exported: number; skipped: number } {
   const cfg = formatConfig(format)
   const outDir = join(EXPORTS_DIR, cfg.dir)
@@ -737,7 +831,7 @@ function exportFormat(
 
 const ALL_FORMATS: Format[] = [
   'cursor', 'copilot', 'claude-code', 'gpt', 'gemini', 'claude-project',
-  'gpt-clusters', 'openai-assistants', 'codex',
+  'gpt-clusters', 'openai-assistants', 'codex', 'skills',
 ]
 
 const FORMAT_LABELS: Record<Format, string> = {
@@ -750,6 +844,7 @@ const FORMAT_LABELS: Record<Format, string> = {
   'gpt-clusters': 'Zeus GPT clusters (.txt)',
   'openai-assistants': 'OpenAI Assistants (.json)',
   'codex': 'Codex (AGENTS.md)',
+  'skills': 'Claude Code Skills',
 }
 
 function main(): void {
@@ -779,10 +874,14 @@ function main(): void {
   ensureDir(EXPORTS_DIR)
 
   for (const format of formats) {
-    const { exported, skipped } = format === 'gpt-clusters'
-      ? exportClusters(agents)
+    const { exported, skipped } =
+      format === 'gpt-clusters' ? exportClusters(agents)
+      : format === 'skills' ? exportSkills()
       : exportFormat(agents, format)
-    const dir = format === 'gpt-clusters' ? 'chatgpt-clusters' : formatConfig(format).dir
+    const dir =
+      format === 'gpt-clusters' ? 'chatgpt-clusters'
+      : format === 'skills' ? 'skills'
+      : formatConfig(format).dir
     console.log(`  ✅ ${FORMAT_LABELS[format].padEnd(26)} ${exported} → pantheon/exports/${dir}/`)
     if (skipped > 0) console.log(`     ⏭  ${skipped} skipped`)
   }
