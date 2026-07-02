@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Per-repo convention snapshot — learns from each autopilot session and
  * feeds accumulated knowledge back into future task prompts.

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * HIPAA rules — HIPAA_001–008
  * Covers PHI encryption (§164.312(a)(2)(iv)), transmission security

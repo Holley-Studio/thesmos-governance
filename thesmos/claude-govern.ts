@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Claude Code governance hooks — intercepts Write/Edit/Bash tool calls in Auto Mode
  * and blocks BLOCKER-severity Thesmos violations before they land on disk.

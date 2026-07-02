@@ -133,3 +133,43 @@ describe('LIC_001 — lic_gpl_in_commercial line attribution', () => {
     expect(findings[0]?.line).toBeUndefined();
   });
 });
+
+// ── LIC_001 — source-available (FSL/BUSL) projects count as commercial ────────
+
+describe('LIC_001 — lic_gpl_in_commercial fires for source-available licenses', () => {
+  const LOCK = JSON.stringify({
+    lockfileVersion: 3,
+    packages: {
+      'node_modules/gpl-pkg': { version: '2.0.0', license: 'GPL-3.0' },
+    },
+  });
+
+  it('fires on a GPL dep when the project license is FSL-1.1-MIT', () => {
+    const pkg = '{\n  "name": "fsl-app",\n  "license": "FSL-1.1-MIT",\n  "dependencies": { "gpl-pkg": "^2.0.0" }\n}';
+    const findings = detect('LIC_001', [
+      { path: 'package.json', content: pkg },
+      { path: 'package-lock.json', content: LOCK },
+    ]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.severity).toBe('BLOCKER');
+    expect(findings[0]?.message).toContain('gpl-pkg');
+  });
+
+  it('fires on a GPL dep when the project license is BUSL-1.1', () => {
+    const pkg = '{\n  "name": "busl-app",\n  "license": "BUSL-1.1"\n}';
+    const findings = detect('LIC_001', [
+      { path: 'package.json', content: pkg },
+      { path: 'package-lock.json', content: LOCK },
+    ]);
+    expect(findings).toHaveLength(1);
+  });
+
+  it('still does NOT fire when the project itself is GPL (copyleft-compatible)', () => {
+    const pkg = '{\n  "name": "gpl-app",\n  "license": "GPL-3.0-only"\n}';
+    const findings = detect('LIC_001', [
+      { path: 'package.json', content: pkg },
+      { path: 'package-lock.json', content: LOCK },
+    ]);
+    expect(findings).toHaveLength(0);
+  });
+});

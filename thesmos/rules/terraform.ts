@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 import type { ThesmosRule, Finding, DetectInput } from '../types.js';
 import { classifySeverity } from '../severity.js';
 

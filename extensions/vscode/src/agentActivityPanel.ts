@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Agent Activity sidebar panel — live timeline of Pantheon agent spawns and
  * completions. Reads `.thesmos/agent-activity.jsonl` via FileSystemWatcher,

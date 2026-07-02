@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * thesmos report — generate a visual HTML governance report.
  *
@@ -518,7 +518,7 @@ export function formatFindingsHtml(
 
   <div class="report-footer">
     <span>Thesmos Governance · <a href="https://github.com/Holley-Studio/thesmos-governance" style="color:rgba(201,168,76,.5)">github.com/Holley-Studio/thesmos-governance</a></span>
-    <span>Built by Holley Studios</span>
+    <span>Built by Holley Studio</span>
   </div>
 </div>
 </body>

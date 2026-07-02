@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Shared gate semantics — the ONE place that decides which findings are
  * allowed to fail a pipeline. Every gate (validate, ci, the PR action) must

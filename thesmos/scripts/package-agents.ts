@@ -25,6 +25,7 @@ import {
   copyFileSync,
   writeFileSync,
   rmSync,
+  cpSync,
 } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -32,6 +33,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 const EXPORTS_DIR  = resolve(__dirname, '../../pantheon/exports')
+const SKILLS_EXPORT_DIR = resolve(__dirname, '../../pantheon/exports/skills')
 const DOWNLOADS_DIR = resolve(__dirname, '../../website/downloads')
 const DIST_PACKS_DIR = resolve(__dirname, '../../dist-packs')
 const TMP_DIR      = resolve(__dirname, '../../.tmp-pack')
@@ -46,6 +48,16 @@ const FREE_AGENT_IDS = new Set([
   'zeus-pantheon-orchestrator',
   'zeus-receptionist',
   'zeus-figma-card',
+  // Support is never paywalled — Hebe ships free in every tier
+  'hebe-support-agent',
+])
+
+// Starter (free) bundle teaser — 3 broadly appealing skills out of the full
+// 53. Paid bundles (full Pantheon + both verticals) ship all of them.
+const STARTER_SAMPLE_SKILL_IDS = new Set([
+  'a11y-audit',
+  'ci-pipeline-audit',
+  'add-tests',
 ])
 
 const PLATFORM_MAP: Array<{ srcDir: string; destDir: string; ext: string; guide: string }> = [
@@ -55,9 +67,9 @@ const PLATFORM_MAP: Array<{ srcDir: string; destDir: string; ext: string; guide:
     ext: '.md',
     guide: `# Installing Thesmos Agents in Claude Code — Full Experience
 
-Four steps give you the complete theatrical Pantheon: Zeus routing announcements
-in chat, the live god tree in the VS Code sidebar, and the routing chain in the
-status bar.
+Five steps give you the complete theatrical Pantheon: Zeus routing announcements
+in chat, the live god tree in the VS Code sidebar, the routing chain in the
+status bar, and a zero-cost Pantheon status line in your terminal prompt.
 
 ## Step 1 — Install the agents
 
@@ -76,7 +88,8 @@ any god responds.
 
 1. Copy hooks/agent-activity.cjs into your project's .claude/hooks/
 2. Merge hooks/settings-snippet.json into your project's .claude/settings.json
-   (create the file with exactly that content if it doesn't exist)
+   (create the file with exactly that content if it doesn't exist — this also
+   wires the Step 5 status line below)
 
 Every god dispatch now streams into .thesmos/agent-activity.jsonl.
 
@@ -85,6 +98,16 @@ Every god dispatch now streams into .thesmos/agent-activity.jsonl.
 Install the .vsix from the for-vscode/ folder (Cmd+Shift+P → "Install from VSIX").
 The Agent Activity panel shows Zeus dispatching gods live, and the status bar
 displays the routing chain (⚡ Zeus → 👁 Argus) while they work.
+
+## Step 5 — See the gods in your terminal status line (zero API cost)
+
+1. Copy hooks/statusline-pantheon.sh into your project's .claude/
+2. Confirm .claude/settings.json has the "statusLine" key from
+   hooks/settings-snippet.json (Step 3 merges this automatically)
+
+Your terminal prompt now shows ⚡ Zeus → 👁 Argus · inspecting the perimeter…
+while a god is dispatched, and falls back to your branch + model when idle.
+This reads the local activity log only — no network calls, no LLM cost.
 
 Learn more: https://docs.anthropic.com/claude-code/agents
 `,
@@ -510,14 +533,43 @@ function buildBundle(
     }
   }
 
-  // Claude Code full-experience extras: PANTHEON.md + activity hook + settings
-  // snippet (see for-claude/INSTALL.md steps 2–3). Paid bundles only.
+  // Claude Code full-experience extras: PANTHEON.md + activity hook +
+  // statusline script + settings snippet (see for-claude/INSTALL.md steps
+  // 2–3 and 5). Paid bundles only.
   if ((tier === 'pantheon' || vertical) && existsSync(CLAUDE_EXTRAS_DIR)) {
     const claudeDir = join(bundleDir, 'for-claude')
     ensureDir(join(claudeDir, 'hooks'))
     copyFileSync(join(CLAUDE_EXTRAS_DIR, 'PANTHEON.md'), join(claudeDir, 'PANTHEON.md'))
     copyFileSync(join(CLAUDE_EXTRAS_DIR, 'hooks', 'agent-activity.cjs'), join(claudeDir, 'hooks', 'agent-activity.cjs'))
     copyFileSync(join(CLAUDE_EXTRAS_DIR, 'hooks', 'settings-snippet.json'), join(claudeDir, 'hooks', 'settings-snippet.json'))
+    copyFileSync(join(CLAUDE_EXTRAS_DIR, 'hooks', 'statusline-pantheon.sh'), join(claudeDir, 'hooks', 'statusline-pantheon.sh'))
+  }
+
+  // Claude Code Agent Skills — 53 workflow rituals live in
+  // pantheon/exports/skills/ (one directory per skill, SKILL.md inside).
+  // Paid bundles (full Pantheon + both verticals) ship all 53; the starter
+  // bundle gets exactly 3 as an upsell teaser.
+  if (existsSync(SKILLS_EXPORT_DIR)) {
+    const skillsDestDir = join(bundleDir, 'for-claude', 'skills')
+    ensureDir(skillsDestDir)
+
+    const allSkillIds = readdirSync(SKILLS_EXPORT_DIR)
+      .filter((id) => existsSync(join(SKILLS_EXPORT_DIR, id, 'SKILL.md')))
+    const skillIds = tier === 'starter'
+      ? allSkillIds.filter((id) => STARTER_SAMPLE_SKILL_IDS.has(id))
+      : allSkillIds
+
+    for (const id of skillIds) {
+      cpSync(join(SKILLS_EXPORT_DIR, id), join(skillsDestDir, id), { recursive: true })
+    }
+
+    writeFileSync(
+      join(skillsDestDir, 'README.md'),
+      tier === 'starter'
+        ? `# Thesmos Skills — Starter Sample\n\n${skillIds.length} of the Pantheon's ${allSkillIds.length} workflow skills, included as a teaser:\n\n${skillIds.map((id) => `- ${id}`).join('\n')}\n\nEach skill is a directory with a SKILL.md — copy the ones you want into your project's .claude/skills/.\n\nThe full Pantheon pack ships all ${allSkillIds.length} skills: https://holley.studio/thesmos\n`
+        : `# Thesmos Skills — Full Pack\n\nAll ${allSkillIds.length} Pantheon workflow skills, one directory per skill (Claude Code Agent Skills format).\n\nCopy the ones you want — or all of them — into your project's .claude/skills/.\n`,
+      'utf-8',
+    )
   }
 
   writeFileSync(

@@ -4,8 +4,8 @@ description: >
   review comments — BLOCKER and HIGH violations INTRODUCED BY THE PR block the
   merge check. Diff-aware: pre-existing findings in touched files (debt this
   PR didn't create) are reported separately and never block. Baseline-accepted
-  debt is suppressed entirely. Powered by Holley Studios.
-author: 'Holley Studios'
+  debt is suppressed entirely. Powered by Holley Studio.
+author: 'Holley Studio'
 
 branding:
   icon: 'shield'

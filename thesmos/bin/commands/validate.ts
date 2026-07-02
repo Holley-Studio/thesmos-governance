@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * thesmos validate — review checks that exit 1 on failOnSeverity findings.
  * Designed for CI: blocks merges when BLOCKER/HIGH findings are present.
