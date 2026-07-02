@@ -22,6 +22,10 @@ export interface ChangedFile {
   path: string;
   content: string;
   diff?: string;
+  /** GitHub file status: 'added' | 'modified' | 'renamed' | 'copied' | 'changed' | 'unchanged'. */
+  status?: string;
+  /** Resolved new-side changed-line set for this file — see diff-lines.ts. */
+  changedLines?: Set<number> | 'all';
 }
 
 /** Parsed action inputs. */
@@ -30,6 +34,8 @@ export interface ActionInputs {
   failOnSeverity: Severity | 'none';
   postInlineComments: boolean;
   updateSummary: boolean;
+  /** Include the collapsed "pre-existing findings in touched files" section in the summary. */
+  reportPreexisting: boolean;
 }
 
 /** A single comment to post inline on a PR diff. */

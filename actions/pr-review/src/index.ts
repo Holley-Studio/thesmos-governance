@@ -25,9 +25,11 @@ import {
   runReview,
   CONFIG_DEFAULTS,
   loadConfig,
+  loadBaseline,
+  partitionFindings,
 } from 'thesmos-governance';
 
-import type { ActionInputs, Severity } from './types.js';
+import type { ActionInputs, Severity, ChangedFile } from './types.js';
 import {
   formatSummaryComment,
   buildInlineComments,
@@ -40,6 +42,7 @@ import {
   upsertSummaryComment,
   postInlineReview,
 } from './github.js';
+import { partitionNewVsPreExisting, type FileDiffInfo } from './partition.js';
 
 // ── Input parsing ─────────────────────────────────────────────────────────────
 
@@ -69,6 +72,7 @@ function parseInputs(): ActionInputs {
     failOnSeverity,
     postInlineComments: core.getInput('post-inline-comments') !== 'false',
     updateSummary: core.getInput('update-summary') !== 'false',
+    reportPreexisting: core.getInput('report-preexisting') !== 'false',
   };
 }
 
@@ -118,13 +122,21 @@ async function run(): Promise<void> {
     const config = loadThesmosConfig(workspace);
 
     core.info('Fetching changed files from GitHub API…');
-    const changedFiles = await getChangedFiles(
+    const { files: changedFiles, governanceFilesModified } = await getChangedFiles(
       octokit,
       ctx,
       workspace,
       config.reviewIgnorePaths ?? [],
     );
     core.info(`Found ${changedFiles.length} changed file(s) to review`);
+    if (governanceFilesModified.length > 0) {
+      // Baseline trust boundary (Argus, Phase 4b item 3): this PR edits the
+      // very files this review loads its suppressions/config from.
+      core.warning(
+        `PR modifies governance control file(s): ${governanceFilesModified.join(', ')} — ` +
+          `baseline/config changes can suppress this PR's own findings; review them deliberately.`,
+      );
+    }
 
     if (changedFiles.length === 0) {
       core.info('No reviewable files changed — skipping analysis.');
@@ -140,18 +152,61 @@ async function run(): Promise<void> {
     core.debug(`Scan complete: ${scan.componentCount} components, ${scan.apiRoutes.length} API routes`);
 
     // ── 5. Run review ──────────────────────────────────────────────────────
+    // runReview scans FULL file content (not just the diff) — a one-line fix
+    // in a legacy file re-reports every pre-existing finding in it. Steps 5a-5b
+    // below narrow that down to what this PR actually introduced.
 
     core.info('Running governance review…');
-    const findings = runReview({ scan, config, changedFiles });
+    const allFindings = runReview({ scan, config, changedFiles });
     core.info(
-      findings.length === 0
+      allFindings.length === 0
         ? 'All governance checks passed ✅'
-        : `Found ${findings.length} finding(s)`,
+        : `Found ${allFindings.length} finding(s) across full file content`,
+    );
+
+    // ── 5a. Baseline suppression (Task 4b) ──────────────────────────────────
+    // Applied BEFORE the NEW/PRE-EXISTING split — baselined (accepted) debt
+    // vanishes from both buckets. The pre-existing section is for UNaccepted
+    // debt in touched files; already-accepted debt shouldn't reappear there.
+
+    const baseline = loadBaseline(workspace);
+    const unbaselinedFindings = baseline
+      ? partitionFindings(allFindings, baseline).newFindings
+      : allFindings;
+    const baselinedCount = allFindings.length - unbaselinedFindings.length;
+    if (baselinedCount > 0) {
+      core.info(`${baselinedCount} finding(s) suppressed — matched .thesmos/baseline.json (accepted debt)`);
+    }
+
+    // ── 5b. NEW vs PRE-EXISTING partition (Task 4a) ─────────────────────────
+    // NEW: on a line this PR added/modified, or in a brand-new file — this is
+    // what gates the merge. PRE-EXISTING: everything else in a touched file —
+    // reported for visibility, never blocks. See partition.ts for full rules.
+
+    const filesByPath = new Map<string, FileDiffInfo>(
+      changedFiles.map((f: ChangedFile) => [f.path, { status: f.status, changedLines: f.changedLines }]),
+    );
+    const { newFindings, preExistingFindings } = partitionNewVsPreExisting(
+      unbaselinedFindings,
+      filesByPath,
+      // Unknown-file split (Argus, Phase 4a item 2): findings attached to
+      // files that don't exist in the workspace are missing-artifact findings
+      // (e.g. EU_AI_001 → '.thesmos/conformity-assessment.md') provoked by
+      // this PR's content — they gate. Findings on real untouched files are
+      // pre-existing scan debt — they don't.
+      { fileExists: (p: string) => existsSync(join(workspace, p)) },
+    );
+    core.info(
+      `${newFindings.length} new finding(s) (gate on these) · ` +
+        `${preExistingFindings.length} pre-existing in touched files (informational)`,
     );
 
     // ── 6. Annotate findings in the Actions log ────────────────────────────
+    // Only NEW findings are annotated — pre-existing debt in a touched file
+    // is not something this PR introduced and should not clutter the PR's
+    // Files-changed annotations.
 
-    for (const finding of findings) {
+    for (const finding of newFindings) {
       const annotationProps = {
         file: finding.file,
         startLine: finding.line,
@@ -172,16 +227,24 @@ async function run(): Promise<void> {
     if (inputs.updateSummary) {
       core.info('Posting summary comment…');
       const summaryBody = formatSummaryComment(
-        findings,
+        newFindings,
         ctx.repoName,
         ctx.pullNumber,
+        {
+          preExisting: preExistingFindings,
+          baselinedCount,
+          reportPreexisting: inputs.reportPreexisting,
+          governanceFilesModified,
+        },
       );
       await upsertSummaryComment(octokit, ctx, summaryBody);
     }
 
     // ── 8. Record PR score in history ─────────────────────────────────────
+    // Score reflects only what this PR introduced (newFindings) — pre-existing
+    // debt in a touched file should not move a PR's own health score.
 
-    const prScore = computeScore(findings);
+    const prScore = computeScore(newFindings);
     core.setOutput('health-score', String(prScore));
 
     try {
@@ -194,9 +257,11 @@ async function run(): Promise<void> {
         pr: ctx.pullNumber,
         sha: ctx.headSha,
         score: prScore,
-        findings: findings.length,
-        blockers: findings.filter((f) => f.severity === 'BLOCKER').length,
-        highs: findings.filter((f) => f.severity === 'HIGH').length,
+        findings: newFindings.length,
+        blockers: newFindings.filter((f) => f.severity === 'BLOCKER').length,
+        highs: newFindings.filter((f) => f.severity === 'HIGH').length,
+        preExisting: preExistingFindings.length,
+        baselined: baselinedCount,
       });
       appendFileSync(historyPath, entry + '\n', 'utf8');
       core.debug(`PR score ${prScore}/100 appended to .thesmos/pr-history.jsonl`);
@@ -205,10 +270,13 @@ async function run(): Promise<void> {
     }
 
     // ── 9. Post inline comments ────────────────────────────────────────────
+    // NEW findings only — they are guaranteed to be on a diff line (or in a
+    // brand-new file), so the 422-retry fallback in postInlineReview should
+    // now almost never trigger.
 
-    if (inputs.postInlineComments && findings.length > 0) {
+    if (inputs.postInlineComments && newFindings.length > 0) {
       const changedFilePaths = new Set(changedFiles.map((f) => f.path));
-      const inlineComments = buildInlineComments(findings, changedFilePaths);
+      const inlineComments = buildInlineComments(newFindings, changedFilePaths);
 
       if (inlineComments.length > 0) {
         core.info(`Posting ${inlineComments.length} inline comment(s)…`);
@@ -219,10 +287,16 @@ async function run(): Promise<void> {
     }
 
     // ── 10. Set outputs ────────────────────────────────────────────────────
+    // finding-count / blocker-count reflect the NEW bucket — what this PR
+    // introduced and what gates it. Pre-existing/baselined counts are exposed
+    // separately so downstream steps can report on them without conflating
+    // "introduced by this PR" with "already existed".
 
-    const blockerCount = findings.filter((f) => f.severity === 'BLOCKER').length;
-    core.setOutput('finding-count', String(findings.length));
+    const blockerCount = newFindings.filter((f) => f.severity === 'BLOCKER').length;
+    core.setOutput('finding-count', String(newFindings.length));
     core.setOutput('blocker-count', String(blockerCount));
+    core.setOutput('preexisting-finding-count', String(preExistingFindings.length));
+    core.setOutput('baselined-finding-count', String(baselinedCount));
 
     // Try to read health grade from report.json if it exists
     const reportPath = join(workspace, '.thesmos', 'report.json');
@@ -238,27 +312,29 @@ async function run(): Promise<void> {
     }
 
     // ── 11. Exit code ──────────────────────────────────────────────────────
+    // Gate semantics: shouldFail() evaluates ONLY the NEW bucket — a PR is
+    // never blocked by debt it didn't introduce.
 
-    if (shouldFail(findings, inputs.failOnSeverity)) {
-      const blockers = findings.filter((f) => f.severity === 'BLOCKER');
-      const highs = findings.filter((f) => f.severity === 'HIGH');
+    if (shouldFail(newFindings, inputs.failOnSeverity)) {
+      const blockers = newFindings.filter((f) => f.severity === 'BLOCKER');
+      const highs = newFindings.filter((f) => f.severity === 'HIGH');
 
       const parts: string[] = [];
       if (blockers.length > 0) parts.push(`${blockers.length} BLOCKER`);
       if (highs.length > 0) parts.push(`${highs.length} HIGH`);
-      const rest = findings.length - blockers.length - highs.length;
+      const rest = newFindings.length - blockers.length - highs.length;
       if (rest > 0) parts.push(`${rest} other`);
 
       core.setFailed(
-        `🔱 Thesmos Governance: ${parts.join(', ')} finding(s) found. ` +
+        `🔱 Thesmos Governance: ${parts.join(', ')} finding(s) introduced by this PR. ` +
           `Resolve or baseline these before merging.`,
       );
-    } else if (findings.length > 0) {
+    } else if (newFindings.length > 0) {
       core.info(
-        `🔱 Thesmos Governance: ${findings.length} finding(s) noted (below fail threshold).`,
+        `🔱 Thesmos Governance: ${newFindings.length} finding(s) noted (below fail threshold).`,
       );
     } else {
-      core.info('🔱 Thesmos Governance: All checks passed.');
+      core.info('🔱 Thesmos Governance: All checks passed on new/modified code.');
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

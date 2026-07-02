@@ -24,6 +24,8 @@ export interface Finding {
 export interface ReviewOutput {
   total: number;
   findings: Finding[];
+  /** Count of findings suppressed because they matched a .thesmos/baseline.json entry. */
+  baselinedCount?: number;
 }
 
 /** Shape of `thesmos health --json` stdout. */
@@ -52,4 +54,5 @@ export interface ExtensionConfig {
   showStatusBar: boolean;
   binaryPath: string;
   autoScan: boolean;
+  minSeverity: string;
 }
