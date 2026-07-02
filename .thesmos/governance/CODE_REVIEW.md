@@ -590,6 +590,7 @@
 - [ ] 🟠 **[AGNT_026]** No .thesmos/model-card.md found — EU AI Act Art. 13 transparency requirement.
 - [ ] 🟠 **[AGNT_027]** .thesmos/audit.jsonl is being modified by the agent — audit trail must be append-only.
 - [ ] 🟠 **[AGNT_028]** Sub-agent spawned without forwarding parent session token — auth gap in agent chain.
+- [ ] 🟠 **[AGNT_037]** 1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; cost runaway risk.
 - [ ] 🟠 **[DEP_002]** Dependency has a HIGH severity CVE.
 - [ ] 🟠 **[DEP_004]** Dependency not updated in 2+ years AND has a known CVE — no fix expected.
 - [ ] 🟠 **[DEP_006]** Dependency points to a git URL instead of a semver version — no integrity guarantee.
@@ -1094,6 +1095,12 @@
 - [ ] 🔵 **[AGNT_022]** Autopilot can run when the machine is on battery — risks unintended overnight runs.
 - [ ] 🟡 **[AGNT_029]** Agent context assembler may concatenate raw PII fields into the context window.
 - [ ] 🟡 **[AGNT_030]** Autopilot config has no rollbackStrategy — no recovery path if agent breaks production.
+- [ ] 🟡 **[AGNT_031]** Agent model tier does not match task depth — orchestrators need high-reasoning models; bulk/routine agents must not burn premium models.
+- [ ] 🟡 **[AGNT_032]** Agent routing table exists but no tier doctrine — single-domain tasks may over-spawn councils.
+- [ ] 🟡 **[AGNT_033]** Routing config has no councilConfirmThreshold — mass agent spawns need explicit user intent.
+- [ ] 🟡 **[AGNT_034]** Governance docs do not document the planning-vs-execution model split — deep models produce specs, fast models produce changes.
+- [ ] 🟡 **[AGNT_035]** Batch/bulk processing code pins a premium reasoning model — throughput work belongs on fast models.
+- [ ] 🟡 **[AGNT_036]** Agent definition missing identity/ownership protocol — every agent must declare who speaks, its scope, and its signature.
 - [ ] 🟡 **[DEP_003]** Dependency has a MEDIUM severity CVE.
 - [ ] 🟡 **[DEP_005]** package-lock.json entries are missing integrity hashes — supply chain risk.
 - [ ] 🔵 **[DEP_007]** Dependency is more than 2 major versions behind latest.

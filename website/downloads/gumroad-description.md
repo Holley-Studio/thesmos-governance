@@ -1,70 +1,65 @@
-77 specialist AI agents. Every domain. Every platform. One orchestrated system.
+66 specialist AI agents. 10 platforms. One orchestrated system — with theatrical presence you can feel.
 
 ---
 
 ## What is the Thesmos Pantheon?
 
-The Pantheon is a complete team of AI specialists — each with a defined role, methodology, and voice. Deploy them into the tools you already use and get an expert on every task, automatically routed by **Zeus**, the executive orchestrator.
+The Pantheon is a complete team of AI specialists — each with a defined identity, methodology, and voice. Tell **Zeus** what you need. He reads the task, announces the routing, and dispatches the right god:
 
-Tell Zeus what you need. He reads the task, picks the right specialist, and routes it. No need to name an agent yourself.
+```
+⚡ ZEUS — ROUTING
+Security detected · dispatching 👁 Argus
+────────────────────────────────────────
+```
+
+Every god announces itself, works in its own expert voice, and signs its findings. You always know who's working for you.
 
 ---
 
 ## What's inside
 
-⚡ **Zeus — Executive Orchestration**
-Routes every task to the right specialist automatically. Start here.
+⚡ **Zeus — Executive Orchestration** — routes every task automatically. Start here.
+👁 **Argus — Security** — OWASP, CVSS scoring, STRIDE threat models.
+🦉 **Athena — Strategy** — GTM, competitive positioning, OKRs.
+⚔️ **Ares Cluster — Sales** — discovery, MEDDPICC deal strategy, pipeline forecasting.
+✍️ **Apollo — Content & Copy** — landing pages, email sequences, SEO, brand voice.
+🔨 **Hephaestus — UI/UX** — components, tokens, WCAG, design systems.
+💰 **Plutus — Finance** — pricing, unit economics, P&L modeling.
+🗿 **Pygmalion & ☀️ Helios — 3D & Rendering** — Blender and KeyShot direction.
 
-⚔️ **Ares Cluster — Sales & Pipeline**
-Discovery, MEDDPICC deal strategy, pipeline health & forecasting.
-
-🦉 **Athena — Business Strategy**
-GTM strategy, competitive positioning, OKRs, Porter's Five Forces.
-
-👁 **Argus — Security & Threat Modeling**
-OWASP, CVSS scoring, auth reviews, STRIDE threat models.
-
-✍️ **Apollo — Content & Copy**
-Landing pages, email sequences, SEO, brand voice, blog.
-
-🔨 **Hephaestus — UI/UX & Design Systems**
-Components, tokens, accessibility, WCAG, Figma specs.
-
-🗿 **Pygmalion — Blender & 3D**
-Geometry nodes, PBR materials, rigging, topology review.
-
-☀️ **Helios — KeyShot Visualization**
-HDRI lighting, material realism, photorealistic product renders.
-
-*+ 69 more specialists across finance, legal, ops, analytics, PR, product, DevOps, and more.*
+*+ 50 more specialists across legal, ops, analytics, PR, video, animation, DevOps, QA, and a full 10-god Figma design squad.*
 
 ---
 
-## 5 platforms + VS Code extension
+## 10 platforms, one download
 
-| Folder | Platform | Format |
-|---|---|---|
-| for-claude/ | Claude Code | .md |
-| for-chatgpt/ | ChatGPT Custom GPTs | .txt |
-| for-gemini/ | Gemini Gems | .txt |
-| for-cursor/ | Cursor | .mdc |
-| for-copilot/ | GitHub Copilot | .md |
-| for-vscode/ | VS Code Extension | .vsix |
+| Folder | Platform |
+|---|---|
+| for-claude/ | Claude Code (+ live VS Code god-activity feed) |
+| for-claude-ai/ | Claude.ai Projects (incl. 3 curated Council bundles) |
+| for-chatgpt/ | ChatGPT Custom GPTs (incl. Zeus Orchestrator + 13 knowledge clusters) |
+| for-codex/ | OpenAI Codex (AGENTS.md convention) |
+| for-openai-api/ | OpenAI Assistants API (.json definitions) |
+| for-gemini/ | Gemini Gems (incl. Zeus Receptionist) |
+| for-cursor/ | Cursor rules |
+| for-copilot/ | GitHub Copilot |
+| for-figma/ | Figma AI prompt cards |
+| for-vscode/ | VS Code extension (.vsix) — live agent activity panel |
 
-Each folder includes a step-by-step **INSTALL.md**. Setup takes under 5 minutes.
-
-The VS Code extension adds real-time inline governance findings (BLOCKER / HIGH / MEDIUM) directly in your editor as you code.
-
----
-
-## How it works
-
-1. Download and unzip
-2. Open the folder for your AI tool
-3. Read INSTALL.md — it's short
-4. Copy the agent files into place
-5. Tell Zeus what you need
+Each folder includes step-by-step INSTALL.md. Setup takes under 5 minutes.
 
 ---
 
-*Want to try before you buy? Download the free 5-agent Starter Pack at [holley.studio](https://holley.studio)*
+## Built for the newest models
+
+Every agent is tuned for the Claude 5 family (Fable 5, Sonnet 5) and GPT-5.5 — with an Anti-Drift Protocol that keeps each god in character from message 1 to message 50, and honest governance badges on every delivery.
+
+## Lifetime updates
+
+The Pantheon grows. New gods, new platforms, and model updates ship regularly — you get every update, forever. Check the public changelog anytime.
+
+*Keep your Custom GPTs private — the knowledge files are your paid content.*
+
+---
+
+*Try before you buy: download the free 5-agent Starter Pack at [holley.studio](https://holley.studio)*

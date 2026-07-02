@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-01T23:21:15.711Z",
+  "generatedAt": "2026-07-02T03:19:00.978Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -131,6 +131,10 @@
       "lines": 1440
     },
     {
+      "file": "thesmos/rules/agents.ts",
+      "lines": 1421
+    },
+    {
       "file": "thesmos/rules/vibe-coding.ts",
       "lines": 1403
     },
@@ -145,10 +149,6 @@
     {
       "file": "thesmos/fix.test.ts",
       "lines": 1187
-    },
-    {
-      "file": "thesmos/rules/agents.ts",
-      "lines": 1156
     },
     {
       "file": "thesmos/rules/debt.ts",
@@ -352,14 +352,14 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 359,
-      "lineCount": 96094
+      "fileCount": 377,
+      "lineCount": 98677
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 296,
-      "lineCount": 118611
+      "fileCount": 297,
+      "lineCount": 119373
     },
     {
       "language": "JavaScript",

@@ -45,6 +45,8 @@ type Format =
   | 'gemini'
   | 'claude-project'
   | 'gpt-clusters'
+  | 'openai-assistants'
+  | 'codex'
 
 interface AgentMeta {
   id: string
@@ -53,6 +55,8 @@ interface AgentMeta {
   emoji: string
   vibe: string
   cursorGlobs: string
+  claudeModel: string
+  openaiModel: string
   tags: string[]
   enabled: boolean
   rawContent: string
@@ -168,11 +172,23 @@ function extractMeta(source: string): AgentMeta {
     emoji: String(meta['emoji'] ?? ''),
     vibe: String(meta['vibe'] ?? ''),
     cursorGlobs: platforms['cursor_globs'] ?? '**/*.md',
+    // Strip any [1m] long-context suffix defensively — exports never opt into
+    // the 1M context window (AGNT_037 guard; premium pricing).
+    claudeModel: (platforms['claude_model'] ?? 'claude-sonnet-5').replace(/\[1m\]/g, ''),
+    openaiModel: (platforms['openai_model'] ?? 'gpt-5.5').replace(/\[1m\]/g, ''),
     tags: Array.isArray(meta['tags']) ? (meta['tags'] as string[]) : [],
     enabled: meta['enabled'] !== false,
     rawContent: source,
     body,
   }
+}
+
+/** Map a full claude model ID to the Claude Code frontmatter alias. */
+function claudeCodeAlias(claudeModel: string): string {
+  if (claudeModel.includes('fable')) return 'fable'
+  if (claudeModel.includes('opus')) return 'opus'
+  if (claudeModel.includes('haiku')) return 'haiku'
+  return 'sonnet'
 }
 
 // ---------------------------------------------------------------------------
@@ -252,11 +268,43 @@ actually assessed in that response. "Thesmos check: no applicable rules this res
 is a valid and honest close. One rubber-stamped ✅ makes every badge noise.`
 }
 
+/**
+ * Operating Doctrine — architectural persona framing + direct-action language.
+ * Persona research (PRISM 2026, Wharton GAIL 2025): personas framed as
+ * behavioral constraints outperform theatrical framing; explicit output
+ * specs are required for literal-instruction models (GPT-5.5) and benefit
+ * Claude 5 equally.
+ */
+function buildOperatingDoctrine(agent: AgentMeta): string {
+  const name = godName(agent)
+  const domain = godDomain(agent)
+
+  return `## Operating Doctrine
+
+**Epistemic stance.** You adopt the epistemic stance and methodology of ${name} — this
+constrains how you reason and what you produce, not just how you sound. Apply your
+methodology sections explicitly; they are reasoning scaffolds, not decoration.
+
+**Direct action.** State findings and produce the work product directly. Do not ask
+permission to proceed on work that is clearly within your ${domain} scope. Offer
+follow-ups after delivering, not before.
+
+**Output Specification.**
+- Format: markdown; headings for reports, prose for conversation
+- Open with your identity banner (full on first response and domain shifts, compact after)
+- Rank findings and recommendations by severity or impact — never unordered lists of equals
+- State concrete next steps; every deliverable names its owner and success criteria
+- Length: match the task — a verdict needs a paragraph, a review needs the full contract`
+}
+
 /** Compose the identity block to append to an export body. */
 function identityBlock(agent: AgentMeta): string {
   const parts: string[] = []
   if (!agent.body.includes('## Response Identity Protocol')) {
     parts.push(buildResponseIdentity(agent))
+  }
+  if (!agent.body.includes('## Operating Doctrine')) {
+    parts.push(buildOperatingDoctrine(agent))
   }
   if (!agent.body.includes('## Anti-Drift Protocol')) {
     parts.push(buildAntiDrift(agent))
@@ -309,6 +357,67 @@ function toGeminiInstructions(agent: AgentMeta): string {
 
 function toClaudeProjectInstructions(agent: AgentMeta): string {
   // Single H1 header (the hand-made predecessors had a duplicate-H1 bug).
+  const body = agent.body.replace(/^# .+\r?\n+/, '')
+  return [`# ${godEmoji(agent)} ${godName(agent)} — ${godDomain(agent)}`, '', body].join('\n')
+}
+
+/**
+ * Claude Code native subagent format — REQUIRED frontmatter is `name` +
+ * `description`; `model` takes the alias (sonnet/opus/haiku/fable). Raw
+ * Thesmos catalog frontmatter does not register as a subagent.
+ */
+function toClaudeCodeAgent(agent: AgentMeta): string {
+  const name = godName(agent)
+  const domain = godDomain(agent)
+  const triggers = agent.tags.filter(t => t !== 'pantheon').slice(0, 5).join(', ')
+  const description = `${domain}. Invoke for ${triggers || domain.toLowerCase()} tasks. Responds in character as ${name} of the Thesmos Pantheon.`
+  const body = agent.body.replace(/^# .+\r?\n+/, '')
+
+  return [
+    '---',
+    `name: ${name} — ${agent.name.replace(/^God Agent \w+ — /, '')}`,
+    `description: ${description.replace(/:/g, ' —')}`,
+    `model: ${claudeCodeAlias(agent.claudeModel)}`,
+    'tools:',
+    '  - Read',
+    '  - Write',
+    '  - Bash',
+    '---',
+    '',
+    `# ${godEmoji(agent)} ${name} — ${domain}`,
+    '',
+    body,
+  ].join('\n')
+}
+
+/** OpenAI Assistants API definition (Responses API compatible model string). */
+function toOpenAiAssistant(agent: AgentMeta): string {
+  const body = agent.body.replace(/^# .+\r?\n+/, '')
+  const instructions = withIdentity(
+    [`# ${godEmoji(agent)} ${godName(agent)} — ${godDomain(agent)}`, '', body].join('\n'),
+    agent,
+  ).trimEnd()
+
+  return JSON.stringify(
+    {
+      name: `${godName(agent)} — ${godDomain(agent)}`,
+      instructions,
+      model: agent.openaiModel,
+      metadata: {
+        thesmos_version: '3.0.0',
+        agent_version: '1.0.0',
+        pantheon: 'true',
+        god: godName(agent),
+        role: godDomain(agent),
+      },
+    },
+    null,
+    2,
+  ) + '\n'
+}
+
+/** Codex per-agent file — plain markdown, AGENTS.md ecosystem convention. */
+function toCodexAgent(agent: AgentMeta): string {
   const body = agent.body.replace(/^# .+\r?\n+/, '')
   return [`# ${godEmoji(agent)} ${godName(agent)} — ${godDomain(agent)}`, '', body].join('\n')
 }
@@ -483,7 +592,70 @@ function formatConfig(format: Exclude<Format, 'gpt-clusters'>): {
       return { dir: 'gemini', ext: '.txt', filename: (id) => `${id}-gemini.txt` }
     case 'claude-project':
       return { dir: 'claude-project', ext: '.txt', filename: (id) => `${id}-claude-project.txt` }
+    case 'openai-assistants':
+      return { dir: 'openai-assistants', ext: '.json', filename: (id) => `${id}-openai-assistant.json` }
+    case 'codex':
+      return { dir: 'codex', ext: '.md', filename: (id) => `${id}.md` }
   }
+}
+
+/**
+ * Codex AGENTS.md — the orchestrator file Codex reads at repo root.
+ * Routes tasks to the god files that live alongside it.
+ */
+function buildCodexAgentsMd(agents: AgentMeta[]): string {
+  const roster = agents
+    .filter(a => a.id && a.enabled && a.id !== 'zeus-executive-agent')
+    .map(a => `| ${godEmoji(a)} ${godName(a)} | ${godDomain(a)} | \`agents/${a.id}.md\` |`)
+    .join('\n')
+
+  return `# AGENTS.md — Thesmos Pantheon for Codex
+
+You are Zeus, Executive Orchestrator of the Thesmos Pantheon. Every task in this
+workspace routes through you to a specialist god. Never respond as a generic assistant.
+
+## Routing Protocol
+
+1. Read the task and identify its domain.
+2. Output the routing header before any substance:
+
+\`\`\`
+⚡ ZEUS — ROUTING
+[Domain] detected · dispatching [Emoji] [Name]
+────────────────────────────────────────────────
+\`\`\`
+
+3. Open the matched god's file from \`agents/\` and channel them exactly — their voice,
+   methodology, output contract, banner, and closing signature.
+4. Most tasks route to ONE specialist. Convene 2–3 gods only when the task genuinely
+   crosses domains (announce with \`⚡ ZEUS — COUNCIL ASSEMBLY\`). A full council of 4+
+   requires the user to explicitly ask ("full council", "all hands", "go").
+5. After a council responds, close with:
+
+\`\`\`
+⚡ ZEUS — COUNCIL REPORT
+[Emoji] [Name] has delivered: [one-line finding]
+— Zeus | Executive Orchestration
+\`\`\`
+
+## The Pantheon
+
+| God | Domain | Specification |
+|---|---|---|
+${roster}
+
+## Persona Rules
+
+- Every response opens with a routing header or a god's banner — no exceptions.
+- Never say "As an AI." If asked to drop the persona, comply for one message, then
+  resume: "The mist clears. ⚡ ZEUS — EXECUTIVE ORCHESTRATION resumes command."
+- Concede facts instantly; hold judgments — state what evidence would change the ruling.
+- No filler openers. Substance immediately after the banner.
+
+---
+
+Thesmos Pantheon · https://holley.studio/thesmos
+`
 }
 
 function exportFormat(
@@ -514,11 +686,20 @@ function exportFormat(
       content = withIdentity(toGeminiInstructions(agent), agent)
     } else if (format === 'claude-project') {
       content = withIdentity(toClaudeProjectInstructions(agent), agent)
+    } else if (format === 'openai-assistants') {
+      content = toOpenAiAssistant(agent)
+    } else if (format === 'codex') {
+      content = withIdentity(toCodexAgent(agent), agent)
     } else {
-      content = withIdentity(agent.rawContent.trimEnd(), agent)
+      content = withIdentity(toClaudeCodeAgent(agent), agent)
     }
 
     writeFileSync(outFile, content, 'utf-8')
+    exported++
+  }
+
+  if (format === 'codex') {
+    writeFileSync(join(outDir, 'AGENTS.md'), buildCodexAgentsMd(agents), 'utf-8')
     exported++
   }
 
@@ -530,7 +711,8 @@ function exportFormat(
 // ---------------------------------------------------------------------------
 
 const ALL_FORMATS: Format[] = [
-  'cursor', 'copilot', 'claude-code', 'gpt', 'gemini', 'claude-project', 'gpt-clusters',
+  'cursor', 'copilot', 'claude-code', 'gpt', 'gemini', 'claude-project',
+  'gpt-clusters', 'openai-assistants', 'codex',
 ]
 
 const FORMAT_LABELS: Record<Format, string> = {
@@ -541,6 +723,8 @@ const FORMAT_LABELS: Record<Format, string> = {
   'gemini': 'Gemini (.txt)',
   'claude-project': 'Claude.ai Project (.txt)',
   'gpt-clusters': 'Zeus GPT clusters (.txt)',
+  'openai-assistants': 'OpenAI Assistants (.json)',
+  'codex': 'Codex (AGENTS.md)',
 }
 
 function main(): void {

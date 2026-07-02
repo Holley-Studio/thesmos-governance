@@ -145,6 +145,22 @@ export interface ThesmosConfig {
   // Autopilot autonomous build mode
   autopilot?: AutopilotConfig;
 
+  // Pantheon agent routing doctrine (AGNT_032/033)
+  routing?: {
+    /** auto: Zeus routes silently per tier rules · confirm: announce and await
+     *  user go-ahead before ANY spawn · off: agents only on explicit invocation. */
+    mode?: 'auto' | 'confirm' | 'off';
+    /** Councils of this many agents or more require explicit user confirmation. */
+    councilConfirmThreshold?: number;
+  };
+
+  // Context window governance (AGNT_037)
+  context1M?: {
+    /** Allow the 1M-token context window ([1m] model variants). Default false —
+     *  long-context requests bill at premium rates; enabling must be deliberate. */
+    allow1M?: boolean;
+  };
+
   // Token budget governance (see token-budget.ts for full TokenBudgetConfig type)
   tokenBudget?: {
     enabled?: boolean;

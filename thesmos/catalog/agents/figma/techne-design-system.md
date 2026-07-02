@@ -23,7 +23,8 @@ governance:
     - kairos-prototype-engineer
   reports_to: eidos-figma-orchestrator
 platforms:
-  claude_model: claude-sonnet-4-6
+  claude_model: claude-sonnet-5
+  openai_model: gpt-5.5
   cursor_globs: "**/*.fig,tokens/**,design-system/**,**/*.tokens.json"
   chatgpt_model: gpt-4o
 ---

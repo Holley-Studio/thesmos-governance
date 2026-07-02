@@ -280,7 +280,77 @@ Alternatively, in VS Code:
 Learn more: https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot
 `,
   },
+  {
+    srcDir: 'codex',
+    destDir: 'for-codex',
+    ext: '.md',
+    guide: `# Installing Thesmos Agents in OpenAI Codex
+
+Codex (CLI and IDE) reads AGENTS.md convention files for workspace instructions.
+
+## How to install
+
+1. Copy AGENTS.md (in this folder) to your repository root
+2. Create an agents/ directory at your repository root
+3. Copy the agent .md files into agents/
+
+Quick install:
+  cp AGENTS.md /path/to/your/repo/
+  mkdir -p /path/to/your/repo/agents
+  cp *-agent.md /path/to/your/repo/agents/
+
+## How it works
+
+AGENTS.md makes Zeus the executive orchestrator of your Codex sessions — every
+task gets a theatrical routing header, and the matched god's full specification
+is read from agents/ before responding.
+
+Learn more: https://agents.md
+`,
+  },
 ]
+
+// ── Vertical packs — curated god subsets for a specific audience ──────────────
+
+const FOUNDERS_PACK_IDS = new Set([
+  'zeus-executive-agent', 'athena-strategy-agent',
+  'ares-sales-agent', 'ares-discovery-agent', 'ares-deal-strategy-agent', 'ares-pipeline-agent',
+  'hermes-marketing-agent', 'plutus-finance-agent', 'tyche-analytics-agent',
+  'nike-leadgen-agent', 'heracles-bd-agent', 'daedalus-product-agent',
+  'apollo-content-agent', 'argus-security-agent', 'themis-legal-agent',
+  'zeus-pantheon-orchestrator',
+])
+
+const AGENCIES_PACK_IDS = new Set([
+  'zeus-executive-agent', 'apollo-content-agent', 'aphrodite-creative-agent',
+  'hermes-marketing-agent', 'erato-brand-voice-agent', 'clio-case-study-agent',
+  'calliope-email-agent', 'nike-social-agent', 'pheme-pr-agent',
+  'artemis-photography-agent', 'morpheus-animation-agent', 'dionysus-video-agent',
+  'hephaestus-design-agent',
+  'zeus-pantheon-orchestrator',
+])
+
+const VERTICAL_README = (title: string, audience: string, agentCount: number): string => `# Thesmos Pantheon — ${title}
+
+A curated council of **${agentCount} gods** hand-picked for ${audience} —
+orchestrated by Zeus, deployable into every major AI platform.
+
+## What's inside
+
+Each platform folder contains the agents in that platform's native format,
+plus an INSTALL.md with step-by-step setup. Start with the folder matching
+your AI tool (Claude Code recommended), and always install Zeus first —
+he routes every task to the right specialist automatically.
+
+## Want the full Pantheon?
+
+The complete 66-god Pantheon (every domain, all platforms, VS Code extension)
+is available at https://holley.studio/thesmos
+
+---
+
+Thesmos Pantheon · © Holley Studio. All rights reserved.
+`
 
 const ROOT_README = (agentCount: number, tier: 'starter' | 'pantheon'): string => `# Thesmos ${tier === 'starter' ? 'Starter Pack' : 'Full Pantheon'} — Agent Bundle
 
@@ -354,7 +424,7 @@ function collectAgentIds(srcDir: string, ext: string, filterFn?: (id: string) =>
     .filter(id => filterFn ? filterFn(id) : true)
 }
 
-const VSIX_VERSION = '1.6.0'
+const VSIX_VERSION = '1.7.0'
 const VSIX_PATH = resolve(__dirname, `../../extensions/vscode/thesmos-governance-vscode-${VSIX_VERSION}.vsix`)
 const CLAUDE_EXTRAS_DIR = resolve(__dirname, '../../pantheon/exports/claude-extras')
 
@@ -389,6 +459,7 @@ Check https://github.com/Holley-Studio/thesmos-governance/releases for new versi
 function buildBundle(
   bundleName: string,
   filterFn: (id: string) => boolean,
+  vertical?: { title: string; audience: string },
 ): { agentCount: number; zipPath: string } {
   const bundleDir = join(TMP_DIR, bundleName)
   cleanDir(bundleDir)
@@ -410,6 +481,7 @@ function buildBundle(
     }
 
     const ids = collectAgentIds(srcDir, platform.ext, filterFn)
+      .filter(id => id !== 'AGENTS')
     maxAgentCount = Math.max(maxAgentCount, ids.length)
 
     for (const id of ids) {
@@ -417,11 +489,16 @@ function buildBundle(
       const dest = join(destDir, `${id}${platform.ext}`)
       copyFileSync(src, dest)
     }
+
+    // Codex always ships its AGENTS.md orchestrator regardless of filter
+    if (platform.srcDir === 'codex' && existsSync(join(srcDir, 'AGENTS.md'))) {
+      copyFileSync(join(srcDir, 'AGENTS.md'), join(destDir, 'AGENTS.md'))
+    }
   }
 
   // Claude Code full-experience extras: PANTHEON.md + activity hook + settings
-  // snippet (see for-claude/INSTALL.md steps 2–3). Full Pantheon bundle only.
-  if (tier === 'pantheon' && existsSync(CLAUDE_EXTRAS_DIR)) {
+  // snippet (see for-claude/INSTALL.md steps 2–3). Paid bundles only.
+  if ((tier === 'pantheon' || vertical) && existsSync(CLAUDE_EXTRAS_DIR)) {
     const claudeDir = join(bundleDir, 'for-claude')
     ensureDir(join(claudeDir, 'hooks'))
     copyFileSync(join(CLAUDE_EXTRAS_DIR, 'PANTHEON.md'), join(claudeDir, 'PANTHEON.md'))
@@ -429,10 +506,16 @@ function buildBundle(
     copyFileSync(join(CLAUDE_EXTRAS_DIR, 'hooks', 'settings-snippet.json'), join(claudeDir, 'hooks', 'settings-snippet.json'))
   }
 
-  writeFileSync(join(bundleDir, 'README.md'), ROOT_README(maxAgentCount, tier), 'utf-8')
+  writeFileSync(
+    join(bundleDir, 'README.md'),
+    vertical
+      ? VERTICAL_README(vertical.title, vertical.audience, maxAgentCount)
+      : ROOT_README(maxAgentCount, tier),
+    'utf-8',
+  )
 
-  // Include VS Code extension in full Pantheon bundle only
-  if (tier === 'pantheon' && existsSync(VSIX_PATH)) {
+  // Include VS Code extension in the full Pantheon bundle only (not verticals)
+  if (tier === 'pantheon' && !vertical && existsSync(VSIX_PATH)) {
     const vsixDir = join(bundleDir, 'for-vscode')
     ensureDir(vsixDir)
     copyFileSync(VSIX_PATH, join(vsixDir, `thesmos-governance-vscode-${VSIX_VERSION}.vsix`))
@@ -458,6 +541,13 @@ function allFilter(): boolean {
   return true
 }
 
+function verticalFilter(ids: Set<string>): (id: string) => boolean {
+  return (id: string) => {
+    const bareId = id.replace(/-chatgpt$|-gemini$|-claude-project$|-copilot$|-openai-assistant$/, '')
+    return ids.has(bareId)
+  }
+}
+
 function main(): void {
   console.log('\n⚡ Thesmos Agent Packager\n')
 
@@ -468,6 +558,14 @@ function main(): void {
 
   const full = buildBundle('thesmos-pantheon-agents', allFilter)
   console.log(`  ✅ Full Pantheon    ${full.agentCount} agents/platform → website/downloads/thesmos-pantheon-agents.zip`)
+
+  const founders = buildBundle('thesmos-pantheon-founders', verticalFilter(FOUNDERS_PACK_IDS),
+    { title: 'Founders Pack', audience: 'startup founders — strategy, sales, fundraising, product, and the legal/security guardrails around them' })
+  console.log(`  ✅ Founders pack    ${founders.agentCount} agents/platform → website/downloads/thesmos-pantheon-founders.zip`)
+
+  const agencies = buildBundle('thesmos-pantheon-agencies', verticalFilter(AGENCIES_PACK_IDS),
+    { title: 'Agencies Pack', audience: 'creative and marketing agencies — content, brand, campaigns, and full-stack creative production' })
+  console.log(`  ✅ Agencies pack    ${agencies.agentCount} agents/platform → website/downloads/thesmos-pantheon-agencies.zip`)
 
   rmSync(TMP_DIR, { recursive: true, force: true })
 

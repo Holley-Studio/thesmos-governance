@@ -18,6 +18,7 @@ export class StatusBarManager implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;
   private readonly governanceItem: vscode.StatusBarItem;
   private readonly tokenItem: vscode.StatusBarItem;
+  private readonly pantheonItem: vscode.StatusBarItem;
 
   constructor() {
     this.item = vscode.window.createStatusBarItem(
@@ -43,6 +44,44 @@ export class StatusBarManager implements vscode.Disposable {
     this.tokenItem.command = 'thesmos.tokens.report';
     this.tokenItem.tooltip = 'Thesmos token usage — click for full report';
     this.tokenItem.hide();
+
+    this.pantheonItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      97,
+    );
+    this.pantheonItem.command = 'thesmos.pantheon.routingMode';
+    this.pantheonItem.hide();
+  }
+
+  /** Routing-mode indicator — shown only when routing is not the default 'auto'. */
+  showRoutingMode(mode: 'confirm' | 'off'): void {
+    this.pantheonItem.text = mode === 'confirm'
+      ? '$(comment-discussion) Pantheon: confirm'
+      : '$(circle-slash) Pantheon: off';
+    this.pantheonItem.tooltip = new vscode.MarkdownString(
+      mode === 'confirm'
+        ? '**Pantheon routing: confirm** — Zeus announces every route and waits for your go-ahead.\n\n_Click to change routing mode_'
+        : '**Pantheon routing: off** — agents run only when you name them explicitly.\n\n_Click to change routing mode_',
+    );
+    this.pantheonItem.backgroundColor = undefined;
+    this.pantheonItem.show();
+  }
+
+  /** 1M context window warning — visible whenever a [1m] model variant is active. */
+  show1MContextBadge(source: string): void {
+    this.pantheonItem.text = '$(warning) 1M ctx';
+    this.pantheonItem.tooltip = new vscode.MarkdownString(
+      `**1M context window active** (${source})\n\n` +
+      'Long-context requests bill at premium rates. Switch to the plain model ID, ' +
+      'or deliberately enable via `context1M.allow1M` in .thesmos/config.json.\n\n' +
+      '_Click to review routing & context settings_',
+    );
+    this.pantheonItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+    this.pantheonItem.show();
+  }
+
+  clearPantheonBadge(): void {
+    this.pantheonItem.hide();
   }
 
   showLoading(): void {
@@ -195,5 +234,6 @@ export class StatusBarManager implements vscode.Disposable {
     this.item.dispose();
     this.governanceItem.dispose();
     this.tokenItem.dispose();
+    this.pantheonItem.dispose();
   }
 }

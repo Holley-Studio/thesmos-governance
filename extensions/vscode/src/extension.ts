@@ -20,7 +20,8 @@
  */
 
 import * as vscode from 'vscode';
-import { relative } from 'node:path';
+import { relative, join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import type { LanguageClient as LanguageClientType } from 'vscode-languageclient/node';
 
 import { DiagnosticsManager } from './diagnostics.js';
@@ -165,6 +166,89 @@ class ThesmosExtension implements vscode.Disposable {
         void this.refreshStatusBar(readConfig());
       }
     });
+
+    // Pantheon badge: routing mode indicator + 1M-context warning (AGNT_037)
+    this.refreshPantheonBadge();
+    const settingsPattern = new vscode.RelativePattern(
+      vscode.Uri.file(this.workspaceRoot),
+      '{.thesmos/config.json,.claude/settings.json,.claude/settings.local.json}',
+    );
+    const pantheonWatcher = vscode.workspace.createFileSystemWatcher(settingsPattern);
+    pantheonWatcher.onDidChange(() => this.refreshPantheonBadge());
+    pantheonWatcher.onDidCreate(() => this.refreshPantheonBadge());
+    pantheonWatcher.onDidDelete(() => this.refreshPantheonBadge());
+    this.disposables.push(pantheonWatcher);
+  }
+
+  /**
+   * Show the highest-priority Pantheon badge:
+   *  1. ⚠ 1M ctx — a [1m] model variant is active and allow1M is false
+   *  2. routing mode — when routing.mode is 'confirm' or 'off'
+   *  3. hidden — defaults everywhere
+   */
+  private refreshPantheonBadge(): void {
+    const readJson = (rel: string): Record<string, unknown> | null => {
+      try {
+        const p = join(this.workspaceRoot, rel);
+        if (!existsSync(p)) return null;
+        return JSON.parse(readFileSync(p, 'utf-8')) as Record<string, unknown>;
+      } catch { return null; }
+    };
+
+    const thesmosCfg = readJson('.thesmos/config.json');
+    const allow1M = Boolean(
+      (thesmosCfg?.context1M as Record<string, unknown> | undefined)?.allow1M,
+    );
+
+    if (!allow1M) {
+      for (const rel of ['.claude/settings.local.json', '.claude/settings.json']) {
+        const raw = readJson(rel);
+        if (raw && JSON.stringify(raw).includes('[1m]')) {
+          this.statusBar.show1MContextBadge(rel);
+          return;
+        }
+      }
+    }
+
+    const mode = String(
+      (thesmosCfg?.routing as Record<string, unknown> | undefined)?.mode ?? 'auto',
+    );
+    if (mode === 'confirm' || mode === 'off') {
+      this.statusBar.showRoutingMode(mode);
+    } else {
+      this.statusBar.clearPantheonBadge();
+    }
+  }
+
+  /** Quick-pick to switch Pantheon routing mode; persists to .thesmos/config.json. */
+  private async pickRoutingMode(): Promise<void> {
+    const picked = await vscode.window.showQuickPick(
+      [
+        { label: '$(zap) auto', description: 'Zeus routes silently per tier doctrine (default)', mode: 'auto' },
+        { label: '$(comment-discussion) confirm', description: 'Zeus announces every route and waits for your go-ahead', mode: 'confirm' },
+        { label: '$(circle-slash) off', description: 'No auto-spawning — agents only when you name them', mode: 'off' },
+      ],
+      { title: 'Pantheon Routing Mode', placeHolder: 'How should Zeus dispatch the gods?' },
+    );
+    if (!picked) return;
+
+    const cfgPath = join(this.workspaceRoot, '.thesmos', 'config.json');
+    try {
+      const cfg = existsSync(cfgPath)
+        ? JSON.parse(readFileSync(cfgPath, 'utf-8')) as Record<string, unknown>
+        : {};
+      const routing = (cfg.routing ?? {}) as Record<string, unknown>;
+      routing.mode = picked.mode;
+      if (typeof routing.councilConfirmThreshold !== 'number') routing.councilConfirmThreshold = 4;
+      cfg.routing = routing;
+      writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n', 'utf-8');
+      this.refreshPantheonBadge();
+      void vscode.window.showInformationMessage(`⚡ Pantheon routing mode: ${picked.mode}`);
+    } catch (e) {
+      void vscode.window.showErrorMessage(
+        `Could not update .thesmos/config.json: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
   }
 
   async activate(): Promise<void> {
@@ -242,6 +326,13 @@ class ThesmosExtension implements vscode.Disposable {
     this.disposables.push(
       vscode.commands.registerCommand('thesmos.fixWithAi', () =>
         fixWithAi(this.workspaceRoot, this.allFindings),
+      ),
+    );
+
+    // Pantheon routing mode — auto / confirm / off (persists to .thesmos/config.json)
+    this.disposables.push(
+      vscode.commands.registerCommand('thesmos.pantheon.routingMode', () =>
+        this.pickRoutingMode(),
       ),
     );
 
