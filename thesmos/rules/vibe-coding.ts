@@ -391,7 +391,13 @@ export const VIBE_CODING_RULES: ThesmosRule[] = [
     detect({ changedFiles = [], config }: DetectInput): Finding[] {
       const sev = classifySeverity('vibe_sql_template_injection', config.severityRules);
       const findings: Finding[] = [];
-      const SQL_INTERP = /(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE)[^`'"]*`[^`]*\$\{/i;
+      // Match a template literal whose CONTENT begins with a SQL keyword and
+      // contains interpolation. The old shape (keyword outside the backtick,
+      // no quotes allowed in between) could never match its own documented
+      // examples — `SELECT ... '${email}'` has a quote that broke [^`'"]* —
+      // while identifiers like createTerminal(`${x}`) DID match via the
+      // unanchored keyword CREATE. Content may contain quotes ([^`]*).
+      const SQL_INTERP = /`\s*(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE)\b[^`]*\$\{/i;
       for (const { path, content } of changedFiles) {
         if (isTestPath(path)) continue;
         const lines = content.split('\n');

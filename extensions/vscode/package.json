@@ -2,7 +2,7 @@
   "name": "thesmos-governance-vscode",
   "displayName": "Thesmos Governance",
   "description": "Real-time AI repo governance — inline findings, health scores, and adapter sync for Claude, Gemini, Cursor, Copilot, and Codex.",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "publisher": "holleystudio",
   "author": {
     "name": "Matthew Holley",
@@ -484,18 +484,22 @@
           "type": "string",
           "enum": [
             "ALL",
+            "TECH_DEBT",
+            "LOW",
             "MEDIUM",
             "HIGH",
             "BLOCKER"
           ],
           "enumDescriptions": [
             "Show all findings",
+            "Show TECH_DEBT and above (everything)",
+            "Show LOW and above",
             "Show MEDIUM and above",
             "Show HIGH and above",
             "Show BLOCKER only"
           ],
           "default": "ALL",
-          "description": "Minimum severity to display in the Findings tree."
+          "description": "Minimum severity to display in inline diagnostics (squiggles) and the Findings tree. Baseline-accepted debt is suppressed separately and always; this setting further hides low-severity NEW findings from view. Applies live — no rescan needed when changed."
         }
       }
     }
