@@ -313,9 +313,10 @@ async function run(): Promise<void> {
 
     // ── 11. Exit code ──────────────────────────────────────────────────────
     // Gate semantics: shouldFail() evaluates ONLY the NEW bucket — a PR is
-    // never blocked by debt it didn't introduce.
+    // never blocked by debt it didn't introduce — and honors the repo's
+    // gate.minConfidence, matching the CLI gates exactly.
 
-    if (shouldFail(newFindings, inputs.failOnSeverity)) {
+    if (shouldFail(newFindings, inputs.failOnSeverity, config.gate?.minConfidence ?? 'medium')) {
       const blockers = newFindings.filter((f) => f.severity === 'BLOCKER');
       const highs = newFindings.filter((f) => f.severity === 'HIGH');
 

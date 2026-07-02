@@ -370,6 +370,9 @@ export const VIBE_CODING_RULES: ThesmosRule[] = [
 
   {
     id: 'VIBE_009',
+    // Shape heuristic — can misfire on innocent code; reports but does not gate
+    // unless gate.minConfidence is lowered. See thesmos/gate.ts.
+    confidence: 'medium',
     category: 'vibe_sql_template_injection',
     description: 'AI-generated SQL using template literals with unescaped interpolation is trivially exploitable.',
     severity: 'BLOCKER',
@@ -920,6 +923,9 @@ export const VIBE_CODING_RULES: ThesmosRule[] = [
 
   {
     id: 'VIBE_022',
+    // Shape heuristic — can misfire on innocent code; reports but does not gate
+    // unless gate.minConfidence is lowered. See thesmos/gate.ts.
+    confidence: 'medium',
     category: 'vibe_prompt_injection_risk',
     description: 'Concatenating user input directly into LLM system prompts enables prompt injection attacks.',
     severity: 'BLOCKER',

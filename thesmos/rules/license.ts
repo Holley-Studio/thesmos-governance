@@ -55,8 +55,29 @@ function f(
   message: string,
   suggestion: string,
   file = 'package.json',
+  line?: number,
 ): Finding {
-  return { severity, file, category, message, suggestion };
+  return line !== undefined
+    ? { severity, file, line, category, message, suggestion }
+    : { severity, file, category, message, suggestion };
+}
+
+/**
+ * Locate the 1-based line of a dependency's `"name":` entry in package.json.
+ * Line attribution lets the diff-aware PR gate classify a newly-added GPL dep
+ * as NEW (its line is in the patch) — without it, a line-less finding on an
+ * existing file lands in the never-blocking pre-existing bucket.
+ */
+function depLine(pkgJsonContent: string, depName: string): number | undefined {
+  const lines = pkgJsonContent.split('\n');
+  const needle = `"${depName}"`;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.includes(needle) && /:\s*"/.test(line.slice(line.indexOf(needle) + needle.length))) {
+      return i + 1;
+    }
+  }
+  return undefined;
 }
 
 function isPackageJson(path: string): boolean {
@@ -148,7 +169,9 @@ const LIC_001: ThesmosRule = {
     return gplDeps.map((d) =>
       f('lic_gpl_in_commercial', 'BLOCKER',
         `"${d.name}" uses ${d.license} — GPL copyleft incompatible with your ${pkg.license as string} project license.`,
-        `Replace with a permissively licensed alternative or change your project license.`),
+        `Replace with a permissively licensed alternative or change your project license.`,
+        'package.json',
+        depLine(pc, d.name)),
     );
   },
 };

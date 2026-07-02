@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Holley Studios. All rights reserved.
 import type { Finding, ThesmosConfig, Severity, SeverityRule } from './types';
+import { partitionByConfidence } from './gate';
 
 const SEVERITY_DEFAULT: Severity = 'MEDIUM';
 
@@ -18,9 +19,14 @@ export function classifySeverity(
 /**
  * Returns true if any finding's severity is in `config.failOnSeverity`.
  * This drives CI exit(1).
+ *
+ * Findings below `config.gate.minConfidence` never fail a gate — a heuristic
+ * smell may warn and report, but only sufficiently confident detections can
+ * block a merge (see thesmos/gate.ts for the tier semantics).
  */
 export function shouldFail(findings: Finding[], config: ThesmosConfig): boolean {
-  return findings.some((f) => config.failOnSeverity.includes(f.severity));
+  const { gating } = partitionByConfidence(findings, config.gate?.minConfidence ?? 'medium');
+  return gating.some((f) => config.failOnSeverity.includes(f.severity));
 }
 
 /**

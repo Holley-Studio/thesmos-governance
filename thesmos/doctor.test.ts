@@ -541,3 +541,54 @@ describe('formatDoctorJson', () => {
     expect(json.checks).toHaveLength(checks.length);
   });
 });
+
+// ── baseline freshness ────────────────────────────────────────────────────────
+
+describe('runDoctor — baseline freshness', () => {
+  it('skips the check entirely when no baseline exists', () => {
+    const checks = runDoctor(makeFullInput());
+    expect(checks.find((c) => c.name === 'baseline:fresh')).toBeUndefined();
+  });
+
+  it('passes for a recently updated baseline', () => {
+    const input = makeFullInput({
+      fileExists: (rel) => rel === '.thesmos/baseline.json' || makeFullInput().fileExists(rel),
+      readJsonSafe: (rel) => {
+        if (rel === '.thesmos/baseline.json') {
+          return { updatedAt: new Date().toISOString(), entries: [] };
+        }
+        return makeFullInput().readJsonSafe(rel);
+      },
+    });
+    const check = runDoctor(input).find((c) => c.name === 'baseline:fresh');
+    expect(check?.pass).toBe(true);
+  });
+
+  it('warns when the baseline is older than 30 days, with the update remediation', () => {
+    const fortyDaysAgo = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+    const input = makeFullInput({
+      fileExists: (rel) => rel === '.thesmos/baseline.json' || makeFullInput().fileExists(rel),
+      readJsonSafe: (rel) => {
+        if (rel === '.thesmos/baseline.json') {
+          return { updatedAt: fortyDaysAgo, entries: [] };
+        }
+        return makeFullInput().readJsonSafe(rel);
+      },
+    });
+    const check = runDoctor(input).find((c) => c.name === 'baseline:fresh');
+    expect(check?.pass).toBe(false);
+    expect(check?.fixHint).toContain('thesmos:baseline:update');
+  });
+
+  it('treats a baseline without updatedAt as stale', () => {
+    const input = makeFullInput({
+      fileExists: (rel) => rel === '.thesmos/baseline.json' || makeFullInput().fileExists(rel),
+      readJsonSafe: (rel) => {
+        if (rel === '.thesmos/baseline.json') return { entries: [] };
+        return makeFullInput().readJsonSafe(rel);
+      },
+    });
+    const check = runDoctor(input).find((c) => c.name === 'baseline:fresh');
+    expect(check?.pass).toBe(false);
+  });
+});
