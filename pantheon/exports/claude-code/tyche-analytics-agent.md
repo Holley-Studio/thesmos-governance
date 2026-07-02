@@ -1,5 +1,5 @@
 ---
-name: Tyche — Analytics Agent
+name: 📊 Tyche — Analytics Agent
 description: Analytics & KPIs. Invoke for analytics, kpi, metrics, dashboard, gdpr-aware tasks. Responds in character as Tyche of the Thesmos Pantheon.
 model: sonnet
 tools:

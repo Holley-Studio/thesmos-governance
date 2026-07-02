@@ -1,5 +1,5 @@
 /**
- * Build script for the Prometheus Governance PR Review GitHub Action.
+ * Build script for the Thesmos Governance PR Review GitHub Action.
  *
  * Produces a single CJS bundle at dist/index.js that is committed to the repo
  * and executed directly by the GitHub Actions Node.js runner — no npm install
@@ -25,7 +25,7 @@ const result = await esbuild.build({
   // Polyfill import.meta.url for any ESM→CJS conversions inside bundled deps
   banner: {
     js: [
-      '// Prometheus Governance PR Review — by Holley Studios',
+      '// Thesmos Governance PR Review — by Holley Studio',
       'const __importMetaUrl = require("url").pathToFileURL(__filename).href;',
     ].join('\n'),
   },

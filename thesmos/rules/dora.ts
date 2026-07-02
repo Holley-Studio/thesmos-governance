@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * DORA (Digital Operational Resilience Act) rules — DORA_001–006
  * Covers ICT incident classification (Art. 18), third-party risk (Art. 28),

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * HealthPanel — VS Code Webview panel showing the governance health dashboard.
  *
@@ -382,7 +382,7 @@ function buildHtml(health: HealthScore, history: HealthEntry[] = []): string {
     <div class="header-meta">
       <h1>Governance Health</h1>
       <span class="grade-badge">${escHtml(grade)}</span>
-      <p>Thesmos Governance · Holley Studios</p>
+      <p>Thesmos Governance · Holley Studio</p>
       ${scoreBar(score)}
     </div>
   </div>
@@ -416,7 +416,7 @@ function buildHtml(health: HealthScore, history: HealthEntry[] = []): string {
     </table>
   </section>
 
-  <p class="footer">Thesmos Governance by Holley Studios · as of ${escHtml(new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }))}</p>
+  <p class="footer">Thesmos Governance by Holley Studio · as of ${escHtml(new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }))}</p>
 </body>
 </html>`;
 }

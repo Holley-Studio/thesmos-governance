@@ -1,7 +1,7 @@
 {
   "name": "thesmos-helper",
   "private": true,
-  "license": "MIT",
+  "license": "FSL-1.1-MIT",
   "description": "Monorepo for thesmos-governance: npm package, GitHub Action, and VS Code extension.",
   "scripts": {
     "build": "npm run build --workspace=thesmos && npm run build --workspace=actions/pr-review && npm run build --workspace=extensions/vscode",

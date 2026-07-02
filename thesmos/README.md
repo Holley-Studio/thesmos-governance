@@ -18,7 +18,7 @@ Thesmos is a repo governance tool for TypeScript projects. Define your code revi
 
 Without governance, every AI assistant in your team invents its own rules. Claude follows one convention, Cursor follows another, Copilot knows nothing about your auth patterns. Every PR review is inconsistent. Governance debt compounds silently.
 
-Thesmos solves this with a **single source of truth**: 911 rules defined once, propagated everywhere.
+Thesmos solves this with a **single source of truth**: 1,137 rules defined once, propagated everywhere.
 
 | | Thesmos | ESLint | Danger.js | CodeClimate |
 | --- | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ Thesmos solves this with a **single source of truth**: 911 rules defined once, p
 | Works fully offline | ✓ | ✓ | ✗ | ✗ |
 | Governance folder + AI context | ✓ | ✗ | ✗ | ✗ |
 | Health score (0–100) | ✓ | ✗ | ✗ | ✓ |
-| Built-in rules (no plugins needed) | 911 | ✗ | ✗ | ✓ |
+| Built-in rules (no plugins needed) | 1,137 | ✗ | ✗ | ✓ |
 | Installable rule packs | ✓ | ✓ | ✗ | ✗ |
 | Inline suppressions with audit | ✓ | ✓ | ✗ | ✗ |
 | Baseline for legacy debt | ✓ | ✗ | ✗ | ✗ |
@@ -84,7 +84,7 @@ Other platforms give you AI assistants. Thesmos gives you a governed AI team —
 
 **7 things no other agent platform does:**
 
-1. **Governance badge on every output** — Every God Agent delivery closes with `Thesmos check: [RULE_ID] ✅`. No other platform runs 1,075 governance rules against AI outputs automatically.
+1. **Governance badge on every output** — Every God Agent delivery closes with `Thesmos check: [RULE_ID] ✅`. No other platform runs 1,137 governance rules against AI outputs automatically.
 2. **38 world-class God Agents — not assistants** — Each agent has a named methodology, failure mode taxonomy, and adversarial self-check. Not "I know marketing" but "I use Ehrenberg-Bass reach theory, and here's the specific thing your brief gets wrong."
 3. **God Council arbitration** — When agents conflict, Zeus arbitrates. Argus holds a permanent security veto; Themis holds a permanent legal veto. You get one decision, not a debate.
 4. **God Agent Momus** — The only agent platform with a mandatory challenger. Momus challenges every major decision before it ships using Socratic method, Gary Klein's Pre-mortem, and Munger's Inversion.
@@ -438,7 +438,7 @@ npx thesmos fix --base=main             # applies changes
 
 ## Rule packs
 
-Packs are installable bundles of additional rules, agents, skills, and playbooks. The built-in registry ships 911 rules — packs let the community (and your organisation) add more without forking.
+Packs are installable bundles of additional rules, agents, skills, and playbooks. The built-in registry ships 1,137 rules — packs let the community (and your organisation) add more without forking.
 
 ### Installing a pack
 
@@ -683,7 +683,7 @@ const content = buildAdapterContent('claude', existing, THESMOS_RULES, config);
 
 ```typescript
 // Rules
-THESMOS_RULES           // ThesmosRule[] — all 911 built-in rules
+THESMOS_RULES           // ThesmosRule[] — all 1,137 built-in rules
 getRulesByTag(tag)         // filter by tag
 getRulesBySeverity(sev)    // filter by severity
 getRulesByCategory(cat)    // filter by category
@@ -729,7 +729,7 @@ import type {
 ## How it works
 
 ```text
-THESMOS_RULES             ← single source of truth (911 built-in rules + pack rules at runtime)
+THESMOS_RULES             ← single source of truth (1,137 built-in rules + pack rules at runtime)
         │
         ├── adapters.ts      → CLAUDE.md · GEMINI.md · .cursor/ · .github/ · .codex/ · AGENTS.md
         ├── init.ts          → .thesmos/ governance folder

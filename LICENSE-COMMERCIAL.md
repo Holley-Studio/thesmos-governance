@@ -22,3 +22,7 @@ Commercial licenses are available for teams, enterprises, and SaaS builders. We'
 ---
 
 On **June 17, 2030**, the FSL automatically converts to the MIT License and the software becomes fully open source with no restrictions.
+
+---
+
+© 2024–2026 Holley Studio LLC. All rights reserved.

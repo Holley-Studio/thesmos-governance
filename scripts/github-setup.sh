@@ -102,7 +102,7 @@ echo "── HolleyStudios ─────────────────�
 
 echo "  Setting description and homepage..."
 gh repo edit "$HOLLEY" \
-  --description "Holley Studios — marketing site and creative ops platform built with Next.js and Supabase." \
+  --description "Holley Studio — marketing site and creative ops platform built with Next.js and Supabase." \
   --homepage "https://holley.studio" 2>/dev/null || echo "  (repo may be private — skip or set manually)"
 
 echo "  Setting topics..."

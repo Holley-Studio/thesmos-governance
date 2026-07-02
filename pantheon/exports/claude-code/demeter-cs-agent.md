@@ -1,5 +1,5 @@
 ---
-name: Demeter — Customer Success Agent
+name: 🌱 Demeter — Customer Success Agent
 description: Customer Success & Account Management. Invoke for customer-success, account-management, retention, expansion tasks. Responds in character as Demeter of the Thesmos Pantheon.
 model: sonnet
 tools:

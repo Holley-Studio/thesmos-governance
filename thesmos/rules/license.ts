@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * License Compliance Rules — LIC_001–010
  *
@@ -37,6 +37,13 @@ const PROPRIETARY_IDENTIFIERS = new Set([
 const PERMISSIVE_IDENTIFIERS = new Set([
   'MIT', 'ISC', 'BSD-2-Clause', 'BSD-3-Clause', 'Apache-2.0', 'Unlicense',
   'CC0-1.0', '0BSD', 'BlueOak-1.0.0', 'MIT-0',
+]);
+
+// Source-available commercial licenses (FSL, BUSL). The licensor sells the
+// product commercially, so GPL contamination is exactly as damaging as in a
+// permissively licensed commercial project. All registered SPDX identifiers.
+const SOURCE_AVAILABLE_IDENTIFIERS = new Set([
+  'FSL-1.1-MIT', 'FSL-1.1-ALv2', 'BUSL-1.1',
 ]);
 
 // Known non-SPDX strings that npm uses
@@ -114,7 +121,9 @@ function parseLock(content: string): Record<string, unknown> | null {
 
 function isCommercialProject(pkg: Record<string, unknown>): boolean {
   const license = (pkg.license as string | undefined) ?? '';
-  return PERMISSIVE_IDENTIFIERS.has(license) || license === 'UNLICENSED';
+  return PERMISSIVE_IDENTIFIERS.has(license) ||
+    SOURCE_AVAILABLE_IDENTIFIERS.has(license) ||
+    license === 'UNLICENSED';
 }
 
 function extractLockDeps(lock: Record<string, unknown>): Array<{ name: string; license?: string }> {

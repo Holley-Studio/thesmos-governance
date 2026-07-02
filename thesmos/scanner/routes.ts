@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Pure route extractors — no fs access. Callers supply pre-read file paths
  * and (for API routes) pre-read file content.

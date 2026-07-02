@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Comment formatters for the Thesmos Governance PR Review Action.
  *
@@ -255,7 +255,7 @@ export function formatSummaryComment(
     baselineNote || undefined,
     ``,
     `---`,
-    `<sub>🔱 **Thesmos Governance** by Holley Studios · PR #${prNumber} in \`${repoName}\` · ` +
+    `<sub>🔱 **Thesmos Governance** by Holley Studio · PR #${prNumber} in \`${repoName}\` · ` +
       `[EU AI Act Art. 12](https://holley.studio/thesmos/compliance) SARIF export: \`thesmos validate --sarif\`</sub>`,
   ]
     .filter((l) => l !== undefined)
@@ -278,7 +278,7 @@ export function formatInlineComment(finding: Finding): string {
 
   lines.push(
     ``,
-    `<sub>🔱 Thesmos Governance by Holley Studios</sub>`,
+    `<sub>🔱 Thesmos Governance by Holley Studio</sub>`,
   );
 
   return lines.join('\n');

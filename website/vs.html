@@ -6,12 +6,12 @@
   <title>Thesmos vs. CodeRabbit, Semgrep, Microsoft AGT — AI Governance Comparison 2026</title>
   <meta name="description" content="How Thesmos compares to CodeRabbit ($24/user), Semgrep ($35/user), Microsoft Agent Governance Toolkit (free), and Knostic ($50K/year). Developer-first, 1,137 rules, mythology-powered agents." />
   <meta name="robots" content="index, follow" />
-  <meta name="author" content="Holley Studios" />
+  <meta name="author" content="Holley Studio" />
   <link rel="canonical" href="https://github.com/Holley-Studio/thesmos-governance" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 90'%3E%3Cpath d='M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z' stroke='%23C9A84C' stroke-width='2.8' fill='none'/%3E%3Cpath d='M40 39 C36 32 31 25 34 15 C36 10 39 8 37 5 C45 10 47 22 42 31 C47 23 48 14 45 9 C52 20 50 32 44 39 Z' fill='%23F5C842'/%3E%3C/svg%3E" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Thesmos vs. CodeRabbit, Semgrep, Microsoft AGT" />
-  <meta property="og:description" content="The developer tool that solves false positives wins. Thesmos CLI is free and open source; the 66-agent Pantheon is a $79 one-time purchase — no subscription, deeper AI agent governance no competitor offers." />
+  <meta property="og:description" content="The developer tool that solves false positives wins. Thesmos CLI is free and source-available; the 66-agent Pantheon is a $79 one-time purchase — no subscription, deeper AI agent governance no competitor offers." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;700&family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -229,6 +229,7 @@
     <div class="hero-tag">Competitive Comparison · June 2026</div>
     <h1>Thesmos vs. The Competition</h1>
     <p>How Thesmos compares to CodeRabbit, Semgrep, and Microsoft's Agent Governance Toolkit across price, features, and philosophy.</p>
+    <p style="font-size:14px;color:var(--gold);margin-top:20px;font-weight:400">Tools like Famous.ai, Lovable, Bolt, and v0 write the code. <strong>Thesmos governs it.</strong></p>
   </div>
 </section>
 
@@ -267,7 +268,7 @@
         <tbody>
           <tr>
             <td>Price (developer tier)</td>
-            <td class="col-thesmos"><strong>Free</strong><span class="note">CLI open source; Pantheon $79 one-time</span></td>
+            <td class="col-thesmos"><strong>Free</strong><span class="note">CLI source-available; Pantheon $79 one-time</span></td>
             <td>$24/month<span class="note">Pro plan</span></td>
             <td>$35/month<span class="note">per contributor</span></td>
             <td>Free<span class="note">MIT open source</span></td>
@@ -288,8 +289,8 @@
           </tr>
           <tr>
             <td>PR review</td>
-            <td class="col-thesmos"><span class="check">✓</span> Inline + summary<span class="note">SARIF, health score, diff-aware NEW vs pre-existing</span></td>
-            <td><span class="check">✓</span> Inline + summary<span class="note">AI-generated summaries</span></td>
+            <td class="col-thesmos"><span class="check">✓</span> Diff-aware gating<span class="note">Blocks only on lines your PR changed — pre-existing findings report, never block. Inline + summary, SARIF, health score</span></td>
+            <td><span class="check">✓</span> Inline + summary<span class="note">AI-generated summaries, no diff/history distinction</span></td>
             <td><span class="partial">~</span> CI only<span class="note">SARIF; no inline comments</span></td>
             <td><span class="cross">✗</span> No PR review</td>
           </tr>
@@ -330,8 +331,8 @@
           </tr>
           <tr>
             <td>False positive handling</td>
-            <td class="col-thesmos"><span class="check">✓</span> Smart dedup<span class="note">Groups by rule, collapses LOW/DEBT</span></td>
-            <td><span class="partial">~</span> Per-finding<span class="note">No grouping</span></td>
+            <td class="col-thesmos"><span class="check">✓</span> Confidence-tiered<span class="note">high/medium/low per finding; only high gates by default. Plus smart dedup — groups by rule, collapses LOW/DEBT</span></td>
+            <td><span class="partial">~</span> Per-finding<span class="note">No grouping, no confidence tiers</span></td>
             <td><span class="cross">✗</span> Known issue<span class="note">Needs manual tuning</span></td>
             <td><span class="partial">~</span> N/A<span class="note">Runtime, different problem</span></td>
           </tr>
@@ -344,7 +345,7 @@
           </tr>
           <tr>
             <td>Open source</td>
-            <td class="col-thesmos"><span class="check">✓</span> MIT<span class="note">CLI free forever; Pantheon $79 one-time</span></td>
+            <td class="col-thesmos"><span class="partial">~</span> FSL-1.1-MIT<span class="note">Source-available; converts to MIT in 2030</span></td>
             <td><span class="check">✓</span> Free for public repos</td>
             <td><span class="check">✓</span> OSS + paid</td>
             <td><span class="check">✓</span> MIT</td>
@@ -388,7 +389,7 @@
         <div class="vs-card-name">vs. Semgrep</div>
         <div class="vs-card-price">$35/contributor/month — 20,000+ SAST rules</div>
         <ul>
-          <li><span class="icon g">+</span> Thesmos: Free &amp; open source vs. Semgrep's $35/month — no subscription required</li>
+          <li><span class="icon g">+</span> Thesmos: Free &amp; source-available vs. Semgrep's $35/month — no subscription required</li>
           <li><span class="icon g">+</span> Thesmos: AI agent governance Semgrep doesn't touch</li>
           <li><span class="icon g">+</span> Thesmos: Smart dedup — Semgrep is notoriously noisy</li>
           <li><span class="icon g">+</span> Thesmos: VS Code Fix button, token meter, 66 Pantheon agents</li>
@@ -418,7 +419,7 @@
           <li><span class="icon g">+</span> Knostic: Real-time prompt injection firewall, DLP</li>
           <li><span class="icon g">+</span> Thesmos: Free CLI, or $79 one-time for the full Pantheon vs. $50,000/year (a fraction of the cost)</li>
           <li><span class="icon g">+</span> Thesmos: Developer-first vs. Knostic's enterprise-only model</li>
-          <li><span class="icon g">+</span> Thesmos: MIT open source core — Knostic is closed</li>
+          <li><span class="icon g">+</span> Thesmos: Source-available core (FSL-1.1-MIT) — Knostic is closed</li>
           <li><span class="icon r">−</span> Knostic: Enterprise buyer (Fortune 500) — different market</li>
         </ul>
         <div class="vs-card-verdict">Verdict: Not head-to-head. Knostic serves Fortune 500 security teams. Thesmos serves individual developers and startup engineering teams.</div>
@@ -435,6 +436,12 @@
     <h2 class="section-title">Where Thesmos is uniquely strong</h2>
 
     <div class="diff-grid" data-r>
+
+      <div class="diff-card">
+        <div class="diff-icon">🎯</div>
+        <div class="diff-title">Diff-aware, confidence-tiered gating</div>
+        <div class="diff-body">Touch one line of a legacy file and Thesmos reviews that line — not the file's entire backlog. Every finding also carries a confidence tier (high/medium/low), so a shape-match heuristic can't silently block your merge. Suppressions (<code style="font-family:'JetBrains Mono',monospace;color:var(--gold);background:rgba(201,168,76,.08);padding:1px 5px;border-radius:4px">thesmos-disable-next-line</code>) are honored identically across CLI, CI, and the PR action. No competitor in this comparison combines all three in one gate.</div>
+      </div>
 
       <div class="diff-card">
         <div class="diff-icon">🔇</div>
@@ -457,7 +464,7 @@
       <div class="diff-card">
         <div class="diff-icon">🔐</div>
         <div class="diff-title">Local-first design</div>
-        <div class="diff-body">Secrets vault (AES-256-GCM, system keychain), user profile memory, governance config — all local. No code sent to Holley Studios servers. Telemetry is opt-in. GDPR-safe by architecture.</div>
+        <div class="diff-body">Secrets vault (AES-256-GCM, system keychain), user profile memory, governance config — all local. No code sent to Holley Studio servers. Telemetry is opt-in. GDPR-safe by architecture.</div>
       </div>
 
       <div class="diff-card">
@@ -481,13 +488,13 @@
   <div class="wrap">
     <div class="section-label">Pricing</div>
     <h2 class="section-title">Free tool. One-time Pantheon.</h2>
-    <p class="section-sub">No subscriptions, ever. The governance CLI is free and open source forever — the 66-agent Pantheon is a single one-time purchase, not a monthly fee.</p>
+    <p class="section-sub">No subscriptions, ever. The governance CLI is free and source-available forever — the 66-agent Pantheon is a single one-time purchase, not a monthly fee.</p>
 
     <div class="pricing-strip" data-r>
       <div class="tier-card">
         <div class="tier-name">Thesmos CLI</div>
         <div class="tier-price">$0 <span>forever</span></div>
-        <div class="tier-tag">Free &amp; open source</div>
+        <div class="tier-tag">Free &amp; source-available</div>
         <ul class="tier-features">
           <li>Core CLI (scan, fix, validate)</li>
           <li>1,137 governance rules</li>
@@ -531,7 +538,7 @@
   <div class="wrap" style="text-align: center;">
     <div class="section-label">Get started</div>
     <h2 class="section-title">Try Thesmos free — no card required</h2>
-    <p class="section-sub" style="margin: 0 auto 0;">Thesmos CLI is MIT-licensed and free forever. Install in 30 seconds.</p>
+    <p class="section-sub" style="margin: 0 auto 0;">Thesmos CLI is FSL-1.1-MIT-licensed and free to use forever. Install in 30 seconds.</p>
     <div class="cta-row">
       <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer" class="btn-primary">Get Thesmos →</a>
       <a href="demo.html" class="btn-ghost">See the demo</a>
@@ -544,7 +551,7 @@
   <div class="wrap footer-i">
     <div>
       <div class="f-brand">THESMOS</div>
-      <div class="f-by">Built by Holley Studios</div>
+      <div class="f-by">Built by Holley Studio</div>
     </div>
     <div class="f-links">
       <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -552,6 +559,9 @@
       <a href="demo.html">Demo</a>
       <a href="https://github.com/Holley-Studio/thesmos-governance/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">Security</a>
     </div>
+  </div>
+  <div class="wrap" style="text-align:center;margin-top:24px;padding-bottom:8px;font-size:11px;color:rgba(255,255,255,.35);line-height:1.6">
+    All product names, logos, and brands are property of their respective owners. Comparison data compiled from public sources as of July 2, 2026 — corrections welcome via <a href="https://github.com/Holley-Studio/thesmos-governance/issues" target="_blank" rel="noopener noreferrer" style="color:rgba(255,255,255,.45)">GitHub issues</a>.
   </div>
 </footer>
 

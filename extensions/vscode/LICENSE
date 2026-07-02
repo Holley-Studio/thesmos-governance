@@ -1,21 +1,76 @@
-MIT License
+Functional Source License, Version 1.1, MIT Future License
 
-Copyright (c) 2025 Holley Studios
+Copyright (c) 2024–2026 Holley Studio LLC
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Parameters
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Licensor:             Holley Studio LLC
+Licensed Work:        Thesmos Governance
+                      The Licensed Work is © 2024–2026 Holley Studio LLC
+Change Date:          2030-06-17 (four years from first publication)
+Change License:       MIT License
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+For information about alternative licensing arrangements for the Licensed Work,
+please contact holley42@yahoo.com.
+
+---
+
+License Grant
+
+Subject to the terms and conditions of this license, each Licensor hereby
+grants to you a non-exclusive, royalty-free, worldwide, non-sublicensable,
+non-transferable license to use, copy, distribute, make available, and prepare
+derivative works of the Licensed Work, in each case subject to the limitations
+and conditions below.
+
+Use Limitation
+
+You may make use of the Licensed Work, provided that you may not use the
+Licensed Work for a Competing Use. A Competing Use means making available any
+on-premises or hosted version of the Licensed Work or a substantially similar
+offering to third parties on a commercial basis.
+
+Distribution Limitation
+
+You may distribute the Licensed Work or a derivative work in source code or
+compiled form, subject to the following conditions:
+
+1. Notices: You must include all copyright notices, license notices, and
+   disclaimers included in the Licensed Work in any copy or distribution.
+
+2. License: You must ensure that all recipients of any distributed copy of the
+   Licensed Work receive a copy of this license. The full text of this license
+   must be included with any distribution.
+
+Patent License
+
+Subject to the terms and conditions of this license, each Licensor hereby
+grants to you a perpetual, worldwide, non-exclusive, no-charge, royalty-free,
+irrevocable (except as stated in this section) patent license to make, have
+made, use, offer to sell, sell, import, and otherwise transfer the Licensed
+Work, where such license applies only to those patent claims licensable by
+such Licensor that are necessarily infringed by their contribution(s) alone or
+by combination of their contribution(s) with the Licensed Work to which such
+contribution(s) was submitted.
+
+Disclaimer
+
+THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE LICENSED WORK OR THE USE OR OTHER DEALINGS IN
+THE LICENSED WORK.
+
+Condition
+
+Upon the Change Date, or upon publication of a new version of the Licensed
+Work under the Change License, the Licensed Work is automatically licensed
+to you under the terms of the Change License, with the following conditions:
+
+  - The Change License grants you the rights of the Change License.
+  - The Change License is MIT License.
+
+The preceding paragraph does not limit the rights of any person who received
+the Licensed Work from a Licensor under a Change License.

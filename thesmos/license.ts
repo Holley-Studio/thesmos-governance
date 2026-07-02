@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Thesmos License System
  *
@@ -9,7 +9,7 @@
  *   enterprise — custom, everything + SSO + compliance export + private MCP
  *
  * Local cache: ~/.thesmos/license.json
- * Validation: Holley Studios API at https://api.holleystudios.com/thesmos/v1/license/validate
+ * Validation: Holley Studio API at https://api.holleystudios.com/thesmos/v1/license/validate
  *   - Re-validates every 24h (fails open — offline work is never blocked)
  *   - Telemetry: license key + seat count only. No code, no file paths.
  */
@@ -225,7 +225,7 @@ export interface ActivateResult {
 }
 
 /**
- * Validates the key against the Holley Studios API and caches the result.
+ * Validates the key against the Holley Studio API and caches the result.
  * Must be awaited — this always makes a network call.
  */
 export async function activateLicense(key: string): Promise<ActivateResult> {
@@ -236,7 +236,7 @@ export async function activateLicense(key: string): Promise<ActivateResult> {
 
   const resp = await validateWithApi(trimmedKey);
   if (!resp) {
-    return { success: false, error: 'Could not reach the Holley Studios license server. Check your network and try again.' };
+    return { success: false, error: 'Could not reach the Holley Studio license server. Check your network and try again.' };
   }
   if (!resp.valid) {
     return { success: false, error: resp.message ?? 'Invalid license key.' };

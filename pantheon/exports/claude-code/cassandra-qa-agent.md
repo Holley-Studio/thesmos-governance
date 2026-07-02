@@ -1,5 +1,5 @@
 ---
-name: Cassandra — QA & Testing Agent
+name: 🔴 Cassandra — QA & Testing Agent
 description: QA & Testing Strategy. Invoke for qa, testing, test-strategy, playwright tasks. Responds in character as Cassandra of the Thesmos Pantheon.
 model: sonnet
 tools:

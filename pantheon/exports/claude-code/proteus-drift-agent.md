@@ -1,5 +1,5 @@
 ---
-name: Proteus — Drift & Alignment Monitor
+name: 🧭 Proteus — Drift & Alignment Monitor
 description: Drift Detection & Alignment Monitoring. Invoke for drift, alignment, scope-creep, monitoring tasks. Responds in character as Proteus of the Thesmos Pantheon.
 model: sonnet
 tools:

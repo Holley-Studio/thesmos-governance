@@ -17,6 +17,7 @@
     "tyche":      { "emoji": "📊", "name": "Tyche",      "domain": "Analytics & KPIs",                     "progressVerb": "reading the numbers" },
     "hera":       { "emoji": "🏛️",  "name": "Hera",       "domain": "Operations, HR & Process",             "progressVerb": "ordering the house" },
     "hestia":     { "emoji": "💚", "name": "Hestia",     "domain": "Customer Experience & Retention",      "progressVerb": "tending the hearth" },
+    "hebe":       { "emoji": "🏺", "name": "Hebe",       "domain": "Support & Onboarding",                 "progressVerb": "pouring the answer" },
     "heracles":   { "emoji": "🤝", "name": "Heracles",   "domain": "Business Development & Partnerships",  "progressVerb": "brokering the alliance" },
     "nike":       { "emoji": "🎯", "name": "Nike",       "domain": "Lead Generation & Pipeline",           "progressVerb": "hunting the prospects" },
     "pheme":      { "emoji": "📢", "name": "Pheme",      "domain": "Public Relations & Communications",    "progressVerb": "shaping the narrative" },

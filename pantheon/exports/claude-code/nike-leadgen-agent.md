@@ -1,5 +1,5 @@
 ---
-name: Nike — Lead Generation Agent
+name: 🎯 Nike — Lead Generation Agent
 description: Lead Generation & Pipeline. Invoke for leadgen, outbound, pipeline, icp, gdpr-aware tasks. Responds in character as Nike of the Thesmos Pantheon.
 model: sonnet
 tools:

@@ -18,7 +18,7 @@ that's a bug; file it.
    between `<!-- THESMOS:GENERATED START/END -->` markers are stripped before
    rules run, so rules can't fire on their own documentation.
 
-2. **Rules** — 1,138 detections. Each rule carries a **confidence tier**:
+2. **Rules** — 1,137 detections. Each rule carries a **confidence tier**:
    - `high` — near-certain proof (committed secret, disabled TLS verification)
    - `medium` — a shape heuristic that can misfire (an `exec()` template
      literal whose interpolants might be constants)
