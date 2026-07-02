@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Secret detection and env-access pattern checking.
  * All functions are pure (no fs, no side effects) — fully testable.

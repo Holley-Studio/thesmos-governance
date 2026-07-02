@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * EU AI Act rules — EU_AI_001–008
  * Covers Annex III high-risk AI systems, prohibited practices (Art. 5),

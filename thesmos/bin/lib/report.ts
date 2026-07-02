@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Shared CLI utility for loading and writing .thesmos/report.json.
  * Extracted here to avoid duplicating the read/parse/null-guard across commands.

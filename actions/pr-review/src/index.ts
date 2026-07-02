@@ -1,7 +1,7 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Thesmos Governance PR Review — GitHub Action entry point.
- * by Holley Studios
+ * by Holley Studio
  *
  * Flow:
  *   1. Parse action inputs
@@ -96,7 +96,7 @@ function loadThesmosConfig(workspace: string) {
 
 async function run(): Promise<void> {
   try {
-    core.info('🔱 Thesmos Governance PR Review — by Holley Studios');
+    core.info('🔱 Thesmos Governance PR Review — by Holley Studio');
 
     // ── 1. Inputs ──────────────────────────────────────────────────────────
 

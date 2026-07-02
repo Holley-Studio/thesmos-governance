@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Session journal — the complete audit trail for an autopilot session.
  * Written to .thesmos/autopilot/sessions/[id].md incrementally.

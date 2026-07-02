@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Thesmos adapter system — generates AI assistant instruction files
  * from a shared canonical rule registry. All generator functions are pure.

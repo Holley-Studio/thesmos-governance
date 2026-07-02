@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Scanner orchestrator — the only I/O entry point for the scan subsystem.
  * Coordinates walker, file categorizers, route extractors, and detector.

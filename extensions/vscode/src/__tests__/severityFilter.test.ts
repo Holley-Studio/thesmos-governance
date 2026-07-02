@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Holley Studios. All rights reserved.
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 import { describe, it, expect } from 'vitest';
 import { filterBySeverity, SEVERITY_ORDER } from '../severityFilter.js';
 import type { Finding } from '../types.js';
