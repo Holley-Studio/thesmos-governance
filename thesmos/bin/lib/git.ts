@@ -7,6 +7,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ChangedFile } from '../../review.ts';
+import { stripGeneratedRegions } from '../../rules/helpers.ts';
 import { makeLogger } from '../../logger.js';
 
 const log = makeLogger('git');
@@ -44,7 +45,9 @@ export function getChangedFiles(
     const absPath = join(root, path);
     if (!existsSync(absPath)) return []; // deleted file — skip
     try {
-      const content = readFileSync(absPath, 'utf8');
+      // Generated sections (CLAUDE.md rules tables etc.) document rule patterns
+      // as text and must not be reviewed as code — strip, preserving line count.
+      const content = stripGeneratedRegions(readFileSync(absPath, 'utf8'));
       let diff: string | undefined;
       try {
         diff = execSync(`git diff "${base}"...HEAD -- "${path}"`, {
@@ -71,7 +74,7 @@ export function readFilesFromPaths(root: string, paths: string[]): ChangedFile[]
   return paths.flatMap((path) => {
     const absPath = join(root, path);
     try {
-      const content = readFileSync(absPath, 'utf8');
+      const content = stripGeneratedRegions(readFileSync(absPath, 'utf8'));
       return [{ path, content }];
     } catch (e) {
       log.warn('file read failed', { path, error: e instanceof Error ? e.message : String(e) });

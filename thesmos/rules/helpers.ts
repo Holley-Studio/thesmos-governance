@@ -39,3 +39,36 @@ export function windowMatches(lines: string[], startIdx: number, windowSize: num
   }
   return false;
 }
+
+// ── Generated-region stripping ────────────────────────────────────────────────
+
+const GENERATED_START_RE = /<!--\s*(?:THESMOS|PROMETHEUS):GENERATED START/;
+const GENERATED_END_RE = /<!--\s*(?:THESMOS|PROMETHEUS):GENERATED END/;
+
+/**
+ * Blank out everything between THESMOS:GENERATED START/END marker pairs
+ * (and the legacy PROMETHEUS spelling). Generated sections document rule
+ * patterns as text — reviewing them as code self-triggers the rules they
+ * describe.
+ *
+ * Line count is preserved: stripped lines become empty strings, so finding
+ * line numbers outside generated regions stay accurate. An unclosed START
+ * marker strips to end of file.
+ */
+export function stripGeneratedRegions(content: string): string {
+  if (!GENERATED_START_RE.test(content)) return content;
+  const lines = content.split('\n');
+  let inGenerated = false;
+  const out = lines.map((line) => {
+    if (!inGenerated) {
+      if (GENERATED_START_RE.test(line)) {
+        inGenerated = true;
+        return '';
+      }
+      return line;
+    }
+    if (GENERATED_END_RE.test(line)) inGenerated = false;
+    return '';
+  });
+  return out.join('\n');
+}

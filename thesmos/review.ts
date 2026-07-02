@@ -11,6 +11,7 @@
 
 import type { Finding, ThesmosConfig, ScanResult } from './types';
 import { THESMOS_RULES } from './rules/registry';
+import { applySuppressions, extractSuppressions, type Suppression } from './suppress.js';
 import { sortFindings, SEVERITY_EMOJI } from './severity';
 import { toSarif } from './sarif.js';
 import { makeLogger } from './logger.js';
@@ -74,14 +75,25 @@ export function runReview(
     }
   }
 
+  // Inline suppressions: thesmos-disable-next-line comments in changed files
+  // remove matching findings. Expired suppressions are ignored by
+  // applySuppressions and the finding stays active.
+  const suppressions: Suppression[] = (input.changedFiles ?? []).flatMap((cf) =>
+    extractSuppressions(cf.content, cf.path)
+  );
+  const active = suppressions.length > 0
+    ? applySuppressions(findings, suppressions, new Date()).activeFindings
+    : findings;
+
   log.info('scan complete', {
     files: input.changedFiles?.length ?? 0,
-    findings: findings.length,
+    findings: active.length,
+    suppressed: findings.length - active.length,
     rulesSkipped,
     durationMs: Date.now() - scanStart,
   });
 
-  return sortFindings(findings);
+  return sortFindings(active);
 }
 
 // ── Output formatters ──────────────────────────────────────────────────────────

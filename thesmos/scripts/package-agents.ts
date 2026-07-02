@@ -545,6 +545,8 @@ function buildBundle(
 
   if (existsSync(zipPath)) rmSync(zipPath)
 
+  // thesmos-disable-next-line shell_injection -- reason: TMP_DIR/zipPath/bundleName are compile-time constants derived from import.meta.url, never user input -- owner: @MHolley
+  // thesmos-disable-next-line child_process_shell_injection -- reason: same static constants, build script not shipped runtime -- owner: @MHolley
   execSync(`cd "${TMP_DIR}" && zip -r "${zipPath}" "${bundleName}"`, { stdio: 'pipe' })
 
   return { agentCount: canonicalAgentCount, zipPath }
