@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thesmos Pricing — Free CLI, Starter Pack, Full Pantheon, Founders &amp; Agencies Packs</title>
+  <meta name="description" content="Thesmos the CLI is free and open source, forever. The Pantheon agent library is a one-time purchase — Starter (free, 5 agents), Full Pantheon ($79, 66 agents), Founders Pack ($49, 15 agents), Agencies Pack ($49, 13 agents). No subscriptions." />
+  <meta name="keywords" content="Thesmos pricing, Thesmos Pantheon price, AI agent pricing, one-time purchase AI agents, Thesmos Founders Pack, Thesmos Agencies Pack, Gumroad AI agents" />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#050408" />
+  <meta name="author" content="Holley Studios" />
+
+  <link rel="canonical" href="https://github.com/Holley-Studio/thesmos-governance" />
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 90'%3E%3Cpath d='M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z' stroke='%23C9A84C' stroke-width='2.8' fill='none'/%3E%3Cpath d='M40 39 C36 32 31 25 34 15 C36 10 39 8 37 5 C45 10 47 22 42 31 C47 23 48 14 45 9 C52 20 50 32 44 39 Z' fill='%23F5C842'/%3E%3C/svg%3E" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Thesmos" />
+  <meta property="og:title" content="Thesmos Pricing — Free CLI · Starter Pack · Full Pantheon · Founders &amp; Agencies Packs" />
+  <meta property="og:description" content="One table, every tier. Free Starter Pack (5 agents), Full Pantheon ($79, 66 agents), Founders Pack ($49, 15 agents), Agencies Pack ($49, 13 agents). One-time purchase, lifetime updates, no subscriptions." />
+  <meta property="og:url" content="https://github.com/Holley-Studio/thesmos-governance" />
+  <meta property="og:image" content="https://opengraph.githubassets.com/1/Holley-Studio/thesmos-governance" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Thesmos Pricing — Free CLI, Starter Pack, Full Pantheon, Founders &amp; Agencies Packs" />
+  <meta name="twitter:description" content="One-time purchase. No subscriptions. Free Starter Pack, $79 Full Pantheon, $49 Founders Pack, $49 Agencies Pack." />
+  <meta name="twitter:image" content="https://opengraph.githubassets.com/1/Holley-Studio/thesmos-governance" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "Thesmos Pantheon",
+    "description": "66 Greek-god-named AI agent personas deployable across 10 AI platforms, orchestrated by Zeus routing logic. Sold as a free Starter Pack and three one-time-purchase tiers.",
+    "brand": { "@type": "Organization", "name": "Holley Studios" },
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Starter Pack",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "url": "https://holley.studio/downloads/thesmos-starter-agents.zip"
+      },
+      {
+        "@type": "Offer",
+        "name": "Full Pantheon",
+        "price": "79",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "url": "https://holleystudio.gumroad.com/l/thesmos-pantheon"
+      },
+      {
+        "@type": "Offer",
+        "name": "Founders Pack",
+        "price": "49",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "url": "https://holleystudio.gumroad.com/l/thesmos-pantheon"
+      },
+      {
+        "@type": "Offer",
+        "name": "Agencies Pack",
+        "price": "49",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "url": "https://holleystudio.gumroad.com/l/thesmos-pantheon"
+      }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;700&family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ─── TOKENS (identical to index.html) ───────────────────────── */
+    :root {
+      --bg:       #050408;
+      --bg-s:     #09080F;
+      --card:     rgba(255,255,255,.03);
+      --card-h:   rgba(255,255,255,.05);
+      --gold:     #C9A84C;
+      --gold-dim: rgba(201,168,76,.4);
+      --cream:    #F5F0E8;
+      --t1:       #F5F5F7;
+      --t2:       rgba(255,255,255,.55);
+      --t3:       rgba(255,255,255,.45);
+      --border:   rgba(255,255,255,.07);
+      --border-h: rgba(201,168,76,.2);
+      --green:    #4CAF82;
+      --red:      #E05555;
+      --yellow:   #E0B84C;
+      --ease:     cubic-bezier(0.4,0,0.2,1);
+      --spring:   cubic-bezier(.22,1,.36,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--t1);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 300; line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    a { text-decoration: none; }
+
+    .wrap    { max-width: 1080px; margin: 0 auto; padding: 0 48px; }
+    .wrap-sm { max-width: 700px;  margin: 0 auto; padding: 0 48px; }
+
+    /* ─── NAV (copied verbatim from index.html) ──────────────────── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+      height: 60px; display: flex; align-items: center; padding: 0 48px;
+      transition: background 300ms var(--ease), border-color 300ms var(--ease);
+    }
+    .nav.pinned {
+      background: rgba(8,6,4,.72);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-i { width: 100%; max-width: 1080px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700;
+      letter-spacing: .12em; color: var(--gold);
+      flex-shrink: 0;
+    }
+    .nav-logo svg { width: 20px; height: 22px; }
+    .nav-links { display: flex; align-items: center; gap: 24px; }
+    .nav-links a {
+      font-size: 14px; font-weight: 400; letter-spacing: .01em;
+      color: rgba(255,255,255,.65);
+      transition: color 200ms ease;
+      white-space: nowrap;
+    }
+    .nav-links a:hover { color: rgba(255,255,255,.95); }
+    .nav-links a.active { color: var(--gold); font-weight: 500; }
+    .nav-cta {
+      padding: 8px 20px; border-radius: 980px;
+      font-size: 13px; font-weight: 500; letter-spacing: .02em;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.2);
+      color: var(--t1);
+      transition: all 200ms ease;
+      flex-shrink: 0;
+    }
+    .nav-cta:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.3); }
+
+    /* Mobile hamburger — identical to index.html */
+    .nav-menu-btn {
+      display: none;
+      background: none;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 6px;
+      padding: 7px 9px;
+      cursor: pointer;
+      color: var(--t1);
+      gap: 5px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 38px; min-height: 38px;
+    }
+    .nav-menu-btn span {
+      display: block; width: 18px; height: 1.5px;
+      background: rgba(255,255,255,.75);
+      transition: all 220ms var(--ease);
+    }
+    .nav-menu-btn.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+    .nav-menu-btn.open span:nth-child(2) { opacity: 0; }
+    .nav-menu-btn.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+    @media(max-width:860px) {
+      .wrap, .wrap-sm { padding: 0 20px; }
+      .nav { padding: 0 20px; }
+      .nav-links {
+        display: none;
+        position: fixed; top: 60px; left: 0; right: 0;
+        background: rgba(5,4,8,.97);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        border-bottom: 1px solid rgba(255,255,255,.08);
+        flex-direction: column; padding: 12px 20px 24px;
+        gap: 0; z-index: 299;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links a {
+        padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,.06);
+        font-size: 16px; color: rgba(255,255,255,.8); width: 100%;
+      }
+      .nav-links a:last-child { border-bottom: none; }
+      .nav-cta { display: none; }
+      .nav-menu-btn { display: flex; }
+    }
+
+    /* ─── HERO ────────────────────────────────────────────────────── */
+    .hero { padding: 132px 0 64px; text-align: center; }
+    .hero-tag {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 500; letter-spacing: .1em;
+      color: var(--gold); text-transform: uppercase;
+      border: 1px solid var(--gold-dim); border-radius: 100px;
+      padding: 4px 14px; margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-family: 'Cinzel', serif; font-size: clamp(28px, 5vw, 50px); font-weight: 700;
+      line-height: 1.15; letter-spacing: .01em;
+      color: var(--cream);
+      margin-bottom: 20px;
+    }
+    .hero p { font-size: 17px; color: var(--t2); max-width: 620px; margin: 0 auto; line-height: 1.7; }
+
+    /* ─── SECTION ─────────────────────────────────────────────────── */
+    section { padding: 76px 0; }
+    section + section { border-top: 1px solid var(--border); }
+    .section-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .section-title { font-family: 'Cinzel', serif; font-size: clamp(22px, 3vw, 34px); font-weight: 700; color: var(--t1); margin-bottom: 16px; line-height: 1.2; }
+    .section-sub { font-size: 16px; color: var(--t2); max-width: 640px; line-height: 1.7; margin-bottom: 44px; }
+
+    /* ─── COMPARISON TABLE ────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .comp-table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 720px; }
+    .comp-table thead th {
+      padding: 14px 16px; text-align: left;
+      font-family: 'Cinzel', serif; font-size: 13px; font-weight: 500; letter-spacing: .05em;
+      color: var(--t2);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .comp-table thead th:first-child { color: var(--t3); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .comp-table thead th.col-full { color: var(--gold); }
+    .comp-table tbody tr { border-bottom: 1px solid rgba(255,255,255,.04); transition: background .15s; }
+    .comp-table tbody tr:hover { background: rgba(255,255,255,.02); }
+    .comp-table tbody th, .comp-table tbody td { padding: 13px 16px; vertical-align: top; color: var(--t2); text-align: left; font-weight: 300; }
+    .comp-table tbody th { font-weight: 500; color: var(--t1); font-size: 13px; font-family: 'Inter', sans-serif; white-space: nowrap; }
+    .comp-table tbody td.col-full { background: rgba(201,168,76,.04); }
+    .comp-table .check { color: var(--green); }
+    .comp-table .cross { color: var(--red); opacity: .75; }
+    .comp-table .note { font-size: 11.5px; color: var(--t3); display: block; margin-top: 2px; }
+    .comp-table caption { text-align: left; caption-side: top; font-size: 12.5px; color: var(--t3); padding-bottom: 12px; }
+
+    /* ─── BUY TIER CARDS ──────────────────────────────────────────── */
+    .buy-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .buy-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 22px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .buy-card.free-t { background: rgba(76,175,130,.06); border-color: rgba(76,175,130,.22); }
+    .buy-card.paid-t { background: rgba(201,168,76,.05); border-color: var(--border-h); }
+    .buy-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+    .free-t .buy-label { color: var(--green); }
+    .paid-t .buy-label { color: rgba(245,197,24,.8); }
+    .buy-title { font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700; color: rgba(255,255,255,.92); }
+    .buy-price { font-size: 22px; font-weight: 600; color: var(--t1); }
+    .buy-price span { font-size: 12px; color: var(--t3); font-weight: 300; }
+    .buy-desc { font-size: 12.5px; color: rgba(255,255,255,.45); line-height: 1.6; flex-grow: 1; }
+    .buy-btn {
+      display: inline-block; padding: 10px 16px; border-radius: 6px;
+      font-size: 13px; font-weight: 500; text-align: center;
+      transition: all 180ms ease; margin-top: 4px;
+    }
+    .free-t .buy-btn { background: rgba(76,175,130,.15); border: 1px solid rgba(76,175,130,.35); color: var(--green); }
+    .free-t .buy-btn:hover { background: rgba(76,175,130,.25); }
+    .paid-t .buy-btn { background: rgba(245,197,24,.12); border: 1px solid rgba(245,197,24,.3); color: rgba(245,197,24,.9); }
+    .paid-t .buy-btn:hover { background: rgba(245,197,24,.22); }
+
+    /* ─── OPEN CORE EXPLAINER ─────────────────────────────────────── */
+    .oc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .oc-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; }
+    .oc-card h3 { font-family: 'Cinzel', serif; font-size: 16px; color: var(--t1); margin-bottom: 12px; }
+    .oc-card p { font-size: 14px; color: var(--t2); line-height: 1.7; margin-bottom: 10px; }
+    .oc-card p:last-child { margin-bottom: 0; }
+    .oc-card ul { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .oc-card li { font-size: 13.5px; color: var(--t2); display: flex; gap: 8px; }
+    .oc-card li::before { content: '—'; color: var(--t3); flex-shrink: 0; }
+    .oc-card code { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--gold); }
+
+    /* ─── FAQ (native details/summary — accessible by default) ──────── */
+    .faq-list { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+    .faq-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .faq-item summary {
+      list-style: none; cursor: pointer; padding: 18px 22px;
+      font-size: 15px; font-weight: 500; color: var(--t1);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      content: '+'; font-size: 20px; font-weight: 300; color: var(--gold);
+      flex-shrink: 0; transition: transform 200ms var(--ease);
+    }
+    .faq-item[open] summary::after { transform: rotate(45deg); }
+    .faq-item summary:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+    .faq-item .faq-a { padding: 0 22px 20px; font-size: 14px; color: var(--t2); line-height: 1.7; }
+    .faq-item .faq-a code { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--gold); background: rgba(201,168,76,.08); padding: 1px 5px; border-radius: 4px; }
+
+    /* ─── CTA ─────────────────────────────────────────────────────── */
+    .cta-row { display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+    .btn-primary {
+      display: inline-block; background: var(--gold); color: #080508; font-weight: 600;
+      font-size: 14px; padding: 12px 28px; border-radius: 8px; text-decoration: none;
+      transition: opacity .2s;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-ghost {
+      display: inline-block; border: 1px solid rgba(255,255,255,.18); color: var(--t2);
+      font-size: 14px; padding: 11px 24px; border-radius: 8px; text-decoration: none;
+      transition: all .2s;
+    }
+    .btn-ghost:hover { color: var(--t1); border-color: rgba(255,255,255,.35); }
+
+    /* ─── FOOTER (copied verbatim from index.html) ───────────────── */
+    .footer { background: transparent; border-top: 1px solid rgba(255,255,255,.06); padding: 44px 0; }
+    .footer-i { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 24px; }
+    .f-brand { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: .18em; color: rgba(255,255,255,.25); }
+    .f-by { font-size: 12px; color: rgba(255,255,255,.2); margin-top: 4px; }
+    .f-links { display: flex; gap: 24px; flex-wrap: wrap; }
+    .f-links a { font-size: 13px; color: rgba(255,255,255,.35); transition: color 200ms ease; }
+    .f-links a:hover { color: rgba(255,255,255,.7); }
+
+    /* ─── SCROLL REVEAL ───────────────────────────────────────────── */
+    [data-r] { opacity: 0; transform: translateY(20px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
+    [data-r].on { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      [data-r] { opacity: 1; transform: none; transition: none; }
+      html { scroll-behavior: auto; }
+    }
+
+    /* ─── RESPONSIVE ──────────────────────────────────────────────── */
+    @media(max-width:1024px) {
+      .buy-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media(max-width:860px) {
+      section { padding: 56px 0; }
+      .oc-grid { grid-template-columns: 1fr; }
+    }
+    @media(max-width:480px) {
+      .buy-grid { grid-template-columns: 1fr; }
+      .hero { padding: 116px 0 48px; }
+    }
+  </style>
+</head>
+<body>
+
+<a href="#main-content" style="position:absolute;left:-9999px;top:0;z-index:9999;padding:8px 16px;background:var(--gold);color:#000;font-size:14px;font-weight:600" onfocus="this.style.left='0'" onblur="this.style.left='-9999px'">Skip to main content</a>
+
+<!-- ── NAV ───────────────────────────────────────────────────────────── -->
+<nav class="nav" id="nav">
+  <div class="nav-i">
+    <a href="index.html" aria-label="Thesmos — home" class="nav-logo">
+      <svg viewBox="0 0 80 90" fill="none" aria-hidden="true">
+        <path d="M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z"
+          stroke="currentColor" stroke-width="2.8" fill="none" stroke-linejoin="round"/>
+        <circle cx="40" cy="48" r="19" stroke="currentColor" stroke-width="2.5" fill="none"/>
+        <line x1="23" y1="48" x2="57" y2="48" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      THESMOS
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href="index.html#tools">Tools</a>
+      <a href="index.html#autopilot">Autopilot</a>
+      <a href="index.html#pantheon">Pantheon</a>
+      <a href="index.html#rules">Rules</a>
+      <a href="index.html#languages">Languages</a>
+      <a href="index.html#how">How It Works</a>
+      <a href="vs.html">Compare</a>
+      <a href="demo.html">Demo</a>
+      <a href="pricing.html" class="active" aria-current="page">Pricing</a>
+      <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+    </div>
+    <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer" class="nav-cta">Get Thesmos</a>
+    <button class="nav-menu-btn" id="nav-menu-btn" aria-label="Toggle navigation" aria-expanded="false" aria-controls="nav-links">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ── HERO ──────────────────────────────────────────────────────────── -->
+<section class="hero" id="main-content">
+  <div class="wrap">
+    <div class="hero-tag">Pricing · Updated 2026-07</div>
+    <h1>Buy it once. Own it forever.</h1>
+    <p>Thesmos, the governance CLI, is free and open source — always will be. The Pantheon, 66 AI agent personas across 10 platforms, is a single one-time payment. No subscription. No monthly tribute owed to the gods — pay once, deploy everywhere, and keep every future update for life.</p>
+  </div>
+</section>
+
+<!-- ── COMPARISON TABLE ─────────────────────────────────────────────── -->
+<section id="compare">
+  <div class="wrap">
+    <div class="section-label" data-r>One table. Every tier.</div>
+    <h2 class="section-title" data-r data-d="1">What's actually in each tier</h2>
+    <p class="section-sub" data-r data-d="2">Four ways to run the Pantheon. Every ✓ below is a file that ships in that tier's package today — not a rounded-up marketing claim.</p>
+
+    <div class="table-wrap" data-r data-d="3">
+      <table class="comp-table">
+        <caption>Comparison of the Thesmos Pantheon Starter, Full, Founders, and Agencies tiers</caption>
+        <thead>
+          <tr>
+            <th scope="col">Included</th>
+            <th scope="col">Starter<br><span class="note" style="text-transform:none;letter-spacing:0;font-family:inherit">Free</span></th>
+            <th scope="col" class="col-full">Full Pantheon<br><span class="note" style="text-transform:none;letter-spacing:0;font-family:inherit">$79 one-time</span></th>
+            <th scope="col">Founders Pack<br><span class="note" style="text-transform:none;letter-spacing:0;font-family:inherit">$49 one-time</span></th>
+            <th scope="col">Agencies Pack<br><span class="note" style="text-transform:none;letter-spacing:0;font-family:inherit">$49 one-time</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Agents</th>
+            <td>5<span class="note">Zeus, Athena, Argus, Apollo, Hephaestus</span></td>
+            <td class="col-full"><strong>66</strong><span class="note">Every domain in the Pantheon</span></td>
+            <td>16<span class="note">Startup-founder council: strategy, sales, product, legal</span></td>
+            <td>14<span class="note">Agency/creative council: content, brand, campaigns</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Platforms</th>
+            <td>9<span class="note">Claude Code, Claude.ai, ChatGPT, Assistants API, Codex, Gemini, Cursor, Copilot, Figma</span></td>
+            <td class="col-full">10<span class="note">Adds the VS Code extension</span></td>
+            <td>9<span class="note">Same 9 as Starter</span></td>
+            <td>9<span class="note">Same 9 as Starter</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Zeus orchestrators</th>
+            <td><span class="check">✓</span> Included</td>
+            <td class="col-full"><span class="check">✓</span> Included</td>
+            <td><span class="check">✓</span> Included</td>
+            <td><span class="check">✓</span> Included</td>
+          </tr>
+          <tr>
+            <th scope="row">ChatGPT knowledge clusters</th>
+            <td><span class="cross">✗</span> Not included</td>
+            <td class="col-full"><span class="check">✓</span> All 13 clusters</td>
+            <td><span class="cross">✗</span> Not included</td>
+            <td><span class="cross">✗</span> Not included</td>
+          </tr>
+          <tr>
+            <th scope="row">Claude.ai council bundles</th>
+            <td><span class="cross">✗</span> Not included</td>
+            <td class="col-full"><span class="check">✓</span> 3 bundles<span class="note">Business, Creative, Build</span></td>
+            <td><span class="cross">✗</span> Not included</td>
+            <td><span class="cross">✗</span> Not included</td>
+          </tr>
+          <tr>
+            <th scope="row">Claude Code buyer bundle<span class="note">PANTHEON.md + live activity hooks</span></th>
+            <td><span class="cross">✗</span> Not included</td>
+            <td class="col-full"><span class="check">✓</span> Included</td>
+            <td><span class="check">✓</span> Included</td>
+            <td><span class="check">✓</span> Included</td>
+          </tr>
+          <tr>
+            <th scope="row">VS Code extension</th>
+            <td><span class="cross">✗</span> Not included</td>
+            <td class="col-full"><span class="check">✓</span> Included</td>
+            <td><span class="cross">✗</span> Not included</td>
+            <td><span class="cross">✗</span> Not included</td>
+          </tr>
+          <tr>
+            <th scope="row">Assistants API files</th>
+            <td><span class="cross">✗</span> Not included</td>
+            <td class="col-full"><span class="check">✓</span> All 66 agents</td>
+            <td><span class="check">✓</span> 15-agent subset</td>
+            <td><span class="check">✓</span> 13-agent subset</td>
+          </tr>
+          <tr>
+            <th scope="row">Updates</th>
+            <td>Always the current free zip<span class="note">No account, re-download anytime</span></td>
+            <td class="col-full">Lifetime<span class="note">Free re-download via your Gumroad library</span></td>
+            <td>Lifetime<span class="note">Free re-download via your Gumroad library</span></td>
+            <td>Lifetime<span class="note">Free re-download via your Gumroad library</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Where to buy</th>
+            <td>Site + GitHub</td>
+            <td class="col-full">Gumroad</td>
+            <td>Gumroad</td>
+            <td>Gumroad</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── WHERE DO I BUY THIS ──────────────────────────────────────────── -->
+<section id="buy">
+  <div class="wrap">
+    <div class="section-label" data-r>Get it</div>
+    <h2 class="section-title" data-r data-d="1">Where do I buy this?</h2>
+    <p class="section-sub" data-r data-d="2">One clear path per tier. No dropdown, no "contact sales."</p>
+
+    <div class="buy-grid" data-r data-d="3">
+      <div class="buy-card free-t">
+        <div class="buy-label">⚡ Free</div>
+        <div class="buy-title">Starter Pack</div>
+        <div class="buy-price">$0</div>
+        <div class="buy-desc">5 real agents, 9 platforms, zero cost. The exact Pantheon workflow — no account, no card, no catch.</div>
+        <a href="downloads/thesmos-starter-agents.zip" class="buy-btn">⬇ Download Free</a>
+      </div>
+
+      <div class="buy-card paid-t">
+        <div class="buy-label">🏛️ Everything</div>
+        <div class="buy-title">Full Pantheon</div>
+        <div class="buy-price">$79 <span>one-time</span></div>
+        <div class="buy-desc">The whole Pantheon — all 66 agents, all 10 platforms, VS Code extension, knowledge clusters, council bundles. Pay once, keep every update for life.</div>
+        <!-- TODO(human/marketing): confirm final Gumroad product URL for Full Pantheon before launch -->
+        <a href="https://holleystudio.gumroad.com/l/thesmos-pantheon" class="buy-btn" target="_blank" rel="noopener">Own the Full Pantheon →</a>
+      </div>
+
+      <div class="buy-card paid-t">
+        <div class="buy-label">🚀 Vertical pack</div>
+        <div class="buy-title">Founders Pack</div>
+        <div class="buy-price">$49 <span>one-time</span></div>
+        <div class="buy-desc">15 agents for founders wearing every hat — strategy, sales, fundraising, product, legal, security.</div>
+        <!-- NOTE: placeholder Gumroad URL — replace with the dedicated Founders Pack product page before launch -->
+        <a href="https://holleystudio.gumroad.com/l/thesmos-pantheon" class="buy-btn" target="_blank" rel="noopener">Get Founders Pack →</a>
+      </div>
+
+      <div class="buy-card paid-t">
+        <div class="buy-label">🎨 Vertical pack</div>
+        <div class="buy-title">Agencies Pack</div>
+        <div class="buy-price">$49 <span>one-time</span></div>
+        <div class="buy-desc">13 agents for agencies running client work — content, brand, campaigns, creative production end to end.</div>
+        <!-- NOTE: placeholder Gumroad URL — replace with the dedicated Agencies Pack product page before launch -->
+        <a href="https://holleystudio.gumroad.com/l/thesmos-pantheon" class="buy-btn" target="_blank" rel="noopener">Get Agencies Pack →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── GITHUB VS PAID ───────────────────────────────────────────────── -->
+<section id="open-core">
+  <div class="wrap">
+    <div class="section-label" data-r>The honest version</div>
+    <h2 class="section-title" data-r data-d="1">What's on GitHub vs. what's paid?</h2>
+    <p class="section-sub" data-r data-d="2">Thesmos is open-core, on purpose. Here's exactly where the line sits — nothing you pay for is secret code.</p>
+
+    <div class="oc-grid" data-r data-d="3">
+      <div class="oc-card">
+        <h3>Free and open source, always</h3>
+        <p>The governance CLI (<code>thesmos-governance</code> on npm), all 1,137 rules, and the source Markdown for every god's persona are public in the GitHub repo:</p>
+        <p><code>github.com/Holley-Studio/thesmos-governance</code></p>
+        <ul>
+          <li>Full scan/fix/validate CLI — MIT licensed</li>
+          <li>The rule catalog that powers every finding</li>
+          <li>Agent persona source content, readable by anyone</li>
+        </ul>
+      </div>
+      <div class="oc-card">
+        <h3>What paying for it buys</h3>
+        <p>Not secret code. You're paying for the packaging, tooling, and ongoing maintenance — the parts that take real engineering time, every release:</p>
+        <ul>
+          <li>Pre-built Zeus orchestrators for every platform</li>
+          <li>Platform-native exports for all 10 supported tools — no manual reformatting</li>
+          <li>One-click installs — an INSTALL.md for every platform, zero hand-assembly</li>
+          <li>The VS Code extension (Full Pantheon only)</li>
+          <li>Lifetime updates delivered to your Gumroad library</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ───────────────────────────────────────────────────────────── -->
+<section id="faq">
+  <div class="wrap">
+    <div class="section-label" data-r>Before you buy</div>
+    <h2 class="section-title" data-r data-d="1">Questions, answered directly</h2>
+
+    <div class="faq-list" data-r data-d="2">
+      <details class="faq-item">
+        <summary>Is the free tier really free?</summary>
+        <div class="faq-a">Yes. The Starter Pack includes 5 agents — Zeus, Athena, Argus, Apollo, and Hephaestus — across 9 platforms. No account, no email, no credit card. Download it from this site or clone it from GitHub.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Do I need to pay monthly?</summary>
+        <div class="faq-a">No. Every paid tier — Full Pantheon, Founders Pack, Agencies Pack — is a single one-time purchase through Gumroad. No subscription. No recurring charge. Ever.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Can I use this on multiple projects?</summary>
+        <div class="faq-a">Yes. Your license is per-person, not per-project or per-repo. Use it on everything you build.</div>
+      </details>
+      <details class="faq-item">
+        <summary>What if I want a refund?</summary>
+        <!-- REFUND POLICY — fill in before launch -->
+        <div class="faq-a">[REFUND POLICY — fill in before launch]</div>
+      </details>
+      <details class="faq-item">
+        <summary>What platforms are supported?</summary>
+        <div class="faq-a">Claude Code, Claude.ai Projects, ChatGPT, OpenAI Assistants API, Codex, Gemini, Cursor, GitHub Copilot, Figma, and VS Code. The VS Code extension ships with Full Pantheon only — see the table above.</div>
+      </details>
+    </div>
+
+    <div class="cta-row" data-r data-d="3" style="margin-top:40px;">
+      <a href="downloads/thesmos-starter-agents.zip" class="btn-primary">Start free →</a>
+      <a href="vs.html" class="btn-ghost">See how Thesmos compares</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER (copied verbatim from index.html) ─────────────────────── -->
+<footer class="footer">
+  <div class="wrap footer-i">
+    <div>
+      <div class="f-brand">THESMOS</div>
+      <div class="f-by">Built by Holley Studios</div>
+    </div>
+    <div class="f-links">
+      <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="demo.html">Demo</a>
+      <a href="vs.html">Compare</a>
+      <a href="index.html#autopilot">Autopilot</a>
+      <a href="https://github.com/Holley-Studio/thesmos-governance/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a>
+      <a href="https://github.com/Holley-Studio/thesmos-governance/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">Security</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ─── Nav scroll (identical behavior to index.html) ──────────────────── */
+(function () {
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => nav.classList.toggle('pinned', window.scrollY > 48), {passive:true});
+}());
+
+/* ─── Hamburger menu (identical behavior to index.html) ──────────────── */
+(function () {
+  const btn = document.getElementById('nav-menu-btn');
+  const links = document.getElementById('nav-links');
+  btn.addEventListener('click', () => {
+    const open = links.classList.toggle('open');
+    btn.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  links.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      links.classList.remove('open');
+      btn.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    });
+  });
+}());
+
+/* ─── Scroll reveal ────────────────────────────────────────────────── */
+(function () {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const io = new IntersectionObserver(entries =>
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } })
+  , {threshold:.12});
+  document.querySelectorAll('[data-r]').forEach(el => io.observe(el));
+}());
+</script>
+</body>
+</html>

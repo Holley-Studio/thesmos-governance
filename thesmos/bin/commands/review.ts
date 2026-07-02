@@ -41,9 +41,9 @@ export async function cmdReview(argv: string[]): Promise<void> {
 
   let changedFiles;
   if (positionals.length > 0) {
-    changedFiles = readFilesFromPaths(root, positionals);
+    changedFiles = readFilesFromPaths(root, positionals, config.reviewIgnorePaths ?? []);
   } else if (base) {
-    changedFiles = getChangedFiles(root, base, config.ignoredFolders ?? []);
+    changedFiles = getChangedFiles(root, base, config.ignoredFolders ?? [], config.reviewIgnorePaths ?? []);
   }
   // undefined → scan-based checks only (no file content)
 

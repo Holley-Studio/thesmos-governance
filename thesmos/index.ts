@@ -222,6 +222,10 @@ export type {
   MetricsSnapshot,
 } from './metrics.js';
 
+// ── Rule helpers ──────────────────────────────────────────────────────────────
+
+export { stripGeneratedRegions } from './rules/helpers.js';
+
 // ── Suppressions ──────────────────────────────────────────────────────────────
 
 export {
