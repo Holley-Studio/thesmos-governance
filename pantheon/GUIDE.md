@@ -29,7 +29,7 @@ Unlike generic AI prompts, Pantheon agents are:
 | `apollo-content-agent` | **Apollo** | Content & copywriting | AIDA + StoryBrand |
 | `aphrodite-creative-agent` | **Aphrodite** | Creative direction & brand | Brand Archetypes + Emotional Design |
 | `hephaestus-design-agent` | **Hephaestus** | UI/UX & design systems | Atomic Design + WCAG 2.1 |
-| `iris-photography-agent` | **Iris** | Photography direction | Rule of Thirds + Exposure Triangle |
+| `artemis-photography-agent` | **Artemis** | Photography direction | Rule of Thirds + Exposure Triangle |
 | `morpheus-animation-agent` | **Morpheus** | Animation & motion | 12 Disney Principles + Easing Curves |
 | `dionysus-video-agent` | **Dionysus** | Video production | 3-Act Structure + Production Brief |
 | `argus-security-agent` | **Argus** | Security & threat modeling | OWASP Top 10 + STRIDE + CVSSv3 |
@@ -399,7 +399,7 @@ Each agent's `## Governance scope` section tells you exactly which Thesmos rules
 
 ---
 
-### Iris — Photography Agent
+### Artemis — Photography Agent
 
 **Role:** Shot lists, photography art direction, editing briefs
 **Invoke when:** Planning a photo shoot, briefing a photographer, art directing imagery

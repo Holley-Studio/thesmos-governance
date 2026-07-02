@@ -10,27 +10,27 @@ Named after Greek gods. Built on Thesmos governance. Downloadable for Claude, Ch
 
 | Agent | God | Role |
 |---|---|---|
-| [`zeus-executive-agent`](agents/zeus-executive-agent.md) | Zeus | Executive orchestration |
-| [`athena-strategy-agent`](agents/athena-strategy-agent.md) | Athena | Business strategy & GTM |
-| [`hermes-marketing-agent`](agents/hermes-marketing-agent.md) | Hermes | Marketing strategy |
-| [`nike-leadgen-agent`](agents/nike-leadgen-agent.md) | Nike | Lead generation & pipeline |
-| [`ares-sales-agent`](agents/ares-sales-agent.md) | Ares | Sales & closing |
-| [`apollo-content-agent`](agents/apollo-content-agent.md) | Apollo | Content & copywriting |
-| [`aphrodite-creative-agent`](agents/aphrodite-creative-agent.md) | Aphrodite | Creative direction & brand |
-| [`hephaestus-design-agent`](agents/hephaestus-design-agent.md) | Hephaestus | UI/UX & design systems |
-| [`iris-photography-agent`](agents/iris-photography-agent.md) | Iris | Photography direction |
-| [`morpheus-animation-agent`](agents/morpheus-animation-agent.md) | Morpheus | Animation & motion |
-| [`dionysus-video-agent`](agents/dionysus-video-agent.md) | Dionysus | Video production |
-| [`argus-security-agent`](agents/argus-security-agent.md) | Argus | Security & threat modeling |
-| [`hestia-cx-agent`](agents/hestia-cx-agent.md) | Hestia | Customer experience |
-| [`tyche-analytics-agent`](agents/tyche-analytics-agent.md) | Tyche | Analytics & KPIs |
-| [`mnemosyne-knowledge-agent`](agents/mnemosyne-knowledge-agent.md) | Mnemosyne | Knowledge management |
-| [`themis-legal-agent`](agents/themis-legal-agent.md) | Themis | Legal & contracts |
-| [`plutus-finance-agent`](agents/plutus-finance-agent.md) | Plutus | Finance & pricing |
-| [`pheme-pr-agent`](agents/pheme-pr-agent.md) | Pheme | PR & communications |
-| [`hera-operations-agent`](agents/hera-operations-agent.md) | Hera | Operations & HR |
-| [`daedalus-product-agent`](agents/daedalus-product-agent.md) | Daedalus | Product management |
-| [`heracles-bd-agent`](agents/heracles-bd-agent.md) | Heracles | Business development |
+| [`zeus-executive-agent`](exports/claude-code/zeus-executive-agent.md) | Zeus | Executive orchestration |
+| [`athena-strategy-agent`](exports/claude-code/athena-strategy-agent.md) | Athena | Business strategy & GTM |
+| [`hermes-marketing-agent`](exports/claude-code/hermes-marketing-agent.md) | Hermes | Marketing strategy |
+| [`nike-leadgen-agent`](exports/claude-code/nike-leadgen-agent.md) | Nike | Lead generation & pipeline |
+| [`ares-sales-agent`](exports/claude-code/ares-sales-agent.md) | Ares | Sales & closing |
+| [`apollo-content-agent`](exports/claude-code/apollo-content-agent.md) | Apollo | Content & copywriting |
+| [`aphrodite-creative-agent`](exports/claude-code/aphrodite-creative-agent.md) | Aphrodite | Creative direction & brand |
+| [`hephaestus-design-agent`](exports/claude-code/hephaestus-design-agent.md) | Hephaestus | UI/UX & design systems |
+| [`artemis-photography-agent`](exports/claude-code/artemis-photography-agent.md) | Artemis | Photography direction |
+| [`morpheus-animation-agent`](exports/claude-code/morpheus-animation-agent.md) | Morpheus | Animation & motion |
+| [`dionysus-video-agent`](exports/claude-code/dionysus-video-agent.md) | Dionysus | Video production |
+| [`argus-security-agent`](exports/claude-code/argus-security-agent.md) | Argus | Security & threat modeling |
+| [`hestia-cx-agent`](exports/claude-code/hestia-cx-agent.md) | Hestia | Customer experience |
+| [`tyche-analytics-agent`](exports/claude-code/tyche-analytics-agent.md) | Tyche | Analytics & KPIs |
+| [`mnemosyne-knowledge-agent`](exports/claude-code/mnemosyne-knowledge-agent.md) | Mnemosyne | Knowledge management |
+| [`themis-legal-agent`](exports/claude-code/themis-legal-agent.md) | Themis | Legal & contracts |
+| [`plutus-finance-agent`](exports/claude-code/plutus-finance-agent.md) | Plutus | Finance & pricing |
+| [`pheme-pr-agent`](exports/claude-code/pheme-pr-agent.md) | Pheme | PR & communications |
+| [`hera-operations-agent`](exports/claude-code/hera-operations-agent.md) | Hera | Operations & HR |
+| [`daedalus-product-agent`](exports/claude-code/daedalus-product-agent.md) | Daedalus | Product management |
+| [`heracles-bd-agent`](exports/claude-code/heracles-bd-agent.md) | Heracles | Business development |
 
 ---
 
