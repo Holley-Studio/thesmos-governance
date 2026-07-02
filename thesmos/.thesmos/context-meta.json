@@ -1,8 +1,0 @@
-{
-  "snapshotAt": "2026-07-02T03:17:51.323Z",
-  "stack": [
-    "TypeScript",
-    "Vitest",
-    "Node.js >=20"
-  ]
-}
