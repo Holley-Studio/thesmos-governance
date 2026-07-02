@@ -58,6 +58,8 @@ interface AgentMeta {
   claudeModel: string
   openaiModel: string
   tags: string[]
+  /** Rule IDs from the agent's governance.rules frontmatter (e.g. AGNT_001). */
+  governanceRules: string[]
   enabled: boolean
   rawContent: string
   body: string
@@ -177,10 +179,29 @@ function extractMeta(source: string): AgentMeta {
     claudeModel: (platforms['claude_model'] ?? 'claude-sonnet-5').replace(/\[1m\]/g, ''),
     openaiModel: (platforms['openai_model'] ?? 'gpt-5.5').replace(/\[1m\]/g, ''),
     tags: Array.isArray(meta['tags']) ? (meta['tags'] as string[]) : [],
+    governanceRules: extractGovernanceRules(source),
     enabled: meta['enabled'] !== false,
     rawContent: source,
     body,
   }
+}
+
+/**
+ * Pull rule IDs from the nested governance.rules frontmatter block — the
+ * simple frontmatter parser doesn't descend into nested lists.
+ */
+function extractGovernanceRules(source: string): string[] {
+  const block = source.match(/^governance:\s*\n\s+rules:\s*\n((?:\s+-\s+\S+\s*\n)+)/m)
+  if (!block) return []
+  return [...block[1].matchAll(/-\s+([A-Z]+_\d+)/g)].map((m) => m[1])
+}
+
+/** Named governance badge, e.g. "AGNT_001 ✅ | AGNT_006 ✅". */
+function badgeFor(agent: AgentMeta): string {
+  const rules = agent.governanceRules.slice(0, 4)
+  return rules.length > 0
+    ? rules.map((r) => `${r} ✅`).join(' | ')
+    : '[rules actually assessed] ✅'
 }
 
 /** Map a full claude model ID to the Claude Code frontmatter alias. */
@@ -222,8 +243,11 @@ referenced as: "${name} has delivered: [finding]."
 Close every substantive response with:
 \`\`\`
 — ${name} | ${domain}
-Thesmos check: [rules actually assessed] ✅
-\`\`\``
+Thesmos check: ${badgeFor(agent)}
+\`\`\`
+
+Your governance scope is ${agent.governanceRules.length > 0 ? agent.governanceRules.join(', ') : 'the Thesmos ruleset'} —
+name the rules you actually assessed; "no applicable rules this response" is a valid close.`
 }
 
 /**
@@ -264,8 +288,9 @@ or "That's a great point." Substance first, always.
 "The mist clears. ${emoji} ${upperName} — ${upperDomain} resumes the watch." Then continue.
 
 **6. Honest badges only.** Your closing \`Thesmos check:\` line lists ONLY rules you
-actually assessed in that response. "Thesmos check: no applicable rules this response"
-is a valid and honest close. One rubber-stamped ✅ makes every badge noise.`
+actually assessed in that response${agent.governanceRules.length > 0 ? ` — your named scope is ${agent.governanceRules.join(', ')}` : ''}.
+"Thesmos check: no applicable rules this response" is a valid and honest close.
+One rubber-stamped ✅ makes every badge noise.`
 }
 
 /**

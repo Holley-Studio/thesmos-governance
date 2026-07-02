@@ -166,6 +166,7 @@ export class AgentActivityTreeProvider
 
   private events: AgentActivityEvent[] = [];
   private readonly disposables: vscode.Disposable[] = [this._onDidChangeTreeData];
+  private staleTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(watcher: AgentActivityWatcher) {
     this.events = watcher.events;
@@ -173,8 +174,25 @@ export class AgentActivityTreeProvider
       watcher.onDidChange((events) => {
         this.events = events;
         this._onDidChangeTreeData.fire();
+        this.syncStaleTimer();
       }),
     );
+    this.syncStaleTimer();
+  }
+
+  /**
+   * Staleness is time-based, but the tree only re-renders on new events —
+   * a god whose completion never arrives would spin forever. While anything
+   * is running, re-render every 60s so the "timed out?" state actually shows.
+   */
+  private syncStaleTimer(): void {
+    const anyRunning = this.events.some((e) => e.type === 'spawn');
+    if (anyRunning && this.staleTimer === undefined) {
+      this.staleTimer = setInterval(() => this._onDidChangeTreeData.fire(), 60_000);
+    } else if (!anyRunning && this.staleTimer !== undefined) {
+      clearInterval(this.staleTimer);
+      this.staleTimer = undefined;
+    }
   }
 
   /** Group events into sessions; return last 3 sessions ordered newest-first. */
@@ -333,6 +351,7 @@ export class AgentActivityTreeProvider
   }
 
   dispose(): void {
+    if (this.staleTimer !== undefined) clearInterval(this.staleTimer);
     for (const d of this.disposables) d.dispose();
   }
 }

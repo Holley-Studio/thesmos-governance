@@ -91,11 +91,36 @@ process.stdin.on('end', () => {
       .update(`${sessionId}|${subagentType}|${String(input.description ?? '')}`)
       .digest('hex')
       .slice(0, 16);
-    const agentId = payload.tool_use_id ?? fallbackId;
+    let agentId = payload.tool_use_id ?? fallbackId;
 
     const existing = fs.existsSync(log)
       ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean)
       : [];
+
+    // Completion pairing: tool_use_id can be present on one side of the
+    // Pre/Post pair and absent on the other, filing the complete under a
+    // different id than the spawn — which leaves the god spinning forever.
+    // If no spawn exists under the incoming id, complete the newest running
+    // spawn with the same session/type/description fingerprint instead.
+    if (isPost) {
+      const parsed = existing
+        .slice(-KEEP_LOG_LINES)
+        .map((l) => { try { return JSON.parse(l); } catch { return null; } })
+        .filter(Boolean);
+      const hasSpawnForId = parsed.some((e) => e.type === 'spawn' && e.agentId === agentId);
+      if (!hasSpawnForId) {
+        const done = new Set(
+          parsed.filter((e) => e.type === 'complete' || e.type === 'error').map((e) => e.agentId),
+        );
+        const orphan = [...parsed].reverse().find((e) =>
+          e.type === 'spawn' &&
+          !done.has(e.agentId) &&
+          e.sessionId === sessionId &&
+          e.subagentType === subagentType &&
+          (e.description || '') === String(input.description ?? ''));
+        if (orphan) agentId = orphan.agentId;
+      }
+    }
 
     const out = [];
 
