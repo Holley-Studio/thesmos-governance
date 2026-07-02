@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 /**
  * Thesmos Agent Packager.
- * Bundles exported agent files into two downloadable ZIPs:
+ * Bundles exported agent files into downloadable ZIPs:
  *
- *   website/downloads/thesmos-starter-agents.zip  — 5 free agents, all platforms
- *   website/downloads/thesmos-pantheon-agents.zip — ALL agents, all platforms
+ *   website/downloads/thesmos-starter-agents.zip — 5 free agents, all platforms
+ *   dist-packs/thesmos-pantheon-agents.zip        — ALL agents (paid, Gumroad only)
+ *   dist-packs/thesmos-pantheon-founders.zip      — Founders vertical (paid, Gumroad only)
+ *   dist-packs/thesmos-pantheon-agencies.zip      — Agencies vertical (paid, Gumroad only)
  *
- * The full ZIP is the Gumroad product file. The starter ZIP is a free download.
- * Both ZIPs include per-platform INSTALL.md guides.
+ * Paid bundles are NOT committed to the repo or served from the public website —
+ * Gumroad is the only distribution channel for them (see Operation Clear Temple).
+ * The starter ZIP is the only one that ships from website/downloads/.
  *
  * Usage:
  *   tsx scripts/package-agents.ts
@@ -30,6 +33,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 const EXPORTS_DIR  = resolve(__dirname, '../../pantheon/exports')
 const DOWNLOADS_DIR = resolve(__dirname, '../../website/downloads')
+const DIST_PACKS_DIR = resolve(__dirname, '../../dist-packs')
 const TMP_DIR      = resolve(__dirname, '../../.tmp-pack')
 
 const FREE_AGENT_IDS = new Set([
@@ -446,7 +450,7 @@ The included .vsix file adds real-time governance findings directly into VS Code
 - Agent Activity sidebar panel — Zeus dispatching gods live, with progress verbs
 - Status bar routing chain (⚡ Zeus → 👁 Argus) while gods work
 - Adapter sync status and health score display
-- 1,075 rules across security, AI, performance, accessibility, and more
+- 1,137 rules across security, AI, performance, accessibility, and more
 
 Pair with the for-claude/ setup (PANTHEON.md + hooks) for the full theatrical
 experience — see for-claude/INSTALL.md.
@@ -464,7 +468,14 @@ function buildBundle(
   const bundleDir = join(TMP_DIR, bundleName)
   cleanDir(bundleDir)
 
-  let maxAgentCount = 0
+  // The reported "N agents" count must come from a platform that ships
+  // exactly one file per god with no orchestrator/council meta-files mixed
+  // in (claude-code is 1:1 with the catalog) — platforms like claude-project
+  // or chatgpt also bundle Zeus orchestrators and council bundles in the same
+  // directory, which would inflate a cross-platform max into counting
+  // meta-files as if they were agents.
+  const CANONICAL_COUNT_SOURCE = 'claude-code'
+  let canonicalAgentCount = 0
 
   const tier = filterFn === freeFilter ? 'starter' : 'pantheon'
 
@@ -481,8 +492,11 @@ function buildBundle(
     }
 
     const ids = collectAgentIds(srcDir, platform.ext, filterFn)
-      .filter(id => id !== 'AGENTS')
-    maxAgentCount = Math.max(maxAgentCount, ids.length)
+      // AGENTS.md is Codex's orchestrator convention file, not a per-god export.
+      // pantheon-council-free-gpt-store is the free public GPT Store listing —
+      // a separate marketing artifact, never bundled into a paid or vertical zip.
+      .filter(id => id !== 'AGENTS' && id !== 'pantheon-council-free-gpt-store')
+    if (platform.srcDir === CANONICAL_COUNT_SOURCE) canonicalAgentCount = ids.length
 
     for (const id of ids) {
       const src = join(srcDir, `${id}${platform.ext}`)
@@ -509,8 +523,8 @@ function buildBundle(
   writeFileSync(
     join(bundleDir, 'README.md'),
     vertical
-      ? VERTICAL_README(vertical.title, vertical.audience, maxAgentCount)
-      : ROOT_README(maxAgentCount, tier),
+      ? VERTICAL_README(vertical.title, vertical.audience, canonicalAgentCount)
+      : ROOT_README(canonicalAgentCount, tier),
     'utf-8',
   )
 
@@ -522,14 +536,20 @@ function buildBundle(
     writeFileSync(join(vsixDir, 'INSTALL.md'), VSIX_INSTALL_GUIDE, 'utf-8')
   }
 
-  ensureDir(DOWNLOADS_DIR)
-  const zipPath = join(DOWNLOADS_DIR, `${bundleName}.zip`)
+  // Only the free starter pack ships from the public website. Paid bundles
+  // (full Pantheon + verticals) go to dist-packs/ for manual Gumroad upload —
+  // never committed, never served from holley.studio (Operation Clear Temple).
+  const outDir = tier === 'starter' ? DOWNLOADS_DIR : DIST_PACKS_DIR
+  ensureDir(outDir)
+  const zipPath = join(outDir, `${bundleName}.zip`)
 
   if (existsSync(zipPath)) rmSync(zipPath)
 
+  // thesmos-disable-next-line shell_injection -- reason: TMP_DIR/zipPath/bundleName are compile-time constants derived from import.meta.url, never user input -- owner: @MHolley
+  // thesmos-disable-next-line child_process_shell_injection -- reason: same static constants, build script not shipped runtime -- owner: @MHolley
   execSync(`cd "${TMP_DIR}" && zip -r "${zipPath}" "${bundleName}"`, { stdio: 'pipe' })
 
-  return { agentCount: maxAgentCount, zipPath }
+  return { agentCount: canonicalAgentCount, zipPath }
 }
 
 function freeFilter(id: string): boolean {
@@ -557,23 +577,24 @@ function main(): void {
   console.log(`  ✅ Starter pack     ${starter.agentCount} agents/platform → website/downloads/thesmos-starter-agents.zip`)
 
   const full = buildBundle('thesmos-pantheon-agents', allFilter)
-  console.log(`  ✅ Full Pantheon    ${full.agentCount} agents/platform → website/downloads/thesmos-pantheon-agents.zip`)
+  console.log(`  ✅ Full Pantheon    ${full.agentCount} agents/platform → dist-packs/thesmos-pantheon-agents.zip`)
 
   const founders = buildBundle('thesmos-pantheon-founders', verticalFilter(FOUNDERS_PACK_IDS),
     { title: 'Founders Pack', audience: 'startup founders — strategy, sales, fundraising, product, and the legal/security guardrails around them' })
-  console.log(`  ✅ Founders pack    ${founders.agentCount} agents/platform → website/downloads/thesmos-pantheon-founders.zip`)
+  console.log(`  ✅ Founders pack    ${founders.agentCount} agents/platform → dist-packs/thesmos-pantheon-founders.zip`)
 
   const agencies = buildBundle('thesmos-pantheon-agencies', verticalFilter(AGENCIES_PACK_IDS),
     { title: 'Agencies Pack', audience: 'creative and marketing agencies — content, brand, campaigns, and full-stack creative production' })
-  console.log(`  ✅ Agencies pack    ${agencies.agentCount} agents/platform → website/downloads/thesmos-pantheon-agencies.zip`)
+  console.log(`  ✅ Agencies pack    ${agencies.agentCount} agents/platform → dist-packs/thesmos-pantheon-agencies.zip`)
 
   rmSync(TMP_DIR, { recursive: true, force: true })
 
   console.log('\n✅ Packaging complete.\n')
   console.log('Next steps:')
-  console.log('  1. Upload website/downloads/thesmos-pantheon-agents.zip to Gumroad as your paid product')
-  console.log('  2. Update the pro-tier CTA link in website/index.html with the Gumroad product URL')
-  console.log('  3. Commit both ZIPs to the repo\n')
+  console.log('  1. Upload dist-packs/thesmos-pantheon-agents.zip to Gumroad as the Full Pantheon product ($79)')
+  console.log('  2. Upload dist-packs/thesmos-pantheon-founders.zip and -agencies.zip as vertical products ($49 each)')
+  console.log('  3. Only website/downloads/thesmos-starter-agents.zip is committed to the repo — the paid')
+  console.log('     bundles in dist-packs/ are gitignored and distributed exclusively through Gumroad\n')
 }
 
 main()

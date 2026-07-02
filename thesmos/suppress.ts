@@ -118,10 +118,18 @@ export function parseSuppression(
  */
 export function extractSuppressions(content: string, filePath: string): Suppression[] {
   const lines = content.split('\n');
+  const isSuppressionLine = lines.map(
+    (l) => DISABLE_NEXT_LINE_RE.test(l) || DISABLE_FILE_RE.test(l)
+  );
   const suppressions: Suppression[] = [];
   for (let i = 0; i < lines.length; i++) {
     const s = parseSuppression(lines[i]!, i + 1, filePath);
-    if (s) suppressions.push(s);
+    if (!s) continue;
+    // Consecutive suppression comments chain to the next non-suppression line,
+    // so stacked comments can suppress multiple rules on one target line.
+    let target = i + 1; // 0-based index of the candidate suppressed line
+    while (target < lines.length && isSuppressionLine[target]) target++;
+    suppressions.push({ ...s, suppressedLine: target + 1 });
   }
   return suppressions;
 }

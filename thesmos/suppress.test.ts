@@ -471,3 +471,40 @@ describe('formatReviewWithSuppressions', () => {
     expect(out).toContain('1 suppressed');
   });
 });
+
+// ── extractSuppressions — stacked comment chaining ────────────────────────────
+
+describe('extractSuppressions — stacked comments chain to the next code line', () => {
+  it('two stacked suppressions both target the first non-suppression line', () => {
+    const content = [
+      '// thesmos-disable-next-line shell_injection -- reason: static constants -- owner: @test',
+      '// thesmos-disable-next-line child_process_shell_injection -- reason: static constants -- owner: @test',
+      'execSync(`cd "${TMP_DIR}" && zip -r "${zipPath}" "${bundleName}"`);',
+    ].join('\n');
+
+    const sups = extractSuppressions(content, 'scripts/pack.ts');
+    expect(sups).toHaveLength(2);
+    expect(sups[0]!.ruleId).toBe('shell_injection');
+    expect(sups[0]!.suppressedLine).toBe(3);
+    expect(sups[1]!.ruleId).toBe('child_process_shell_injection');
+    expect(sups[1]!.suppressedLine).toBe(3);
+  });
+
+  it('single suppression still targets the immediately following line', () => {
+    const content = [
+      'const a = 1;',
+      '// thesmos-disable-next-line console_log -- reason: temp',
+      'console.log(a);',
+    ].join('\n');
+    const sups = extractSuppressions(content, 'a.ts');
+    expect(sups).toHaveLength(1);
+    expect(sups[0]!.suppressedLine).toBe(3);
+  });
+
+  it('trailing suppression at end of file points past the last line without crashing', () => {
+    const content = 'const a = 1;\n// thesmos-disable-next-line console_log -- reason: temp';
+    const sups = extractSuppressions(content, 'a.ts');
+    expect(sups).toHaveLength(1);
+    expect(sups[0]!.suppressedLine).toBe(3);
+  });
+});

@@ -4,14 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Thesmos vs. CodeRabbit, Semgrep, Microsoft AGT — AI Governance Comparison 2026</title>
-  <meta name="description" content="How Thesmos compares to CodeRabbit ($24/user), Semgrep ($35/user), Microsoft Agent Governance Toolkit (free), and Knostic ($50K/year). Developer-first, 1,075 rules, mythology-powered agents." />
+  <meta name="description" content="How Thesmos compares to CodeRabbit ($24/user), Semgrep ($35/user), Microsoft Agent Governance Toolkit (free), and Knostic ($50K/year). Developer-first, 1,137 rules, mythology-powered agents." />
   <meta name="robots" content="index, follow" />
   <meta name="author" content="Holley Studios" />
   <link rel="canonical" href="https://github.com/Holley-Studio/thesmos-governance" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 90'%3E%3Cpath d='M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z' stroke='%23C9A84C' stroke-width='2.8' fill='none'/%3E%3Cpath d='M40 39 C36 32 31 25 34 15 C36 10 39 8 37 5 C45 10 47 22 42 31 C47 23 48 14 45 9 C52 20 50 32 44 39 Z' fill='%23F5C842'/%3E%3C/svg%3E" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Thesmos vs. CodeRabbit, Semgrep, Microsoft AGT" />
-  <meta property="og:description" content="The developer tool that solves false positives wins. Thesmos positions below Semgrep ($29/mo vs $35/mo) with deeper AI agent governance no competitor offers." />
+  <meta property="og:description" content="The developer tool that solves false positives wins. Thesmos CLI is free and open source; the 66-agent Pantheon is a $79 one-time purchase — no subscription, deeper AI agent governance no competitor offers." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;700&family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -148,7 +148,7 @@
     .position-box p { font-size: 15px; color: var(--t2); max-width: 600px; margin: 0 auto; line-height: 1.7; }
 
     /* ── Pricing strip ── */
-    .pricing-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .pricing-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
     @media (max-width: 860px) { .pricing-strip { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 480px) { .pricing-strip { grid-template-columns: 1fr; } }
     .tier-card {
@@ -216,6 +216,7 @@
       <a href="index.html#rules">Rules</a>
       <a href="vs.html" class="active">Compare</a>
       <a href="demo.html">Demo</a>
+      <a href="pricing.html">Pricing</a>
       <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
     </div>
     <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer" class="nav-cta">Get Thesmos</a>
@@ -266,21 +267,21 @@
         <tbody>
           <tr>
             <td>Price (developer tier)</td>
-            <td class="col-thesmos"><strong>$29/month</strong><span class="note">Pro; Community free</span></td>
+            <td class="col-thesmos"><strong>Free</strong><span class="note">CLI open source; Pantheon $79 one-time</span></td>
             <td>$24/month<span class="note">Pro plan</span></td>
             <td>$35/month<span class="note">per contributor</span></td>
             <td>Free<span class="note">MIT open source</span></td>
           </tr>
           <tr>
             <td>Governance rules</td>
-            <td class="col-thesmos"><span class="check">✓</span> 1,075+ rules<span class="note">78 categories, 10 languages</span></td>
+            <td class="col-thesmos"><span class="check">✓</span> 1,137+ rules<span class="note">78 categories, 10 languages</span></td>
             <td><span class="partial">~</span> AI-generated<span class="note">No static ruleset</span></td>
             <td><span class="check">✓</span> 20,000+<span class="note">High noise out-of-box</span></td>
             <td><span class="cross">✗</span> None<span class="note">Runtime policy, not rules</span></td>
           </tr>
           <tr>
             <td>AI agent governance</td>
-            <td class="col-thesmos"><span class="check">✓</span> Strong<span class="note">46 Pantheon agents, AGNT/MCP/RAG rules</span></td>
+            <td class="col-thesmos"><span class="check">✓</span> Strong<span class="note">66 Pantheon agents, AGNT/MCP/RAG rules</span></td>
             <td><span class="cross">✗</span> None</td>
             <td><span class="cross">✗</span> None</td>
             <td><span class="check">✓</span> Very strong<span class="note">OWASP Agentic Top 10, runtime</span></td>
@@ -301,7 +302,7 @@
           </tr>
           <tr>
             <td>Business operation agents</td>
-            <td class="col-thesmos"><span class="check">✓</span> 46 agents<span class="note">Zeus, Athena, Hermes, 43 more</span></td>
+            <td class="col-thesmos"><span class="check">✓</span> 66 agents<span class="note">Zeus, Athena, Hermes, 63 more</span></td>
             <td><span class="cross">✗</span> None</td>
             <td><span class="cross">✗</span> None</td>
             <td><span class="cross">✗</span> None</td>
@@ -343,7 +344,7 @@
           </tr>
           <tr>
             <td>Open source</td>
-            <td class="col-thesmos"><span class="check">✓</span> MIT<span class="note">Community tier free forever</span></td>
+            <td class="col-thesmos"><span class="check">✓</span> MIT<span class="note">CLI free forever; Pantheon $79 one-time</span></td>
             <td><span class="check">✓</span> Free for public repos</td>
             <td><span class="check">✓</span> OSS + paid</td>
             <td><span class="check">✓</span> MIT</td>
@@ -373,8 +374,8 @@
         <div class="vs-card-name">vs. CodeRabbit</div>
         <div class="vs-card-price">$24/user/month — AI-generated PR summaries</div>
         <ul>
-          <li><span class="icon g">+</span> Thesmos: 1,075 static rules vs. AI-generated (consistent, auditable)</li>
-          <li><span class="icon g">+</span> Thesmos: 46 Pantheon agents — CodeRabbit has no agent system</li>
+          <li><span class="icon g">+</span> Thesmos: 1,137 static rules vs. AI-generated (consistent, auditable)</li>
+          <li><span class="icon g">+</span> Thesmos: 66 Pantheon agents — CodeRabbit has no agent system</li>
           <li><span class="icon g">+</span> Thesmos: Smart dedup groups findings — CodeRabbit shows raw per-finding</li>
           <li><span class="icon g">+</span> Thesmos: Token budget, secrets vault, user profile memory</li>
           <li><span class="icon r">−</span> CodeRabbit: Simpler UX for quick PR summaries</li>
@@ -387,10 +388,10 @@
         <div class="vs-card-name">vs. Semgrep</div>
         <div class="vs-card-price">$35/contributor/month — 20,000+ SAST rules</div>
         <ul>
-          <li><span class="icon g">+</span> Thesmos: $6/month cheaper ($29 vs $35)</li>
+          <li><span class="icon g">+</span> Thesmos: Free &amp; open source vs. Semgrep's $35/month — no subscription required</li>
           <li><span class="icon g">+</span> Thesmos: AI agent governance Semgrep doesn't touch</li>
           <li><span class="icon g">+</span> Thesmos: Smart dedup — Semgrep is notoriously noisy</li>
-          <li><span class="icon g">+</span> Thesmos: VS Code Fix button, token meter, 46 Pantheon agents</li>
+          <li><span class="icon g">+</span> Thesmos: VS Code Fix button, token meter, 66 Pantheon agents</li>
           <li><span class="icon r">−</span> Semgrep: 20x more rules (but most are noisy)</li>
           <li><span class="icon r">−</span> Semgrep: Larger community, more integrations</li>
         </ul>
@@ -403,8 +404,8 @@
         <ul>
           <li><span class="icon g">+</span> Microsoft AGT: Runtime enforcement while agents execute (LangChain, CrewAI)</li>
           <li><span class="icon g">+</span> Thesmos: Development-time governance — what agents write and how</li>
-          <li><span class="icon g">+</span> Thesmos: 1,075 code quality rules vs. AGT's zero</li>
-          <li><span class="icon g">+</span> Thesmos: 46 business operation agents vs. AGT's SDK-only approach</li>
+          <li><span class="icon g">+</span> Thesmos: 1,137 code quality rules vs. AGT's zero</li>
+          <li><span class="icon g">+</span> Thesmos: 66 business operation agents vs. AGT's SDK-only approach</li>
           <li><span class="icon g">+</span> These solve different problems — use both, don't choose</li>
         </ul>
         <div class="vs-card-verdict">Verdict: Not competing. Microsoft AGT governs what agents do at runtime. Thesmos governs the quality and safety of code agents produce at development time. The best teams use both.</div>
@@ -415,7 +416,7 @@
         <div class="vs-card-price">$50,000/year — Enterprise AI security, prompt injection firewall</div>
         <ul>
           <li><span class="icon g">+</span> Knostic: Real-time prompt injection firewall, DLP</li>
-          <li><span class="icon g">+</span> Thesmos: $29/month vs. $50,000/year (170x cheaper)</li>
+          <li><span class="icon g">+</span> Thesmos: Free CLI, or $79 one-time for the full Pantheon vs. $50,000/year (a fraction of the cost)</li>
           <li><span class="icon g">+</span> Thesmos: Developer-first vs. Knostic's enterprise-only model</li>
           <li><span class="icon g">+</span> Thesmos: MIT open source core — Knostic is closed</li>
           <li><span class="icon r">−</span> Knostic: Enterprise buyer (Fortune 500) — different market</li>
@@ -443,8 +444,8 @@
 
       <div class="diff-card">
         <div class="diff-icon">⚡</div>
-        <div class="diff-title">46 Pantheon business agents</div>
-        <div class="diff-body">Zeus, Athena, Hermes, Daedalus — plus 42 more. No competitor has an agent system for business operations. Strategy, marketing, engineering, finance, legal — all as structured AI agents with governance protocols.</div>
+        <div class="diff-title">66 Pantheon business agents</div>
+        <div class="diff-body">Zeus, Athena, Hermes, Daedalus — plus 62 more. No competitor has an agent system for business operations. Strategy, marketing, engineering, finance, legal — all as structured AI agents with governance protocols.</div>
       </div>
 
       <div class="diff-card">
@@ -479,60 +480,47 @@
 <section>
   <div class="wrap">
     <div class="section-label">Pricing</div>
-    <h2 class="section-title">Below Semgrep. Above CodeRabbit.</h2>
-    <p class="section-sub">Positioned at $29/month — below Semgrep ($35) to capture teams fatigued by noise, above CodeRabbit ($24) to reflect the additional depth.</p>
+    <h2 class="section-title">Free tool. One-time Pantheon.</h2>
+    <p class="section-sub">No subscriptions, ever. The governance CLI is free and open source forever — the 66-agent Pantheon is a single one-time purchase, not a monthly fee.</p>
 
     <div class="pricing-strip" data-r>
       <div class="tier-card">
-        <div class="tier-name">Community</div>
-        <div class="tier-price">$0 <span>/ month</span></div>
-        <div class="tier-tag">MIT forever</div>
+        <div class="tier-name">Thesmos CLI</div>
+        <div class="tier-price">$0 <span>forever</span></div>
+        <div class="tier-tag">Free &amp; open source</div>
         <ul class="tier-features">
           <li>Core CLI (scan, fix, validate)</li>
-          <li>500 core governance rules</li>
-          <li>10 core Pantheon agents</li>
+          <li>1,137 governance rules</li>
+          <li>5 free Pantheon agents (Zeus, Athena, Argus, Apollo, Hephaestus)</li>
           <li>PR summary comment</li>
           <li>Community support</li>
         </ul>
+        <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener" class="btn-ghost" style="margin-top:auto;text-align:center;">npm install -g thesmos-governance</a>
       </div>
       <div class="tier-card featured">
-        <div class="tier-name">Pro</div>
-        <div class="tier-price">$29 <span>/ month</span></div>
+        <div class="tier-name">Full Pantheon</div>
+        <div class="tier-price">$79 <span>one-time</span></div>
         <div class="tier-tag">Most popular</div>
         <ul class="tier-features">
-          <li>All 1,075+ rules</li>
-          <li>All 46 Pantheon agents</li>
-          <li>Inline PR comments + SARIF</li>
-          <li>VS Code diagnostics + Fix button</li>
-          <li>secrets:vault + profile memory</li>
-          <li>EU AI Act footer</li>
+          <li>All 66 Pantheon agent personas</li>
+          <li>10 platforms (Claude Code, Claude.ai, ChatGPT, Assistants, Codex, Gemini, Cursor, Copilot, Figma, VS Code)</li>
+          <li>Agent Teams + pantheon:council multi-agent</li>
+          <li>Zeus orchestrators + council bundles</li>
+          <li>Lifetime updates — no renewal, ever</li>
         </ul>
+        <a href="https://holleystudio.gumroad.com/l/thesmos-pantheon" target="_blank" rel="noopener" class="btn-primary" style="margin-top:auto;text-align:center;">Get Full Pantheon — $79 →</a>
       </div>
       <div class="tier-card">
-        <div class="tier-name">Team</div>
-        <div class="tier-price">$99 <span>/ user / mo</span></div>
-        <div class="tier-tag">Min 3 seats</div>
+        <div class="tier-name">Vertical Packs</div>
+        <div class="tier-price">$49 <span>each</span></div>
+        <div class="tier-tag">Founders · Agencies</div>
         <ul class="tier-features">
-          <li>Everything in Pro</li>
-          <li>Agent Teams (5 mythology teams)</li>
-          <li>pantheon:council multi-agent</li>
-          <li>Shared team governance baseline</li>
-          <li>Slack/webhook notifications</li>
-          <li>PR trend tracking dashboard</li>
+          <li>Curated subset of the Pantheon for one vertical</li>
+          <li>Founders Pack (strategy, fundraising, GTM agents)</li>
+          <li>Agencies Pack (client ops, delivery, creative agents)</li>
+          <li>One-time purchase, lifetime updates</li>
         </ul>
-      </div>
-      <div class="tier-card">
-        <div class="tier-name">Enterprise</div>
-        <div class="tier-price">Custom</div>
-        <div class="tier-tag">$300+/seat/year</div>
-        <ul class="tier-features">
-          <li>Everything in Team</li>
-          <li>SSO (SAML, Okta)</li>
-          <li>EU AI Act Article 12 export</li>
-          <li>Private MCP server deployment</li>
-          <li>Custom rule packs</li>
-          <li>Dedicated CSM + SLA</li>
-        </ul>
+        <a href="https://holleystudio.gumroad.com/l/thesmos-pantheon" target="_blank" rel="noopener" class="btn-ghost" style="margin-top:auto;text-align:center;">Browse packs →</a>
       </div>
     </div>
   </div>
@@ -543,7 +531,7 @@
   <div class="wrap" style="text-align: center;">
     <div class="section-label">Get started</div>
     <h2 class="section-title">Try Thesmos free — no card required</h2>
-    <p class="section-sub" style="margin: 0 auto 0;">Community tier is MIT-licensed and free forever. Install in 30 seconds.</p>
+    <p class="section-sub" style="margin: 0 auto 0;">Thesmos CLI is MIT-licensed and free forever. Install in 30 seconds.</p>
     <div class="cta-row">
       <a href="https://github.com/Holley-Studio/thesmos-governance" target="_blank" rel="noopener noreferrer" class="btn-primary">Get Thesmos →</a>
       <a href="demo.html" class="btn-ghost">See the demo</a>

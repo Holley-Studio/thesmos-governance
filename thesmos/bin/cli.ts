@@ -20,6 +20,7 @@ import { cmdSkillCreate } from './commands/skill-create.ts';
 import { cmdDrift } from './commands/drift.ts';
 import { cmdBaseline } from './commands/baseline.ts';
 import { cmdExplain } from './commands/explain.ts';
+import { cmdAdvise } from './commands/advise.ts';
 import { cmdSuppressions } from './commands/suppressions.ts';
 import { cmdMetrics } from './commands/metrics.ts';
 import { cmdPacks } from './commands/packs.ts';
@@ -85,6 +86,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'baseline:update': (argv) => cmdBaseline('update', argv),
   'baseline:report': (argv) => cmdBaseline('report', argv),
   explain: cmdExplain,
+  advise: cmdAdvise,
   'suppressions:audit': (argv) => cmdSuppressions('audit', argv),
   metrics: cmdMetrics,
   'pack:list': (argv) => cmdPacks('list', argv),
@@ -506,6 +508,11 @@ DIAGNOSTICS
   audit                    Detailed file-level audit report
   ci-check                 Adapter freshness CI check (legacy; use 'ci' instead)
 
+PLANNING
+  advise <plan-file>       Recommend a model + Pantheon agents to execute a plan
+  advise --text="..."      Same, for inline text instead of a file
+    --json                   Machine-readable JSON output
+
 GLOBAL FLAGS
   --json                   Machine-readable JSON output
   --markdown               Markdown output (great for PR comments)
@@ -515,6 +522,7 @@ EXAMPLES
   thesmos scan && thesmos validate --base=main
   thesmos ci --base=main --health-threshold=75
   thesmos explain missing_api_auth
+  thesmos advise plans/my-feature.md
   thesmos baseline:create && thesmos validate
   thesmos metrics --record
   thesmos fix --apply

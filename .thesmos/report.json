@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-02T03:41:14.193Z",
+  "generatedAt": "2026-07-02T17:17:22.547Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -39,6 +39,7 @@
     "extensions/vscode/src/__tests__/sanitizer.test.ts",
     "extensions/vscode/src/__tests__/watcher.test.ts",
     "thesmos/adapters.test.ts",
+    "thesmos/advise.test.ts",
     "thesmos/ai-lint.test.ts",
     "thesmos/autopilot/calibration.test.ts",
     "thesmos/autopilot/conventions.test.ts",
@@ -74,6 +75,7 @@
     "thesmos/registry.test.ts",
     "thesmos/report.test.ts",
     "thesmos/review.test.ts",
+    "thesmos/rules/agents.test.ts",
     "thesmos/rules/commits.test.ts",
     "thesmos/rules/csharp.test.ts",
     "thesmos/rules/dast.test.ts",
@@ -81,11 +83,14 @@
     "thesmos/rules/design.test.ts",
     "thesmos/rules/django.test.ts",
     "thesmos/rules/dockerfile.test.ts",
+    "thesmos/rules/eu-ai-act.test.ts",
     "thesmos/rules/github-actions.test.ts",
     "thesmos/rules/go.test.ts",
+    "thesmos/rules/helpers.test.ts",
     "thesmos/rules/java.test.ts",
     "thesmos/rules/jwt.test.ts",
     "thesmos/rules/k8s.test.ts",
+    "thesmos/rules/license.test.ts",
     "thesmos/rules/mcp.test.ts",
     "thesmos/rules/php.test.ts",
     "thesmos/rules/prototype.test.ts",
@@ -132,7 +137,7 @@
     },
     {
       "file": "thesmos/rules/agents.ts",
-      "lines": 1421
+      "lines": 1424
     },
     {
       "file": "thesmos/rules/vibe-coding.ts",
@@ -352,14 +357,14 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 378,
-      "lineCount": 100475
+      "fileCount": 381,
+      "lineCount": 128025
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 297,
-      "lineCount": 119417
+      "fileCount": 304,
+      "lineCount": 120512
     },
     {
       "language": "JavaScript",

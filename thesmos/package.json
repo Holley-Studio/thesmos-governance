@@ -119,6 +119,7 @@
     "thesmos:baseline:update": "tsx bin/cli.ts baseline:update",
     "thesmos:baseline:report": "tsx bin/cli.ts baseline:report",
     "thesmos:explain": "tsx bin/cli.ts explain",
+    "thesmos:advise": "tsx bin/cli.ts advise",
     "thesmos:suppressions:audit": "tsx bin/cli.ts suppressions:audit",
     "thesmos:metrics": "tsx bin/cli.ts metrics",
     "thesmos:pack:list": "tsx bin/cli.ts pack:list",

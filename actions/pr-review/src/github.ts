@@ -12,6 +12,7 @@ import * as core from '@actions/core';
 import * as gh from '@actions/github';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { stripGeneratedRegions } from 'thesmos-governance';
 import type { ChangedFile, InlineComment } from './types.js';
 import { SUMMARY_MARKER } from './formatter.js';
 
@@ -67,12 +68,16 @@ export async function getChangedFiles(
   octokit: Octokit,
   ctx: PullRequestContext,
   workspace: string,
+  reviewIgnorePaths: string[] = [],
 ): Promise<ChangedFile[]> {
   const files: ChangedFile[] = [];
 
   // Directories whose contents should never be reviewed — they contain
   // governance rule templates that intentionally describe bad patterns.
+  // The repo's own config.reviewIgnorePaths (prefix-match) merges in so
+  // the action honors the same exclusions as the CLI gates.
   const IGNORED_PREFIXES = [
+    ...reviewIgnorePaths,
     '.claude/',
     '.thesmos/',
     '.cursor/',
@@ -116,7 +121,10 @@ export async function getChangedFiles(
 
       let content: string;
       try {
-        content = readFileSync(absPath, 'utf8');
+        // Generated sections (CLAUDE.md rules tables etc.) document rule
+        // patterns as text — strip them (line count preserved) so the rules
+        // they describe do not fire on their own documentation.
+        content = stripGeneratedRegions(readFileSync(absPath, 'utf8'));
       } catch {
         core.debug(`Skipping unreadable file: ${file.filename}`);
         continue;

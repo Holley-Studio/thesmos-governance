@@ -112,9 +112,18 @@ async function run(): Promise<void> {
     const octokit = gh.getOctokit(inputs.githubToken);
 
     // ── 3. Changed files ───────────────────────────────────────────────────
+    // Config loads before file collection so the repo's reviewIgnorePaths
+    // (e.g. rule-definition sources that intentionally contain the patterns
+    // they detect) are honored by the action, not just the CLI gates.
+    const config = loadThesmosConfig(workspace);
 
     core.info('Fetching changed files from GitHub API…');
-    const changedFiles = await getChangedFiles(octokit, ctx, workspace);
+    const changedFiles = await getChangedFiles(
+      octokit,
+      ctx,
+      workspace,
+      config.reviewIgnorePaths ?? [],
+    );
     core.info(`Found ${changedFiles.length} changed file(s) to review`);
 
     if (changedFiles.length === 0) {
@@ -127,7 +136,6 @@ async function run(): Promise<void> {
     // ── 4. Scan workspace ──────────────────────────────────────────────────
 
     core.info('Scanning workspace…');
-    const config = loadThesmosConfig(workspace);
     const scan = runScanner(workspace, config);
     core.debug(`Scan complete: ${scan.componentCount} components, ${scan.apiRoutes.length} API routes`);
 
