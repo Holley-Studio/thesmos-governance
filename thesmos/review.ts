@@ -13,6 +13,7 @@ import type { Finding, ThesmosConfig, ScanResult } from './types';
 import { THESMOS_RULES } from './rules/registry';
 import { applySuppressions, extractSuppressions, type Suppression } from './suppress.js';
 import { sortFindings, SEVERITY_EMOJI } from './severity';
+import { confidenceTag } from './gate.js';
 import { toSarif } from './sarif.js';
 import { makeLogger } from './logger.js';
 
@@ -62,7 +63,12 @@ export function runReview(
   for (const rule of activeRules) {
     const t0 = Date.now();
     try {
-      findings.push(...rule.detect(input));
+      // Stamp each finding with its rule's confidence tier so gates and
+      // formatters downstream can distinguish proof from heuristic.
+      const ruleConfidence = rule.confidence ?? 'high';
+      for (const f of rule.detect(input)) {
+        findings.push(f.confidence ? f : { ...f, confidence: ruleConfidence });
+      }
       const elapsed = Date.now() - t0;
       if (elapsed > 100) log.warn('slow rule', { rule: rule.id, durationMs: elapsed });
     } catch (e) {
@@ -117,7 +123,8 @@ export function formatFindingsConsole(
   for (const f of findings) {
     const emoji = SEVERITY_EMOJI[f.severity];
     const loc = f.line ? `:${f.line}` : '';
-    lines.push(`  ${emoji} ${f.severity.padEnd(10)}  ${f.category}`);
+    const tag = confidenceTag(f);
+    lines.push(`  ${emoji} ${f.severity.padEnd(10)}  ${f.category}${tag ? ` ${tag}` : ''}`);
     lines.push(`     ${f.file}${loc}`);
     lines.push(`     ${f.message}`);
     if (f.suggestion) lines.push(`     → ${f.suggestion}`);

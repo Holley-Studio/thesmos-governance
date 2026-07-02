@@ -226,6 +226,11 @@ export type {
 
 export { stripGeneratedRegions } from './rules/helpers.js';
 
+// ── Gate semantics (confidence tiers) ─────────────────────────────────────────
+
+export { partitionByConfidence, confidenceTag } from './gate.js';
+export type { ConfidencePartition } from './gate.js';
+
 // ── Suppressions ──────────────────────────────────────────────────────────────
 
 export {

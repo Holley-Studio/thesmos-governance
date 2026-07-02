@@ -120,6 +120,13 @@ export interface ThesmosConfig {
    * describe. Default: [] (nothing excluded).
    */
   reviewIgnorePaths: string[];
+  /**
+   * Minimum rule-confidence tier whose findings can FAIL a gate
+   * (validate/ci/PR action). Findings below the tier still appear in output,
+   * tagged, but never flip the exit code. 'medium' (default) gates high and
+   * medium; 'high' gates only near-certain detections; 'low' gates everything.
+   */
+  gate: { minConfidence: Confidence };
   largeFileThreshold: number;
   criticalLibPaths: string[];
   requiredFiles: string[];
@@ -222,6 +229,15 @@ export interface ThesmosConfig {
   };
 }
 
+/**
+ * Detection confidence tier. `high` = the pattern is near-certain proof
+ * (e.g. a committed secret); `medium` = a shape heuristic that can misfire
+ * on innocent code (e.g. exec + template literal with static interpolants);
+ * `low` = keyword/presence signals that suggest rather than demonstrate.
+ * Rules without an explicit tier are treated as `high` (preserves behavior).
+ */
+export type Confidence = 'high' | 'medium' | 'low';
+
 export interface Finding {
   severity: Severity;
   file: string;
@@ -229,6 +245,8 @@ export interface Finding {
   category: string;
   message: string;
   suggestion?: string;
+  /** Carried from the emitting rule at review time; absent = high. */
+  confidence?: Confidence;
 }
 
 export interface AuditFinding {
@@ -355,6 +373,8 @@ export interface ThesmosRule {
   example?: string;
   sinceVersion: string;
   explain?: RuleExplanation;
+  /** Detection confidence tier — absent means 'high'. See Confidence. */
+  confidence?: Confidence;
   detect(input: DetectInput): Finding[];
 }
 

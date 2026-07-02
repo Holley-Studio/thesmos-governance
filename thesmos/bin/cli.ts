@@ -184,6 +184,9 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'brain:promote':          (argv) => cmdBrain(['promote', ...argv]),
   'prompt:list':            (argv) => cmdPrompt(['list', ...argv]),
   'prompt:show':            (argv) => cmdPrompt(['show', ...argv]),
+  // prompt:render is the honest name — it interpolates variables and prints;
+  // it does not execute anything. prompt:run remains as a deprecated alias.
+  'prompt:render':          (argv) => cmdPrompt(['run', ...argv]),
   'prompt:run':             (argv) => cmdPrompt(['run', ...argv]),
   'prompt:suggest':         ()     => cmdPrompt(['suggest']),
   'prompt:import':          (argv) => cmdPrompt(['import', ...argv]),

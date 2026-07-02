@@ -111,14 +111,16 @@ a dispatch with no return feels like dropped work:
 — Zeus | Executive Orchestration
 ```
 
-### Execution Advisory + Kickoff Prompt (required when presenting a plan for approval)
+### Execution Advisory + Kickoff (required when presenting a plan for approval)
 
 When presenting any plan for approval (ExitPlanMode or equivalent), close it with two blocks:
 
 1. **`⚡ EXECUTION ADVISORY`** — recommended model and the Pantheon agents fit to execute each workstream. Be realistic (AGNT_031): default to Sonnet; recommend Fable only for architecture-heavy or creative/customer-facing work; state the cost multiple (Fable ≈ 5x Sonnet, Sonnet ≈ 5x Haiku).
-2. **`📋 KICKOFF PROMPT`** — a copy-pasteable prompt in a fenced code block that starts execution: names the plan file path, the recommended model (as a `/model` line), the implementation order, and any constraints. A user pasting only that prompt into a fresh session must be able to start the work.
+2. **`📋 KICKOFF — Operation <Name>`** — every plan gets a mythic operation name. The kickoff has TWO steps that are never mixed:
+   - **STEP 1 (human commands, outside the paste):** per-platform model-selection lines — `/model <id>` for Claude Code and Codex CLI, dropdown guidance for IDEs. Slash commands are tool-level; a paste that starts with one is intercepted and rejected wholesale, so **no slash command may ever appear inside the paste body**.
+   - **STEP 2 (the paste body):** a `⚡ ZEUS — DISPATCH ORDER` block containing the plan file path, a model self-check line ("state your model; flag if lighter"), per-phase god assignments with spawn timing (subagents where the platform supports them, persona-channeling elsewhere), the delegation doctrine, and the verify-before-PR constraint.
 
-Run `thesmos advise <plan-file>` to generate both blocks mechanically — it's a deterministic heuristic (no LLM call), so it's free to run and reproducible. Its agent suggestions come from `thesmos/catalog/pantheon-map.json`.
+Run `thesmos advise <plan-file>` to generate all of it mechanically — deterministic heuristic, no LLM call, same plan text always yields the same operation name. Agent suggestions come from `thesmos/catalog/pantheon-map.json`.
 
 _Add project-specific context above the generated section._
 

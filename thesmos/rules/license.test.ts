@@ -87,3 +87,49 @@ describe('LIC_002 — lic_unknown_license', () => {
     expect(findings[0]?.message).toContain('no-license-pkg');
   });
 });
+
+// ── LIC_001 — GPL line attribution ────────────────────────────────────────────
+
+describe('LIC_001 — lic_gpl_in_commercial line attribution', () => {
+  const PKG = [
+    '{',
+    '  "name": "commercial-app",',
+    '  "license": "MIT",',
+    '  "dependencies": {',
+    '    "safe-pkg": "^1.0.0",',
+    '    "gpl-pkg": "^2.0.0"',
+    '  }',
+    '}',
+  ].join('\n');
+
+  const LOCK = JSON.stringify({
+    lockfileVersion: 3,
+    packages: {
+      'node_modules/gpl-pkg': { version: '2.0.0', license: 'GPL-3.0' },
+      'node_modules/safe-pkg': { version: '1.0.0', license: 'MIT' },
+    },
+  });
+
+  it('attaches the package.json line of the offending dependency', () => {
+    const findings = detect('LIC_001', [
+      { path: 'package.json', content: PKG },
+      { path: 'package-lock.json', content: LOCK },
+    ]);
+    expect(findings).toHaveLength(1);
+    // "gpl-pkg": "^2.0.0" sits on line 6 of the fixture — a NEW gating
+    // BLOCKER under the diff-aware partition when this PR added the dep.
+    expect(findings[0]?.line).toBe(6);
+    expect(findings[0]?.file).toBe('package.json');
+  });
+
+  it('keeps line undefined when the dep name is not locatable in package.json', () => {
+    // GPL dep present in the lockfile only (transitive) — not in package.json.
+    const pkgNoDep = '{\n  "name": "commercial-app",\n  "license": "MIT"\n}';
+    const findings = detect('LIC_001', [
+      { path: 'package.json', content: pkgNoDep },
+      { path: 'package-lock.json', content: LOCK },
+    ]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.line).toBeUndefined();
+  });
+});

@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Node ≥20](https://img.shields.io/node/v/thesmos-governance)](https://nodejs.org)
 
-**1035 rules. Zero config. Built for the AI-assisted engineering era.**
+**1,137 rules. Zero config. Built for the AI-assisted engineering era.**
 
 Thesmos is an open-source code governance toolkit that watches AI-generated code for security holes, broken patterns, and architectural mistakes — before they reach production.
 
@@ -17,7 +17,7 @@ Thesmos is an open-source code governance toolkit that watches AI-generated code
 
 AI tools write code faster than humans can review it. Copilot, Cursor, and Claude can ship working features in minutes — but they also hallucinate Prisma clients outside module scope, concatenate user input directly into LLM prompts, and create N+1 query waterfalls without a second thought.
 
-Thesmos closes that gap. 1035 governance rules covering AI safety, security, performance, and correctness — active the moment you install.
+Thesmos closes that gap. 1,137 governance rules covering AI safety, security, performance, and correctness — active the moment you install.
 
 ---
 
@@ -88,7 +88,25 @@ Install from the `extensions/vscode/` directory for:
 
 ---
 
-## The 1035 Rules
+## Beyond the scanner
+
+The rules engine is the front door — behind it ships a full governance platform:
+
+| Surface | What it does |
+|---|---|
+| **Diff-aware PR gate** | The GitHub Action blocks only on findings from lines your PR changed — pre-existing debt reports, never blocks. Baseline, inline suppressions, and confidence tiers honored identically across every gate ([the gate contract](docs/gating.md)) |
+| **Pantheon** | 66 specialist AI agent personas orchestrated by Zeus — `thesmos pantheon:*` |
+| **Autopilot** | Plan-file-driven autonomous execution on an isolated branch with journaling and one-command revert — `thesmos autopilot:*` |
+| **Brain** | Institutional memory that observes findings, learns patterns, and proposes new rules for human approval — `thesmos brain:*` |
+| **MCP server** | Governs AI agents *before* they write — `thesmos mcp:serve` |
+| **Builder wizard** | Scaffolds governed agents, skills, RAG pipelines, and MCP tools — `thesmos build:*` |
+| **Execution advisor** | Recommends the right model + agents for a plan, generates a paste-ready kickoff — `thesmos advise <plan>` |
+| **Compliance packs** | GDPR, EU AI Act, HIPAA, DORA rule sets with audit-trail tooling — `thesmos compliance:report`, `agent:audit:*` |
+| **Cost & scope guards** | Token budgets with hard stops, agent scope boundaries, 1M-context guard — `thesmos tokens:*`, `scope:*` |
+
+---
+
+## The 1,137 Rules
 
 Rules are organized into 17 categories:
 
@@ -157,7 +175,7 @@ thesmos-governance/
 │   └── index.html
 ├── thesmos/           npm package — CLI + core engine
 │   ├── bin/             CLI entry points (scan, review, audit, init, watch)
-│   ├── catalog/         1035 rules organized by category
+│   ├── catalog/         1,137 rules organized by category
 │   ├── index.ts         Public API
 │   ├── metrics.ts       Health grade calculation
 │   └── report.ts        Report generation
