@@ -71,7 +71,10 @@ jobs:
 
       - name: Bump package version
         working-directory: thesmos
-        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+        # --allow-same-version: package.json may already sit at the tag's
+        # version (e.g. bumped ahead of time in a prior PR) -- npm version
+        # otherwise hard-errors with "Version not changed" and blocks release.
+        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version --allow-same-version
 
       - name: Publish
         working-directory: thesmos
@@ -112,7 +115,7 @@ jobs:
 
       - name: Bump extension version
         working-directory: extensions/vscode
-        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version --allow-same-version
 
       - name: Build extension
         working-directory: extensions/vscode
@@ -157,7 +160,7 @@ jobs:
 
       - name: Bump package version (matches what release just published)
         working-directory: thesmos
-        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version --allow-same-version
 
       - name: Build
         working-directory: thesmos
