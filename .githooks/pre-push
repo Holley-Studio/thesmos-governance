@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# .githooks/pre-push — triggers a Google Drive backup only when a push
+# includes refs/heads/main. Installed via:
+#   git config core.hooksPath .githooks
+# See docs/backup-recovery.md for full setup and rationale.
+#
+# Runs the backup in the background so `git push` never waits on network
+# I/O. Set THESMOS_BACKUP_STRICT=1 to run synchronously and fail the push
+# if the backup fails (rare — only when you want a hard guarantee first).
+set -uo pipefail
+
+push_main=false
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    push_main=true
+  fi
+done
+
+$push_main || exit 0
+
+repo_root="$(git rev-parse --show-toplevel)"
+backup_script="$repo_root/scripts/backup-to-drive.sh"
+
+if [ "${THESMOS_BACKUP_STRICT:-0}" = "1" ]; then
+  bash "$backup_script"
+  exit $?
+fi
+
+nohup bash "$backup_script" >>"$repo_root/.git/thesmos-backup.log" 2>&1 &
+disown
+exit 0

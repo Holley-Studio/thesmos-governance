@@ -18,7 +18,11 @@
     "thesmos:adapters": "tsx thesmos/bin/cli.ts adapters",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "npm run build:lib && changeset publish"
+    "release": "npm run build:lib && changeset publish",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "backup:now": "bash scripts/backup-to-drive.sh",
+    "backup:status": "tail -20 .git/thesmos-backup.log",
+    "backup:restore": "bash scripts/restore-from-drive.sh"
   },
   "workspaces": [
     "thesmos",
