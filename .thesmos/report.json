@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-03T13:15:13.542Z",
+  "generatedAt": "2026-07-03T13:25:20.516Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -305,6 +305,7 @@
   ],
   "riskyFiles": [],
   "scriptFiles": [
+    "scripts/build-product-json.mjs",
     "scripts/github-setup.sh"
   ],
   "envFiles": [
@@ -373,7 +374,7 @@
       "language": "Other",
       "extension": "",
       "fileCount": 393,
-      "lineCount": 121721
+      "lineCount": 121770
     },
     {
       "language": "TypeScript",
@@ -384,8 +385,8 @@
     {
       "language": "JavaScript",
       "extension": ".js",
-      "fileCount": 3,
-      "lineCount": 102
+      "fileCount": 4,
+      "lineCount": 244
     }
   ],
   "detectedStacks": [
