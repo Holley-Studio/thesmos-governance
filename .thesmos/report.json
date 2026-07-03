@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-02T17:17:22.547Z",
+  "generatedAt": "2026-07-03T05:34:03.324Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -35,8 +35,11 @@
     "thesmos/brain-store.ts"
   ],
   "testFiles": [
+    "actions/pr-review/src/diff-lines.test.ts",
     "actions/pr-review/src/formatter.test.ts",
+    "actions/pr-review/src/partition.test.ts",
     "extensions/vscode/src/__tests__/sanitizer.test.ts",
+    "extensions/vscode/src/__tests__/severityFilter.test.ts",
     "extensions/vscode/src/__tests__/watcher.test.ts",
     "thesmos/adapters.test.ts",
     "thesmos/advise.test.ts",
@@ -51,9 +54,11 @@
     "thesmos/bin/commands/diff.test.ts",
     "thesmos/bin/commands/pack-create.test.ts",
     "thesmos/bin/commands/pack-publish.test.ts",
+    "thesmos/bin/commands/review-baseline.test.ts",
     "thesmos/bin/commands/review.test.ts",
     "thesmos/bin/commands/scan.test.ts",
     "thesmos/bin/lib/args.test.ts",
+    "thesmos/bin/lib/git.test.ts",
     "thesmos/catalog.test.ts",
     "thesmos/ci-check.test.ts",
     "thesmos/config.test.ts",
@@ -63,6 +68,7 @@
     "thesmos/drift.test.ts",
     "thesmos/explain.test.ts",
     "thesmos/fix.test.ts",
+    "thesmos/gate.test.ts",
     "thesmos/hardening.test.ts",
     "thesmos/health.test.ts",
     "thesmos/hooks.test.ts",
@@ -103,6 +109,7 @@
     "thesmos/rules/supply-chain.test.ts",
     "thesmos/rules/terraform.test.ts",
     "thesmos/rules/vercel.test.ts",
+    "thesmos/rules/vibe-coding.test.ts",
     "thesmos/rules/websocket.test.ts",
     "thesmos/scanner/files.test.ts",
     "thesmos/scanner/routes.test.ts",
@@ -121,11 +128,11 @@
     },
     {
       "file": "thesmos/rules/security.ts",
-      "lines": 1698
+      "lines": 1705
     },
     {
       "file": "thesmos/rules/ai.ts",
-      "lines": 1672
+      "lines": 1675
     },
     {
       "file": "thesmos/rules/nextjs.ts",
@@ -137,11 +144,11 @@
     },
     {
       "file": "thesmos/rules/agents.ts",
-      "lines": 1424
+      "lines": 1433
     },
     {
       "file": "thesmos/rules/vibe-coding.ts",
-      "lines": 1403
+      "lines": 1415
     },
     {
       "file": "thesmos/rules/database.ts",
@@ -169,7 +176,7 @@
     },
     {
       "file": "thesmos/rules/node.ts",
-      "lines": 1101
+      "lines": 1108
     },
     {
       "file": "thesmos/rules/performance.ts",
@@ -232,6 +239,10 @@
       "lines": 906
     },
     {
+      "file": "thesmos/scripts/export-agents.ts",
+      "lines": 893
+    },
+    {
       "file": "thesmos/rules/go.ts",
       "lines": 871
     },
@@ -286,6 +297,10 @@
     {
       "file": "thesmos/rules/csharp.test.ts",
       "lines": 805
+    },
+    {
+      "file": "extensions/vscode/src/extension.ts",
+      "lines": 803
     }
   ],
   "riskyFiles": [],
@@ -357,20 +372,20 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 381,
-      "lineCount": 128025
+      "fileCount": 395,
+      "lineCount": 124248
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 304,
-      "lineCount": 120512
+      "fileCount": 314,
+      "lineCount": 122542
     },
     {
       "language": "JavaScript",
       "extension": ".js",
-      "fileCount": 2,
-      "lineCount": 77
+      "fileCount": 3,
+      "lineCount": 102
     }
   ],
   "detectedStacks": [
