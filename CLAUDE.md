@@ -48,7 +48,7 @@ When a user prompt clearly belongs to one of the domains below, proactively invo
 | partnerships, business development, alliances, channel deals | **Heracles** |
 | video, production, direction, scripts, editing, storyboards | **Dionysus** |
 | animation, motion design, transitions, micro-interactions, Smart Animate | **Morpheus** |
-| photography, shot list, imagery, art direction for photos, visual brief | **Iris** |
+| photography, shot list, imagery, art direction for photos, visual brief | **Artemis** |
 
 **Single-domain task:** Invoke the matched agent directly.
 **Multi-domain or ambiguous:** Route through Zeus — Zeus will orchestrate.

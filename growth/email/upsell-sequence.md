@@ -40,7 +40,7 @@ Here's what he means. The full Pantheon adds:
 
 One real example: [paste a council card screenshot from a real session]
 
-All 66 gods · 10 platforms · lifetime updates → [Gumroad link]
+All 67 agents · 10 platforms · lifetime updates → [Gumroad link]
 
 ---
 

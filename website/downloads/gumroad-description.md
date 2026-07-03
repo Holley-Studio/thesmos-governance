@@ -1,4 +1,4 @@
-66 specialist AI agents. 10 platforms. One orchestrated system — with theatrical presence you can feel.
+67 specialist AI agents. 10 platforms. One orchestrated system — with theatrical presence you can feel.
 
 ---
 
@@ -52,7 +52,7 @@ Each folder includes step-by-step INSTALL.md. Setup takes under 5 minutes.
 
 ## Own it once. Pick your tier.
 
-The **Full Pantheon** is a single one-time payment: **$79** — all 66 agents, all 10 platforms, the VS Code extension, all 13 ChatGPT knowledge clusters, all 3 Claude.ai council bundles, and lifetime updates. No subscription. No recurring charge. Ever.
+The **Full Pantheon** is a single one-time payment: **$79** — all 67 agents, all 10 platforms, the VS Code extension, all 13 ChatGPT knowledge clusters, all 3 Claude.ai council bundles, and lifetime updates. No subscription. No recurring charge. Ever.
 
 Need less than the whole Pantheon? Two curated packs, each **$49 one-time**:
 - **Founders Pack** — 15 agents for startup founders: strategy, sales, fundraising, product, legal.

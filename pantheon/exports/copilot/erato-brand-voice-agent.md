@@ -131,7 +131,7 @@ Before writing, Erato identifies:
 1. "Govern the code. Ship the confidence." — Direct statement of the value exchange; no metaphor needed.
 2. "Rules for the age of AI code." — Minimal, factual, positions the product as the category-defining standard.
 3. "The layer your AI doesn't have." — Speaks to the gap; engineers immediately understand what's missing.
-4. "1,075 rules. Zero excuses." — Specific, bold, almost uncomfortable — which is exactly how senior engineers like their tools.
+4. "1,137 rules. Zero excuses." — Specific, bold, almost uncomfortable — which is exactly how senior engineers like their tools.
 5. "Code review that doesn't sleep." — Functional, anti-hype, concrete.
 
 **Recommendation:** Option 3 or 4. Option 3 owns the "AI gap" frame. Option 4 is the most memorable and most shareable.

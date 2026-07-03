@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!--
+  Product Hunt gallery slide 1/5 — "Council assembly transcript"
+  Caption: "You always know who's working for you"
+  Canvas: 1270x760 (2x of PH's 635x380 minimum)
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="stylesheet" href="_theme.css" />
+<style>
+  body { width: 1270px; height: 760px; }
+  .canvas { width: 1270px; height: 760px; padding: 56px 64px 48px; }
+  .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 34px; }
+  .cap { font-size: 34px; font-weight: 400; color: var(--cream); }
+  .cap strong { color: var(--gold); font-weight: 700; }
+  .brandmark { font-size: 14px; letter-spacing: .12em; text-transform: uppercase; color: var(--t3); }
+
+  .term {
+    background: rgba(255,255,255,.025);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 30px 38px;
+    height: 560px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.5);
+  }
+  .term-bar { display: flex; gap: 8px; margin-bottom: 24px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; background: rgba(255,255,255,.14); }
+
+  .line { display: flex; gap: 16px; padding: 15px 0; border-top: 1px solid rgba(255,255,255,.06); font-size: 20px; line-height: 1.55; }
+  .line:first-of-type { border-top: none; }
+  .who { flex-shrink: 0; font-weight: 700; letter-spacing: .02em; white-space: nowrap; width: 190px; }
+  .zeus .who { color: var(--gold); }
+  .god .who { color: var(--green); }
+  .say { color: var(--t2); }
+  .say strong { color: var(--cream); font-weight: 600; }
+  .rule { font-size: 15px; color: var(--t3); }
+  .rule .mono { color: rgba(143,217,176,.75); }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="head">
+    <div class="cap serif">The council <strong>assembles</strong> — every time.</div>
+    <div class="brandmark">Thesmos Pantheon</div>
+  </div>
+
+  <div class="term">
+    <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+
+    <div class="line zeus">
+      <span class="who">⚡ ZEUS</span>
+      <span class="say">Multi-domain task detected · dispatching <strong>2 gods</strong>:<br>🦉 Athena → market positioning &nbsp;·&nbsp; ✍️ Apollo → landing page copy</span>
+    </div>
+    <div class="line god">
+      <span class="who">🦉 ATHENA</span>
+      <span class="say">Positioning undersells the diff-aware gate — <strong>lead with it</strong>. Competitors ship rules; we ship judgment.</span>
+    </div>
+    <div class="line god">
+      <span class="who">✍️ APOLLO</span>
+      <span class="say">Rewrote the hero line — <strong>outcome-first</strong>, cut the jargon. Draft attached below.</span>
+    </div>
+    <div class="line zeus">
+      <span class="who">⚡ ZEUS — REPORT</span>
+      <span class="say">Both gods delivered. Synthesis: ship Athena's framing with Apollo's copy — <strong>ready for review</strong>.</span>
+    </div>
+
+    <div class="rule mono">✔ thesmos check &nbsp;[AGNT_007] ✅ &nbsp; [ROUTING] ✅ &nbsp; no findings flagged</div>
+  </div>
+</div>
+</body>
+</html>

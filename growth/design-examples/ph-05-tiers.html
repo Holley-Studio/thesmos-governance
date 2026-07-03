@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!--
+  Product Hunt gallery slide 5/5 — "Free vs full tiers"
+  Caption: "Start free, summon everyone later"
+  Canvas: 1270x760
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="stylesheet" href="_theme.css" />
+<style>
+  body { width: 1270px; height: 760px; }
+  .canvas { width: 1270px; height: 760px; padding: 60px 64px; display: flex; flex-direction: column; }
+  .head { margin-bottom: 40px; }
+  .cap { font-size: 34px; color: var(--cream); }
+  .cap strong { color: var(--gold); font-weight: 700; }
+
+  .row { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+  .plan {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 38px 40px;
+    display: flex; flex-direction: column;
+  }
+  .plan.full { border-color: var(--border-h); background: linear-gradient(180deg, rgba(201,168,76,.07), transparent); position: relative; }
+  .plan.full::before {
+    content: 'FULL PANTHEON'; position: absolute; top: -13px; left: 40px;
+    background: var(--gold); color: #050408; font-size: 11px; font-weight: 700;
+    letter-spacing: .1em; padding: 5px 12px; border-radius: 20px;
+  }
+  .plan-name { font-size: 24px; font-weight: 700; color: var(--cream); margin-bottom: 6px; }
+  .plan-price { font-size: 15px; color: var(--t3); margin-bottom: 26px; }
+  .plan-price strong { color: var(--gold); font-size: 17px; }
+  .feat { font-size: 17px; color: var(--t2); padding: 11px 0; border-top: 1px solid rgba(255,255,255,.06); display: flex; gap: 10px; }
+  .feat:first-of-type { border-top: none; }
+  .feat .check { color: var(--green); }
+  .gods { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 20px; }
+  .god-chip { font-size: 13px; padding: 6px 12px; border-radius: 20px; background: var(--card); border: 1px solid var(--border); color: var(--t2); }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="head"><div class="cap serif">Start free. <strong>Summon everyone later.</strong></div></div>
+
+  <div class="row">
+    <div class="plan">
+      <div class="plan-name">Free Council</div>
+      <div class="plan-price">No account required</div>
+      <div class="feat"><span class="check">✓</span> 5 core gods</div>
+      <div class="feat"><span class="check">✓</span> All platforms</div>
+      <div class="feat"><span class="check">✓</span> Full theatrical routing</div>
+      <div class="gods">
+        <span class="god-chip">⚡ Zeus</span><span class="god-chip">🦉 Athena</span>
+        <span class="god-chip">👁 Argus</span><span class="god-chip">✍️ Apollo</span>
+        <span class="god-chip">🔨 Hephaestus</span>
+      </div>
+    </div>
+    <div class="plan full">
+      <div class="plan-name">Full Pantheon</div>
+      <div class="plan-price"><strong>Lifetime updates</strong> · one-time purchase</div>
+      <div class="feat"><span class="check">✓</span> All 67 specialist agents</div>
+      <div class="feat"><span class="check">✓</span> 10 platforms, Zeus orchestration</div>
+      <div class="feat"><span class="check">✓</span> Council bundles + live routing</div>
+      <div class="gods">
+        <span class="god-chip">💰 Plutus</span><span class="god-chip">📊 Tyche</span>
+        <span class="god-chip">🔩 Chiron</span><span class="god-chip">🚀 Hermes</span>
+        <span class="god-chip">⚖️ Themis</span><span class="god-chip">+ 61 more</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

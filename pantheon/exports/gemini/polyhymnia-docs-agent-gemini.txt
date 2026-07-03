@@ -165,7 +165,7 @@ If completing a task would require violating Priority 1 or 2, stop and report wh
 [![npm](https://img.shields.io/npm/v/thesmos-governance)](https://www.npmjs.com/package/thesmos-governance)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-Static governance for AI-generated code. 1,075 rules, zero AI calls, runs in CI.
+Static governance for AI-generated code. 1,137 rules, zero AI calls, runs in CI.
 
 ## Installation
 
@@ -188,7 +188,7 @@ thesmos adapters
 
 ## What it does
 
-Thesmos scans your codebase against 1,075 governance rules across:
+Thesmos scans your codebase against 1,137 governance rules across:
 - Security (SQL injection, credential exposure, auth gaps)
 - GDPR (PII in logs, consent requirements, data retention)
 - Next.js (server/client component misuse, cookie access)
