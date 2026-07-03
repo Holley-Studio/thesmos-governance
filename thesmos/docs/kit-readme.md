@@ -24,7 +24,7 @@ Welcome to Pantheon Pro. You have all 38 God Agents ready to deploy.
 ## The 38 God Agents
 
 ### Core Pantheon (21)
-Zeus · Athena · Hermes · Nike · Ares · Apollo · Aphrodite · Hephaestus · Argus · Hestia · Tyche · Themis · Daedalus · Dionysus · Heracles · Hera · Iris · Mnemosyne · Morpheus · Pheme · Plutus
+Zeus · Athena · Hermes · Nike · Ares · Apollo · Aphrodite · Hephaestus · Argus · Hestia · Tyche · Themis · Daedalus · Dionysus · Heracles · Hera · Artemis · Mnemosyne · Morpheus · Pheme · Plutus
 
 ### Workflow Specialists (13)
 Chiron · Calliope · Talos · Clio · Eos · Erato · Kratos · Aether · Polyhymnia · Cassandra · Proteus · Momus · Metis

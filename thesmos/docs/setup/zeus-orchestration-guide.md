@@ -58,7 +58,7 @@ This guide tells you exactly which agent to invoke for every type of task.
 | Build a product roadmap | Daedalus |
 | Design a UI/UX spec | Hephaestus |
 | Shoot a video campaign brief | Dionysus |
-| Plan a photography project | Iris |
+| Plan a photography project | Artemis |
 | Create a motion design brief | Morpheus |
 
 ### Engineering
