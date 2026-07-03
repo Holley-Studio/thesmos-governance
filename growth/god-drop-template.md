@@ -32,7 +32,7 @@ Also in this drop: [1-line list of upgrades/fixes from CHANGELOG]
 
 [1 sentence on what it does]
 
-All 66 gods, 10 platforms, lifetime updates: holley.studio/go/x.html
+All 67 agents, 10 platforms, lifetime updates: holley.studio/go/x.html
 
 [attach: screenshot of the god's banner + a real output]
 

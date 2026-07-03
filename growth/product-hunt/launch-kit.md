@@ -10,7 +10,7 @@ Position as "specific workflows with theatrical routing" — never "a prompt pac
 **Topics:** Artificial Intelligence, Productivity, Developer Tools
 
 **Description:**
-66 specialist AI agents with real methodologies and theatrical presence. Tell
+67 specialist AI agents with real methodologies and theatrical presence. Tell
 Zeus what you need — he announces the routing and dispatches the right god:
 Argus threat-models your auth flow (STRIDE, CVSS-scored), Athena stress-tests
 your strategy, Apollo rewrites your copy and explains why. Every god announces

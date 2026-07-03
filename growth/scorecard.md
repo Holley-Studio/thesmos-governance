@@ -4,7 +4,7 @@ Kill channels showing nothing after 3 weeks. Double down on what converts.
 
 | Week of | Free downloads | Email captures | Paid sales | Revenue | GPT convos | Ext installs | Top channel | Note |
 |---|---|---|---|---|---|---|---|---|
-| YYYY-MM-DD | | | | | | | | |
+| 2026-07-06 | | | | | | | | Week 1 — Phase 0 launch week: npm latest fixed, ext + Gumroad + GPT Store going live. Fill Monday. |
 
 **Where to find the numbers:**
 - Free downloads + email captures + paid sales + revenue → Gumroad dashboard → Analytics (filter by UTM source)

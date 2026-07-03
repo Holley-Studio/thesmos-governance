@@ -42,6 +42,6 @@ participation with zero following. Value-first is the entire strategy.
 
 **Build-in-public post (r/SideProject, self-promo allowed):**
 > I gave my AI a pantheon of Greek gods and now Zeus routes all my work.
-> [screenshot of council assembly] Built 66 specialist personas that install
+> [screenshot of council assembly] Built 67 specialist personas that install
 > into ChatGPT/Claude/Cursor. The theatrical routing is the feature people
 > keep screenshotting. AMA about the persona architecture.

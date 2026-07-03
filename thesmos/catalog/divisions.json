@@ -25,7 +25,7 @@
       "heracles-bd-agent",
       "morpheus-animation-agent",
       "dionysus-video-agent",
-      "iris-photography-agent",
+      "artemis-photography-agent",
       "hera-operations-agent",
       "dike-ethics-agent",
       "demeter-cs-agent",
@@ -79,7 +79,7 @@
       "pygmalion-blender-agent",
       "helios-keyshot-agent",
       "dionysus-video-agent",
-      "iris-photography-agent",
+      "artemis-photography-agent",
       "calliope-email-agent"
     ]
   },

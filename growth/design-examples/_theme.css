@@ -1,0 +1,45 @@
+/* Shared theme tokens — mirrors website/index.html brand system.
+   System fonts only (no network requests): Georgia stands in for Cinzel,
+   -apple-system/Segoe UI stands in for Inter. */
+:root {
+  --bg:       #050408;
+  --bg-s:     #09080F;
+  --card:     rgba(255,255,255,.03);
+  --card-h:   rgba(255,255,255,.05);
+  --gold:     #C9A84C;
+  --gold-2:   #F5C842;
+  --gold-dim: rgba(201,168,76,.4);
+  --cream:    #F5F0E8;
+  --t1:       #F5F5F7;
+  --t2:       rgba(255,255,255,.60);
+  --t3:       rgba(255,255,255,.42);
+  --border:   rgba(255,255,255,.08);
+  --border-h: rgba(201,168,76,.25);
+  --green:    #8FD9B0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--t1);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+.serif { font-family: Georgia, "Times New Roman", serif; }
+.mono { font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace; }
+.canvas {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-s) 100%);
+}
+.canvas::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--gold) 50%, transparent);
+  opacity: .7;
+}
+.eyebrow {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--gold);
+}
