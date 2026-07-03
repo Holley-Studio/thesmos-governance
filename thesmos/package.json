@@ -70,8 +70,7 @@
     "./config.schema.json": "./config.schema.json"
   },
   "bin": {
-    "thesmos": "dist/cli.js",
-    "prometheus": "dist/cli.js"
+    "thesmos": "dist/cli.js"
   },
   "files": [
     "dist/",
