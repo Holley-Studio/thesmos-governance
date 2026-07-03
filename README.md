@@ -97,7 +97,7 @@ The rules engine is the front door — behind it ships a full governance platfor
 | Surface | What it does |
 |---|---|
 | **Diff-aware PR gate** | The GitHub Action blocks only on findings from lines your PR changed — pre-existing debt reports, never blocks. Baseline, inline suppressions, and confidence tiers honored identically across every gate ([the gate contract](docs/gating.md)) |
-| **Pantheon** | 66 specialist AI agent personas orchestrated by Zeus — `thesmos pantheon:*` |
+| **Pantheon** | 67 specialist AI agents orchestrated by Zeus — `thesmos pantheon:*` |
 | **Autopilot** | Plan-file-driven autonomous execution on an isolated branch with journaling and one-command revert — `thesmos autopilot:*` |
 | **Brain** | Institutional memory that observes findings, learns patterns, and proposes new rules for human approval — `thesmos brain:*` |
 | **MCP server** | Governs AI agents *before* they write — `thesmos mcp:serve` |

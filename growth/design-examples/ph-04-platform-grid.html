@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<!--
+  Product Hunt gallery slide 4/5 — "10-platform grid"
+  Caption: "One pantheon, everywhere"
+  Canvas: 1270x760
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="stylesheet" href="_theme.css" />
+<style>
+  body { width: 1270px; height: 760px; }
+  .canvas { width: 1270px; height: 760px; padding: 60px 64px; display: flex; flex-direction: column; }
+  .head { margin-bottom: 44px; }
+  .cap { font-size: 34px; color: var(--cream); }
+  .cap strong { color: var(--gold); font-weight: 700; }
+  .sub { font-size: 17px; color: var(--t3); margin-top: 10px; }
+
+  .grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 22px;
+  }
+  .tile {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--card);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px;
+    transition: none;
+  }
+  .tile .glyph { font-size: 40px; }
+  .tile .name { font-size: 17px; font-weight: 600; color: var(--cream); }
+  .tile.hi { border-color: var(--border-h); background: linear-gradient(180deg, rgba(201,168,76,.08), transparent); }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="head">
+    <div class="cap serif">One pantheon. <strong>Every platform.</strong></div>
+    <div class="sub">Install once, invoke everywhere — same gods, same rules, same voice.</div>
+  </div>
+  <div class="grid">
+    <div class="tile hi"><div class="glyph">💬</div><div class="name">ChatGPT</div></div>
+    <div class="tile hi"><div class="glyph">🤖</div><div class="name">Claude</div></div>
+    <div class="tile"><div class="glyph">🧑‍💻</div><div class="name">Codex CLI</div></div>
+    <div class="tile"><div class="glyph">✨</div><div class="name">Gemini</div></div>
+    <div class="tile"><div class="glyph">🖱️</div><div class="name">Cursor</div></div>
+    <div class="tile"><div class="glyph">🧭</div><div class="name">GitHub Copilot</div></div>
+    <div class="tile"><div class="glyph">🎨</div><div class="name">Figma</div></div>
+    <div class="tile hi"><div class="glyph">🧩</div><div class="name">VS Code</div></div>
+  </div>
+</div>
+</body>
+</html>
