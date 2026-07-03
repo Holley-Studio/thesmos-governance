@@ -4,21 +4,21 @@ dist/
 *.js.map
 
 # ── Consumer artifacts ────────────────────────────────────────────────────────
-# Prometheus generates these files in CONSUMER repos, not in the library itself.
-# Running `prometheus:init` or `prometheus:adapters` during local development
+# Thesmos generates these files in CONSUMER repos, not in the library itself.
+# Running `thesmos:init` or `thesmos:adapters` during local development
 # writes these into the working directory. They must never be committed here.
 #
-# Rule: The prometheus/ directory is the PRODUCER. These files belong in repos
-# that depend on Prometheus, not in the Prometheus source tree.
+# Rule: The thesmos/ directory is the PRODUCER. These files belong in repos
+# that depend on Thesmos, not in the Thesmos source tree.
 
-.prometheus/
+.thesmos/
 CLAUDE.md
 GEMINI.md
 AGENTS.md
-.cursor/rules/prometheus.mdc
-.codex/prometheus.md
+.cursor/rules/thesmos.mdc
+.codex/thesmos.md
 .github/copilot-instructions.md
-.github/workflows/prometheus-review.yml
+.github/workflows/thesmos-review.yml
 
 # ── Test temp artifacts ───────────────────────────────────────────────────────
 # Some tests write to tmp/ subdirs inside the repo as a fallback. Ignore them.
