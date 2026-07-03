@@ -91,3 +91,9 @@ pantheon/exports/**
 !pantheon/exports/gemini/argus-security-agent-gemini.txt
 !pantheon/exports/gemini/apollo-content-agent-gemini.txt
 !pantheon/exports/gemini/hephaestus-design-agent-gemini.txt
+
+# Google Drive backup — rclone config lives outside the repo by design
+# (~/.config/rclone/rclone.conf), never inside it. These entries are
+# defense-in-depth only. See docs/backup-recovery.md.
+rclone.conf
+*.credentials.json

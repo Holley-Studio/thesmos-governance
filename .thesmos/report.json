@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-03T13:25:20.516Z",
+  "generatedAt": "2026-07-03T20:35:56.488Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -305,8 +305,10 @@
   ],
   "riskyFiles": [],
   "scriptFiles": [
+    "scripts/backup-to-drive.sh",
     "scripts/build-product-json.mjs",
-    "scripts/github-setup.sh"
+    "scripts/github-setup.sh",
+    "scripts/restore-from-drive.sh"
   ],
   "envFiles": [
     ".env"
@@ -373,8 +375,8 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 393,
-      "lineCount": 121770
+      "fileCount": 397,
+      "lineCount": 122037
     },
     {
       "language": "TypeScript",
