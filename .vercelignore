@@ -1,5 +1,5 @@
 # Ignore tool source packages — Vercel only serves the website/
-prometheus/
+thesmos/
 actions/
 extensions/
 node_modules/
