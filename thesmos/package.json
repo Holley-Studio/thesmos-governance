@@ -1,6 +1,6 @@
 {
   "name": "thesmos-governance",
-  "version": "4.4.0",
+  "version": "4.5.0",
   "description": "AI-stack-agnostic repo governance: 1,137 rules, MCP server, Learning Brain, Builder Wizard, and Pantheon agents for Claude, Gemini, Cursor, Copilot, Codex, and AGENTS.md",
   "license": "FSL-1.1-MIT",
   "author": {
