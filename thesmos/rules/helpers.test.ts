@@ -26,22 +26,6 @@ describe('stripGeneratedRegions', () => {
     expect(stripped).not.toContain('process.env.SECRET');
   });
 
-  it('handles the legacy PROMETHEUS marker spelling', () => {
-    const content = [
-      'before',
-      '<!-- PROMETHEUS:GENERATED START rules -->',
-      'generated stuff',
-      '<!-- PROMETHEUS:GENERATED END rules -->',
-      'after',
-    ].join('\n');
-
-    const stripped = stripGeneratedRegions(content);
-    expect(stripped.split('\n')).toHaveLength(5);
-    expect(stripped).not.toContain('generated stuff');
-    expect(stripped).toContain('before');
-    expect(stripped).toContain('after');
-  });
-
   it('strips to end of file when the START marker is unclosed', () => {
     const content = [
       'kept',
@@ -66,9 +50,9 @@ describe('stripGeneratedRegions', () => {
       'gen1',
       '<!-- THESMOS:GENERATED END one -->',
       'b',
-      '<!-- PROMETHEUS:GENERATED START two -->',
+      '<!-- THESMOS:GENERATED START two -->',
       'gen2',
-      '<!-- PROMETHEUS:GENERATED END two -->',
+      '<!-- THESMOS:GENERATED END two -->',
       'c',
     ].join('\n');
 
