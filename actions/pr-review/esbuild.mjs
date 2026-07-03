@@ -5,7 +5,7 @@
  * and executed directly by the GitHub Actions Node.js runner — no npm install
  * required at runtime.
  *
- * External: none (everything including @actions/* and prometheus-governance is bundled).
+ * External: none (everything including @actions/* and thesmos-governance is bundled).
  */
 
 import * as esbuild from 'esbuild';
