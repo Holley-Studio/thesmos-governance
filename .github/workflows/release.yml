@@ -131,3 +131,52 @@ jobs:
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         continue-on-error: true
+
+  publish-storefront-facts:
+    name: Sync product facts to storefront
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Bump package version (matches what release just published)
+        working-directory: thesmos
+        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+
+      - name: Build
+        working-directory: thesmos
+        run: npm run build
+
+      - name: Build product.json
+        run: |
+          # Generate product.json from the repo's own source of truth
+          # (package.json version, rule manifest count, etc.)
+          node scripts/build-product-json.mjs > product.json
+
+      - name: Dispatch to storefront
+        env:
+          TOKEN: ${{ secrets.STOREFRONT_DISPATCH_TOKEN }}
+        run: |
+          jq -n --slurpfile p product.json \
+            '{event_type: "product-update", client_payload: {product: $p[0]}}' \
+          | curl -sS --fail-with-body -X POST \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/Holley-Studio/HolleyStudios/dispatches \
+              -d @-
