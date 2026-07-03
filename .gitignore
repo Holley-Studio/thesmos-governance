@@ -60,3 +60,34 @@ website/downloads/thesmos-pantheon-agents.zip
 website/downloads/thesmos-pantheon-founders.zip
 website/downloads/thesmos-pantheon-agencies.zip
 dist-packs/
+
+# Paid Pantheon raw exports — same policy as the bundles above (split-at-HEAD,
+# 2026-07-03): the full 67-agent per-platform export tree is paid product,
+# delivered via the Gumroad packs. Only the 5 free starter agents (the files
+# the website links directly) + the free GPT Store listing stay tracked.
+# The files remain on disk locally for pack builds; they are untracked in git.
+pantheon/exports/**
+!pantheon/exports/*/
+!pantheon/exports/starters/**
+!pantheon/exports/README.md
+!pantheon/exports/chatgpt/pantheon-council-free-gpt-store.txt
+!pantheon/exports/chatgpt/zeus-executive-agent-chatgpt.txt
+!pantheon/exports/chatgpt/athena-strategy-agent-chatgpt.txt
+!pantheon/exports/chatgpt/argus-security-agent-chatgpt.txt
+!pantheon/exports/chatgpt/apollo-content-agent-chatgpt.txt
+!pantheon/exports/chatgpt/hephaestus-design-agent-chatgpt.txt
+!pantheon/exports/claude-code/zeus-executive-agent.md
+!pantheon/exports/claude-code/athena-strategy-agent.md
+!pantheon/exports/claude-code/argus-security-agent.md
+!pantheon/exports/claude-code/apollo-content-agent.md
+!pantheon/exports/claude-code/hephaestus-design-agent.md
+!pantheon/exports/cursor/zeus-executive-agent.mdc
+!pantheon/exports/cursor/athena-strategy-agent.mdc
+!pantheon/exports/cursor/argus-security-agent.mdc
+!pantheon/exports/cursor/apollo-content-agent.mdc
+!pantheon/exports/cursor/hephaestus-design-agent.mdc
+!pantheon/exports/gemini/zeus-executive-agent-gemini.txt
+!pantheon/exports/gemini/athena-strategy-agent-gemini.txt
+!pantheon/exports/gemini/argus-security-agent-gemini.txt
+!pantheon/exports/gemini/apollo-content-agent-gemini.txt
+!pantheon/exports/gemini/hephaestus-design-agent-gemini.txt
