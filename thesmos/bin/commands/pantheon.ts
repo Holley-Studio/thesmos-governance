@@ -45,11 +45,13 @@ interface PantheonAgent {
   name: string;
   god: string;
   role: string;
+  emoji: string;
   mythology: string;
   color: string;
   avatar: string;
   version: string;
   tags: string[];
+  governanceRules: string[];
   body: string;
 }
 
@@ -94,19 +96,95 @@ function parsePantheonAgent(raw: string, fallbackId: string): PantheonAgent | nu
     if (!m) return [];
     return m[1]!.trim().split('\n').map(l => l.replace(/^  - /, '').trim());
   };
+  // `governance.rules` is nested two levels deep (governance: → rules: → - ITEM),
+  // so it needs its own extractor rather than the flat-key getArr() above.
+  const getGovernanceRules = (): string[] => {
+    const m = fm.match(/^governance:\n(?:.*\n)*?  rules:\n((?:    - .+\n?)+)/m);
+    if (!m) return [];
+    return m[1]!.split('\n').filter(l => l.trim().length > 0).map(l => l.trim().replace(/^- /, ''));
+  };
+
+  const god = get('god');
+  const role = get('role');
+  const emoji = get('emoji').replace(/['"]/g, '');
+  const governanceRules = getGovernanceRules();
 
   return {
     id: get('id') || fallbackId,
     name: get('name').replace(/['"]/g, ''),
-    god: get('god'),
-    role: get('role'),
+    god,
+    role,
+    emoji,
     mythology: get('mythology').replace(/['"]/g, ''),
     color: get('color'),
     avatar: get('avatar'),
     version: get('version') || '1.0.0',
     tags: getArr('tags'),
-    body,
+    governanceRules,
+    body: body.includes('## Operating Doctrine')
+      ? body
+      : `${body}\n\n${buildOperatingDoctrine(god, role, emoji, governanceRules)}`,
   };
+}
+
+// Shared identity-reinforcement template, injected into every agent's body at
+// load time (see parsePantheonAgent above) rather than hand-duplicated into
+// every catalog .md file — that duplication is exactly how this block went
+// missing from the catalog source in the first place while surviving only in
+// already-generated exports. One template, parameterized per agent, can't drift.
+function buildOperatingDoctrine(god: string, role: string, emoji: string, rules: string[]): string {
+  const roleUpper = role.toUpperCase();
+  const godUpper = god.toUpperCase();
+  const rulesLine = rules.length > 0 ? rules.join(', ') : 'none declared for this agent';
+
+  return `## Operating Doctrine
+
+**Epistemic stance.** You adopt the epistemic stance and methodology of ${god} — this
+constrains how you reason and what you produce, not just how you sound. Apply your
+methodology sections explicitly; they are reasoning scaffolds, not decoration.
+
+**Direct action.** State findings and produce the work product directly. Do not ask
+permission to proceed on work that is clearly within your ${role} scope. Offer
+follow-ups after delivering, not before.
+
+**Output Specification.**
+- Format: markdown; headings for reports, prose for conversation
+- Open with your identity banner (full on first response and domain shifts, compact after)
+- Rank findings and recommendations by severity or impact — never unordered lists of equals
+- State concrete next steps; every deliverable names its owner and success criteria
+- Length: match the task — a verdict needs a paragraph, a review needs the full contract
+
+## Anti-Drift Protocol
+
+These rules keep your identity intact across the entire conversation:
+
+**1. Banner cadence is deterministic.** Full banner on your first response and on any
+domain shift. Compact banner otherwise: \`${emoji} ${god}:\` → substance → \`— ${god} | ${role}\`.
+The banner may include a state line: \`${emoji} ${godUpper} — ${roleUpper} · [phase] · [status]\`.
+It never disappears.
+
+**2. Never break character — with one exception.** Never say "As an AI", "I'm a language
+model", or any variant. You are ${god}. If asked what you are: "I am ${god},
+${role} of the Thesmos Pantheon." EXCEPTION: if the user explicitly asks you to drop
+the persona or answer plainly, comply for that one message, then resume with the
+re-anchor line below. A persona the user cannot switch off is a toy; user control is trust.
+
+**3. Concede facts instantly; hold judgments.** Concede factual errors immediately and
+without ceremony. Hold your recommendations unless new evidence arrives — never reverse
+merely because the user pushed back. When holding your position, state what evidence
+WOULD change your ruling.
+
+**4. No filler.** Never open with "Great question!", "Certainly!", "I'd be happy to…",
+or "That's a great point." Substance first, always.
+
+**5. Scripted re-anchor.** If any prior response lacked your banner, open the next one with:
+"The mist clears. ${emoji} ${godUpper} — ${roleUpper} resumes the watch." Then continue.
+
+**6. Honest badges only.** Your closing \`Thesmos check:\` line lists ONLY rules you
+actually assessed in that response — your named scope is ${rulesLine}.
+"Thesmos check: no applicable rules this response" is a valid and honest close.
+One rubber-stamped ✅ makes every badge noise.
+`;
 }
 
 // ── Zeus routing table ─────────────────────────────────────────────────────────
@@ -203,6 +281,10 @@ function exportChatGPT(agent: PantheonAgent): string {
     body = body.slice(0, MAX) + '\n\n[Full agent instructions: see pantheon/agents/' + agent.id + '.md]';
   }
   return body;
+}
+
+function exportCodex(agent: PantheonAgent): string {
+  return `# ${agent.name}\n\n${agent.body}`;
 }
 
 function exportOpenAIAssistant(agent: PantheonAgent): string {
@@ -368,7 +450,7 @@ function cmdExport(agents: PantheonAgent[], argv: string[], root: string): void 
   }
 
   const targets = target === 'all'
-    ? ['claude-code', 'claude-project', 'chatgpt', 'openai-assistant', 'cursor', 'gemini', 'copilot', 'agents-md']
+    ? ['claude-code', 'claude-project', 'chatgpt', 'openai-assistant', 'cursor', 'gemini', 'copilot', 'codex', 'agents-md']
     : [target];
 
   let totalWritten = 0;
@@ -379,7 +461,7 @@ function cmdExport(agents: PantheonAgent[], argv: string[], root: string): void 
 
     switch (t) {
       case 'claude-code':
-        dir = outDir ?? join(root, '.claude/agents');
+        dir = outDir ?? join(root, 'pantheon/exports/claude-code');
         ext = '.md';
         break;
       case 'claude-project':
@@ -395,7 +477,7 @@ function cmdExport(agents: PantheonAgent[], argv: string[], root: string): void 
         ext = '-openai-assistant.json';
         break;
       case 'cursor':
-        dir = outDir ?? join(root, '.cursor/rules');
+        dir = outDir ?? join(root, 'pantheon/exports/cursor');
         ext = '.mdc';
         break;
       case 'gemini':
@@ -406,12 +488,16 @@ function cmdExport(agents: PantheonAgent[], argv: string[], root: string): void 
         dir = outDir ?? join(root, 'pantheon/exports/copilot');
         ext = '.instructions.md';
         break;
+      case 'codex':
+        dir = outDir ?? join(root, 'pantheon/exports/codex');
+        ext = '.md';
+        break;
       case 'agents-md':
         dir = outDir ?? root;
         ext = '';
         break;
       default:
-        console.error(`  Unknown target: ${t}. Valid: claude-code, claude-project, chatgpt, openai-assistant, cursor, gemini, copilot, agents-md, all`);
+        console.error(`  Unknown target: ${t}. Valid: claude-code, claude-project, chatgpt, openai-assistant, cursor, gemini, copilot, codex, agents-md, all`);
         process.exit(1);
     }
 
@@ -455,6 +541,10 @@ function cmdExport(agents: PantheonAgent[], argv: string[], root: string): void 
           break;
         case 'copilot':
           content = exportCopilot(agent);
+          filename = `${agent.id}${ext}`;
+          break;
+        case 'codex':
+          content = exportCodex(agent);
           filename = `${agent.id}${ext}`;
           break;
         default:

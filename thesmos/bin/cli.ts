@@ -400,15 +400,16 @@ THESMOS PANTHEON  (governed AI business team — 40 agents, 6 platforms)
   pantheon:install <id> [id...]       Install specific agents
   pantheon:status                     Show active Pantheon agents in this project
   pantheon:export --target <platform> Export agents to platform-specific format
-    --target claude-code                .claude/agents/*.md (native sub-agents)
+    --target claude-code                pantheon/exports/claude-code/*.md (native sub-agents)
     --target claude-project             Paste-ready text for Claude Projects
     --target chatgpt                    Paste-ready text for ChatGPT Custom GPT
     --target openai-assistant          JSON for OpenAI Assistants API
-    --target cursor                     .cursor/rules/*.mdc
-    --target copilot                    .github/instructions/*.instructions.md
+    --target cursor                     pantheon/exports/cursor/*.mdc
+    --target copilot                    pantheon/exports/copilot/*.instructions.md
     --target gemini                     Paste-ready text for Gemini Gems
+    --target codex                      pantheon/exports/codex/*.md (plain instructions, no frontmatter)
     --target agents-md                  AGENTS.md (Linux Foundation standard — Codex, Copilot, Windsurf, Zed, Aider)
-    --target all                        All 8 formats → pantheon/exports/ + AGENTS.md at repo root
+    --target all                        All 9 formats → pantheon/exports/ + AGENTS.md at repo root
     --agent <id>                        Export a single agent only
     --out <dir>                         Custom output directory
   pantheon:orchestrate "<task>"       Zeus routes your task to the right agents
