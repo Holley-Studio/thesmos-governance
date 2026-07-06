@@ -109,6 +109,14 @@ export interface ThesmosConfig {
   project: string;
   generatedAt?: string;
 
+  /**
+   * Active licensing tier. 'free' runs the Essentials rule set (all BLOCKERs +
+   * the AI-code net); 'premium' runs the full engine. Resolved and stamped by
+   * loadConfig — do not read the raw config value directly; the engines read
+   * this resolved field. See tiers.ts.
+   */
+  tier?: 'free' | 'premium';
+
   // Folder scanning
   ignoredFolders: string[];
   /**

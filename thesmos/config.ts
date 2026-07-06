@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import type { ThesmosConfig } from './types';
 import { THESMOS_RULES } from './rules/registry';
+import { resolveTier } from './tiers';
 
 // Resolve built-in preset JSON files shipped with the package
 const _require = createRequire(import.meta.url ?? 'file://' + __filename);
@@ -190,6 +191,10 @@ export function loadConfig(
     disabledRules: Array.isArray(raw.disabledRules)
       ? (raw.disabledRules as string[])
       : CONFIG_DEFAULTS.disabledRules,
+    // Resolve the licensing tier once, here, so the pure review/govern engines
+    // can filter by config.tier without touching the filesystem. Precedence:
+    // THESMOS_TIER env → explicit config.tier → premium-pack marker → 'free'.
+    tier: resolveTier(raw.tier as ('free' | 'premium' | undefined), root),
   } as ThesmosConfig;
 }
 

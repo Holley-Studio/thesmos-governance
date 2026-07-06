@@ -20,7 +20,7 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
-import { THESMOS_RULES } from './rules/registry.js';
+import { activeRulesForTier } from './rules/registry.js';
 import { loadConfig, CONFIG_DEFAULTS } from './config.js';
 import { classifySeverity, SEVERITY_ORDER } from './severity.js';
 import { extractSuppressions, applySuppressions } from './suppress.js';
@@ -340,7 +340,7 @@ export function evaluateGovernFindings(input: {
   // A rule can block if its effective severity (config override, else static)
   // reaches the threshold. Rules that classify their own finding severity are
   // re-checked by the finding-level filter below.
-  const rules = THESMOS_RULES.filter(
+  const rules = activeRulesForTier(config).filter(
     (r) => blocksAt(classifySeverity(r.category, config.severityRules)) || blocksAt(r.severity),
   );
 
