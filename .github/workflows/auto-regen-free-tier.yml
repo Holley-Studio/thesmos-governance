@@ -53,8 +53,16 @@ jobs:
         run: npm run build
 
       - name: Regenerate all platform exports
-        working-directory: thesmos
-        run: node dist/cli.js pantheon:export --target all
+        # No working-directory override here, deliberately: pantheon:export's
+        # default output paths are resolved relative to process.cwd() (see
+        # thesmos/bin/lib/context.ts), not the script's own location. Running
+        # this with cwd=thesmos/ writes everything to thesmos/pantheon/exports/
+        # (nested, wrong) while the next step checks the top-level pantheon/
+        # exports/ — a mismatch that would make this workflow silently never
+        # detect a change or open a PR, ever. Invoke via the full path from
+        # repo root instead, matching every other consumer of this command
+        # (build-pantheon-kit.yml, local dev usage).
+        run: node thesmos/dist/cli.js pantheon:export --target=all
 
       - name: Check for free-tier changes
         id: diff

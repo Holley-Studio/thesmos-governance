@@ -43,7 +43,13 @@ jobs:
         run: npm run build
 
       - name: Generate all platform exports
-        run: node dist/cli.js pantheon:export --target all
+        # --target=all, not "--target all": the CLI's arg parser (thesmos/bin/
+        # lib/args.ts) only recognizes --flag=value; a bare space-separated
+        # value is parsed as a boolean flag plus an unrelated positional,
+        # silently resolving target to `true` and failing with "Unknown
+        # target: true". Confirmed this was live-broken even after the
+        # dist/bin/cli.js -> dist/cli.js path fix (see PR #69).
+        run: node dist/cli.js pantheon:export --target=all
 
       - name: Get version
         id: ver

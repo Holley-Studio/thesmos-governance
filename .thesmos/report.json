@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-06T00:37:09.681Z",
+  "generatedAt": "2026-07-06T00:44:01.691Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -244,7 +244,7 @@
     },
     {
       "file": "thesmos/bin/commands/pantheon.ts",
-      "lines": 901
+      "lines": 893
     },
     {
       "file": "thesmos/rules/go.ts",
@@ -375,14 +375,14 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 399,
-      "lineCount": 122381
+      "fileCount": 400,
+      "lineCount": 123362
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
       "fileCount": 316,
-      "lineCount": 122840
+      "lineCount": 122843
     },
     {
       "language": "JavaScript",
