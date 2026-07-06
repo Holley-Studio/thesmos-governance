@@ -43,7 +43,7 @@ jobs:
         run: npm run build
 
       - name: Generate all platform exports
-        run: node dist/bin/cli.js pantheon:export --target all
+        run: node dist/cli.js pantheon:export --target all
 
       - name: Get version
         id: ver
