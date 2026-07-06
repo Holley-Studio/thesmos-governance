@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload SARIF to GitHub Security tab
         if: matrix.node-version == '22.x'
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: governance.sarif
           category: thesmos-governance
