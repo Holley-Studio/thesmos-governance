@@ -23,7 +23,7 @@ Thesmos closes that gap. 1,137 governance rules covering AI safety, security, pe
 
 ---
 
-## Three Ways to Use It
+## Four Ways to Use It
 
 ### 1. CLI
 
@@ -87,6 +87,17 @@ Install from the `extensions/vscode/` directory for:
 - Real-time findings as you write
 - Health score in the status bar
 - AI adapters panel — keeps Claude, Cursor, Copilot, and Gemini aware of your governance rules so they generate governed code from the first line
+
+### 4. Claude Code Plugin
+
+Install directly inside Claude Code — no separate `npm install` step:
+
+```text
+/plugin marketplace add Holley-Studio/thesmos-governance
+/plugin install thesmos-governance
+```
+
+Ships the MCP server, the `scan` / `review` / `advise` skills, and the same PreToolUse/PostToolUse/Stop governance hooks the CLI's `claude:govern install` writes — enabled per-project, off by default.
 
 ---
 
@@ -208,7 +219,10 @@ thesmos-governance/
 │   └── pr-review/       GitHub Action (self-contained, no install step)
 ├── extensions/
 │   └── vscode/          VS Code extension
-└── .github/workflows/   CI + release pipeline
+├── .claude-plugin/       Claude Code plugin manifest + marketplace listing
+├── skills/               Plugin skills (scan, review, advise)
+├── hooks/                Plugin governance hooks (mirrors claude:govern install)
+└── .github/workflows/    CI + release pipeline
 ```
 
 ---
