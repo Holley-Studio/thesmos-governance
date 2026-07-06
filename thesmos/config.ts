@@ -78,7 +78,9 @@ export const CONFIG_DEFAULTS: ThesmosConfig = {
   autoMode: {
     enabled: true,
     strictMode: true,
-    blockOn: 'HIGH' as const,
+    // Matches the real-time hook's actual behavior — only BLOCKER findings stop a
+    // write by default. Projects opt into stricter gating via autoMode.blockOn.
+    blockOn: 'BLOCKER' as const,
     notifyOnBlock: true,
   },
 

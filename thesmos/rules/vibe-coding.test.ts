@@ -33,6 +33,65 @@ function detect(ruleId: string, files: Array<{ path: string; content: string }>)
   });
 }
 
+// ── VIBE_007 — vibe_hardcoded_secret ─────────────────────────────────────────
+
+describe('VIBE_007 — vibe_hardcoded_secret', () => {
+  it('does NOT fire on HTML/JSX placeholder attributes', () => {
+    const findings = detect('VIBE_007', [
+      {
+        path: 'src/components/SearchBar.tsx',
+        content: [
+          '<input placeholder="Search agents..." />',
+          '<textarea placeholder="Describe your task"></textarea>',
+          '<Input placeholder="you@example.com" />',
+          'placeholder={t("form.email")}',
+          '<input type="password" placeholder="Password" />',
+        ].join('\n'),
+      },
+    ]);
+    expect(findings).toEqual([]);
+  });
+
+  it('does NOT fire on uppercase UI constants containing PLACEHOLDER', () => {
+    const findings = detect('VIBE_007', [
+      {
+        path: 'src/constants.ts',
+        content: 'const SEARCH_PLACEHOLDER = "Search the Pantheon";',
+      },
+    ]);
+    expect(findings).toEqual([]);
+  });
+
+  it('fires on a quoted PLACEHOLDER sentinel secret value', () => {
+    const findings = detect('VIBE_007', [
+      { path: 'src/config.ts', content: 'const API_KEY = "PLACEHOLDER";' },
+    ]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].category).toBe('vibe_hardcoded_secret');
+  });
+
+  it('fires on your-api-key style placeholder values', () => {
+    const findings = detect('VIBE_007', [
+      { path: 'src/openai.ts', content: 'const client = new OpenAI({ apiKey: "your-api-key-here" });' },
+    ]);
+    expect(findings).toHaveLength(1);
+  });
+
+  it('fires on sk-proj- style keys', () => {
+    const findings = detect('VIBE_007', [
+      { path: 'src/openai.ts', content: 'const key = "sk-proj-abc123def456";' },
+    ]);
+    expect(findings).toHaveLength(1);
+  });
+
+  it('does NOT fire when the value comes from the environment', () => {
+    const findings = detect('VIBE_007', [
+      { path: 'src/openai.ts', content: "const apiKey = process['env' as 'env']['OPENAI_API_KEY'];" },
+    ]);
+    expect(findings).toEqual([]);
+  });
+});
+
 // ── VIBE_009 — vibe_sql_template_injection ───────────────────────────────────
 
 describe('VIBE_009 — vibe_sql_template_injection', () => {
