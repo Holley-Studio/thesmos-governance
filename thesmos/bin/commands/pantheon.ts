@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto';
 import { createContext } from '../lib/context.ts';
 import { parseArgs, flag } from '../lib/args.ts';
 import { logAgentSpawn } from '../../agent-activity.ts';
+import { modelFor } from '../../generated/pantheon-models.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Resolve catalog path for both dev (bin/commands/) and bundle (dist/) locations.
@@ -244,20 +245,11 @@ function writeRegistry(root: string, data: Record<string, unknown>): void {
 
 // ── Export generators ──────────────────────────────────────────────────────────
 
-const OPUS_AGENTS = new Set(['zeus-executive-agent', 'argus-security-agent', 'athena-strategy-agent']);
-const HAIKU_AGENTS = new Set([
-  'calliope-writing-agent', 'clio-history-agent', 'erato-poetry-agent',
-  'polyhymnia-hymn-agent', 'morpheus-animation-agent', 'artemis-photography-agent',
-  'eos-social-agent', 'dionysus-video-agent',
-]);
-
 function exportClaudeCode(agent: PantheonAgent): string {
   const tools = ['Read', 'Write', 'Bash'];
-  const model = OPUS_AGENTS.has(agent.id)
-    ? 'claude-opus-4-8'
-    : HAIKU_AGENTS.has(agent.id)
-      ? 'claude-haiku-4-5-20251001'
-      : 'claude-sonnet-4-6';
+  // Model comes from the catalog (via the generated PANTHEON_MODELS map) so it
+  // never drifts from platforms.claude_model. Was: hardcoded OPUS/HAIKU sets.
+  const model = modelFor(agent.id);
 
   const mythologySnippet = agent.mythology ? ' ' + agent.mythology.slice(0, 90).replace(/\n/g, ' ') : '';
 

@@ -31,7 +31,7 @@ governance:
     - hera-operations-agent
   reports_to: null
 platforms:
-  claude_model: claude-fable-5
+  claude_model: claude-opus-4-8
   openai_model: gpt-5.5-pro
   cursor_globs: "**/*.md,**/*.json,**/*.yaml"
   chatgpt_model: gpt-4o
