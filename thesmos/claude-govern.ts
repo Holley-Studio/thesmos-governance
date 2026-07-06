@@ -198,7 +198,10 @@ export function getAutoModeGovernanceInfo(root: string, config?: Record<string, 
   const autoModeCfg = (config?.['autoMode'] ?? {}) as Record<string, unknown>;
   const enabled    = autoModeCfg['enabled']     !== false;
   const strictMode = autoModeCfg['strictMode']  !== false;
-  const blockOn    = (autoModeCfg['blockOn'] as string | undefined) ?? (strictMode ? 'HIGH' : 'BLOCKER');
+  // Fall back to BLOCKER to match evaluateGovernFindings' real behavior — strictMode
+  // is reserved and no longer drives the block threshold. Reporting HIGH here would
+  // overstate what the hook actually blocks on.
+  const blockOn    = (autoModeCfg['blockOn'] as string | undefined) ?? 'BLOCKER';
   const governed   = enabled && status.installed;
 
   const message = governed

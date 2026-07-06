@@ -10,7 +10,14 @@ import { readFileSync } from 'node:fs';
 export type ModelTier = 'haiku' | 'sonnet' | 'fable';
 
 export interface ModelRecommendation {
+  /** Cost tier bucket. */
   model: ModelTier;
+  /** Concrete Claude model id to run. The top tier resolves to the reasoning
+   * flagship (claude-opus-4-8) for architecture/orchestration or the creative
+   * flagship (claude-fable-5) for creative/customer-facing work. */
+  claudeModel: string;
+  /** Concrete Codex CLI model id for the same tier. */
+  codexModel: string;
   costMultiple: string;
   rationale: string;
 }
@@ -101,23 +108,36 @@ export function recommendModel(c: Classification): ModelRecommendation {
   if (c.bulkPct >= 40 && c.architecturePct < 20 && c.creativePct < 20) {
     return {
       model: 'haiku',
-      costMultiple: '~5x cheaper than Sonnet, ~10x cheaper than Fable',
+      claudeModel: 'claude-haiku-4-5',
+      codexModel: 'gpt-5.5-instant',
+      costMultiple: '~5x cheaper than Sonnet, ~10x cheaper than the top tier',
       rationale: `${c.bulkPct}% bulk/repetitive work with little architectural or creative judgment — Haiku handles high-volume mechanical passes at a fraction of the cost.`,
     };
   }
 
   if (c.architecturePct >= 30 || c.creativePct >= 30) {
+    // Top cost tier — but the concrete flagship depends on WHY it was chosen.
+    // Architecture/orchestration wants the reasoning flagship (claude-opus-4-8,
+    // the model the Pantheon's Zeus/Argus/Athena actually run on); creative or
+    // customer-facing work wants the creative flagship (claude-fable-5).
+    const architectureLed = c.architecturePct >= c.creativePct;
     return {
       model: 'fable',
+      claudeModel: architectureLed ? 'claude-opus-4-8' : 'claude-fable-5',
+      codexModel: 'gpt-5.5-pro',
       costMultiple: '~5x the cost of Sonnet',
-      rationale: `${c.architecturePct}% architecture/orchestration and ${c.creativePct}% creative/customer-facing work — this is where Fable's reasoning depth earns its cost. Use it for the judgment-heavy workstreams; delegate mechanical cleanup elsewhere.`,
+      rationale: architectureLed
+        ? `${c.architecturePct}% architecture/orchestration work — this is where the reasoning flagship (claude-opus-4-8, what the orchestration gods run on) earns its cost. Delegate mechanical cleanup elsewhere.`
+        : `${c.creativePct}% creative/customer-facing work — claude-fable-5's generative range earns its cost here. Delegate mechanical cleanup elsewhere.`,
     };
   }
 
   return {
     model: 'sonnet',
-    costMultiple: 'baseline (~5x cheaper than Fable)',
-    rationale: `${c.mechanicalPct}% mechanical execution — file edits, config changes, regenerations. Sonnet handles this reliably; Fable's extra reasoning depth wouldn't improve find/replace accuracy.`,
+    claudeModel: 'claude-sonnet-5',
+    codexModel: 'gpt-5.5',
+    costMultiple: 'baseline (~5x cheaper than the top tier)',
+    rationale: `${c.mechanicalPct}% mechanical execution — file edits, config changes, regenerations. Sonnet handles this reliably; a top-tier model's extra reasoning depth wouldn't improve find/replace accuracy.`,
   };
 }
 
@@ -196,7 +216,7 @@ export function buildAdvisory(planText: string, gods: Record<string, GodEntry>):
 
 export function formatAdvisoryConsole(advisory: Advisory): string {
   const { recommendation, agents } = advisory;
-  const modelLabel = { haiku: 'claude-haiku-4-5', sonnet: 'claude-sonnet-5', fable: 'claude-fable-5' }[recommendation.model];
+  const modelLabel = recommendation.claudeModel;
   const lines: string[] = [];
   lines.push('⚡ EXECUTION ADVISORY');
   lines.push(`Recommended model: ${modelLabel}`);
@@ -285,17 +305,6 @@ export function assignPhases(
 
 // ── Kickoff prompt v2 ─────────────────────────────────────────────────────────
 
-/**
- * Per-platform model strings for the human-run STEP 1. Slash commands are
- * tool-level CLI commands — they can NEVER appear inside the paste body
- * (a paste starting with /model is intercepted and rejected wholesale).
- */
-const PLATFORM_MODELS: Record<ModelTier, { claude: string; codex: string }> = {
-  haiku: { claude: 'claude-haiku-4-5', codex: 'gpt-5.5-instant' },
-  sonnet: { claude: 'claude-sonnet-5', codex: 'gpt-5.5' },
-  fable: { claude: 'claude-fable-5', codex: 'gpt-5.5-pro' },
-};
-
 const TIER_LABEL: Record<ModelTier, string> = {
   haiku: 'a fast, high-throughput model',
   sonnet: 'a capable mid-tier model',
@@ -309,7 +318,6 @@ export function formatKickoffPrompt(
   gods: Record<string, GodEntry> = {},
 ): string {
   const tier = advisory.recommendation.model;
-  const models = PLATFORM_MODELS[tier];
   const opName = generateOperationName(planText || planPath);
   const phases = planText ? assignPhases(planText, gods) : [];
 
@@ -317,8 +325,8 @@ export function formatKickoffPrompt(
   out.push(`📋 KICKOFF — Operation ${opName}`);
   out.push('');
   out.push('STEP 1 · Set your model first (run in your tool — NOT part of the paste):');
-  out.push(`  Claude Code : /model ${models.claude}`);
-  out.push(`  Codex CLI   : /model ${models.codex}`);
+  out.push(`  Claude Code : /model ${advisory.recommendation.claudeModel}`);
+  out.push(`  Codex CLI   : /model ${advisory.recommendation.codexModel}`);
   out.push(`  Gemini CLI  : equivalent tier via /model`);
   out.push(`  Cursor/IDE  : pick the equivalent tier in the model dropdown`);
   out.push('');
