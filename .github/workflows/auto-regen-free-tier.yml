@@ -1,0 +1,95 @@
+name: Auto-Regenerate Free Tier
+
+# Keeps the free Starter Council exports (Zeus, Athena, Argus, Apollo,
+# Hephaestus — the only agents whose exports are git-tracked at HEAD, see
+# .gitignore) current with their catalog source, automatically. Fires only
+# when one of those 5 agents' source markdown actually changes, so this
+# never runs on unrelated commits.
+#
+# Runs the full `pantheon:export --target=all` (now correctly discovers all
+# agents per the fix in thesmos/bin/commands/pantheon.ts) and stages the
+# result. Everything except the 26 free-tier files is gitignored, so `git
+# add` naturally only ever picks up changes to the free tier — no separate
+# agent-filtering logic needed here.
+#
+# Opens a PR rather than auto-merging: main requires a PR + passing
+# typecheck for every change (no bypass actors), and a human glance at
+# public-facing content before it ships is a deliberate choice, not a
+# missing feature — mirrors the review-gate design already used for the
+# HolleyStudios storefront-facts sync.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'thesmos/catalog/agents/pantheon/zeus-executive-agent.md'
+      - 'thesmos/catalog/agents/pantheon/athena-strategy-agent.md'
+      - 'thesmos/catalog/agents/pantheon/argus-security-agent.md'
+      - 'thesmos/catalog/agents/pantheon/apollo-content-agent.md'
+      - 'thesmos/catalog/agents/pantheon/hephaestus-design-agent.md'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: thesmos/package-lock.json
+
+      - name: Install dependencies
+        working-directory: thesmos
+        run: npm ci
+
+      - name: Build CLI
+        working-directory: thesmos
+        run: npm run build
+
+      - name: Regenerate all platform exports
+        working-directory: thesmos
+        run: node dist/cli.js pantheon:export --target all
+
+      - name: Check for free-tier changes
+        id: diff
+        run: |
+          git add pantheon/exports/
+          if git diff --cached --quiet -- pantheon/exports/; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR with regenerated free-tier exports
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          # PRs opened with the default GITHUB_TOKEN don't trigger other
+          # workflows (GitHub's loop-prevention rule) -- meaning the PR would
+          # never get its required "typecheck" status check and would sit
+          # permanently unmergeable. A fine-grained PAT sidesteps this, same
+          # fix already used for the HolleyStudios storefront-sync PRs.
+          # Falls back to GITHUB_TOKEN if the secret isn't set yet -- the PR
+          # will still open, just needs a manual re-run of typecheck to merge.
+          token: ${{ secrets.AUTO_REGEN_PR_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: "chore(pantheon): regenerate free-tier exports from catalog source"
+          title: "chore(pantheon): regenerate free-tier exports from catalog source"
+          body: |
+            Automated — one of the 5 free Starter Council agents' catalog source
+            changed, so their platform exports were regenerated to match.
+
+            Only files under `pantheon/exports/` for Zeus, Athena, Argus, Apollo,
+            or Hephaestus can appear here (everything else is gitignored).
+
+            Not auto-merged on purpose: main requires a passing `typecheck` check
+            for every change, and a quick human glance at public-facing content
+            before it ships is deliberate, not a gap.
+          branch: auto/regen-free-tier
+          delete-branch: true
+          add-paths: pantheon/exports/
