@@ -4,12 +4,12 @@
 [![npm version](https://img.shields.io/npm/v/thesmos-governance?color=blue)](https://www.npmjs.com/package/thesmos-governance)
 [![npm downloads](https://img.shields.io/npm/dm/thesmos-governance)](https://www.npmjs.com/package/thesmos-governance)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/holleystudio.thesmos-governance-vscode)](https://marketplace.visualstudio.com/items?itemName=holleystudio.thesmos-governance-vscode)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: FSL-1.1-MIT](https://img.shields.io/badge/License-FSL--1.1--MIT-blue.svg)](LICENSE)
 [![Node ≥20](https://img.shields.io/node/v/thesmos-governance)](https://nodejs.org)
 
 **1,137 rules. Zero config. Built for the AI-assisted engineering era.**
 
-Thesmos is an open-source code governance toolkit that watches AI-generated code for security holes, broken patterns, and architectural mistakes — before they reach production.
+Thesmos is a source-available code governance toolkit that watches AI-generated code for security holes, broken patterns, and architectural mistakes — before they reach production.
 
 Built by [Holley Studio](https://holley.studio) — Thesmos governs its own repository; every PR merged here passed its own gate. Check the [Actions tab](https://github.com/Holley-Studio/thesmos-governance/actions) for proof.
 
@@ -223,7 +223,7 @@ Issues and feature requests: [GitHub Issues](https://github.com/Holley-Studio/th
 
 ## License
 
-MIT — [LICENSE](LICENSE)
+[Functional Source License 1.1, MIT Future License](LICENSE) (FSL-1.1-MIT) — source-available today; converts to MIT four years after each version's release. Free to use, including commercially, except for a Competing Use (offering Thesmos itself, or a substantially similar product, as a hosted or on-premises service to third parties). See [LICENSE](LICENSE) for the full terms.
 
 ---
 
