@@ -50,16 +50,14 @@ Each folder includes step-by-step INSTALL.md. Setup takes under 5 minutes.
 
 ---
 
-## Own it once. Pick your tier.
+## Own it once. Free essentials, or everything for $79.
 
-The **Full Pantheon** is a single one-time payment: **$79** — all 67 agents, all 10 platforms, the VS Code extension, all 13 ChatGPT knowledge clusters, all 3 Claude.ai council bundles, and lifetime updates. No subscription. No recurring charge. Ever.
+Thesmos ships free, forever: the governance CLI with **289 Essentials rules** (every BLOCKER + the full AI-code safety net) and **5 starter agents** — Zeus, Athena, Argus, Apollo, Hephaestus — across 9 platforms, no account required.
 
-Need less than the whole Pantheon? Two curated packs, each **$49 one-time**:
-- **Founders Pack** — 15 agents for startup founders: strategy, sales, fundraising, product, legal.
-- **Agencies Pack** — 13 agents for creative and marketing agencies: content, brand, campaigns.
+The **Full Pantheon** is a single one-time payment: **$79** — the complete **1,137-rule governance engine**, all **67 agents**, all 10 platforms, the VS Code extension, all 13 ChatGPT knowledge clusters, all 3 Claude.ai council bundles, and lifetime updates. No subscription. No recurring charge. Ever.
 
 Want to feel it work before you spend anything?
-- Download the free **Starter Pack** — 5 agents (Zeus, Athena, Argus, Apollo, Hephaestus) across 9 platforms, no account required — at [holley.studio](https://holley.studio).
+- Download the free **Essentials** agent pack — 5 agents across 9 platforms — at [holley.studio](https://holley.studio).
 - Or chat with the free **Pantheon Council GPT** on the ChatGPT store and watch Zeus route a task live. *[PLACEHOLDER — confirm the public GPT Store URL before launch]*
 
 ---
@@ -76,4 +74,4 @@ The Pantheon grows. New gods, new platforms, and model updates ship regularly �
 
 ---
 
-*Just want to try it first? Download the free 5-agent Starter Pack at [holley.studio](https://holley.studio)*
+*Just want to try it first? Download the free 5-agent Essentials pack at [holley.studio](https://holley.studio)*

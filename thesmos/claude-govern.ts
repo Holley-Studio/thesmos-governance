@@ -20,12 +20,14 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
-import { THESMOS_RULES } from './rules/registry.js';
+import { activeRulesForTier } from './rules/registry.js';
 import { loadConfig, CONFIG_DEFAULTS } from './config.js';
+import { classifySeverity, SEVERITY_ORDER } from './severity.js';
+import { extractSuppressions, applySuppressions } from './suppress.js';
 import { extractInstallPackages, quickPhantomCheck } from './import-scan.js';
 import { checkScope } from './scope.js';
 import { runPostToolBudgetCheck, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
-import type { ScanResult, DetectInput, Finding } from './types.js';
+import type { ScanResult, DetectInput, Finding, Severity, ThesmosConfig } from './types.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -196,7 +198,10 @@ export function getAutoModeGovernanceInfo(root: string, config?: Record<string, 
   const autoModeCfg = (config?.['autoMode'] ?? {}) as Record<string, unknown>;
   const enabled    = autoModeCfg['enabled']     !== false;
   const strictMode = autoModeCfg['strictMode']  !== false;
-  const blockOn    = (autoModeCfg['blockOn'] as string | undefined) ?? (strictMode ? 'HIGH' : 'BLOCKER');
+  // Fall back to BLOCKER to match evaluateGovernFindings' real behavior — strictMode
+  // is reserved and no longer drives the block threshold. Reporting HIGH here would
+  // overstate what the hook actually blocks on.
+  const blockOn    = (autoModeCfg['blockOn'] as string | undefined) ?? 'BLOCKER';
   const governed   = enabled && status.installed;
 
   const message = governed
@@ -309,6 +314,60 @@ function emptyScan(): ScanResult {
   };
 }
 
+// ── Write/Edit content evaluation ─────────────────────────────────────────────
+
+/**
+ * Evaluate file content against the governance rules and return the findings
+ * that should block the write. Pure — no process.exit, no filesystem.
+ *
+ * Honors the same exception mechanisms as `thesmos review`:
+ *   - config.severityRules overrides (a downgraded rule no longer blocks;
+ *     an upgraded rule starts blocking)
+ *   - inline `// thesmos-disable-next-line <rule> -- reason: ...` suppressions
+ *   - config.autoMode.blockOn threshold (default: BLOCKER only)
+ */
+export function evaluateGovernFindings(input: {
+  filePath: string;
+  content: string;
+  config: ThesmosConfig;
+}): Finding[] {
+  const { filePath, content, config } = input;
+
+  const blockOn: Severity = config.autoMode?.blockOn ?? 'BLOCKER';
+  const threshold = SEVERITY_ORDER.indexOf(blockOn);
+  const blocksAt = (sev: Severity): boolean => SEVERITY_ORDER.indexOf(sev) <= threshold;
+
+  // A rule can block if its effective severity (config override, else static)
+  // reaches the threshold. Rules that classify their own finding severity are
+  // re-checked by the finding-level filter below.
+  const rules = activeRulesForTier(config).filter(
+    (r) => blocksAt(classifySeverity(r.category, config.severityRules)) || blocksAt(r.severity),
+  );
+
+  const detectInput: DetectInput = {
+    scan: emptyScan(),
+    config,
+    changedFiles: [{ path: filePath, content }],
+  };
+
+  const findings: Finding[] = [];
+  for (const rule of rules) {
+    try {
+      findings.push(...rule.detect(detectInput));
+    } catch {
+      // rule failed — skip it, never block on error
+    }
+  }
+
+  // Finding-level severity filter — this is what makes severityRules downgrades stick.
+  const blocking = findings.filter((f) => blocksAt(f.severity));
+
+  // Inline suppressions: same syntax and semantics as thesmos review.
+  const suppressions = extractSuppressions(content, filePath);
+  if (suppressions.length === 0) return blocking;
+  return applySuppressions(blocking, suppressions, new Date()).activeFindings;
+}
+
 /**
  * Run by Claude Code as a PreToolUse hook.
  * Reads tool input from stdin, scans file content for BLOCKER violations.
@@ -416,23 +475,7 @@ export async function runPreToolCheck(root: string): Promise<void> {
     // not a thesmos project — use defaults
   }
 
-  // Run only BLOCKER-severity rules
-  const blockerRules = THESMOS_RULES.filter((r) => r.severity === 'BLOCKER');
-
-  const detectInput: DetectInput = {
-    scan: emptyScan(),
-    config,
-    changedFiles: [{ path: filePath, content }],
-  };
-
-  const findings: Finding[] = [];
-  for (const rule of blockerRules) {
-    try {
-      findings.push(...rule.detect(detectInput));
-    } catch {
-      // rule failed — skip it, never block on error
-    }
-  }
+  const findings = evaluateGovernFindings({ filePath, content, config });
 
   if (findings.length === 0) process.exit(0);
 

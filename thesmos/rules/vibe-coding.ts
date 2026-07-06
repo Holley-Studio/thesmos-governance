@@ -307,13 +307,16 @@ export const VIBE_CODING_RULES: ThesmosRule[] = [
       const sev = classifySeverity('vibe_hardcoded_secret', config.severityRules);
       const findings: Finding[] = [];
       const HARDCODED_SECRET_RE = /(?:apiKey|api_key|secret|token|password|auth_token|bearer)\s*[:=]\s*['"`][A-Za-z0-9+/\-_.]{12,}['"`]/i;
-      const PLACEHOLDER_RE = /your[-_]?(api[-_]?key|key|token|secret|password)|sk-proj-[a-z]|PLACEHOLDER|INSERT[-_]?KEY/i;
+      const PLACEHOLDER_RE = /your[-_]?(api[-_]?key|key|token|secret|password)|sk-proj-[a-z]/i;
+      // Sentinel must be an UPPERCASE token inside a quoted value — the lowercase HTML/JSX
+      // `placeholder` attribute and UI constants like SEARCH_PLACEHOLDER must never match.
+      const SENTINEL_VALUE_RE = /['"`][^'"`\n]*(?:PLACEHOLDER|INSERT[-_]?KEY)[^'"`\n]*['"`]/;
       for (const { path, content } of changedFiles) {
         if (isTestPath(path)) continue;
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
           const l = lines[i];
-          if ((HARDCODED_SECRET_RE.test(l) || PLACEHOLDER_RE.test(l)) &&
+          if ((HARDCODED_SECRET_RE.test(l) || PLACEHOLDER_RE.test(l) || SENTINEL_VALUE_RE.test(l)) &&
               !/process\.env|process\[|getenv|os\.environ/i.test(l)) {
             findings.push({
               severity: sev, category: 'vibe_hardcoded_secret', file: path, line: i + 1,
