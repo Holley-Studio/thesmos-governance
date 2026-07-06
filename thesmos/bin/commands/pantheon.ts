@@ -25,24 +25,18 @@ const _agentsDirCandidates = [
 ];
 const AGENTS_DIR = _agentsDirCandidates.find(p => existsSync(p)) ?? _agentsDirCandidates[0];
 const PANTHEON_DIR = join(AGENTS_DIR, 'pantheon');
+const FIGMA_DIR = join(AGENTS_DIR, 'figma');
 const MEMORY_DIR_REL = '.thesmos/pantheon/memory';
 
-// The 13 God Agents that live at catalog/agents root (outside pantheon/ subdir)
-const WORKFLOW_GOD_AGENTS = [
-  'aether-ai-strategy-agent',
-  'calliope-email-agent',
-  'cassandra-qa-agent',
-  'chiron-architecture-agent',
-  'clio-case-study-agent',
-  'eos-automation-agent',
-  'erato-brand-voice-agent',
-  'kratos-devops-agent',
-  'metis-pm-agent',
-  'momus-challenger-agent',
-  'polyhymnia-docs-agent',
-  'proteus-drift-agent',
-  'talos-web-dev-agent',
-];
+// Slugs of agent .md files directly in a directory (non-recursive), excluding
+// README.md and any <slug>-README.md companion doc (identified by lacking the
+// --- frontmatter block a real agent file has — see parsePantheonAgent).
+function listAgentSlugs(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter(f => f.endsWith('.md') && f !== 'README.md')
+    .map(f => f.replace(/\.md$/, ''));
+}
 
 // ── Agent metadata ─────────────────────────────────────────────────────────────
 
@@ -62,20 +56,21 @@ interface PantheonAgent {
 function loadPantheonAgents(): PantheonAgent[] {
   const agents: PantheonAgent[] = [];
 
-  // Load the 21 core Pantheon agents from catalog/agents/pantheon/
-  if (existsSync(PANTHEON_DIR)) {
-    for (const filename of readdirSync(PANTHEON_DIR).filter(f => f.endsWith('.md') && f !== 'README.md').sort()) {
-      const raw = readFileSync(join(PANTHEON_DIR, filename), 'utf8');
-      const agent = parsePantheonAgent(raw, filename.replace('.md', ''));
-      if (agent) agents.push(agent);
-    }
-  }
+  // Every agent .md file, discovered dynamically rather than off a
+  // hand-maintained slug list — a hardcoded list silently drifts the moment
+  // a new agent lands in one of these directories without the list being
+  // updated (this is exactly how 25 shipped agents went undiscoverable:
+  // 15 root-level agents were never added to the old hardcoded list, and an
+  // entire catalog/agents/figma/ directory was never scanned at all).
+  const sources = [
+    { dir: PANTHEON_DIR, slugs: listAgentSlugs(PANTHEON_DIR).sort() },
+    { dir: FIGMA_DIR, slugs: listAgentSlugs(FIGMA_DIR).sort() },
+    { dir: AGENTS_DIR, slugs: listAgentSlugs(AGENTS_DIR).sort() },
+  ];
 
-  // Load the 13 workflow God Agents from catalog/agents/ root
-  for (const slug of WORKFLOW_GOD_AGENTS) {
-    const filepath = join(AGENTS_DIR, `${slug}.md`);
-    if (existsSync(filepath)) {
-      const raw = readFileSync(filepath, 'utf8');
+  for (const { dir, slugs } of sources) {
+    for (const slug of slugs) {
+      const raw = readFileSync(join(dir, `${slug}.md`), 'utf8');
       const agent = parsePantheonAgent(raw, slug);
       if (agent) agents.push(agent);
     }
