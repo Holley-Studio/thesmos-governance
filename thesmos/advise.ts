@@ -276,11 +276,19 @@ export function generateOperationName(planText: string): string {
 export interface PhaseAssignment {
   heading: string;
   god: AgentSuggestion | null;
+  /** This phase's own model recommendation — classified from its own body
+   * text, independent of the plan's overall recommendation. A plan can
+   * legitimately span tiers: an architecture phase scoped for the reasoning
+   * flagship, followed by mechanical implementation phases scoped for Sonnet. */
+  model: ModelRecommendation;
 }
 
 /**
  * Split a plan into phases by `## Phase N` / `## W<N>` style headings and
- * suggest the best-matching god for each phase's own text.
+ * suggest the best-matching god AND model tier for each phase's own text —
+ * free, deterministic, no LLM call. This is what lets a kickoff read
+ * "Phase 1: Opus, Phase 2: Sonnet, Phase 3: Haiku" instead of one blanket
+ * model for a plan that may not need the same tier throughout.
  */
 export function assignPhases(
   planText: string,
@@ -298,7 +306,8 @@ export function assignPhases(
     // Work assignment routes by domain fit, not mention frequency — a phase
     // that says "delete the iris files" discusses Iris without needing her.
     const [top] = suggestAgents(body, gods, 1, { nameWeight: 3, requireDomainHit: true });
-    assignments.push({ heading: matches[i][1].trim(), god: top ?? null });
+    const model = recommendModel(classifyPlan(body));
+    assignments.push({ heading: matches[i][1].trim(), god: top ?? null, model });
   }
   return assignments;
 }
@@ -347,11 +356,20 @@ export function formatKickoffPrompt(
     out.push('them — Claude Code: the Agent tool; elsewhere channel each god\'s');
     out.push('persona, banner and signature included):');
     if (phases.length > 0) {
+      const mixedTiers = new Set(phases.map((p) => p.model.model)).size > 1;
       for (const p of phases) {
         const g = p.god;
+        // Only print a per-phase model when phases actually differ in tier —
+        // repeating the same model on every line is noise, not information.
+        const modelSuffix = mixedTiers ? ` [${p.model.claudeModel}]` : '';
         out.push(g
-          ? `  ${p.heading} → ${g.emoji} ${g.name} — ${g.domain}`
-          : `  ${p.heading} → handle directly`);
+          ? `  ${p.heading} → ${g.emoji} ${g.name} — ${g.domain}${modelSuffix}`
+          : `  ${p.heading} → handle directly${modelSuffix}`);
+      }
+      if (mixedTiers) {
+        out.push('');
+        out.push('This plan spans model tiers — switch `/model` at each phase boundary');
+        out.push('rather than running the whole operation on one tier.');
       }
     } else {
       for (const a of advisory.agents) {

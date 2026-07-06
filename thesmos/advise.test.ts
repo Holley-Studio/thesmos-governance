@@ -218,6 +218,22 @@ describe('assignPhases', () => {
   it('returns empty for a plan without phase headings', () => {
     expect(assignPhases('just some text with no headings', PANTHEON_MAP)).toEqual([]);
   });
+
+  it('classifies each phase\'s model tier independently, free and deterministic', () => {
+    const MIXED_TIER_PLAN = [
+      '# Plan',
+      '## Phase 1 — Architecture redesign',
+      ARCHITECTURE_PLAN,
+      '## Phase 2 — Formatting sweep',
+      MECHANICAL_PLAN,
+    ].join('\n');
+    const phases = assignPhases(MIXED_TIER_PLAN, PANTHEON_MAP);
+    expect(phases).toHaveLength(2);
+    expect(phases[0].model.model).toBe('fable');
+    expect(phases[0].model.claudeModel).toBe('claude-opus-4-8');
+    expect(phases[1].model.model).toBe('sonnet');
+    expect(phases[1].model.claudeModel).toBe('claude-sonnet-5');
+  });
 });
 
 // ── formatKickoffPrompt v2 ────────────────────────────────────────────────────
@@ -249,5 +265,35 @@ describe('formatKickoffPrompt (v2)', () => {
   it('includes plan path and verification instruction in the body', () => {
     expect(prompt).toContain('Plan file: /tmp/plan.md');
     expect(prompt).toContain('Verification block');
+  });
+
+  it('annotates each phase with its own model when phases span tiers', () => {
+    const MIXED_TIER_PLAN = [
+      '# Plan',
+      '## Phase 1 — Architecture redesign',
+      ARCHITECTURE_PLAN,
+      '## Phase 2 — Formatting sweep',
+      MECHANICAL_PLAN,
+    ].join('\n');
+    const advisory = buildAdvisory(MIXED_TIER_PLAN, PANTHEON_MAP);
+    const p = formatKickoffPrompt('/tmp/plan.md', advisory, MIXED_TIER_PLAN, PANTHEON_MAP);
+    expect(p).toContain('[claude-opus-4-8]');
+    expect(p).toContain('[claude-sonnet-5]');
+    expect(p).toContain('spans model tiers');
+  });
+
+  it('omits per-phase model annotation when every phase is the same tier', () => {
+    // Both phases classify as mechanical-leaning — repeating the same model
+    // on every line would be noise, not information.
+    const SAME_TIER_PLAN = [
+      '# Plan',
+      '## Phase 1 — Copy pass',
+      MECHANICAL_PLAN,
+      '## Phase 2 — Config pass',
+      MECHANICAL_PLAN,
+    ].join('\n');
+    const advisory = buildAdvisory(SAME_TIER_PLAN, PANTHEON_MAP);
+    const p = formatKickoffPrompt('/tmp/plan.md', advisory, SAME_TIER_PLAN, PANTHEON_MAP);
+    expect(p).not.toContain('spans model tiers');
   });
 });
