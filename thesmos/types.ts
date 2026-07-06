@@ -117,6 +117,16 @@ export interface ThesmosConfig {
    */
   tier?: 'free' | 'premium';
 
+  /**
+   * Pantheon orchestration power tier. 'lean' (default): one specialist, a
+   * one-line Zeus header, no auto-council, no mandatory ceremony — most tasks
+   * (80-90%) belong here. 'god': full council/ceremony available — adversarial
+   * self-check, the full multi-line routing banners, deep-research escalation.
+   * This governs agent-routing PROMPT BEHAVIOR (read by CLAUDE.md doctrine), not
+   * rule enforcement — there is no runtime code gate, unlike `tier`.
+   */
+  power?: 'lean' | 'god';
+
   // Folder scanning
   ignoredFolders: string[];
   /**

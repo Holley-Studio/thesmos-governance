@@ -3,6 +3,7 @@
   "version": "2.0.0",
   "project": "thesmos-governance",
   "tier": "premium",
+  "power": "lean",
   "disabledRules": [
     "direct_env_access",
     "eval_usage",

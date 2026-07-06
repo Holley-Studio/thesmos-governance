@@ -159,7 +159,13 @@ Ask the diagnostic question before the answer.
 ### Context & Model Discipline
 - **1M context is opt-in.** The 1M window (\`[1m]\` model variant / \`context-1m\` beta) is premium-priced and governed by AGNT_037 (BLOCKER). Use it only when the user explicitly asks; enabling it requires \`"context1M": { "allow1M": true }\` in \`.thesmos/config.json\`.
 - **Match model to task depth (AGNT_031).** Default to the mid tier; reserve the top tier for architecture-heavy or irreversible decisions; use the fast tier for mechanical work. Escalate deliberately, not by habit.
-- **Default to one specialist.** 80–90% of tasks need a single agent. Convene a council only when work is genuinely cross-domain and outputs are separable — never to "think harder." A god is economical: the cheapest path that gets it right wins.`.trimStart();
+- **Default to one specialist.** 80–90% of tasks need a single agent. Convene a council only when work is genuinely cross-domain and outputs are separable — never to "think harder." A god is economical: the cheapest path that gets it right wins.
+
+### Power Tier
+Read \`power\` from \`.thesmos/config.json\` (default: \`lean\`).
+- **\`lean\`** (default): one specialist, a one-line dispatch, no auto-council, no mandatory ceremony.
+- **\`god\`**: full council/ceremony available — multi-line banners, council reports, deep-research escalation. Triggered by config or by "god mode" / "feel the gods" / "go deep" / "full council" in the request.
+Lean is not sloppy and god is not automatically a council — both tiers still route to the minimum specialist set that gets the task right; \`god\` only unlocks more ceremony and deeper escalation when the task actually warrants it.`.trimStart();
 }
 
 export function generateClaudeRules(rules: Rule[], config: ThesmosConfig): string {

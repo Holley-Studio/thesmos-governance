@@ -44,6 +44,7 @@ export const CONFIG_DEFAULTS: ThesmosConfig = {
   name: 'Thesmos',
   version: '2.0.0',
   project: 'unknown',
+  power: 'lean',
 
   ignoredFolders: ['node_modules', '.next', '.git', 'out', '.vercel'],
   reviewIgnorePaths: [],
