@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 /**
  * Thesmos Agent Packager.
- * Bundles exported agent files into downloadable ZIPs:
+ * Bundles exported agent files into downloadable ZIPs — two tiers only
+ * (Operation Sovereign Gate retired the $49 Founders/Agencies verticals):
  *
  *   website/downloads/thesmos-starter-agents.zip — 5 free agents, all platforms
- *   dist-packs/thesmos-pantheon-agents.zip        — ALL agents (paid, Gumroad only)
- *   dist-packs/thesmos-pantheon-founders.zip      — Founders vertical (paid, Gumroad only)
- *   dist-packs/thesmos-pantheon-agencies.zip      — Agencies vertical (paid, Gumroad only)
+ *   dist-packs/thesmos-pantheon-agents.zip        — ALL agents + the premium
+ *     engine unlock (premium/pack.json — flips the CLI from the 289-rule free
+ *     Essentials tier to the full 1,137-rule engine). Paid, Gumroad only.
  *
- * Paid bundles are NOT committed to the repo or served from the public website —
- * Gumroad is the only distribution channel for them (see Operation Clear Temple).
- * The starter ZIP is the only one that ships from website/downloads/.
+ * The paid bundle is NOT committed to the repo or served from the public
+ * website — Gumroad is the only distribution channel for it (see Operation
+ * Clear Temple). The starter ZIP is the only one that ships from
+ * website/downloads/.
  *
  * Usage:
  *   tsx scripts/package-agents.ts
@@ -22,6 +24,7 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   copyFileSync,
   writeFileSync,
   rmSync,
@@ -52,8 +55,22 @@ const FREE_AGENT_IDS = new Set([
   'hebe-support-agent',
 ])
 
+// ── God-drop holdbacks ────────────────────────────────────────────────────────
+// Agents whose catalog/exports exist but whose DROP IS NOT COMPLETE — not in
+// pantheon-map.json (Zeus can't route to them), not in the decreed roster
+// count, not announced. Excluded from every bundle so the shipped artifact
+// matches the marketed "67 agents" exactly. To complete a drop: add the god to
+// pantheon-map.json, update the roster decree + all count surfaces (see
+// docs/roadmap.md), announce it, THEN remove the holdback.
+const HOLDBACK_AGENT_IDS = [
+  'asclepius-debugging-agent', // committed in #73, exports generated 2026-07-05, drop never finished
+]
+
+const isHeldBack = (id: string): boolean =>
+  HOLDBACK_AGENT_IDS.some((h) => id.startsWith(h))
+
 // Starter (free) bundle teaser — 3 broadly appealing skills out of the full
-// 53. Paid bundles (full Pantheon + both verticals) ship all of them.
+// 53. The paid Full Pantheon bundle ships all of them.
 const STARTER_SAMPLE_SKILL_IDS = new Set([
   'a11y-audit',
   'ci-pipeline-audit',
@@ -337,46 +354,50 @@ Learn more: https://agents.md
   },
 ]
 
-// ── Vertical packs — curated god subsets for a specific audience ──────────────
+// ── Premium engine unlock ─────────────────────────────────────────────────────
+// The $79 Full Pantheon bundle ships premium/pack.json — the distribution-gated
+// marker tiers.ts looks for (~/.thesmos/premium/pack.json or a project's
+// .thesmos/premium/pack.json). Its presence flips the CLI from the free
+// 289-rule Essentials tier to the full 1,137-rule engine. No license server,
+// no key validation — buying IS the unlock (see thesmos/tiers.ts).
 
-const FOUNDERS_PACK_IDS = new Set([
-  'zeus-executive-agent', 'athena-strategy-agent',
-  'ares-sales-agent', 'ares-discovery-agent', 'ares-deal-strategy-agent', 'ares-pipeline-agent',
-  'hermes-marketing-agent', 'plutus-finance-agent', 'tyche-analytics-agent',
-  'nike-leadgen-agent', 'heracles-bd-agent', 'daedalus-product-agent',
-  'apollo-content-agent', 'argus-security-agent', 'themis-legal-agent',
-  'zeus-pantheon-orchestrator',
-])
+const PREMIUM_INSTALL_GUIDE = `# Unlock the Full Engine — 1,137 rules
 
-const AGENCIES_PACK_IDS = new Set([
-  'zeus-executive-agent', 'apollo-content-agent', 'aphrodite-creative-agent',
-  'hermes-marketing-agent', 'erato-brand-voice-agent', 'clio-case-study-agent',
-  'calliope-email-agent', 'nike-social-agent', 'pheme-pr-agent',
-  'artemis-photography-agent', 'morpheus-animation-agent', 'dionysus-video-agent',
-  'hephaestus-design-agent',
-  'zeus-pantheon-orchestrator',
-])
+The free Thesmos CLI runs the 289-rule Essentials tier (every BLOCKER + the
+complete AI-code safety net). This folder unlocks the rest — all frameworks,
+the compliance packs (GDPR / HIPAA / EU AI Act / DORA), and every quality and
+performance rule.
 
-const VERTICAL_README = (title: string, audience: string, agentCount: number): string => `# Thesmos Pantheon — ${title}
+## One-time setup (~10 seconds)
 
-A curated council of **${agentCount} gods** hand-picked for ${audience} —
-orchestrated by Zeus, deployable into every major AI platform.
+\`\`\`bash
+mkdir -p ~/.thesmos/premium
+cp pack.json ~/.thesmos/premium/pack.json
+\`\`\`
 
-## What's inside
+That's it — every Thesmos install on this machine now runs the full engine.
+Verify with:
 
-Each platform folder contains the agents in that platform's native format,
-plus an INSTALL.md with step-by-step setup. Start with the folder matching
-your AI tool (Claude Code recommended), and always install Zeus first —
-he routes every task to the right specialist automatically.
+\`\`\`bash
+npx thesmos tier
+\`\`\`
 
-## Want the full Pantheon?
+You should see: ⚡ Thesmos — PREMIUM (full engine) · 1137 rules active.
 
-The complete 66-god Pantheon (every domain, all platforms, VS Code extension)
-is available at https://holley.studio/thesmos
+## Per-project alternative
+
+Prefer to unlock a single repo instead of the whole machine? Copy pack.json
+into that project's \`.thesmos/premium/\` directory instead.
+
+## CI
+
+Set \`THESMOS_TIER=premium\` in your CI environment, or commit the project-level
+\`.thesmos/premium/pack.json\` to your (private) repo.
 
 ---
 
-Thesmos Pantheon · © Holley Studio. All rights reserved.
+Thank you for buying Thesmos. Lifetime updates — re-download anytime from your
+Gumroad library. Questions: holley42@yahoo.com
 `
 
 const ROOT_README = (agentCount: number, tier: 'starter' | 'pantheon'): string => `# Thesmos ${tier === 'starter' ? 'Starter Pack' : 'Full Pantheon'} — Agent Bundle
@@ -385,14 +406,16 @@ ${tier === 'starter'
   ? `This package contains **5 free starter agents** from the Thesmos Pantheon.
 These are the best agents to start with — Zeus orchestrates, Athena strategises,
 Argus handles security, Apollo writes, and Hephaestus designs.`
-  : `This package contains **${agentCount} agents** from the complete Thesmos Pantheon.
-Every specialist, every domain, every platform — ready to deploy.`}
+  : `This package contains **${agentCount} agents** from the complete Thesmos Pantheon —
+every specialist, every domain, every platform — plus the **premium engine
+unlock** that flips the free 289-rule Essentials CLI to the full 1,137-rule
+engine. Start with premium/INSTALL.md (10 seconds), then deploy the gods.`}
 
 ## What's inside
 
 | Folder | Platform | File type |
 |---|---|---|
-| for-claude/ | Claude Code (+ PANTHEON.md routing & live activity hooks) | .md |
+${tier === 'pantheon' ? '| premium/ | Full-engine unlock — 289 → 1,137 rules (see premium/INSTALL.md) | .json |\n' : ''}| for-claude/ | Claude Code (+ PANTHEON.md routing & live activity hooks) | .md |
 | for-claude-ai/ | Claude.ai Projects (Zeus orchestrator + council bundles) | .txt |
 | for-chatgpt/ | ChatGPT Custom GPTs (Zeus orchestrator + knowledge files) | .txt |
 | for-gemini/ | Gemini Gems (+ Zeus Receptionist) | .txt |
@@ -486,7 +509,6 @@ Check https://github.com/Holley-Studio/thesmos-governance/releases for new versi
 function buildBundle(
   bundleName: string,
   filterFn: (id: string) => boolean,
-  vertical?: { title: string; audience: string },
 ): { agentCount: number; zipPath: string } {
   const bundleDir = join(TMP_DIR, bundleName)
   cleanDir(bundleDir)
@@ -519,6 +541,8 @@ function buildBundle(
       // pantheon-council-free-gpt-store is the free public GPT Store listing —
       // a separate marketing artifact, never bundled into a paid or vertical zip.
       .filter(id => id !== 'AGENTS' && id !== 'pantheon-council-free-gpt-store')
+      // Incomplete god drops never ship — see HOLDBACK_AGENT_IDS above.
+      .filter(id => !isHeldBack(id))
     if (platform.srcDir === CANONICAL_COUNT_SOURCE) canonicalAgentCount = ids.length
 
     for (const id of ids) {
@@ -535,8 +559,8 @@ function buildBundle(
 
   // Claude Code full-experience extras: PANTHEON.md + activity hook +
   // statusline script + settings snippet (see for-claude/INSTALL.md steps
-  // 2–3 and 5). Paid bundles only.
-  if ((tier === 'pantheon' || vertical) && existsSync(CLAUDE_EXTRAS_DIR)) {
+  // 2–3 and 5). Paid bundle only.
+  if (tier === 'pantheon' && existsSync(CLAUDE_EXTRAS_DIR)) {
     const claudeDir = join(bundleDir, 'for-claude')
     ensureDir(join(claudeDir, 'hooks'))
     copyFileSync(join(CLAUDE_EXTRAS_DIR, 'PANTHEON.md'), join(claudeDir, 'PANTHEON.md'))
@@ -547,7 +571,7 @@ function buildBundle(
 
   // Claude Code Agent Skills — 53 workflow rituals live in
   // pantheon/exports/skills/ (one directory per skill, SKILL.md inside).
-  // Paid bundles (full Pantheon + both verticals) ship all 53; the starter
+  // The paid Full Pantheon bundle ships all 53; the starter
   // bundle gets exactly 3 as an upsell teaser.
   if (existsSync(SKILLS_EXPORT_DIR)) {
     const skillsDestDir = join(bundleDir, 'for-claude', 'skills')
@@ -574,22 +598,45 @@ function buildBundle(
 
   writeFileSync(
     join(bundleDir, 'README.md'),
-    vertical
-      ? VERTICAL_README(vertical.title, vertical.audience, canonicalAgentCount)
-      : ROOT_README(canonicalAgentCount, tier),
+    ROOT_README(canonicalAgentCount, tier),
     'utf-8',
   )
 
-  // Include VS Code extension in the full Pantheon bundle only (not verticals)
-  if (tier === 'pantheon' && !vertical && existsSync(VSIX_PATH)) {
+  // Include VS Code extension in the full Pantheon bundle only
+  if (tier === 'pantheon' && existsSync(VSIX_PATH)) {
     const vsixDir = join(bundleDir, 'for-vscode')
     ensureDir(vsixDir)
     copyFileSync(VSIX_PATH, join(vsixDir, `thesmos-governance-vscode-${VSIX_VERSION}.vsix`))
     writeFileSync(join(vsixDir, 'INSTALL.md'), VSIX_INSTALL_GUIDE, 'utf-8')
   }
 
-  // Only the free starter pack ships from the public website. Paid bundles
-  // (full Pantheon + verticals) go to dist-packs/ for manual Gumroad upload —
+  // Premium engine unlock — the marker tiers.ts's hasPremiumPack() looks for.
+  // Paid bundle only; its presence in ~/.thesmos/premium/ (or a project's
+  // .thesmos/premium/) flips the CLI from 289 Essentials rules to all 1,137.
+  if (tier === 'pantheon') {
+    const premiumDir = join(bundleDir, 'premium')
+    ensureDir(premiumDir)
+    const pkg = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf-8')) as { version: string }
+    writeFileSync(
+      join(premiumDir, 'pack.json'),
+      JSON.stringify(
+        {
+          product: 'thesmos-pantheon-full',
+          tier: 'premium',
+          engineVersion: pkg.version,
+          purchasedFrom: 'https://holleystudio.gumroad.com/l/thesmos-pantheon',
+          note: 'Presence of this file unlocks the full 1,137-rule engine. See INSTALL.md.',
+        },
+        null,
+        2,
+      ) + '\n',
+      'utf-8',
+    )
+    writeFileSync(join(premiumDir, 'INSTALL.md'), PREMIUM_INSTALL_GUIDE, 'utf-8')
+  }
+
+  // Only the free starter pack ships from the public website. The paid bundle
+  // goes to dist-packs/ for manual Gumroad upload —
   // never committed, never served from holley.studio (Operation Clear Temple).
   const outDir = tier === 'starter' ? DOWNLOADS_DIR : DIST_PACKS_DIR
   ensureDir(outDir)
@@ -613,13 +660,6 @@ function allFilter(): boolean {
   return true
 }
 
-function verticalFilter(ids: Set<string>): (id: string) => boolean {
-  return (id: string) => {
-    const bareId = id.replace(/-chatgpt$|-gemini$|-claude-project$|-copilot$|-openai-assistant$/, '')
-    return ids.has(bareId)
-  }
-}
-
 function main(): void {
   console.log('\n⚡ Thesmos Agent Packager\n')
 
@@ -629,24 +669,16 @@ function main(): void {
   console.log(`  ✅ Starter pack     ${starter.agentCount} agents/platform → website/downloads/thesmos-starter-agents.zip`)
 
   const full = buildBundle('thesmos-pantheon-agents', allFilter)
-  console.log(`  ✅ Full Pantheon    ${full.agentCount} agents/platform → dist-packs/thesmos-pantheon-agents.zip`)
-
-  const founders = buildBundle('thesmos-pantheon-founders', verticalFilter(FOUNDERS_PACK_IDS),
-    { title: 'Founders Pack', audience: 'startup founders — strategy, sales, fundraising, product, and the legal/security guardrails around them' })
-  console.log(`  ✅ Founders pack    ${founders.agentCount} agents/platform → dist-packs/thesmos-pantheon-founders.zip`)
-
-  const agencies = buildBundle('thesmos-pantheon-agencies', verticalFilter(AGENCIES_PACK_IDS),
-    { title: 'Agencies Pack', audience: 'creative and marketing agencies — content, brand, campaigns, and full-stack creative production' })
-  console.log(`  ✅ Agencies pack    ${agencies.agentCount} agents/platform → dist-packs/thesmos-pantheon-agencies.zip`)
+  console.log(`  ✅ Full Pantheon    ${full.agentCount} agents/platform + premium engine unlock → dist-packs/thesmos-pantheon-agents.zip`)
 
   rmSync(TMP_DIR, { recursive: true, force: true })
 
   console.log('\n✅ Packaging complete.\n')
   console.log('Next steps:')
   console.log('  1. Upload dist-packs/thesmos-pantheon-agents.zip to Gumroad as the Full Pantheon product ($79)')
-  console.log('  2. Upload dist-packs/thesmos-pantheon-founders.zip and -agencies.zip as vertical products ($49 each)')
-  console.log('  3. Only website/downloads/thesmos-starter-agents.zip is committed to the repo — the paid')
-  console.log('     bundles in dist-packs/ are gitignored and distributed exclusively through Gumroad\n')
+  console.log('  2. Only website/downloads/thesmos-starter-agents.zip is committed to the repo — the paid')
+  console.log('     bundle in dist-packs/ is gitignored and distributed exclusively through Gumroad')
+  console.log('  3. The zip\'s premium/pack.json is the full-engine unlock (289 → 1,137 rules) — see premium/INSTALL.md\n')
 }
 
 main()
