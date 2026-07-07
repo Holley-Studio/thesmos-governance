@@ -406,7 +406,8 @@ export async function runPreToolCheck(root: string): Promise<void> {
       const lines: string[] = [`${prefix} Thesmos scope violation:\n`];
       lines.push(`  ${scopeViolation.message}`);
       lines.push(`  → ${scopeViolation.suggestion}`);
-      process.stdout.write(lines.join('\n') + '\n');
+      // Claude Code only surfaces stderr for blocking hooks (exit 2)
+      process.stderr.write(lines.join('\n') + '\n');
       process.exit(2);
     }
 
@@ -422,7 +423,7 @@ export async function runPreToolCheck(root: string): Promise<void> {
           lines.push('');
         }
         lines.push('Run `thesmos import:scan` to validate all package imports.');
-        process.stdout.write(lines.join('\n'));
+        process.stderr.write(lines.join('\n'));
         process.exit(2);
       }
     }
@@ -442,7 +443,7 @@ export async function runPreToolCheck(root: string): Promise<void> {
     const lines: string[] = ['🛑 Thesmos scope violation:\n'];
     lines.push(`  ${writeScopeViolation.message}`);
     lines.push(`  → ${writeScopeViolation.suggestion}`);
-    process.stdout.write(lines.join('\n') + '\n');
+    process.stderr.write(lines.join('\n') + '\n');
     process.exit(2);
   }
 
@@ -489,7 +490,7 @@ export async function runPreToolCheck(root: string): Promise<void> {
   }
   lines.push('Resolve the violation(s) above before writing this file.');
 
-  process.stdout.write(lines.join('\n'));
+  process.stderr.write(lines.join('\n'));
   process.exit(2);
 }
 
