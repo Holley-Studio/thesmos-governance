@@ -56,9 +56,7 @@ Thesmos ships free, forever: the governance CLI with **289 Essentials rules** (e
 
 The **Full Pantheon** is a single one-time payment: **$79** — the complete **1,137-rule governance engine**, all **67 agents**, all 10 platforms, the VS Code extension, all 13 ChatGPT knowledge clusters, all 3 Claude.ai council bundles, and lifetime updates. No subscription. No recurring charge. Ever.
 
-Want to feel it work before you spend anything?
-- Download the free **Essentials** agent pack — 5 agents across 9 platforms — at [holley.studio](https://holley.studio).
-- Or chat with the free **Pantheon Council GPT** on the ChatGPT store and watch Zeus route a task live. *[PLACEHOLDER — confirm the public GPT Store URL before launch]*
+Want to feel it work before you spend anything? Download the free **Essentials** agent pack — 5 agents across 9 platforms — at [holley.studio](https://holley.studio).
 
 ---
 
