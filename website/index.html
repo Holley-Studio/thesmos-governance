@@ -2452,7 +2452,7 @@
       <div class="steps">
         <div class="step" data-r>
           <span class="step-n">I</span>
-          <div><h3>Install</h3><p>Run <code>npm install --save-dev thesmos-governance</code>. All 1137 rules activate immediately — no config file needed.</p></div>
+          <div><h3>Install</h3><p>Run <code>npm install --save-dev thesmos-governance</code>. 289 Essentials rules — every BLOCKER plus the full AI-code safety net — activate immediately, no config file needed. $79 unlocks the full 1,137.</p></div>
         </div>
         <div class="step" data-r data-d="1">
           <span class="step-n">II</span>
@@ -2471,6 +2471,73 @@
           <div><h3>Launch Autopilot</h3><p>Describe a feature in plain English: <code>thesmos autopilot generate "add Stripe checkout"</code>. Answer three clarifying questions. Type <code>CONFIRMED</code>. Thesmos builds it autonomously — governed, journaled, and ready for your review.</p></div>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+<div class="hr"></div>
+
+<!-- ── SECURITY ───────────────────────────────────────────────────────── -->
+<section class="sec-s" id="security">
+  <style>
+    .sec-s { padding: 96px 0; }
+    .sec-hd { max-width: 640px; margin: 0 auto 52px; text-align: center; }
+    .sec-hd h2 { font-family: 'Cinzel', serif; font-size: clamp(26px,3.4vw,40px); font-weight: 500; color: var(--cream); line-height: 1.25; margin-top: 10px; }
+    .sec-hd p { font-size: 15px; color: var(--t2); line-height: 1.7; margin-top: 14px; }
+    .sec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 18px; }
+    @media (max-width: 980px) { .sec-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .sec-grid { grid-template-columns: 1fr; } }
+    .sec-card { background: var(--bg-s); border: 1px solid var(--border); border-radius: 12px; padding: 26px 24px; transition: border-color 200ms var(--ease), transform 200ms var(--ease); }
+    .sec-card:hover { border-color: var(--border-h); transform: translateY(-3px); }
+    .sec-title { font-family: 'Cinzel', serif; font-size: 16px; font-weight: 500; color: var(--gold); line-height: 1.35; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .sec-body { font-size: 13.5px; color: var(--t2); line-height: 1.65; font-weight: 300; }
+    .sec-body code { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--cream); background: rgba(255,255,255,.06); padding: 1px 5px; border-radius: 4px; }
+    .sec-caveats { background: var(--bg-s); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-top: 4px; }
+    .sec-caveats-hd { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--t3); margin-bottom: 12px; }
+    .sec-caveats ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .sec-caveats li { font-size: 13.5px; color: var(--t2); line-height: 1.65; font-weight: 300; padding-left: 20px; position: relative; }
+    .sec-caveats li::before { content: '—'; position: absolute; left: 0; color: var(--t3); }
+    .sec-caveats a { color: var(--gold); }
+  </style>
+  <div class="wrap">
+    <div class="sec-hd">
+      <span class="eyebrow" data-r>Audited, not asserted</span>
+      <h2 data-r data-d="1">What "local-first" actually means.</h2>
+      <p data-r data-d="2">Every claim below was verified against the actual published npm artifact and the live source — not recalled, not assumed. Full writeup: <a href="https://github.com/Holley-Studio/thesmos-governance/blob/main/SECURITY.md" target="_blank" rel="noopener" style="color:var(--gold)">SECURITY.md</a>.</p>
+    </div>
+    <div class="sec-grid">
+      <div class="sec-card" data-r data-d="1">
+        <div class="sec-title">🔒 Zero runtime dependencies</div>
+        <div class="sec-body">No third-party supply chain to compromise. You install Thesmos's own code and nothing else — no transitive package can smuggle in a malicious update.</div>
+      </div>
+      <div class="sec-card" data-r data-d="2">
+        <div class="sec-title">🚫 No install-time scripts</div>
+        <div class="sec-body">No <code>preinstall</code>, <code>postinstall</code>, or <code>install</code> hooks — the #1 npm supply-chain attack vector. Nothing executes when you run <code>npm install</code>.</div>
+      </div>
+      <div class="sec-card" data-r data-d="3">
+        <div class="sec-title">📡 Zero telemetry</div>
+        <div class="sec-body">No analytics, no tracking, no phone-home. The core scan/review/validate engine makes zero network calls — your code never leaves the machine.</div>
+      </div>
+      <div class="sec-card" data-r data-d="4">
+        <div class="sec-title">🔗 Every network call, enumerated</div>
+        <div class="sec-body">Six call sites exist in the whole codebase, all user-invoked or opt-in: an update-version check (2s timeout, no data sent), <code>import:scan</code> (package names only), <code>notify</code> (a webhook <em>you</em> supply), CI PR comments, an OSV.dev CVE lookup, and autopilot's user-configured LLM endpoint.</div>
+      </div>
+      <div class="sec-card" data-r data-d="5">
+        <div class="sec-title">✅ SLSA build provenance</div>
+        <div class="sec-body">Published npm releases carry cryptographic attestation that the artifact was built by our public GitHub CI from the exact source you can read — not assembled locally and uploaded.</div>
+      </div>
+      <div class="sec-card" data-r data-d="6">
+        <div class="sec-title">🗝️ Encrypted local secrets vault</div>
+        <div class="sec-body">AES-256-GCM, key stored in your OS keychain (macOS Keychain, Linux libsecret, Windows DPAPI) — never written to disk unencrypted, never transmitted anywhere.</div>
+      </div>
+    </div>
+    <div class="sec-caveats" data-r data-d="7">
+      <div class="sec-caveats-hd">Honest caveats</div>
+      <ul>
+        <li>The vault's key-write step on macOS briefly passes the key as a command-line argument to Apple's own <code>security</code> CLI — a documented limitation of that tool (its own <code>-h</code> text admits it), not something fixable without shipping native code. Local-only, single-user exposure window, not remotely exploitable.</li>
+        <li>Thesmos is source-available under FSL-1.1-MIT, not OSI-approved open source — every rule, every line of the engine, is publicly readable and auditable, but the license restricts hosting a competing product built on it.</li>
+        <li>Autopilot is an agentic execution framework by design — using it means opting into LLM-driven changes, governed by the scope.json guardrails (path allowlists, token budgets, human-approval gates), not "no code execution."</li>
+        <li>No one can prove the absence of all bugs. What we can show is a fully enumerated attack surface — the list above is exhaustive, not selective.</li>
+      </ul>
     </div>
   </div>
 </section>
@@ -2503,7 +2570,7 @@
       <a href="vs.html">Compare</a>
       <a href="#autopilot">Autopilot</a>
       <a href="https://github.com/Holley-Studio/thesmos-governance/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a>
-      <a href="https://github.com/Holley-Studio/thesmos-governance/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">Security</a>
+      <a href="#security">Security</a>
     </div>
   </div>
 </footer>
