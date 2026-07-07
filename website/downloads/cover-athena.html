@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1280">
-<title>Thesmos Pantheon — Cover</title>
+<title>Thesmos Pantheon — Athena</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  :root { --god: #7BB8D4; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
@@ -19,7 +20,6 @@
     position: relative;
   }
 
-  /* Subtle grid */
   .grid {
     position: absolute;
     inset: 0;
@@ -29,28 +29,22 @@
     background-size: 64px 64px;
   }
 
-  /* Edge vignette — matches site body::after */
   .vignette {
     position: absolute;
     inset: 0;
     background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.55) 100%);
   }
 
-  /* Centre glow — warm amber like hero-bloom */
   .glow-centre {
     position: absolute;
     bottom: -60px;
     left: 50%;
     transform: translateX(-50%);
     width: 900px;
-    height: 420px;
-    background: radial-gradient(ellipse at 50% 100%,
-      rgba(240,128,32,.12) 0%,
-      rgba(200,56,8,.05) 42%,
-      transparent 72%);
+    height: 460px;
+    background: radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--god) 20%, transparent) 0%, transparent 70%);
   }
 
-  /* Top ambient gold */
   .glow-top {
     position: absolute;
     top: -80px;
@@ -58,12 +52,9 @@
     transform: translateX(-50%);
     width: 700px;
     height: 400px;
-    background: radial-gradient(ellipse at center,
-      rgba(201,168,76,.08) 0%,
-      transparent 65%);
+    background: radial-gradient(ellipse at center, color-mix(in srgb, var(--god) 14%, transparent) 0%, transparent 65%);
   }
 
-  /* Vertical side lines */
   .line-left, .line-right {
     position: absolute;
     top: 0; bottom: 0;
@@ -78,14 +69,12 @@
     background: linear-gradient(to bottom, transparent, rgba(255,255,255,.06) 30%, rgba(255,255,255,.06) 70%, transparent);
   }
 
-  /* Corner ornaments */
   .corner { position: absolute; width: 28px; height: 28px; }
   .corner--tl { top: 36px; left: 92px; border-top: 1px solid rgba(201,168,76,.4); border-left: 1px solid rgba(201,168,76,.4); }
   .corner--tr { top: 36px; right: 92px; border-top: 1px solid rgba(201,168,76,.4); border-right: 1px solid rgba(201,168,76,.4); }
   .corner--bl { bottom: 36px; left: 92px; border-bottom: 1px solid rgba(201,168,76,.4); border-left: 1px solid rgba(201,168,76,.4); }
   .corner--br { bottom: 36px; right: 92px; border-bottom: 1px solid rgba(201,168,76,.4); border-right: 1px solid rgba(201,168,76,.4); }
 
-  /* Content */
   .content {
     position: absolute;
     inset: 0;
@@ -96,7 +85,6 @@
     text-align: center;
   }
 
-  /* Brand eyebrow — matches .eyebrow on site */
   .eyebrow {
     display: flex;
     align-items: center;
@@ -107,7 +95,7 @@
     text-transform: uppercase;
     font-weight: 500;
     color: rgba(201,168,76,.6);
-    margin-bottom: 28px;
+    margin-bottom: 32px;
   }
   .eyebrow::before, .eyebrow::after {
     content: '';
@@ -117,96 +105,62 @@
     background: rgba(201,168,76,.4);
   }
 
-  /* Heading — matches .hero h1 */
+  .avatar {
+    width: 168px;
+    height: 168px;
+    margin-bottom: 32px;
+    filter: drop-shadow(0 0 40px color-mix(in srgb, var(--god) 45%, transparent));
+  }
+
   .heading {
     font-family: 'Cinzel', serif;
-    font-size: 110px;
+    font-size: 96px;
     font-weight: 700;
-    letter-spacing: -.02em;
-    line-height: .9;
-    color: #F5F0E8;
-    margin-bottom: 32px;
-    text-shadow: 0 0 140px rgba(201,168,76,.15);
+    letter-spacing: -.01em;
+    line-height: .95;
+    color: var(--god);
+    margin-bottom: 14px;
+    text-shadow: 0 0 120px color-mix(in srgb, var(--god) 25%, transparent);
   }
-  .heading .gold { color: #C9A84C; }
 
-  /* Tagline — matches .hero-sub */
-  .tagline {
+  .role {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.4);
+    margin-bottom: 40px;
+  }
+
+  .quote {
     font-family: 'Inter', sans-serif;
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 300;
-    letter-spacing: .01em;
-    color: rgba(255,255,255,.55);
-    margin-bottom: 52px;
-  }
-  .tagline strong {
-    color: rgba(255,255,255,.85);
-    font-weight: 400;
-  }
-
-  /* Stats — matches .hs-n / .hs-l */
-  .stats {
-    display: flex;
-    align-items: center;
+    font-style: italic;
+    letter-spacing: .005em;
+    color: rgba(255,255,255,.72);
+    max-width: 760px;
+    line-height: 1.5;
     margin-bottom: 44px;
   }
-  .stat { padding: 0 44px; text-align: center; }
-  .stat-num {
-    display: block;
-    font-family: 'Cinzel', serif;
-    font-size: 44px;
-    font-weight: 400;
-    color: #C9A84C;
-    line-height: 1;
-    margin-bottom: 8px;
-    text-shadow: 0 0 28px rgba(201,168,76,.28);
-  }
-  .stat-label {
-    display: block;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: .18em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,.3);
-  }
-  .stat-divider {
-    width: 1px;
-    height: 48px;
-    background: rgba(255,255,255,.07);
-  }
+  .quote::before { content: '“'; color: var(--god); font-style: normal; }
+  .quote::after { content: '”'; color: var(--god); font-style: normal; }
 
-  /* Platform pills */
-  .platforms {
-    display: flex;
+  .badge {
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-  }
-  .pill-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: .18em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,.25);
-    margin-right: 8px;
-  }
-  .pill {
-    padding: 5px 16px;
+    gap: 10px;
+    padding: 8px 22px;
     border-radius: 980px;
-    border: 1px solid rgba(255,255,255,.1);
-    font-family: 'Inter', sans-serif;
-    font-size: 12px;
-    font-weight: 400;
-    color: rgba(255,255,255,.45);
-    background: rgba(255,255,255,.03);
-    letter-spacing: .01em;
-  }
-  .pill--more {
-    color: rgba(201,168,76,.7);
-    border-color: rgba(201,168,76,.25);
-    background: rgba(201,168,76,.05);
+    border: 1px solid color-mix(in srgb, var(--god) 40%, transparent);
+    background: color-mix(in srgb, var(--god) 8%, transparent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--god);
   }
 
-  /* Bottom brand */
   .brand {
     position: absolute;
     bottom: 28px;
@@ -237,42 +191,23 @@
 
   <div class="content">
 
-    <div class="eyebrow">Thesmos</div>
+    <div class="eyebrow">Thesmos Pantheon · Meet the Gods</div>
 
-    <div class="heading">
-      <span class="gold">Pan</span>theon
-    </div>
+    <svg class="avatar" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="46" fill="#7BB8D415"/>
+      <ellipse cx="50" cy="46" rx="10" ry="13" stroke="#7BB8D4" stroke-width="2"/>
+      <path d="M34 72 Q36 56 50 52 Q64 56 66 72" stroke="#7BB8D4" stroke-width="2" fill="none"/>
+      <circle cx="38" cy="34" r="4" stroke="#7BB8D4" stroke-width="1.8" fill="none"/>
+      <circle cx="62" cy="34" r="4" stroke="#7BB8D4" stroke-width="1.8" fill="none"/>
+      <path d="M42 34 L46 36 M54 36 L58 34" stroke="#7BB8D4" stroke-width="1.4"/>
+    </svg>
 
-    <div class="tagline">
-      <strong>67 specialist AI agents.</strong> Every domain. Every platform.
-    </div>
+    <div class="heading">Athena</div>
+    <div class="role">Business Strategy · Free Agent</div>
 
-    <div class="stats">
-      <div class="stat">
-        <span class="stat-num">67</span>
-        <span class="stat-label">Agents</span>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat">
-        <span class="stat-num">10</span>
-        <span class="stat-label">Platforms</span>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat">
-        <span class="stat-num">1</span>
-        <span class="stat-label">System</span>
-      </div>
-    </div>
+    <div class="quote">I see the battlefield before the battle starts.</div>
 
-    <div class="platforms">
-      <span class="pill-label">Works with</span>
-      <span class="pill">Claude Code</span>
-      <span class="pill">ChatGPT</span>
-      <span class="pill">Gemini</span>
-      <span class="pill">Cursor</span>
-      <span class="pill">Copilot</span>
-      <span class="pill pill--more">+5 more</span>
-    </div>
+    <div class="badge">🦉 Included free, forever — no account required</div>
 
   </div>
 
