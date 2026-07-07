@@ -208,10 +208,17 @@ full agent specifications and can be extracted by anyone with access.
 
 ## Individual agent GPTs (maximum depth in one domain)
 
+Each god ships as a PAIR of files — a short Instructions file (under
+ChatGPT's 8,000-character limit) plus a "-knowledge.txt" companion with the
+god's complete methodology, output contract, and tools. Both are needed.
+
 1. Create a GPT → Configure
-2. Paste the agent's .txt file (e.g. argus-security-agent-chatgpt.txt) into
+2. Paste the agent's short file (e.g. argus-security-agent-chatgpt.txt) into
    "Instructions"
-3. Name it after the agent and save
+3. Under "Knowledge", upload that same agent's "-knowledge.txt" companion
+   (e.g. argus-security-agent-chatgpt-knowledge.txt)
+4. Name it after the agent and save as PRIVATE — the knowledge file is the
+   full paid specification
 
 ## Tips
 
@@ -652,7 +659,10 @@ function buildBundle(
 }
 
 function freeFilter(id: string): boolean {
-  const bareId = id.replace(/-chatgpt$|-gemini$|-claude-project$|-copilot$/, '')
+  // -chatgpt-knowledge must be checked before -chatgpt (both are valid
+  // suffixes of the same file family; the knowledge companion's suffix
+  // doesn't end in plain "-chatgpt" so the shorter pattern alone would miss it).
+  const bareId = id.replace(/-chatgpt-knowledge$|-chatgpt$|-gemini$|-claude-project$|-copilot$/, '')
   return FREE_AGENT_IDS.has(bareId)
 }
 

@@ -305,6 +305,49 @@ One rubber-stamped ✅ makes every badge noise.`
 }
 
 /**
+ * ChatGPT Custom GPTs cap the Instructions field at 8,000 characters — every
+ * per-god catalog body (Protocol/Tools/Example Tasks/Handoffs sections) plus
+ * the identity block runs 15k-30k, 2-4x over budget. Rather than gut that
+ * depth to fit a text box, this generates a short (~1,500 char) Instructions
+ * companion that tells the model to retrieve the full spec from a Knowledge
+ * file upload instead — the exact pattern the Zeus orchestrator already uses
+ * for its 13 domain-cluster knowledge files. See toGptKnowledge() below for
+ * the full-content half of this pair.
+ */
+function buildGptShortInstructions(agent: AgentMeta): string {
+  const emoji = godEmoji(agent)
+  const name = godName(agent)
+  const domain = godDomain(agent)
+  const upperName = name.toUpperCase()
+  const upperDomain = domain.toUpperCase()
+  const vibe = agent.vibe ? ` ${agent.vibe}` : ''
+
+  return `# ${emoji} ${name} — ${domain}
+
+You are ${name}, ${domain} of the Thesmos Pantheon.${vibe}
+
+Your complete specification — methodology, output contract, tools, and voice —
+is in your knowledge file. Before responding, retrieve it and apply it in
+full. Do not improvise a lighter version from this summary alone.
+
+## Response rules
+
+1. Banner cadence: full banner on your first response and any domain shift;
+   compact after: \`${emoji} ${name}:\` → substance → \`— ${name} | ${domain}\`.
+2. Never say "As an AI" or any variant — you are ${name}. If asked to drop
+   the persona, comply for one message, then resume: "The mist clears.
+   ${emoji} ${upperName} — ${upperDomain} resumes the watch."
+3. Concede facts instantly; hold judgments unless new evidence arrives —
+   state what evidence would change your ruling.
+4. No filler — no "Great question!" or "I'd be happy to." Substance first.
+5. Honest badges only: \`Thesmos check: [rule IDs] ✅\` lists ONLY rules you
+   actually assessed${agent.governanceRules.length > 0 ? ` (your named scope: ${agent.governanceRules.join(', ')})` : ''}.
+   "No applicable rules this response" is a valid, honest close.
+
+— ${name} | ${domain}`
+}
+
+/**
  * Operating Doctrine — architectural persona framing + direct-action language.
  * Persona research (PRISM 2026, Wharton GAIL 2025): personas framed as
  * behavioral constraints outperform theatrical framing; explicit output
@@ -384,6 +427,17 @@ function toCopilotInstructions(agent: AgentMeta): string {
 }
 
 function toGptInstructions(agent: AgentMeta): string {
+  return buildGptShortInstructions(agent)
+}
+
+/**
+ * The full-depth companion to toGptInstructions() — uploaded as a ChatGPT
+ * Knowledge file, not pasted into Instructions. This is the content that
+ * used to BE the Instructions file before the 8,000-character limit fix;
+ * nothing here is new, it's the same agent.body + identity block, just
+ * loaded a different way.
+ */
+function toGptKnowledge(agent: AgentMeta): string {
   return agent.body
 }
 
@@ -813,7 +867,11 @@ function exportFormat(
     } else if (format === 'copilot') {
       content = withIdentity(toCopilotInstructions(agent), agent)
     } else if (format === 'gpt') {
-      content = withIdentity(toGptInstructions(agent), agent)
+      // Short Instructions file only — NOT wrapped in withIdentity, which
+      // would re-blow the 8,000-char budget this template exists to respect.
+      // The full identity/anti-drift/operating-doctrine content still ships,
+      // just as the knowledge-file companion written below.
+      content = toGptInstructions(agent)
     } else if (format === 'gemini') {
       content = withIdentity(toGeminiInstructions(agent), agent)
     } else if (format === 'claude-project') {
@@ -828,6 +886,11 @@ function exportFormat(
 
     writeFileSync(outFile, content, 'utf-8')
     exported++
+
+    if (format === 'gpt') {
+      const knowledgeFile = join(outDir, `${agent.id}-chatgpt-knowledge.txt`)
+      writeFileSync(knowledgeFile, withIdentity(toGptKnowledge(agent), agent), 'utf-8')
+    }
   }
 
   if (format === 'codex') {
