@@ -2,6 +2,36 @@
 
 All notable changes to the Thesmos Governance VS Code extension are documented here.
 
+## [1.8.0] - 2026-07-02
+
+### Added
+
+- **Diff-aware, quiet-by-default findings** — the extension now honors the same baseline behavior as `thesmos review`: only new findings on changed lines surface by default. The previously dead `thesmos.minSeverity` setting is now live-reactive (no rescan required) and covers both the Problems panel and the findings tree. Baselined/accepted-debt counts show as a subtle status-bar tooltip line instead of dozens of yellow squiggles.
+
+## [1.7.1] - 2026-07-01
+
+### Fixed
+
+- **Agent Activity panel spinning forever** — the PostToolUse hook now completes the matching running spawn by session/type/description fingerprint when `tool_use_id` is asymmetric between Pre/Post, fixing gods (Explore, etc.) that never cleared from the sidebar.
+- **Stale "timed out?" state** — the panel re-renders on a 60s interval while agents run, so the 10-minute timeout indicator actually appears without waiting for a new event.
+
+### Changed
+
+- Generated agent exports now close with named governance scopes (e.g. "Thesmos check: AGNT_001 ✅ | AGNT_006 ✅") instead of a generic placeholder.
+
+## [1.7.0] - 2026-07-01
+
+### Added
+
+- **Routing config quick-pick** — new command surfaces the `auto`/`confirm`/`off` routing modes and council-confirm threshold directly from VS Code.
+- **1M-context status-bar badge** — warns when a session risks tripping the AGNT_037 1M-context guard; respects the `context1M.allow1M` config toggle (default off).
+
+## [1.6.0] - 2026-07-01
+
+### Added
+
+- **Live council activity** — the extension now reflects Pantheon routing decisions and in-progress god activity in real time as they happen, instead of only after a task completes.
+
 ## [1.5.0] - 2026-06-28
 
 ### Fixed
