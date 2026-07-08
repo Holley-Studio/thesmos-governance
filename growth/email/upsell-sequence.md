@@ -50,7 +50,7 @@ Subject: 40% off the full Pantheon — gone in 48 hours
 
 Straight to it: your starter-council discount expires in 48 hours.
 
-**[CODE: OLYMPUS40]** — 40% off the full 66-god Pantheon.
+**[CODE: OLYMPUS40]** — 40% off the full 67-god Pantheon.
 
 What you unlock: every specialist, every platform, the Zeus orchestrator GPT
 with knowledge clusters, council bundles for Claude, and lifetime updates

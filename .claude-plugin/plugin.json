@@ -1,0 +1,18 @@
+{
+  "name": "thesmos-governance",
+  "displayName": "Thesmos Governance",
+  "version": "4.5.0",
+  "description": "Code governance for AI-written code — 289 free rules (every BLOCKER + the AI-code safety net), diff-aware gating, and an MCP server. $79 one-time unlocks the full 1,137-rule engine and all 67 Pantheon agents.",
+  "author": {
+    "name": "Holley Studio",
+    "email": "holley42@yahoo.com"
+  },
+  "homepage": "https://holley.studio",
+  "repository": "https://github.com/Holley-Studio/thesmos-governance",
+  "license": "FSL-1.1-MIT",
+  "keywords": ["governance", "security", "code-review", "ai-safety", "audit", "compliance"],
+  "defaultEnabled": false,
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json"
+}

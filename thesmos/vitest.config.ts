@@ -5,6 +5,9 @@ export default defineConfig({
     environment: 'node',
     include: ['**/*.test.ts'],
     exclude: ['dist/**', 'node_modules/**'],
+    // The suite asserts against the full engine. Tiering tests opt into 'free'
+    // explicitly via config.tier; everything else runs premium (all rules).
+    env: { THESMOS_TIER: 'premium' },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

@@ -20,7 +20,7 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-06T00:44:01.691Z",
+  "generatedAt": "2026-07-06T21:26:27.952Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
@@ -61,6 +61,7 @@
     "thesmos/bin/lib/git.test.ts",
     "thesmos/catalog.test.ts",
     "thesmos/ci-check.test.ts",
+    "thesmos/claude-govern.test.ts",
     "thesmos/config.test.ts",
     "thesmos/context-capsule.test.ts",
     "thesmos/detector.test.ts",
@@ -78,6 +79,7 @@
     "thesmos/metrics.test.ts",
     "thesmos/output.test.ts",
     "thesmos/packs.test.ts",
+    "thesmos/pantheon-models.test.ts",
     "thesmos/registry.test.ts",
     "thesmos/report.test.ts",
     "thesmos/review.test.ts",
@@ -118,6 +120,7 @@
     "thesmos/secrets.test.ts",
     "thesmos/severity.test.ts",
     "thesmos/suppress.test.ts",
+    "thesmos/tiers.test.ts",
     "thesmos/token-budget.test.ts",
     "thesmos/watcher.test.ts"
   ],
@@ -139,16 +142,16 @@
       "lines": 1606
     },
     {
+      "file": "thesmos/rules/agents.ts",
+      "lines": 1449
+    },
+    {
       "file": "thesmos/fix.ts",
       "lines": 1440
     },
     {
-      "file": "thesmos/rules/agents.ts",
-      "lines": 1433
-    },
-    {
       "file": "thesmos/rules/vibe-coding.ts",
-      "lines": 1415
+      "lines": 1418
     },
     {
       "file": "thesmos/rules/database.ts",
@@ -207,12 +210,12 @@
       "lines": 961
     },
     {
-      "file": "thesmos/rules/ruby.test.ts",
-      "lines": 951
+      "file": "thesmos/scripts/export-agents.ts",
+      "lines": 953
     },
     {
-      "file": "thesmos/scripts/export-agents.ts",
-      "lines": 950
+      "file": "thesmos/rules/ruby.test.ts",
+      "lines": 951
     },
     {
       "file": "thesmos/rules/csharp.ts",
@@ -375,14 +378,14 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 400,
-      "lineCount": 123362
+      "fileCount": 408,
+      "lineCount": 123465
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 316,
-      "lineCount": 122843
+      "fileCount": 321,
+      "lineCount": 123538
     },
     {
       "language": "JavaScript",
