@@ -55,6 +55,15 @@ When a user prompt clearly belongs to one of the domains below, proactively invo
 **Zeus confirmation rule:** When a task requires 4 or more agents (configurable via `routing.councilConfirmThreshold`), surface Zeus's council scope check and await confirmation before spawning the full team.
 **Override words:** "full council", "all agents", "go", "all hands" — bypass the confirmation step.
 
+### Skill Frameworks (Superpowers, etc.) — Process vs. Personnel
+
+When a process-skill framework (e.g. Superpowers) is also installed, the two systems compose — they do not compete:
+
+- **Skills govern process** — *when and how* to work: brainstorm before building, debug systematically, dispatch a subagent for a scoped task.
+- **The Pantheon governs personnel** — *who* does the work: when any skill calls for dispatching a subagent, select the agent from the routing table above.
+- If no domain in the table matches the dispatch, fall back to the skill's default agent type (e.g. `general-purpose`).
+- Tier doctrine still applies: a skill asking for "a subagent" means one specialist, not a council.
+
 ### Power Tier (check before ANY response — governs how much ceremony you output)
 
 Read `power` from `.thesmos/config.json` (default: `lean`).
