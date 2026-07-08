@@ -4,12 +4,12 @@
 [![npm version](https://img.shields.io/npm/v/thesmos-governance?color=blue)](https://www.npmjs.com/package/thesmos-governance)
 [![npm downloads](https://img.shields.io/npm/dm/thesmos-governance)](https://www.npmjs.com/package/thesmos-governance)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/holleystudio.thesmos-governance-vscode)](https://marketplace.visualstudio.com/items?itemName=holleystudio.thesmos-governance-vscode)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: FSL-1.1-MIT](https://img.shields.io/badge/License-FSL--1.1--MIT-blue.svg)](LICENSE)
 [![Node ≥20](https://img.shields.io/node/v/thesmos-governance)](https://nodejs.org)
 
 **1,137 rules. Zero config. Built for the AI-assisted engineering era.**
 
-Thesmos is an open-source code governance toolkit that watches AI-generated code for security holes, broken patterns, and architectural mistakes — before they reach production.
+Thesmos is a source-available code governance toolkit that watches AI-generated code for security holes, broken patterns, and architectural mistakes — before they reach production.
 
 Built by [Holley Studio](https://holley.studio) — Thesmos governs its own repository; every PR merged here passed its own gate. Check the [Actions tab](https://github.com/Holley-Studio/thesmos-governance/actions) for proof.
 
@@ -23,7 +23,7 @@ Thesmos closes that gap. 1,137 governance rules covering AI safety, security, pe
 
 ---
 
-## Three Ways to Use It
+## Four Ways to Use It
 
 ### 1. CLI
 
@@ -87,6 +87,17 @@ Install from the `extensions/vscode/` directory for:
 - Real-time findings as you write
 - Health score in the status bar
 - AI adapters panel — keeps Claude, Cursor, Copilot, and Gemini aware of your governance rules so they generate governed code from the first line
+
+### 4. Claude Code Plugin
+
+Install directly inside Claude Code — no separate `npm install` step:
+
+```text
+/plugin marketplace add Holley-Studio/thesmos-governance
+/plugin install thesmos-governance
+```
+
+Ships the MCP server, the `scan` / `review` / `advise` skills, and the same PreToolUse/PostToolUse/Stop governance hooks the CLI's `claude:govern install` writes — enabled per-project, off by default.
 
 ---
 
@@ -208,7 +219,10 @@ thesmos-governance/
 │   └── pr-review/       GitHub Action (self-contained, no install step)
 ├── extensions/
 │   └── vscode/          VS Code extension
-└── .github/workflows/   CI + release pipeline
+├── .claude-plugin/       Claude Code plugin manifest + marketplace listing
+├── skills/               Plugin skills (scan, review, advise)
+├── hooks/                Plugin governance hooks (mirrors claude:govern install)
+└── .github/workflows/    CI + release pipeline
 ```
 
 ---
@@ -223,7 +237,7 @@ Issues and feature requests: [GitHub Issues](https://github.com/Holley-Studio/th
 
 ## License
 
-MIT — [LICENSE](LICENSE)
+[Functional Source License 1.1, MIT Future License](LICENSE) (FSL-1.1-MIT) — source-available today; converts to MIT four years after each version's release. Free to use, including commercially, except for a Competing Use (offering Thesmos itself, or a substantially similar product, as a hosted or on-premises service to third parties). See [LICENSE](LICENSE) for the full terms.
 
 ---
 

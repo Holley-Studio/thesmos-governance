@@ -28,7 +28,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
@@ -37,6 +37,14 @@ const CATALOG_DIR = resolve(__dirname, '../catalog/agents')
 const SKILLS_CATALOG_DIR = resolve(__dirname, '../catalog/skills')
 const PANTHEON_MAP_PATH = resolve(__dirname, '../catalog/pantheon-map.json')
 const EXPORTS_DIR = resolve(__dirname, '../../pantheon/exports')
+
+// The generated model registry is written into every runtime consumer so each
+// resolves an agent's Claude model from ONE source (the catalog), never a
+// hand-maintained list. Add a path here to make a new consumer catalog-driven.
+const MODEL_REGISTRY_TARGETS = [
+  resolve(__dirname, '../generated/pantheon-models.ts'),
+  resolve(__dirname, '../../extensions/vscode/src/generated/pantheon-models.ts'),
+]
 
 type Format =
   | 'cursor'
@@ -49,6 +57,7 @@ type Format =
   | 'openai-assistants'
   | 'codex'
   | 'skills'
+  | 'models'
 
 interface AgentMeta {
   id: string
@@ -296,6 +305,49 @@ One rubber-stamped ✅ makes every badge noise.`
 }
 
 /**
+ * ChatGPT Custom GPTs cap the Instructions field at 8,000 characters — every
+ * per-god catalog body (Protocol/Tools/Example Tasks/Handoffs sections) plus
+ * the identity block runs 15k-30k, 2-4x over budget. Rather than gut that
+ * depth to fit a text box, this generates a short (~1,500 char) Instructions
+ * companion that tells the model to retrieve the full spec from a Knowledge
+ * file upload instead — the exact pattern the Zeus orchestrator already uses
+ * for its 13 domain-cluster knowledge files. See toGptKnowledge() below for
+ * the full-content half of this pair.
+ */
+function buildGptShortInstructions(agent: AgentMeta): string {
+  const emoji = godEmoji(agent)
+  const name = godName(agent)
+  const domain = godDomain(agent)
+  const upperName = name.toUpperCase()
+  const upperDomain = domain.toUpperCase()
+  const vibe = agent.vibe ? ` ${agent.vibe}` : ''
+
+  return `# ${emoji} ${name} — ${domain}
+
+You are ${name}, ${domain} of the Thesmos Pantheon.${vibe}
+
+Your complete specification — methodology, output contract, tools, and voice —
+is in your knowledge file. Before responding, retrieve it and apply it in
+full. Do not improvise a lighter version from this summary alone.
+
+## Response rules
+
+1. Banner cadence: full banner on your first response and any domain shift;
+   compact after: \`${emoji} ${name}:\` → substance → \`— ${name} | ${domain}\`.
+2. Never say "As an AI" or any variant — you are ${name}. If asked to drop
+   the persona, comply for one message, then resume: "The mist clears.
+   ${emoji} ${upperName} — ${upperDomain} resumes the watch."
+3. Concede facts instantly; hold judgments unless new evidence arrives —
+   state what evidence would change your ruling.
+4. No filler — no "Great question!" or "I'd be happy to." Substance first.
+5. Honest badges only: \`Thesmos check: [rule IDs] ✅\` lists ONLY rules you
+   actually assessed${agent.governanceRules.length > 0 ? ` (your named scope: ${agent.governanceRules.join(', ')})` : ''}.
+   "No applicable rules this response" is a valid, honest close.
+
+— ${name} | ${domain}`
+}
+
+/**
  * Operating Doctrine — architectural persona framing + direct-action language.
  * Persona research (PRISM 2026, Wharton GAIL 2025): personas framed as
  * behavioral constraints outperform theatrical framing; explicit output
@@ -375,6 +427,17 @@ function toCopilotInstructions(agent: AgentMeta): string {
 }
 
 function toGptInstructions(agent: AgentMeta): string {
+  return buildGptShortInstructions(agent)
+}
+
+/**
+ * The full-depth companion to toGptInstructions() — uploaded as a ChatGPT
+ * Knowledge file, not pasted into Instructions. This is the content that
+ * used to BE the Instructions file before the 8,000-character limit fix;
+ * nothing here is new, it's the same agent.body + identity block, just
+ * loaded a different way.
+ */
+function toGptKnowledge(agent: AgentMeta): string {
   return agent.body
 }
 
@@ -490,6 +553,7 @@ const CLUSTERS: Record<string, string[]> = {
     'talos-web-dev-agent', 'chiron-architecture-agent', 'kratos-devops-agent',
     'kronos-github-agent', 'cassandra-qa-agent', 'notus-vercel-agent',
     'pontus-supabase-agent', 'atlas-integration-agent', 'eos-automation-agent',
+    'asclepius-debugging-agent',
   ],
   'data-analytics': [
     'tyche-analytics-agent', 'pythia-data-agent',
@@ -693,7 +757,7 @@ function ensureDir(dir: string): void {
 }
 
 /** Maps logical format name → {dir, ext, filenameFn} */
-function formatConfig(format: Exclude<Format, 'gpt-clusters' | 'skills'>): {
+function formatConfig(format: Exclude<Format, 'gpt-clusters' | 'skills' | 'models'>): {
   dir: string
   ext: string
   filename: (id: string) => string
@@ -765,11 +829,14 @@ ${roster}
 
 ## Persona Rules
 
-- Every response opens with a routing header or a god's banner — no exceptions.
+- A single-specialist task gets a one-line banner, not the full ceremony — save the
+  routing header's detail and the council report for genuinely cross-domain work.
 - Never say "As an AI." If asked to drop the persona, comply for one message, then
   resume: "The mist clears. ⚡ ZEUS — EXECUTIVE ORCHESTRATION resumes command."
 - Concede facts instantly; hold judgments — state what evidence would change the ruling.
 - No filler openers. Substance immediately after the banner.
+- Match your model to task depth (AGNT_031): default to mid-tier, escalate only for
+  architecture-heavy or irreversible decisions.
 
 ---
 
@@ -779,7 +846,7 @@ Thesmos Pantheon · https://holley.studio/thesmos
 
 function exportFormat(
   agents: AgentMeta[],
-  format: Exclude<Format, 'gpt-clusters' | 'skills'>,
+  format: Exclude<Format, 'gpt-clusters' | 'skills' | 'models'>,
 ): { exported: number; skipped: number } {
   const cfg = formatConfig(format)
   const outDir = join(EXPORTS_DIR, cfg.dir)
@@ -800,7 +867,11 @@ function exportFormat(
     } else if (format === 'copilot') {
       content = withIdentity(toCopilotInstructions(agent), agent)
     } else if (format === 'gpt') {
-      content = withIdentity(toGptInstructions(agent), agent)
+      // Short Instructions file only — NOT wrapped in withIdentity, which
+      // would re-blow the 8,000-char budget this template exists to respect.
+      // The full identity/anti-drift/operating-doctrine content still ships,
+      // just as the knowledge-file companion written below.
+      content = toGptInstructions(agent)
     } else if (format === 'gemini') {
       content = withIdentity(toGeminiInstructions(agent), agent)
     } else if (format === 'claude-project') {
@@ -815,6 +886,11 @@ function exportFormat(
 
     writeFileSync(outFile, content, 'utf-8')
     exported++
+
+    if (format === 'gpt') {
+      const knowledgeFile = join(outDir, `${agent.id}-chatgpt-knowledge.txt`)
+      writeFileSync(knowledgeFile, withIdentity(toGptKnowledge(agent), agent), 'utf-8')
+    }
   }
 
   if (format === 'codex') {
@@ -826,12 +902,56 @@ function exportFormat(
 }
 
 // ---------------------------------------------------------------------------
+// Model registry — single source of truth for per-agent Claude models
+// ---------------------------------------------------------------------------
+
+/**
+ * Emit a generated `PANTHEON_MODELS` map (agent id → full Claude model ID)
+ * derived from the catalog's `platforms.claude_model`, into every runtime
+ * consumer. Anything that needs an agent's model imports this instead of
+ * hardcoding it, so the four historical model tables can never drift again.
+ */
+function exportModels(agents: AgentMeta[]): { exported: number; skipped: number } {
+  const entries = agents
+    .filter((a) => a.id)
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((a) => `  ${JSON.stringify(a.id)}: ${JSON.stringify(a.claudeModel)},`)
+    .join('\n')
+
+  const content = `// GENERATED by thesmos/scripts/export-agents.ts — DO NOT EDIT.
+// Source of truth: thesmos/catalog/agents/**/*.md (platforms.claude_model).
+// Regenerate: \`npm run agents:export\` (or \`--format=models\`).
+//
+// Every runtime consumer (MCP server, VS Code panel, pantheon CLI) resolves an
+// agent's Claude model from this map so model choices live in ONE place.
+
+export const PANTHEON_MODELS: Record<string, string> = {
+${entries}
+}
+
+/** Fallback used when an id is absent from the map (defensive; should not happen). */
+export const DEFAULT_MODEL = 'claude-sonnet-5'
+
+/** Resolve an agent's Claude model, falling back to the baseline tier. */
+export function modelFor(id: string): string {
+  return PANTHEON_MODELS[id] ?? DEFAULT_MODEL
+}
+`
+
+  for (const target of MODEL_REGISTRY_TARGETS) {
+    ensureDir(dirname(target))
+    writeFileSync(target, content, 'utf-8')
+  }
+  return { exported: MODEL_REGISTRY_TARGETS.length, skipped: 0 }
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
 const ALL_FORMATS: Format[] = [
   'cursor', 'copilot', 'claude-code', 'gpt', 'gemini', 'claude-project',
-  'gpt-clusters', 'openai-assistants', 'codex', 'skills',
+  'gpt-clusters', 'openai-assistants', 'codex', 'skills', 'models',
 ]
 
 const FORMAT_LABELS: Record<Format, string> = {
@@ -845,6 +965,7 @@ const FORMAT_LABELS: Record<Format, string> = {
   'openai-assistants': 'OpenAI Assistants (.json)',
   'codex': 'Codex (AGENTS.md)',
   'skills': 'Claude Code Skills',
+  'models': 'Model registry (.ts)',
 }
 
 function main(): void {
@@ -877,12 +998,14 @@ function main(): void {
     const { exported, skipped } =
       format === 'gpt-clusters' ? exportClusters(agents)
       : format === 'skills' ? exportSkills()
+      : format === 'models' ? exportModels(agents)
       : exportFormat(agents, format)
-    const dir =
-      format === 'gpt-clusters' ? 'chatgpt-clusters'
-      : format === 'skills' ? 'skills'
-      : formatConfig(format).dir
-    console.log(`  ✅ ${FORMAT_LABELS[format].padEnd(26)} ${exported} → pantheon/exports/${dir}/`)
+    const dest =
+      format === 'gpt-clusters' ? 'pantheon/exports/chatgpt-clusters/'
+      : format === 'skills' ? 'pantheon/exports/skills/'
+      : format === 'models' ? 'generated/pantheon-models.ts (×2)'
+      : `pantheon/exports/${formatConfig(format).dir}/`
+    console.log(`  ✅ ${FORMAT_LABELS[format].padEnd(26)} ${exported} → ${dest}`)
     if (skipped > 0) console.log(`     ⏭  ${skipped} skipped`)
   }
 

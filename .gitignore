@@ -76,6 +76,14 @@ pantheon/exports/**
 !pantheon/exports/chatgpt/argus-security-agent-chatgpt.txt
 !pantheon/exports/chatgpt/apollo-content-agent-chatgpt.txt
 !pantheon/exports/chatgpt/hephaestus-design-agent-chatgpt.txt
+# ChatGPT's 8,000-char Instructions limit means each free god above is paired
+# with a "-knowledge.txt" companion (uploaded as Knowledge, not pasted) —
+# those need to stay tracked too, or the website's direct-download links 404.
+!pantheon/exports/chatgpt/zeus-executive-agent-chatgpt-knowledge.txt
+!pantheon/exports/chatgpt/athena-strategy-agent-chatgpt-knowledge.txt
+!pantheon/exports/chatgpt/argus-security-agent-chatgpt-knowledge.txt
+!pantheon/exports/chatgpt/apollo-content-agent-chatgpt-knowledge.txt
+!pantheon/exports/chatgpt/hephaestus-design-agent-chatgpt-knowledge.txt
 !pantheon/exports/claude-code/zeus-executive-agent.md
 !pantheon/exports/claude-code/athena-strategy-agent.md
 !pantheon/exports/claude-code/argus-security-agent.md

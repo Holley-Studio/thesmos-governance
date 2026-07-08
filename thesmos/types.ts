@@ -109,6 +109,24 @@ export interface ThesmosConfig {
   project: string;
   generatedAt?: string;
 
+  /**
+   * Active licensing tier. 'free' runs the Essentials rule set (all BLOCKERs +
+   * the AI-code net); 'premium' runs the full engine. Resolved and stamped by
+   * loadConfig — do not read the raw config value directly; the engines read
+   * this resolved field. See tiers.ts.
+   */
+  tier?: 'free' | 'premium';
+
+  /**
+   * Pantheon orchestration power tier. 'lean' (default): one specialist, a
+   * one-line Zeus header, no auto-council, no mandatory ceremony — most tasks
+   * (80-90%) belong here. 'god': full council/ceremony available — adversarial
+   * self-check, the full multi-line routing banners, deep-research escalation.
+   * This governs agent-routing PROMPT BEHAVIOR (read by CLAUDE.md doctrine), not
+   * rule enforcement — there is no runtime code gate, unlike `tier`.
+   */
+  power?: 'lean' | 'god';
+
   // Folder scanning
   ignoredFolders: string[];
   /**
@@ -220,9 +238,9 @@ export interface ThesmosConfig {
   autoMode?: {
     /** Whether Thesmos actively governs Claude Code Auto Mode sessions (default: true when hooks installed). */
     enabled?: boolean;
-    /** Strict mode: block on HIGH violations in addition to BLOCKER (default: true). */
+    /** Reserved — only affects the blockOn fallback in governance status reporting. */
     strictMode?: boolean;
-    /** Minimum severity level to block on during Auto Mode sessions (default: "HIGH"). */
+    /** Minimum severity level to block on during Auto Mode sessions (default: "BLOCKER"). */
     blockOn?: 'BLOCKER' | 'HIGH' | 'MEDIUM';
     /** Show a VS Code notification when a write is blocked during Auto Mode (default: true). */
     notifyOnBlock?: boolean;

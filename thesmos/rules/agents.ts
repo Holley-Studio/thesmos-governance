@@ -1328,8 +1328,10 @@ const AGNT_036: ThesmosRule = {
 const AGNT_037: ThesmosRule = {
   id: 'AGNT_037',
   category: 'agent_context_1m_unguarded',
-  severity: 'HIGH',
-  description: '1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; cost runaway risk.',
+  // BLOCKER when context1M.allow1M is false: the 1M window is opt-in only and must
+  // never be enabled silently. Downgraded to LOW (informational) once opted in.
+  severity: 'BLOCKER',
+  description: '1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; use only when explicitly requested.',
   tags: ['agent', 'cost', 'models', 'context'],
   sinceVersion: '2.1.0',
   explain: {
@@ -1359,7 +1361,21 @@ const AGNT_037: ThesmosRule = {
       }
     }
 
-    const severity: Finding['severity'] = allow1M ? 'LOW' : 'HIGH';
+    const severity: Finding['severity'] = allow1M ? 'LOW' : 'BLOCKER';
+
+    // Match only *live config* contexts — a model assignment or an anthropic-beta
+    // value — never prose/documentation that merely mentions the pattern. This is
+    // what lets AGNT_037 be a BLOCKER without flagging the many docs (CLAUDE.md,
+    // rules tables, this rule's own explain text) that discuss [1m] in passing.
+    //   model: claude-fable-5[1m]   |   "model": "claude-fable-5[1m]"   |   claude_model: "x[1m]"
+    const MODEL_1M_RE = /(?:^|[\s"'{,])[\w-]*model["']?\s*[:=]\s*["']?[^"'\n]*\[1m\]/i;
+    //   'anthropic-beta': 'context-1m-2025'   |   betas: ["context-1m-..."]
+    const BETA_1M_RE = /(?:anthropic[-_]?beta|["']betas?["'])["']?\s*[:=]\s*[^\n]*context-1m/i;
+    //   a bare quoted context-1m-YYYY beta value, even without the key
+    const CONTEXT_1M_VALUE_RE = /["']context-1m-\d{4}/;
+    const isLive1MConfig = (line: string): boolean =>
+      MODEL_1M_RE.test(line) || BETA_1M_RE.test(line) || CONTEXT_1M_VALUE_RE.test(line);
+
     const findings: Finding[] = [];
     for (const cf of input.changedFiles ?? []) {
       if (!/\.(md|json|ts|js|jsonc|yaml|yml)$/.test(cf.path)) continue;
@@ -1373,7 +1389,7 @@ const AGNT_037: ThesmosRule = {
         // In source files, [1m] inside a comment is documentation (e.g. the
         // context1M config docs in types.ts) — live model config is a string value.
         if (/\.(ts|tsx|js|jsx)$/.test(cf.path) && /^\s*(?:\/\/|\/?\*)/.test(lines[i])) continue;
-        if (/\[1m\]|context-1m-\d{4}/.test(lines[i])) {
+        if (isLive1MConfig(lines[i])) {
           findings.push({ ...f('agent_context_1m_unguarded', severity,
             allow1M
               ? '1M context window in use (context1M.allow1M is enabled — informational)'

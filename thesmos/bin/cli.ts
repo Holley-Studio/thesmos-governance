@@ -25,6 +25,7 @@ import { cmdSuppressions } from './commands/suppressions.ts';
 import { cmdMetrics } from './commands/metrics.ts';
 import { cmdPacks } from './commands/packs.ts';
 import { cmdHealth } from './commands/health.ts';
+import { cmdTier } from './commands/tier.ts';
 import { cmdCiGate } from './commands/ci-gate.ts';
 import { cmdFix } from './commands/fix.ts';
 import { cmdUpdate } from './commands/update.ts';
@@ -86,6 +87,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'baseline:report': (argv) => cmdBaseline('report', argv),
   explain: cmdExplain,
   advise: cmdAdvise,
+  tier: cmdTier,
   'suppressions:audit': (argv) => cmdSuppressions('audit', argv),
   metrics: cmdMetrics,
   'pack:list': (argv) => cmdPacks('list', argv),

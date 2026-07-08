@@ -1,0 +1,24 @@
+{
+  "name": "thesmos",
+  "owner": {
+    "name": "Holley Studio",
+    "email": "holley42@yahoo.com"
+  },
+  "description": "Thesmos — the governance layer for AI-written code.",
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "name": "thesmos-governance",
+      "displayName": "Thesmos Governance",
+      "source": "https://github.com/Holley-Studio/thesmos-governance.git",
+      "description": "289 free governance rules (every BLOCKER + the AI-code safety net), diff-aware gating, and an MCP server. $79 one-time unlocks the full 1,137-rule engine and all 67 Pantheon agents.",
+      "version": "4.5.0",
+      "author": { "name": "Holley Studio" },
+      "homepage": "https://holley.studio",
+      "repository": "https://github.com/Holley-Studio/thesmos-governance",
+      "license": "FSL-1.1-MIT",
+      "keywords": ["governance", "security", "code-review", "ai-safety", "audit", "compliance"],
+      "category": "code-quality"
+    }
+  ]
+}
