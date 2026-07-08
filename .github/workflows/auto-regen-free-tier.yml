@@ -76,7 +76,7 @@ jobs:
 
       - name: Open PR with regenerated free-tier exports
         if: steps.diff.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           # PRs opened with the default GITHUB_TOKEN don't trigger other
           # workflows (GitHub's loop-prevention rule) -- meaning the PR would
