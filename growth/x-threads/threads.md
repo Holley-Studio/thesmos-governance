@@ -14,7 +14,7 @@ Here's what that actually looks like: [screenshot]
 
 **T2 — The drift thread (technical)**
 Every AI persona dies around message 10. Yours too.
-It's called persona drift — attention weights recent context over identity. We spent weeks building an Anti-Drift Protocol that keeps 66 characters alive for 50+ turns. The 6 rules: 🧵
+It's called persona drift — attention weights recent context over identity. We spent weeks building an Anti-Drift Protocol that keeps 67 characters alive for 50+ turns. The 6 rules: 🧵
 
 **T3 — The council card**
 Asked my AI council if my SaaS pitch works.

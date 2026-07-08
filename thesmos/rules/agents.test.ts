@@ -50,7 +50,7 @@ describe('AGNT_037 — agent_context_1m_unguarded', () => {
     expect(findings).toHaveLength(0);
   });
 
-  it('fires HIGH on a plain [1m] model line in a JSON settings file', () => {
+  it('fires BLOCKER on a plain [1m] model line in a JSON settings file', () => {
     const findings = detect('AGNT_037', [{
       path: '.claude/settings.json',
       content: [
@@ -60,8 +60,35 @@ describe('AGNT_037 — agent_context_1m_unguarded', () => {
       ].join('\n'),
     }]);
     expect(findings).toHaveLength(1);
-    expect(findings[0]?.severity).toBe('HIGH');
+    expect(findings[0]?.severity).toBe('BLOCKER');
     expect(findings[0]?.line).toBe(2);
+  });
+
+  it('fires BLOCKER on a model: assignment in agent frontmatter', () => {
+    const findings = detect('AGNT_037', [{
+      path: 'agents/zeus.md',
+      content: [
+        '---',
+        'name: Zeus',
+        'claude_model: claude-opus-4-8[1m]',
+        '---',
+      ].join('\n'),
+    }]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.severity).toBe('BLOCKER');
+    expect(findings[0]?.line).toBe(3);
+  });
+
+  it('does NOT fire on prose that merely mentions [1m] outside a table', () => {
+    const findings = detect('AGNT_037', [{
+      path: 'CLAUDE.md',
+      content: [
+        '## Model notes',
+        'The exact model ID is claude-opus-4-8[1m]. The 1M context window',
+        '([1m] variant / context-1m beta) is opt-in only — use it only when asked.',
+      ].join('\n'),
+    }]);
+    expect(findings).toHaveLength(0);
   });
 
   it('does NOT fire on a [1m] fixture inside a .test.ts path', () => {

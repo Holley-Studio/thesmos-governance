@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>Thesmos Pantheon — Athena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --god: #7BB8D4; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    background: #050408;
+    font-family: 'Inter', -apple-system, sans-serif;
+    position: relative;
+  }
+
+  .grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(201,168,76,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201,168,76,.04) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.55) 100%);
+  }
+
+  .glow-centre {
+    position: absolute;
+    bottom: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 900px;
+    height: 460px;
+    background: radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--god) 20%, transparent) 0%, transparent 70%);
+  }
+
+  .glow-top {
+    position: absolute;
+    top: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 700px;
+    height: 400px;
+    background: radial-gradient(ellipse at center, color-mix(in srgb, var(--god) 14%, transparent) 0%, transparent 65%);
+  }
+
+  .line-left, .line-right {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 1px;
+  }
+  .line-left {
+    left: 64px;
+    background: linear-gradient(to bottom, transparent, rgba(201,168,76,.25) 30%, rgba(201,168,76,.25) 70%, transparent);
+  }
+  .line-right {
+    right: 64px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,.06) 30%, rgba(255,255,255,.06) 70%, transparent);
+  }
+
+  .corner { position: absolute; width: 28px; height: 28px; }
+  .corner--tl { top: 36px; left: 92px; border-top: 1px solid rgba(201,168,76,.4); border-left: 1px solid rgba(201,168,76,.4); }
+  .corner--tr { top: 36px; right: 92px; border-top: 1px solid rgba(201,168,76,.4); border-right: 1px solid rgba(201,168,76,.4); }
+  .corner--bl { bottom: 36px; left: 92px; border-bottom: 1px solid rgba(201,168,76,.4); border-left: 1px solid rgba(201,168,76,.4); }
+  .corner--br { bottom: 36px; right: 92px; border-bottom: 1px solid rgba(201,168,76,.4); border-right: 1px solid rgba(201,168,76,.4); }
+
+  .content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: rgba(201,168,76,.6);
+    margin-bottom: 32px;
+  }
+  .eyebrow::before, .eyebrow::after {
+    content: '';
+    display: block;
+    width: 28px;
+    height: 1px;
+    background: rgba(201,168,76,.4);
+  }
+
+  .avatar {
+    width: 168px;
+    height: 168px;
+    margin-bottom: 32px;
+    filter: drop-shadow(0 0 40px color-mix(in srgb, var(--god) 45%, transparent));
+  }
+
+  .heading {
+    font-family: 'Cinzel', serif;
+    font-size: 96px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    line-height: .95;
+    color: var(--god);
+    margin-bottom: 14px;
+    text-shadow: 0 0 120px color-mix(in srgb, var(--god) 25%, transparent);
+  }
+
+  .role {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.4);
+    margin-bottom: 40px;
+  }
+
+  .quote {
+    font-family: 'Inter', sans-serif;
+    font-size: 24px;
+    font-weight: 300;
+    font-style: italic;
+    letter-spacing: .005em;
+    color: rgba(255,255,255,.72);
+    max-width: 760px;
+    line-height: 1.5;
+    margin-bottom: 44px;
+  }
+  .quote::before { content: '“'; color: var(--god); font-style: normal; }
+  .quote::after { content: '”'; color: var(--god); font-style: normal; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 22px;
+    border-radius: 980px;
+    border: 1px solid color-mix(in srgb, var(--god) 40%, transparent);
+    background: color-mix(in srgb, var(--god) 8%, transparent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--god);
+  }
+
+  .brand {
+    position: absolute;
+    bottom: 28px;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.18);
+  }
+</style>
+</head>
+<body>
+
+  <div class="grid"></div>
+  <div class="glow-top"></div>
+  <div class="glow-centre"></div>
+  <div class="vignette"></div>
+
+  <div class="line-left"></div>
+  <div class="line-right"></div>
+
+  <div class="corner corner--tl"></div>
+  <div class="corner corner--tr"></div>
+  <div class="corner corner--bl"></div>
+  <div class="corner corner--br"></div>
+
+  <div class="content">
+
+    <div class="eyebrow">Thesmos Pantheon · Meet the Gods</div>
+
+    <svg class="avatar" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="46" fill="#7BB8D415"/>
+      <ellipse cx="50" cy="46" rx="10" ry="13" stroke="#7BB8D4" stroke-width="2"/>
+      <path d="M34 72 Q36 56 50 52 Q64 56 66 72" stroke="#7BB8D4" stroke-width="2" fill="none"/>
+      <circle cx="38" cy="34" r="4" stroke="#7BB8D4" stroke-width="1.8" fill="none"/>
+      <circle cx="62" cy="34" r="4" stroke="#7BB8D4" stroke-width="1.8" fill="none"/>
+      <path d="M42 34 L46 36 M54 36 L58 34" stroke="#7BB8D4" stroke-width="1.4"/>
+    </svg>
+
+    <div class="heading">Athena</div>
+    <div class="role">Business Strategy · Free Agent</div>
+
+    <div class="quote">I see the battlefield before the battle starts.</div>
+
+    <div class="badge">🦉 Included free, forever — no account required</div>
+
+  </div>
+
+  <div class="brand">Holley Studio</div>
+
+</body>
+</html>

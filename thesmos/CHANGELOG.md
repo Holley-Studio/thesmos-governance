@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.6.0
+
+### Minor Changes
+
+- e8ce8d1: AGNT_037 (1M context window governance) is now a hard BLOCKER gate instead of an advisory HIGH lint. Enabling a `[1m]` model variant or `context-1m` beta header without explicit `"context1M": { "allow1M": true }` in `.thesmos/config.json` now blocks the Write/Edit governance hook and fails CI, instead of only printing a warning. The matcher is scoped to live config contexts (model assignments, `anthropic-beta` values) so it does not fire on prose/documentation mentioning `[1m]`.
+- e8ce8d1: Adds a native Claude Code plugin surface (`.claude-plugin/plugin.json` + marketplace listing) that registers the existing MCP server, the governance PreToolUse/PostToolUse/Stop hooks, and three skills (scan/review/advise). Install via `/plugin marketplace add Holley-Studio/thesmos-governance` — no separate `npm install` step required.
+- e8ce8d1: New `power: 'lean' | 'god'` config governs Pantheon orchestration ceremony in AI-assistant adapter output. `lean` (default) routes to one specialist with a one-line Zeus header and no auto-council; `god` unlocks the full multi-line routing banners, council assembly/report blocks, and deep-research escalation. `thesmos advise` now assigns a model recommendation per plan phase (splitting a plan across model tiers when phases genuinely differ in depth) instead of a single recommendation for the whole plan.
+- e8ce8d1: New rule tiering engine. The free CLI now runs a 289-rule Essentials set (every BLOCKER plus the complete AI-code safety net — VIBE/AI/SLOP rule families); the remaining 848 rules unlock via a distribution-gated premium pack marker (`~/.thesmos/premium/pack.json` or a project's `.thesmos/premium/pack.json`), or explicitly via `config.tier` / the `THESMOS_TIER` environment variable. New `thesmos tier` command reports the active tier and rule counts (supports `--json`).
+
+### Patch Changes
+
+- aff19cb: claude:govern check now writes block messages to stderr so Claude Code displays them (blocking hooks only surface stderr on exit 2; stdout was silently dropped, making every block appear as "No stderr output"). Ships alongside the already-committed VIBE_007 placeholder and VIBE_009 JSX `<select>` template-literal false-positive fixes, which were fixed in source but never published.
+- 4ece775: Fixed the Linux secrets vault path (`secret-tool`) to pipe the master key via real stdin (`execFileSync`'s `input` option) instead of an intermediate `echo`/`printf` shell process, which briefly exposed the raw key in that process's own argv. Also documented — but could not eliminate — a matching, narrower exposure on macOS: Apple's own `security` CLI has no stdin/env alternative to its `-w` flag (its own `-h` text admits this: "Use of the -p or -w options is insecure"), so the key briefly appears in `security`'s argv there. Local-only, single-user exposure window in both cases; not remotely exploitable.
+
 All notable changes to `thesmos-governance` will be documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -26,6 +40,7 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 **Delegation map in Zeus updated** — Now includes all 34 God Agents including Metis, Momus, Proteus, Chiron, Cassandra, Calliope, Erato, Kratos, Aether, Polyhymnia, Talos, Clio, and Eos. Direct peer delegation rules added: any agent can invoke Momus (challenge check), Proteus (drift check), Argus (security), or Themis (legal) without routing through Zeus.
 
 **Domain mastery sections added to all 37 existing agents** — Three new sections per agent inserted after `## Constraints`:
+
 - `## Failure modes` — 3–5 domain-specific failure patterns with diagnostic questions
 - `## Problem diagnosis` — 3–4 questions the agent asks before accepting the stated problem
 - `## What makes this God Agent's judgment unique` — 4–5 non-obvious expert insights from deep domain experience

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "thesmos": {
+      "command": "npx",
+      "args": ["thesmos-governance", "mcp", "--stdio"]
+    }
+  }
+}

@@ -3,6 +3,21 @@
 All notable changes to the Pantheon agent bundles and tooling. Buyers get every
 update free, forever — re-download from your Gumroad library.
 
+## 2026-07 — Sovereign Gate
+
+### Changed
+
+- **Pricing consolidated to two tiers.** The Founders Pack and Agencies Pack
+  ($49 each, introduced in Olympus Rising below) are retired. There are now
+  only two ways to run Thesmos: the free **Essentials** tier (289 rules — every
+  BLOCKER plus the full AI-code safety net — and 5 starter agents) or the
+  **Full Pantheon** ($79, one time) — the complete 1,137-rule engine and all 67
+  agents exported for every LLM, with lifetime updates. Existing Founders/Agencies
+  buyers keep their agent rosters and are grandfathered into Full Pantheon
+  updates at no extra cost.
+- **The rule engine itself is now tiered**, not just the agent packs — the free
+  CLI ships 289 Essentials rules; the $79 purchase unlocks the remaining 848.
+
 ## 2026-07 — Olympus Rising
 
 ### New

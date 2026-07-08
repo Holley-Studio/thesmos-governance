@@ -13,6 +13,7 @@
  */
 
 import type { ThesmosRule, DetectInput, Finding } from '../types';
+import { isEssentialRule } from '../tiers';
 import {
   isDirectEnvAccess,
   hasAdminClientInClientFile,
@@ -689,3 +690,18 @@ export const THESMOS_RULES: ThesmosRule[] = [
   // ── Local LLM governance (v2.4.0) ────────────────────────────────────────────
   ...LOCAL_LLM_RULES,
 ];
+
+// ── Tiering ──────────────────────────────────────────────────────────────────
+
+/** The free Essentials subset (all BLOCKERs + the AI-code net). */
+export const ESSENTIAL_RULES: ThesmosRule[] = THESMOS_RULES.filter(isEssentialRule);
+
+/**
+ * The rules that run for a given resolved tier. Pure — reads config.tier only
+ * (loadConfig resolves and stamps it). Anything other than an explicit 'free'
+ * runs the full engine, so library callers that build a config by hand default
+ * to full coverage; the free-tier restriction is opt-in via config.tier.
+ */
+export function activeRulesForTier(config: { tier?: 'free' | 'premium' }): ThesmosRule[] {
+  return config.tier === 'free' ? ESSENTIAL_RULES : THESMOS_RULES;
+}

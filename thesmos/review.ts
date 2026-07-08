@@ -9,8 +9,8 @@
  * registry automatically makes it run here.
  */
 
-import type { Finding, ThesmosConfig, ScanResult } from './types';
-import { THESMOS_RULES } from './rules/registry';
+import type { Finding, ThesmosConfig, ScanResult, ThesmosRule } from './types';
+import { THESMOS_RULES, activeRulesForTier } from './rules/registry';
 import { applySuppressions, extractSuppressions, type Suppression } from './suppress.js';
 import { sortFindings, SEVERITY_EMOJI } from './severity';
 import { confidenceTag } from './gate.js';
@@ -45,14 +45,17 @@ export type ReviewCategory = string;
  */
 export function runReview(
   input: ReviewInput,
-  registry = THESMOS_RULES
+  registry?: ThesmosRule[]
 ): Finding[] {
+  // Tier gate: when no explicit registry is injected (tests), the free tier runs
+  // only the Essentials set. loadConfig has already resolved input.config.tier.
+  const tierRegistry = registry ?? activeRulesForTier(input.config);
   const disabled = new Set(
     (input.config.disabledRules ?? []).map((s) => s.toLowerCase())
   );
   const activeRules = disabled.size === 0
-    ? registry
-    : registry.filter(
+    ? tierRegistry
+    : tierRegistry.filter(
         (r) => !disabled.has(r.id.toLowerCase()) && !disabled.has(r.category.toLowerCase())
       );
 

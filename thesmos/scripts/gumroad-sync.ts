@@ -9,6 +9,13 @@
  * Requires in root .env:
  *   GUMROAD_TOKEN=...
  *   GUMROAD_PRODUCT_ID=...
+ *
+ * IMPORTANT: pushes the pre-built HTML block from gumroad-description.html
+ * (the content between its two `PASTE EVERYTHING ... LINE` marker comments),
+ * NOT the raw .md file. Gumroad's API description field renders real HTML —
+ * it does not parse Markdown — so pushing gumroad-description.md's raw text
+ * ships literal "##"/"---"/"[text](url)" characters to the live product page.
+ * (Discovered 2026-07-06: exactly this happened on the first sync.)
  */
 
 import { readFileSync, existsSync } from 'node:fs'
@@ -43,14 +50,32 @@ if (!TOKEN || !PRODUCT_ID) {
   process.exit(1)
 }
 
-const DESC_PATH = resolve(ROOT, 'website/downloads/gumroad-description.md')
+const DESC_PATH = resolve(ROOT, 'website/downloads/gumroad-description.html')
 
 if (!existsSync(DESC_PATH)) {
-  console.error('❌  website/downloads/gumroad-description.md not found — run npm run agents:pack first')
+  console.error('❌  website/downloads/gumroad-description.html not found — run npm run agents:pack first')
   process.exit(1)
 }
 
-const description = readFileSync(DESC_PATH, 'utf-8')
+const START_MARKER = 'PASTE EVERYTHING BELOW THIS LINE INTO GUMROAD HTML EDITOR'
+const END_MARKER   = 'PASTE EVERYTHING ABOVE THIS LINE INTO GUMROAD HTML EDITOR'
+
+function extractPasteableHtml(fullHtml: string): string {
+  const startIdx = fullHtml.indexOf(START_MARKER)
+  const endIdx   = fullHtml.indexOf(END_MARKER)
+  if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) {
+    throw new Error(
+      `gumroad-description.html is missing its "${START_MARKER}" / "${END_MARKER}" marker comments — ` +
+      'cannot safely extract the pasteable block. Fix the file structure before syncing.'
+    )
+  }
+  // Skip past the start marker's closing "-->", then trim back to the end marker's opening "<!--".
+  const afterStart = fullHtml.indexOf('-->', startIdx) + '-->'.length
+  const beforeEnd   = fullHtml.lastIndexOf('<!--', endIdx)
+  return fullHtml.slice(afterStart, beforeEnd).trim()
+}
+
+const description = extractPasteableHtml(readFileSync(DESC_PATH, 'utf-8'))
 
 async function getProduct(): Promise<Record<string, unknown>> {
   const res = await fetch(`https://api.gumroad.com/v2/products/${PRODUCT_ID}`, {

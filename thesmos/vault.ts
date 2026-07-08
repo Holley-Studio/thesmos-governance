@@ -30,7 +30,7 @@ import {
 } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -132,15 +132,34 @@ function storeKeyInKeychain(key: Buffer): string | undefined {
   const hex = key.toString('hex');
   try {
     if (process.platform === 'darwin') {
+      // macOS's `security` CLI has no stdin/env option for -w — its own
+      // help text says so ("Use of the -p or -w options is insecure.
+      // Specify -w as the last option to be prompted" — not scriptable).
+      // Passing an env var here would not help: execSync spawns via
+      // `/bin/sh -c`, which expands `$VAR` into the literal argv element
+      // BEFORE exec'ing `security`, so the raw key would still land in
+      // security's own argv either way (verified empirically — confirmed
+      // via `ps aux` during testing). This is a known, accepted, local-only
+      // risk: the key is visible via `ps`/Activity Monitor to processes
+      // running as this same user for the CLI's brief run, same as any
+      // tool built on `security add-generic-password` (a documented OS
+      // limitation, not something fixable without a native keychain
+      // binding, which we deliberately don't ship — zero dependencies).
       execSync(
         `security add-generic-password -s "${KEYCHAIN_SERVICE}" -a "${KEYCHAIN_ACCOUNT}" -w "${hex}" -U`,
         { stdio: 'pipe' },
       );
     } else if (process.platform === 'linux') {
       if (isSecretToolAvailable()) {
-        execSync(
-          `echo -n "${hex}" | secret-tool store --label="Thesmos Vault Key" service "${KEYCHAIN_SERVICE}" account "${KEYCHAIN_ACCOUNT}"`,
-          { stdio: 'pipe' },
+        // Unlike macOS's `security`, `secret-tool store` genuinely reads its
+        // value from stdin — and execFileSync's `input` option writes to
+        // that stdin directly from this Node process, with NO shell and NO
+        // intermediate echo/printf process ever holding the key in its own
+        // argv. secret-tool's own argv here carries no secret material.
+        execFileSync(
+          'secret-tool',
+          ['store', '--label=Thesmos Vault Key', 'service', KEYCHAIN_SERVICE, 'account', KEYCHAIN_ACCOUNT],
+          { input: hex, stdio: ['pipe', 'pipe', 'pipe'] },
         );
       } else {
         storeKeyToFile(key);
@@ -188,9 +207,13 @@ function loadKeyDpapi(): Buffer | null {
   if (!existsSync(path)) return null;
   try {
     const encrypted = readFileSync(path, 'utf8').trim();
+    // The DPAPI-encrypted blob is only decryptable by this same Windows user
+    // account, so it's not sensitive in the way a raw key is — still routed
+    // through env rather than argv for consistency with the write path below.
+    const env = { ...process.env, THESMOS_VAULT_ENCRYPTED: encrypted };
     const hex = execSync(
-      `powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $enc=[Convert]::FromBase64String('${encrypted}'); $ent=[Text.Encoding]::UTF8.GetBytes('thesmos-vault'); $dec=[Security.Cryptography.ProtectedData]::Unprotect($enc,$ent,'CurrentUser'); [Convert]::ToHexString($dec).ToLower()"`,
-      { stdio: ['pipe', 'pipe', 'pipe'] },
+      `powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $enc=[Convert]::FromBase64String($env:THESMOS_VAULT_ENCRYPTED); $ent=[Text.Encoding]::UTF8.GetBytes('thesmos-vault'); $dec=[Security.Cryptography.ProtectedData]::Unprotect($enc,$ent,'CurrentUser'); [Convert]::ToHexString($dec).ToLower()"`,
+      { stdio: ['pipe', 'pipe', 'pipe'], env },
     ).toString().trim();
     if (hex.length === 64) return Buffer.from(hex, 'hex');
   } catch { /* ignore */ }
@@ -200,9 +223,11 @@ function loadKeyDpapi(): Buffer | null {
 function storeKeyDpapi(key: Buffer): void {
   mkdirSync(thesmosDir(), { recursive: true });
   const hex = key.toString('hex');
+  // Raw key material via env, not argv — see storeKeyInKeychain for why.
+  const env = { ...process.env, THESMOS_VAULT_KEY_HEX: hex };
   const encrypted = execSync(
-    `powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $raw=[Convert]::FromHexString('${hex}'); $ent=[Text.Encoding]::UTF8.GetBytes('thesmos-vault'); $enc=[Security.Cryptography.ProtectedData]::Protect($raw,$ent,'CurrentUser'); [Convert]::ToBase64String($enc)"`,
-    { stdio: ['pipe', 'pipe', 'pipe'] },
+    `powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $raw=[Convert]::FromHexString($env:THESMOS_VAULT_KEY_HEX); $ent=[Text.Encoding]::UTF8.GetBytes('thesmos-vault'); $enc=[Security.Cryptography.ProtectedData]::Protect($raw,$ent,'CurrentUser'); [Convert]::ToBase64String($enc)"`,
+    { stdio: ['pipe', 'pipe', 'pipe'], env },
   ).toString().trim();
   writeFileSync(fallbackKeyPath(), encrypted, { encoding: 'utf8', mode: 0o600 });
 }

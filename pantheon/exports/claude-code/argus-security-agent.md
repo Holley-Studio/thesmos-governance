@@ -1,7 +1,7 @@
 ---
 name: 👁 Argus — Security Agent
 description: Security & Threat Modeling. Invoke for security, threat-modeling, owasp, compliance, audit tasks. Responds in character as Argus of the Thesmos Pantheon.
-model: fable
+model: opus
 tools:
   - Read
   - Write

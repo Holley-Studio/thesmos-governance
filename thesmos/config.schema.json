@@ -20,6 +20,17 @@
       "description": "Human-readable project name shown in reports and adapter files",
       "examples": ["My App", "acme-platform"]
     },
+    "tier": {
+      "type": "string",
+      "enum": ["free", "premium"],
+      "description": "Active licensing tier. 'free' runs the Essentials rule set (all BLOCKERs + the AI-code net); 'premium' runs the full 1,137-rule engine. Resolved automatically from a purchased premium pack if present — set explicitly to override."
+    },
+    "power": {
+      "type": "string",
+      "enum": ["lean", "god"],
+      "default": "lean",
+      "description": "Pantheon orchestration power tier. 'lean' (default): one specialist, a one-line Zeus header, no auto-council — most tasks belong here. 'god': full council/ceremony available for genuinely complex or high-stakes work."
+    },
     "failOnSeverity": {
       "type": "array",
       "description": "Severity levels that cause `thesmos validate` and `thesmos ci` to exit 1",
