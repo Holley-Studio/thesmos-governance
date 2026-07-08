@@ -235,7 +235,7 @@ Thesmos — AI Repo Governance
   Detects unsafe patterns, keeps adapter files fresh, and gates CI automatically.
 
 SETUP
-  init                     Scaffold .thesmos/ governance folder
+  init                     Scaffold .thesmos/ + generate AI adapter files (--no-adapters to skip)
   init --interactive        Interactive wizard — detect framework, pick adapters, configure CI
   init --from-ai-config    Read CLAUDE.md/.cursorrules and generate .thesmos/config.json
   scan                     Analyse repo structure → .thesmos/report.json

@@ -4,9 +4,10 @@
  * Safe to run repeatedly: generated sections are overwritten, manual content preserved.
  *
  * Flags:
- *   --dry-run    print what would change without writing
- *   --json       output as JSON
- *   --markdown   output as Markdown
+ *   --dry-run       print what would change without writing
+ *   --json          output as JSON
+ *   --markdown      output as Markdown
+ *   --no-adapters   skip AI adapter file generation (CLAUDE.md, GEMINI.md, etc.)
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,10 +15,16 @@ import { createContext } from '../lib/context.ts';
 import { parseArgs, flag, flagVal } from '../lib/args.ts';
 import { writeThesmosDir, type InitFileResult } from '../../init.ts';
 import { runScanner } from '../../scanner/index.ts';
-import { loadCatalogProfile, loadBuiltInCatalog } from '../../catalog.ts';
-import { REGISTRY_PATH } from '../../registry.ts';
+import { loadCatalogProfile, loadBuiltInCatalog, getActiveCatalog } from '../../catalog.ts';
+import { REGISTRY_PATH, loadRegistryConfig, mergeRegistryConfig, REGISTRY_DEFAULTS } from '../../registry.ts';
 import { runInteractiveInit } from '../../interactive-init.ts';
 import { initFromAiConfig, formatInitFromAiConfigConsole } from '../../ai-lint.ts';
+import {
+  THESMOS_RULES,
+  writeAllAdapters,
+  type AdapterCatalog,
+  type AdapterManifest,
+} from '../../adapters.ts';
 
 export async function cmdInit(argv: string[]): Promise<void> {
   const { root, config } = createContext();
@@ -29,6 +36,7 @@ export async function cmdInit(argv: string[]): Promise<void> {
   const profileId   = flagVal(flags, 'profile');
   const interactive = flag(flags, 'interactive') || flag(flags, 'i');
   const fromAi     = flag(flags, 'from-ai-config');
+  const noAdapters = flag(flags, 'no-adapters');
 
   // Interactive wizard mode
   if (interactive) {
@@ -107,8 +115,29 @@ export async function cmdInit(argv: string[]): Promise<void> {
     writeFileSync(regPath, JSON.stringify(registry, null, 2) + '\n', 'utf8');
   }
 
+  // Generate AI adapter files by default (CLAUDE.md, GEMINI.md, etc.) so a
+  // plain `thesmos init` leaves the repo fully wired — no separate `thesmos
+  // adapters` step to forget. Opt out with --no-adapters. Runs after profile
+  // application so the registry (and therefore the agent context section)
+  // reflects any profile agents/skills just installed.
+  let adapterManifests: AdapterManifest[] = [];
+  if (!noAdapters && !dryRun) {
+    const registryConfig = loadRegistryConfig(root);
+    const merged = mergeRegistryConfig(REGISTRY_DEFAULTS, registryConfig);
+    const activeCatalog = getActiveCatalog(root, { agents: merged.agents, skills: merged.skills });
+    const catalog: AdapterCatalog | undefined =
+      activeCatalog.agents.length > 0 || activeCatalog.skills.length > 0
+        ? {
+            agents: activeCatalog.agents.map((a) => ({ id: a.frontmatter.id, name: a.frontmatter.name })),
+            skills: activeCatalog.skills.map((s) => ({ id: s.frontmatter.id, name: s.frontmatter.name })),
+            profile: merged.profiles[0],
+          }
+        : undefined;
+    adapterManifests = writeAllAdapters(root, THESMOS_RULES, config, undefined, catalog);
+  }
+
   if (json) {
-    process.stdout.write(JSON.stringify({ dryRun, results }, null, 2) + '\n');
+    process.stdout.write(JSON.stringify({ dryRun, results, adapters: adapterManifests }, null, 2) + '\n');
     return;
   }
 
@@ -119,6 +148,9 @@ export async function cmdInit(argv: string[]): Promise<void> {
     for (const r of results) {
       const status = r.created ? 'created' : r.updated ? 'updated' : 'skipped';
       lines.push(`| ${status} | \`${r.path}\` |`);
+    }
+    for (const m of adapterManifests) {
+      lines.push(`| adapter | \`${m.outputPath}\` |`);
     }
     process.stdout.write(lines.join('\n') + '\n');
     return;
@@ -139,7 +171,14 @@ export async function cmdInit(argv: string[]): Promise<void> {
   }
   console.log('');
   console.log(`${results.length} files: ${created} created, ${updated} updated, ${skipped} skipped`);
-  if (dryRun) console.log('(dry run — no files written)');
+  if (adapterManifests.length > 0) {
+    console.log('');
+    console.log('AI adapter files (skip with --no-adapters):');
+    for (const m of adapterManifests) {
+      console.log(`  ✓  ${m.outputPath}  [${m.target}]`);
+    }
+  }
+  if (dryRun) console.log('(dry run — no files written, adapters skipped)');
   if (profileId && !dryRun) {
     console.log(`\nProfile "${profileId}" applied — agents and skills copied to .thesmos/`);
     console.log('Run: thesmos catalog:list  to see active agents and skills');
