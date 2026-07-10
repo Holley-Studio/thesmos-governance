@@ -667,6 +667,16 @@ function send(): void {
 }
 
 sendBtn.addEventListener('click', send);
+
+// Welcome-screen suggested prompts — click fills the composer and sends.
+empty.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest('.suggest') as HTMLElement | null;
+  if (!btn) return;
+  const prompt = btn.dataset['prompt'];
+  if (!prompt) return;
+  input.value = prompt;
+  send();
+});
 stopBtn.addEventListener('click', () => vscode.postMessage({ type: 'stop' }));
 newBtn.addEventListener('click', () => vscode.postMessage({ type: 'newSession' }));
 attachBtn.addEventListener('click', () => vscode.postMessage({ type: 'pickImage' }));

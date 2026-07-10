@@ -431,6 +431,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       <div class="glyph">🏛️</div>
       <div class="headline">THE COUNCIL AWAITS</div>
       <div>Describe your task — Zeus will route it to the right god.</div>
+      <div class="first-prompts">
+        <button class="suggest" data-prompt="Have Argus review my most recently changed files for security issues">👁 Argus: review my recent changes</button>
+        <button class="suggest" data-prompt="What is the current health of this repo? Summarize the top findings.">⚖ Judge this repo's health</button>
+        <button class="suggest" data-prompt="Explain what Thesmos governance is enforcing in this workspace">📜 What laws govern this place?</button>
+      </div>
     </div>
     <div id="attachments"></div>
     <div id="mention-popup" class="hidden"></div>

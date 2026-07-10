@@ -129,6 +129,11 @@ ${t.slice(0,300)}`),this.name="ThesmosParseError"}};function Jn(i,e){if(e&&e.tri
       <div class="glyph">\u{1F3DB}\uFE0F</div>
       <div class="headline">THE COUNCIL AWAITS</div>
       <div>Describe your task \u2014 Zeus will route it to the right god.</div>
+      <div class="first-prompts">
+        <button class="suggest" data-prompt="Have Argus review my most recently changed files for security issues">\u{1F441} Argus: review my recent changes</button>
+        <button class="suggest" data-prompt="What is the current health of this repo? Summarize the top findings.">\u2696 Judge this repo's health</button>
+        <button class="suggest" data-prompt="Explain what Thesmos governance is enforcing in this workspace">\u{1F4DC} What laws govern this place?</button>
+      </div>
     </div>
     <div id="attachments"></div>
     <div id="mention-popup" class="hidden"></div>

@@ -110,6 +110,16 @@ html, body {
   to { opacity: 1; transform: none; }
 }
 
+/* ── Welcome-screen suggested prompts ───────────────────────────────── */
+.first-prompts { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.first-prompts .suggest {
+  background: var(--card, rgba(255,255,255,.04));
+  border: 1px solid var(--border, rgba(255,255,255,.08));
+  color: inherit; border-radius: 6px; padding: 6px 10px; cursor: pointer; text-align: left;
+  font: inherit; font-size: 12px;
+}
+.first-prompts .suggest:hover { border-color: var(--gold, #c9a84c); }
+
 /* ── Credit Guardian header figure ──────────────────────────────────── */
 #savings {
   color: var(--gold, #c9a84c);
