@@ -110,6 +110,30 @@ html, body {
   to { opacity: 1; transform: none; }
 }
 
+/* ── Thinking indicator ─────────────────────────────────────────────── */
+.msg.thinking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold, #c9a84c);
+  font-style: italic;
+  opacity: 0.85;
+}
+.msg.thinking .pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold, #c9a84c);
+  animation: thesmos-pulse 1.2s ease-in-out infinite;
+}
+@keyframes thesmos-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.35); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .msg.thinking .pulse { animation: none; opacity: 0.8; }
+}
+
 /* User bubble */
 .msg.user {
   align-self: flex-end;

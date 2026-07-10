@@ -76,6 +76,48 @@ const attachmentsRow = document.getElementById('attachments') as HTMLDivElement;
 
 let pendingAttachments: string[] = [];
 
+// ── Thinking indicator ────────────────────────────────────────────────────────
+// Shown instantly on send and whenever the turn is running but nothing has
+// streamed for >2s (long tool gaps). Removed by any content event.
+const THINKING_VERBS = [
+  'The council deliberates',
+  'Zeus weighs the matter',
+  'The oracle stirs',
+  'Wisdom gathers on Olympus',
+];
+let thinkingEl: HTMLDivElement | undefined;
+let thinkingVerbIdx = 0;
+let thinkingGapTimer: ReturnType<typeof setTimeout> | undefined;
+let turnRunning = false;
+
+function showThinking(): void {
+  if (thinkingEl) return;
+  thinkingEl = div('msg thinking');
+  thinkingVerbIdx = (thinkingVerbIdx + 1) % THINKING_VERBS.length;
+  const pulse = document.createElement('span');
+  pulse.className = 'pulse';
+  const verb = document.createElement('span');
+  verb.className = 'verb';
+  verb.textContent = `⚡ ${THINKING_VERBS[thinkingVerbIdx]}…`;
+  thinkingEl.append(pulse, verb);
+  append(thinkingEl);
+}
+
+function hideThinking(): void {
+  thinkingEl?.remove();
+  thinkingEl = undefined;
+}
+
+/** Every stream event resets the gap timer; if 2s pass mid-turn, think again. */
+function bumpThinkingGap(): void {
+  hideThinking();
+  clearTimeout(thinkingGapTimer);
+  if (!turnRunning) return;
+  thinkingGapTimer = setTimeout(() => {
+    if (turnRunning) showThinking();
+  }, 2000);
+}
+
 let liveBubble: HTMLDivElement | undefined;
 let liveText = '';
 const godElements = new Map<string, HTMLDivElement>();
@@ -479,6 +521,8 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       permissionElements.clear();
       todoElements.clear();
       finalizeLiveBubble();
+      thinkingEl = undefined; // log was cleared — drop the stale reference
+      clearTimeout(thinkingGapTimer);
       meta.textContent = '';
       break;
     case 'history':
@@ -488,17 +532,22 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       permissionElements.clear();
       todoElements.clear();
       finalizeLiveBubble();
+      thinkingEl = undefined; // log was cleared — drop the stale reference
+      clearTimeout(thinkingGapTimer);
       for (const item of msg.items) renderItem(item);
       break;
     case 'item':
+      bumpThinkingGap();
       renderItem(msg.item);
       break;
     case 'delta':
+      bumpThinkingGap();
       liveText += msg.text;
       scheduleLiveRender();
       break;
     case 'deltaDone':
       finalizeLiveBubble();
+      bumpThinkingGap();
       break;
     case 'godComplete': {
       const el = godElements.get(msg.toolUseId);
@@ -513,6 +562,11 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
     }
     case 'status':
       document.body.classList.toggle('running', msg.running);
+      turnRunning = msg.running;
+      if (!msg.running) {
+        clearTimeout(thinkingGapTimer);
+        hideThinking();
+      }
       // While a turn runs, Send becomes Queue — messages wait their turn.
       sendBtn.textContent = msg.running ? 'Queue' : 'Send';
       sendBtn.title = msg.running ? 'Queue for when the current turn finishes' : 'Send (Enter)';
@@ -597,6 +651,8 @@ function send(): void {
   vscode.postMessage({ type: 'send', text, attachments: pendingAttachments });
   pendingAttachments = [];
   renderAttachments();
+  turnRunning = true;
+  showThinking();
 }
 
 sendBtn.addEventListener('click', send);
