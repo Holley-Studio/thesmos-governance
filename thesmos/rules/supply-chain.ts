@@ -7,6 +7,8 @@
  * detects phantom packages) — these detect package source and publish security.
  */
 
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import type { ThesmosRule, DetectInput, Finding } from '../types';
 import { classifySeverity } from '../severity';
 
@@ -105,20 +107,32 @@ export const SUPPLY_CHAIN_RULES: ThesmosRule[] = [
       goodExample: 'Commit package-lock.json (or yarn.lock / pnpm-lock.yaml) alongside package.json.',
       badExample: 'package.json + node_modules/ but no lockfile committed.',
     },
-    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+    detect({ changedFiles = [], config, root }: DetectInput): Finding[] {
       const sev = classifySeverity('sc_missing_lockfile', config.severityRules);
       const findings: Finding[] = [];
       const hasPackageJson = changedFiles.some(({ path }) => isPackageJson(path));
       const hasLockfile = changedFiles.some(({ path }) => isLockfile(path));
       if (hasPackageJson && !hasLockfile) {
         const pkg = changedFiles.find(({ path }) => isPackageJson(path))!;
-        findings.push({
-          severity: sev,
-          category: 'sc_missing_lockfile',
-          file: pkg.path,
-          message: 'package.json present but no lockfile detected in changed files — dependencies are unpinned.',
-          suggestion: 'Run npm install (or yarn/pnpm install) and commit the generated lockfile.',
-        });
+        // A package.json edit with no lockfile in the diff is fine when a
+        // lockfile already exists on disk — next to the package.json or at the
+        // workspace root (npm/yarn/pnpm workspaces hoist to a single root
+        // lockfile). Only an edit with NO lockfile anywhere is unpinned.
+        const base = root ?? process.cwd();
+        const lockNames = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'];
+        const candidateDirs = [dirname(join(base, pkg.path)), base];
+        const lockfileOnDisk = candidateDirs.some((dir) =>
+          lockNames.some((name) => existsSync(join(dir, name))),
+        );
+        if (!lockfileOnDisk) {
+          findings.push({
+            severity: sev,
+            category: 'sc_missing_lockfile',
+            file: pkg.path,
+            message: 'package.json present but no lockfile found — dependencies are unpinned.',
+            suggestion: 'Run npm install (or yarn/pnpm install) and commit the generated lockfile.',
+          });
+        }
       }
       return findings;
     },

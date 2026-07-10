@@ -291,10 +291,12 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   openInTab(): void {
+    const location = vscode.workspace.getConfiguration('thesmos').get<string>('chat.openLocation', 'beside');
+    const column = location === 'active' ? vscode.ViewColumn.Active : vscode.ViewColumn.Beside;
     const panel = vscode.window.createWebviewPanel(
       'thesmos.pantheonChatTab',
       '⚡ Pantheon Chat',
-      vscode.ViewColumn.Beside,
+      column,
       { enableScripts: true, retainContextWhenHidden: true },
     );
     this.attach(panel.webview);

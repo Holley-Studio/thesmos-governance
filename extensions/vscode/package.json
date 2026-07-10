@@ -476,6 +476,12 @@
           "default": true,
           "description": "Enable Thesmos Governance."
         },
+        "thesmos.chat.openLocation": {
+          "type": "string",
+          "enum": ["beside", "active"],
+          "default": "beside",
+          "description": "Where 'Open Pantheon Chat in Editor' places the chat tab: split to the right of the active editor (beside) or in the active column."
+        },
         "thesmos.runOnSave": {
           "type": "boolean",
           "default": true,
