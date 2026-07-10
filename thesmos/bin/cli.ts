@@ -21,6 +21,7 @@ import { cmdDrift } from './commands/drift.ts';
 import { cmdBaseline } from './commands/baseline.ts';
 import { cmdExplain } from './commands/explain.ts';
 import { cmdAdvise } from './commands/advise.ts';
+import { cmdSavings } from './commands/savings.ts';
 import { cmdSuppressions } from './commands/suppressions.ts';
 import { cmdMetrics } from './commands/metrics.ts';
 import { cmdPacks } from './commands/packs.ts';
@@ -120,6 +121,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'pantheon:upgrade':     (argv) => cmdPantheon(['upgrade', ...argv]),
   'pantheon:remove':      (argv) => cmdPantheon(['remove', ...argv]),
   fix: cmdFix,
+  savings: cmdSavings,
   report: cmdReport,
   'ai-lint': cmdAiLint,
   'ai-lint:init': (argv) => cmdAiLint(['--from-ai-config', ...argv]),
