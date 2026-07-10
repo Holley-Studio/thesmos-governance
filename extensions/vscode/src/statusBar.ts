@@ -20,6 +20,9 @@ export class StatusBarManager implements vscode.Disposable {
   private readonly tokenItem: vscode.StatusBarItem;
   private readonly pantheonItem: vscode.StatusBarItem;
 
+  /** Last idle (non-working) main-item state, restored when work completes. */
+  private idleSnapshot: { text: string; tooltip: string | vscode.MarkdownString; bg: vscode.ThemeColor | undefined } | undefined;
+
   constructor() {
     this.item = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left,
@@ -90,6 +93,32 @@ export class StatusBarManager implements vscode.Disposable {
     this.item.backgroundColor = undefined;
   }
 
+  private snapshotIdle(): void {
+    this.idleSnapshot = {
+      text: this.item.text,
+      tooltip: this.item.tooltip ?? '',
+      bg: this.item.backgroundColor as vscode.ThemeColor | undefined,
+    };
+  }
+
+  /** Working state — driven by WorkingStateManager. Label already contains the spinner codicon. */
+  showWorking(label: string): void {
+    this.item.text = label;
+    this.item.tooltip = 'Thesmos is working — the gods are at their labors.';
+    this.item.backgroundColor = undefined;
+  }
+
+  /** Restore whatever idle state was showing before work began. */
+  restoreIdle(): void {
+    if (!this.idleSnapshot) {
+      this.showInactive();
+      return;
+    }
+    this.item.text = this.idleSnapshot.text;
+    this.item.tooltip = this.idleSnapshot.tooltip;
+    this.item.backgroundColor = this.idleSnapshot.bg;
+  }
+
   showHealth(health: HealthScore, findingCount: number, baselinedCount = 0): void {
     const { score, grade } = health;
 
@@ -125,6 +154,7 @@ export class StatusBarManager implements vscode.Disposable {
         `${issueText}${baselineLine}\n\n` +
         `_Click to open health dashboard_`,
     );
+    this.snapshotIdle();
   }
 
   /**
@@ -147,6 +177,7 @@ export class StatusBarManager implements vscode.Disposable {
     this.item.backgroundColor = new vscode.ThemeColor(
       'statusBarItem.warningBackground',
     );
+    this.snapshotIdle();
   }
 
   showNotInstalled(): void {
@@ -156,6 +187,7 @@ export class StatusBarManager implements vscode.Disposable {
     this.item.backgroundColor = new vscode.ThemeColor(
       'statusBarItem.errorBackground',
     );
+    this.snapshotIdle();
   }
 
   showAutopilotSession(taskLabel: string, cancelling: boolean): void {
@@ -209,6 +241,7 @@ export class StatusBarManager implements vscode.Disposable {
     this.item.text = '$(shield) Thesmos';
     this.item.tooltip = 'Thesmos Governance';
     this.item.backgroundColor = undefined;
+    this.snapshotIdle();
   }
 
   showTokenCost(sessionCostUSD: number, todayCostUSD: number): void {
