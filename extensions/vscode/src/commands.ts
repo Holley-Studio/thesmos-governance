@@ -800,5 +800,37 @@ export function registerCommands(
     }),
   );
 
+  // ── thesmos.governance.status ───────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('thesmos.governance.status', async () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const terminal = vscode.window.createTerminal({
+        name: 'Thesmos: Governance Status',
+        cwd: workspaceRoot,
+      });
+      terminal.sendText('thesmos claude:govern status');
+      terminal.show();
+    }),
+  );
+
+  // ── thesmos.governance.install ──────────────────────────────────────────
+
+  disposables.push(
+    vscode.commands.registerCommand('thesmos.governance.install', async () => {
+      const cfg = getConfig();
+      if (!cfg.enable) return;
+
+      const terminal = vscode.window.createTerminal({
+        name: 'Thesmos: Install Governance',
+        cwd: workspaceRoot,
+      });
+      terminal.sendText('thesmos claude:govern install');
+      terminal.show();
+    }),
+  );
+
   return vscode.Disposable.from(...disposables);
 }

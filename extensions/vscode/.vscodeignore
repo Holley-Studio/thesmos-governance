@@ -4,6 +4,6 @@
 src/**
 esbuild.mjs
 tsconfig.json
-*.map
+**/*.map
 .eslintrc*
 .prettierrc*

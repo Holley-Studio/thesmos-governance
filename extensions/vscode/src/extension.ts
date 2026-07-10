@@ -32,6 +32,7 @@ import { AutopilotTreeProvider } from './autopilotView.js';
 import { AgentsTreeProvider, invokeAgentCommand } from './agentsPanel.js';
 import { AgentActivityWatcher, AgentActivityTreeProvider, buildRoutingChain } from './agentActivityPanel.js';
 import { AutoModeGovernor } from './autoModeGovernor.js';
+import { PantheonChatController } from './chat/chatViewProvider.js';
 import { ThesmosCodeLensProvider } from './codeLens.js';
 import { InlineDiagnosticsManager } from './inlineDiagnostics.js';
 import { registerCommands } from './commands.js';
@@ -84,6 +85,7 @@ class ThesmosExtension implements vscode.Disposable {
   private readonly agentActivityView: AgentActivityTreeProvider;
   private routingChainActive = false;
   private readonly autoModeGovernor: AutoModeGovernor;
+  private readonly pantheonChat: PantheonChatController;
   private readonly codeLensProvider: ThesmosCodeLensProvider;
   private readonly inlineDiagnostics: InlineDiagnosticsManager;
   private updateBadge: (count: number) => void = () => {};
@@ -108,6 +110,7 @@ class ThesmosExtension implements vscode.Disposable {
     this.agentActivityWatcher = new AgentActivityWatcher(workspaceRoot);
     this.agentActivityView = new AgentActivityTreeProvider(this.agentActivityWatcher);
     this.autoModeGovernor = new AutoModeGovernor(workspaceRoot);
+    this.pantheonChat = new PantheonChatController(context, workspaceRoot);
     this.codeLensProvider = new ThesmosCodeLensProvider();
     this.inlineDiagnostics = new InlineDiagnosticsManager();
 
@@ -121,6 +124,7 @@ class ThesmosExtension implements vscode.Disposable {
       this.agentActivityWatcher,
       this.agentActivityView,
       this.autoModeGovernor,
+      this.pantheonChat,
       this.codeLensProvider,
       this.inlineDiagnostics,
     );
@@ -293,6 +297,25 @@ class ThesmosExtension implements vscode.Disposable {
       showCollapseAll: false,
     });
     this.disposables.push(agentActivityTreeView);
+
+    // Register Pantheon Chat webview + commands
+    this.disposables.push(
+      vscode.window.registerWebviewViewProvider(PantheonChatController.viewId, this.pantheonChat, {
+        webviewOptions: { retainContextWhenHidden: true },
+      }),
+      vscode.commands.registerCommand('thesmos.pantheon.chat.open', () => {
+        void vscode.commands.executeCommand('thesmos.pantheonChat.focus');
+      }),
+      vscode.commands.registerCommand('thesmos.pantheon.chat.openInTab', () => {
+        this.pantheonChat.openInTab();
+      }),
+      vscode.commands.registerCommand('thesmos.pantheon.chat.newSession', () => {
+        this.pantheonChat.newSession();
+      }),
+      vscode.commands.registerCommand('thesmos.pantheon.chat.unlinkProvider', () => {
+        this.pantheonChat.unlinkProvider();
+      }),
+    );
 
     // Agents invoke command — opens terminal with claude, shows spinning indicator
     this.disposables.push(
