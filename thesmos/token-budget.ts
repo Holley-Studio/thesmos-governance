@@ -13,6 +13,7 @@
 
 import { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { appendSavingsEntry, readSavingsEntries } from './savings.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -266,6 +267,23 @@ export async function runPostToolBudgetCheck(root: string, config: TokenBudgetCo
   }
 
   if (report.hardStop) {
+    // Credit Guardian: record the stop once per session (the hook re-fires on
+    // every tool call while exhausted). Event only — no dollar claim is made
+    // for prevented spend.
+    try {
+      const alreadyLogged = readSavingsEntries(root).some(
+        (e) => e.type === 'budget_stop' && e.detail.includes(sessionId),
+      );
+      if (!alreadyLogged) {
+        appendSavingsEntry(root, {
+          ts: new Date().toISOString(),
+          type: 'budget_stop',
+          detail: `token budget hard stop [${sessionId}]: ${report.hardStopReason ?? 'budget exhausted'}`,
+        });
+      }
+    } catch {
+      // Ledger write is best-effort — never block the stop itself.
+    }
     process.stdout.write(
       `\n🛑 Thesmos: ${report.hardStopReason}.\n` +
       `Run \`thesmos tokens:reset --session\` to continue.\n`,

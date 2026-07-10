@@ -26,12 +26,16 @@ import type { LanguageClient as LanguageClientType } from 'vscode-languageclient
 
 import { DiagnosticsManager } from './diagnostics.js';
 import { StatusBarManager } from './statusBar.js';
+import { WorkingStateManager } from './workingState.js';
+import { GodMapper } from './chat/godMapper.js';
+import { appendSavings, monthSavingsUsd } from './chat/savingsLedger.js';
 import { FindingsTreeProvider } from './treeView.js';
 import { AutopilotWatcher } from './autopilotWatcher.js';
 import { AutopilotTreeProvider } from './autopilotView.js';
 import { AgentsTreeProvider, invokeAgentCommand } from './agentsPanel.js';
 import { AgentActivityWatcher, AgentActivityTreeProvider, buildRoutingChain } from './agentActivityPanel.js';
 import { AutoModeGovernor } from './autoModeGovernor.js';
+import { PantheonChatController } from './chat/chatViewProvider.js';
 import { ThesmosCodeLensProvider } from './codeLens.js';
 import { InlineDiagnosticsManager } from './inlineDiagnostics.js';
 import { registerCommands } from './commands.js';
@@ -84,6 +88,7 @@ class ThesmosExtension implements vscode.Disposable {
   private readonly agentActivityView: AgentActivityTreeProvider;
   private routingChainActive = false;
   private readonly autoModeGovernor: AutoModeGovernor;
+  private readonly pantheonChat: PantheonChatController;
   private readonly codeLensProvider: ThesmosCodeLensProvider;
   private readonly inlineDiagnostics: InlineDiagnosticsManager;
   private updateBadge: (count: number) => void = () => {};
@@ -92,6 +97,9 @@ class ThesmosExtension implements vscode.Disposable {
   private allFindings: Finding[] = [];
   private lastBaselinedCount = 0;
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly working: WorkingStateManager;
+  private readonly godMapper: GodMapper;
+  private readonly loggedContext1M = new Set<string>();
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -101,6 +109,12 @@ class ThesmosExtension implements vscode.Disposable {
 
     this.diagnostics = new DiagnosticsManager();
     this.statusBar = new StatusBarManager();
+    this.godMapper = new GodMapper(workspaceRoot);
+    this.working = new WorkingStateManager((label) => {
+      if (label !== undefined) this.statusBar.showWorking(label);
+      else this.statusBar.restoreIdle();
+    });
+    this.disposables.push({ dispose: () => this.working.dispose() });
     this.treeProvider = new FindingsTreeProvider();
     this.autopilotWatcher = new AutopilotWatcher(workspaceRoot);
     this.autopilotView = new AutopilotTreeProvider(workspaceRoot, this.autopilotWatcher);
@@ -108,6 +122,7 @@ class ThesmosExtension implements vscode.Disposable {
     this.agentActivityWatcher = new AgentActivityWatcher(workspaceRoot);
     this.agentActivityView = new AgentActivityTreeProvider(this.agentActivityWatcher);
     this.autoModeGovernor = new AutoModeGovernor(workspaceRoot);
+    this.pantheonChat = new PantheonChatController(context, workspaceRoot);
     this.codeLensProvider = new ThesmosCodeLensProvider();
     this.inlineDiagnostics = new InlineDiagnosticsManager();
 
@@ -121,6 +136,7 @@ class ThesmosExtension implements vscode.Disposable {
       this.agentActivityWatcher,
       this.agentActivityView,
       this.autoModeGovernor,
+      this.pantheonChat,
       this.codeLensProvider,
       this.inlineDiagnostics,
     );
@@ -209,6 +225,20 @@ class ThesmosExtension implements vscode.Disposable {
         // thesmos-disable-next-line agent_context_1m_unguarded -- reason: this IS the 1M-context detector — the literal [1m] here is the pattern being searched for, not a model opt-in -- owner: @MHolley
         if (raw && JSON.stringify(raw).includes('[1m]')) {
           this.statusBar.show1MContextBadge(rel);
+          // Credit Guardian: record the block once per source per session.
+          // Event only — no dollar claim is made for prevented premium spend.
+          if (!this.loggedContext1M.has(rel)) {
+            this.loggedContext1M.add(rel);
+            try {
+              appendSavings(this.workspaceRoot, {
+                ts: new Date().toISOString(),
+                type: 'context_1m_block',
+                detail: `1M context flagged in ${rel} (AGNT_037, allow1M not set)`,
+              });
+            } catch {
+              // Ledger write is best-effort.
+            }
+          }
           return;
         }
       }
@@ -294,6 +324,25 @@ class ThesmosExtension implements vscode.Disposable {
     });
     this.disposables.push(agentActivityTreeView);
 
+    // Register Pantheon Chat webview + commands
+    this.disposables.push(
+      vscode.window.registerWebviewViewProvider(PantheonChatController.viewId, this.pantheonChat, {
+        webviewOptions: { retainContextWhenHidden: true },
+      }),
+      vscode.commands.registerCommand('thesmos.pantheon.chat.open', () => {
+        void vscode.commands.executeCommand('thesmos.pantheonChat.focus');
+      }),
+      vscode.commands.registerCommand('thesmos.pantheon.chat.openInTab', () => {
+        this.pantheonChat.openInTab();
+      }),
+      vscode.commands.registerCommand('thesmos.pantheon.chat.newSession', () => {
+        this.pantheonChat.newSession();
+      }),
+      vscode.commands.registerCommand('thesmos.pantheon.chat.unlinkProvider', () => {
+        this.pantheonChat.unlinkProvider();
+      }),
+    );
+
     // Agents invoke command — opens terminal with claude, shows spinning indicator
     this.disposables.push(
       vscode.commands.registerCommand('thesmos.agents.invoke', async (agent?: Parameters<typeof invokeAgentCommand>[0]) => {
@@ -355,6 +404,8 @@ class ThesmosExtension implements vscode.Disposable {
       () => this.runFullReview(),
       (uri) => this.reviewSingleFile(uri),
       () => this.autopilotWatcher,
+      () => this.working,
+      this.godMapper,
     );
     this.disposables.push(commands);
 
@@ -484,7 +535,8 @@ class ThesmosExtension implements vscode.Disposable {
   /** Runs a full repository review and refreshes all UI surfaces. */
   async runFullReview(): Promise<void> {
     const cfg = readConfig();
-    this.statusBar.showLoading();
+    const argus = this.godMapper.resolve('argus');
+    const reg = this.working.begin(argus.emoji, argus.progressVerb);
     this.treeProvider.setLoading();
 
     try {
@@ -519,6 +571,8 @@ class ThesmosExtension implements vscode.Disposable {
       await this.refreshStatusBar(cfg);
     } catch (err) {
       this.handleAnalysisError(err);
+    } finally {
+      reg.dispose();
     }
   }
 
@@ -530,6 +584,8 @@ class ThesmosExtension implements vscode.Disposable {
     const relPath = relative(this.workspaceRoot, uri.fsPath);
     if (relPath.startsWith('..') || relPath.startsWith('/')) return;
 
+    const argus = this.godMapper.resolve('argus');
+    const reg = this.working.begin(argus.emoji, argus.progressVerb);
     try {
       const output = await runReview(
         this.workspaceRoot,
@@ -560,6 +616,8 @@ class ThesmosExtension implements vscode.Disposable {
       if (!(err instanceof ThesmosReportMissingError)) {
         this.handleAnalysisError(err);
       }
+    } finally {
+      reg.dispose();
     }
   }
 
@@ -586,7 +644,13 @@ class ThesmosExtension implements vscode.Disposable {
     // Token meter — non-blocking, fail silently
     void runTokensReport(this.workspaceRoot, cfg.binaryPath || undefined).then((report) => {
       if (report) {
-        this.statusBar.showTokenCost(report.sessionCostUSD, report.todayCostUSD);
+        let monthSaved = 0;
+        try {
+          monthSaved = monthSavingsUsd(this.workspaceRoot, new Date());
+        } catch {
+          // Savings line is decoration — never break the token meter.
+        }
+        this.statusBar.showTokenCost(report.sessionCostUSD, report.todayCostUSD, monthSaved);
       }
     });
   }

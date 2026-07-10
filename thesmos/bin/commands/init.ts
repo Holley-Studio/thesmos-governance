@@ -18,12 +18,14 @@ import { runScanner } from '../../scanner/index.ts';
 import { loadCatalogProfile, loadBuiltInCatalog, getActiveCatalog } from '../../catalog.ts';
 import { REGISTRY_PATH, loadRegistryConfig, mergeRegistryConfig, REGISTRY_DEFAULTS } from '../../registry.ts';
 import { runInteractiveInit } from '../../interactive-init.ts';
+import { mythicBanner, formatOracleVerdict } from '../lib/oracle.ts';
 import { initFromAiConfig, formatInitFromAiConfigConsole } from '../../ai-lint.ts';
 import {
   THESMOS_RULES,
   writeAllAdapters,
   type AdapterCatalog,
   type AdapterManifest,
+  type AdapterTarget,
 } from '../../adapters.ts';
 
 export async function cmdInit(argv: string[]): Promise<void> {
@@ -55,10 +57,16 @@ export async function cmdInit(argv: string[]): Promise<void> {
     return;
   }
 
+  // Mythic first-run output is TTY-only decoration: piped/CI/json/markdown
+  // output stays byte-identical to before.
+  const mythic = process.stdout.isTTY === true && !json && !markdown;
+  if (mythic) process.stdout.write(mythicBanner() + '\n');
+
   // Optional: run a quick scan to populate architecture files.
   // If it fails (e.g. in a temp dir), init still proceeds with placeholders.
   let scan;
   try {
+    if (mythic) process.stdout.write('  👁 Argus opens his hundred eyes…\n\n');
     scan = runScanner(root, config);
   } catch {
     scan = undefined;
@@ -115,13 +123,22 @@ export async function cmdInit(argv: string[]): Promise<void> {
     writeFileSync(regPath, JSON.stringify(registry, null, 2) + '\n', 'utf8');
   }
 
-  // Generate AI adapter files by default (CLAUDE.md, GEMINI.md, etc.) so a
-  // plain `thesmos init` leaves the repo fully wired — no separate `thesmos
-  // adapters` step to forget. Opt out with --no-adapters. Runs after profile
-  // application so the registry (and therefore the agent context section)
-  // reflects any profile agents/skills just installed.
+  // Generate AI adapter files by default so a plain `thesmos init` leaves the
+  // repo fully wired — no separate `thesmos adapters` step to forget. Opt out
+  // with --no-adapters. Targets are DETECTED, not shotgunned: CLAUDE.md +
+  // AGENTS.md always (Claude Code is the primary surface; AGENTS.md is the
+  // cross-tool convention), other tools only when their footprint already
+  // exists in the repo. `thesmos adapters` still generates all targets.
+  // Runs after profile application so the registry (and therefore the agent
+  // context section) reflects any profile agents/skills just installed.
   let adapterManifests: AdapterManifest[] = [];
   if (!noAdapters && !dryRun) {
+    const detected: AdapterTarget[] = ['claude', 'agents'];
+    if (existsSync(join(root, 'GEMINI.md'))) detected.push('gemini');
+    if (existsSync(join(root, '.cursor')) || existsSync(join(root, '.cursorrules'))) detected.push('cursor');
+    if (existsSync(join(root, '.github', 'copilot-instructions.md'))) detected.push('copilot');
+    if (existsSync(join(root, '.codex'))) detected.push('codex');
+
     const registryConfig = loadRegistryConfig(root);
     const merged = mergeRegistryConfig(REGISTRY_DEFAULTS, registryConfig);
     const activeCatalog = getActiveCatalog(root, { agents: merged.agents, skills: merged.skills });
@@ -133,7 +150,7 @@ export async function cmdInit(argv: string[]): Promise<void> {
             profile: merged.profiles[0],
           }
         : undefined;
-    adapterManifests = writeAllAdapters(root, THESMOS_RULES, config, undefined, catalog);
+    adapterManifests = writeAllAdapters(root, THESMOS_RULES, config, detected, catalog);
   }
 
   if (json) {
@@ -177,10 +194,33 @@ export async function cmdInit(argv: string[]): Promise<void> {
     for (const m of adapterManifests) {
       console.log(`  ✓  ${m.outputPath}  [${m.target}]`);
     }
+    console.log('');
+    console.log('Token budgets are enabled in .thesmos/config.json — run');
+    console.log('`thesmos claude:govern install` to enforce them (and BLOCKER gating) in Claude Code.');
   }
   if (dryRun) console.log('(dry run — no files written, adapters skipped)');
   if (profileId && !dryRun) {
     console.log(`\nProfile "${profileId}" applied — agents and skills copied to .thesmos/`);
     console.log('Run: thesmos catalog:list  to see active agents and skills');
+  }
+
+  // The oracle verdict — health grade + first labor. Pure decoration: any
+  // failure inside degrades to no verdict, never a broken init.
+  if (mythic && !dryRun) {
+    try {
+      const { computeHealthForRoot } = await import('../../health.ts');
+      const { runReview } = await import('../../review.ts');
+      const health = computeHealthForRoot(root, config);
+      const findings = scan ? runReview({ scan, config }) : [];
+      const top = findings[0];
+      console.log('');
+      console.log(formatOracleVerdict({
+        grade: health.grade,
+        score: health.score,
+        topFinding: top ? { severity: top.severity, category: top.category, file: top.file } : undefined,
+      }));
+    } catch {
+      // Verdict is decoration — init must never fail because of it.
+    }
   }
 }

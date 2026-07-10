@@ -1,5 +1,8 @@
 // @vitest-environment node
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { SUPPLY_CHAIN_RULES } from './supply-chain';
 import { CONFIG_DEFAULTS } from '../config';
 import type { ScanResult } from '../types';
@@ -22,10 +25,10 @@ const EMPTY_SCAN: ScanResult = {
   clientBoundaryRisks: [],
 };
 
-function detect(ruleId: string, files: Array<{ path: string; content: string }>) {
+function detect(ruleId: string, files: Array<{ path: string; content: string }>, root?: string) {
   const r = SUPPLY_CHAIN_RULES.find((r) => r.id === ruleId);
   if (!r) throw new Error(`Rule ${ruleId} not found`);
-  return r.detect({ scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: files });
+  return r.detect({ scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: files, root });
 }
 
 // ── SC_001 — git dependency URL ───────────────────────────────────────────────
@@ -77,13 +80,37 @@ describe('SC_001 — git dependency URL', () => {
 // ── SC_002 — missing lockfile ─────────────────────────────────────────────────
 
 describe('SC_002 — missing lockfile', () => {
-  it('fires when package.json present but no lockfile in changed files', () => {
+  let emptyRoot: string;
+  beforeEach(() => { emptyRoot = mkdtempSync(join(tmpdir(), 'thesmos-sc002-')); });
+  afterEach(() => { rmSync(emptyRoot, { recursive: true, force: true }); });
+
+  it('fires when package.json present but no lockfile in changed files or on disk', () => {
     const findings = detect('SC_002', [{
       path: 'package.json',
       content: JSON.stringify({ name: 'my-app', dependencies: { react: '^18.0.0' } }, null, 2),
-    }]);
+    }], emptyRoot);
     expect(findings.length).toBeGreaterThan(0);
     expect(findings[0]?.severity).toBe('BLOCKER');
+  });
+
+  it('does NOT fire when a workspace-root lockfile exists on disk (monorepo member package.json edit)', () => {
+    writeFileSync(join(emptyRoot, 'package-lock.json'), '{}');
+    mkdirSync(join(emptyRoot, 'packages', 'app'), { recursive: true });
+    const findings = detect('SC_002', [{
+      path: 'packages/app/package.json',
+      content: JSON.stringify({ name: 'app', dependencies: { react: '^18.0.0' } }, null, 2),
+    }], emptyRoot);
+    expect(findings).toHaveLength(0);
+  });
+
+  it('does NOT fire when a lockfile sits next to the edited package.json', () => {
+    mkdirSync(join(emptyRoot, 'pkg'), { recursive: true });
+    writeFileSync(join(emptyRoot, 'pkg', 'yarn.lock'), '');
+    const findings = detect('SC_002', [{
+      path: 'pkg/package.json',
+      content: JSON.stringify({ name: 'pkg' }, null, 2),
+    }], emptyRoot);
+    expect(findings).toHaveLength(0);
   });
 
   it('does NOT fire when package-lock.json is present', () => {

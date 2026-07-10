@@ -1,0 +1,1040 @@
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
+/**
+ * PantheonChatController — hosts the Pantheon Chat webview (sidebar view and
+ * optional editor tab), owns the ClaudeSession subprocess, and shapes raw
+ * stream events into the UI item protocol consumed by webview/chat.ts.
+ *
+ * One controller = one live conversation. Both webview hosts render the same
+ * conversation; history is replayed to any webview that (re)attaches.
+ */
+
+import * as vscode from 'vscode';
+import { randomBytes } from 'node:crypto';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { ClaudeSession, type SessionEvent, type PermissionMode } from './claudeSession.js';
+import { CodexSession } from './codexSession.js';
+import { CheckpointManager } from './checkpointManager.js';
+import { GodMapper, type GodEntry } from './godMapper.js';
+import { PermissionBridge, type PermissionRequest } from './permissionBridge.js';
+import { ProviderManager } from './providerManager.js';
+import { listSessions, loadTranscript } from './sessionHistory.js';
+import { appendSavings, estimateTierSaving, monthSavingsUsd } from './savingsLedger.js';
+import { runReview, ThesmosNotFoundError } from '../runner.js';
+import type { Finding } from '../types.js';
+
+interface GodUiInfo extends GodEntry {}
+
+/** Both classes share the id/running/start/send/stop/dispose surface the controller needs. */
+type AgentSession = ClaudeSession | CodexSession;
+
+type UiItem =
+  | { kind: 'user'; text: string; checkpointId?: string; queued?: boolean }
+  | { kind: 'assistant'; text: string }
+  | { kind: 'zeus'; text: string }
+  | { kind: 'god'; toolUseId: string; god: GodUiInfo; description: string; status: 'running' | 'done' | 'error'; summary?: string; startedAt: number; durationMs?: number }
+  | { kind: 'tool'; name: string; label: string }
+  | { kind: 'diff'; file: string; oldText?: string; newText: string }
+  | { kind: 'permission'; requestId: string; toolName: string; label: string; status: 'pending' | 'allowed' | 'denied' }
+  | { kind: 'todo'; id: string; todos: TodoEntry[] }
+  | { kind: 'governance'; findings: GovernanceFinding[]; fileCount: number }
+  | { kind: 'error'; text: string }
+  | { kind: 'turnFooter'; text: string };
+
+interface GovernanceFinding {
+  severity: string;
+  category: string;
+  file: string;
+  line?: number;
+  message: string;
+}
+
+interface TodoEntry {
+  content: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  activeForm: string;
+}
+
+interface PersistedChat {
+  items: UiItem[];
+  sessionId?: string;
+  permissionMode?: PermissionMode;
+  totalCostUsd?: number;
+  modelId?: string;
+}
+
+const STATE_KEY = 'thesmos.pantheonChat.state';
+const DIFF_PREVIEW_CHARS = 2000;
+
+const AGENT_TOOL_NAMES = new Set(['Agent', 'Task']);
+const ZEUS_BANNER = /^⚡\s*ZEUS/u;
+
+/** One-line label for a non-agent tool call. */
+function toolLabel(name: string, input: Record<string, unknown>): string {
+  switch (name) {
+    case 'Bash':
+      return String(input.command ?? '').slice(0, 120);
+    case 'Read':
+    case 'Write':
+    case 'Edit':
+      return String(input.file_path ?? '').replace(/^.*\//, '…/');
+    case 'Grep':
+      return String(input.pattern ?? '').slice(0, 80);
+    case 'Glob':
+      return String(input.pattern ?? '');
+    case 'WebFetch':
+    case 'WebSearch':
+      return String(input.url ?? input.query ?? '').slice(0, 100);
+    case 'CodexCommand':
+      return String(input.command ?? '').slice(0, 120);
+    case 'CodexFileChange':
+      return String(input.summary ?? '').slice(0, 120);
+    default: {
+      const first = Object.values(input)[0];
+      return typeof first === 'string' ? first.slice(0, 100) : '';
+    }
+  }
+}
+
+/** Stable per-workspace directory name for the shadow checkpoint repo. */
+function workspaceKey(root: string): string {
+  return root.replace(/[^a-zA-Z0-9]/g, '-').slice(-80);
+}
+
+/** Fuller description for the permission dialog — the user is deciding, so show more. */
+function permissionLabel(name: string, input: Record<string, unknown>): string {
+  switch (name) {
+    case 'Bash':
+      return String(input.command ?? '').slice(0, 400);
+    case 'Edit':
+    case 'Write':
+    case 'MultiEdit':
+      return String(input.file_path ?? '');
+    case 'WebFetch':
+      return String(input.url ?? '');
+    default:
+      return toolLabel(name, input);
+  }
+}
+
+export class PantheonChatController implements vscode.WebviewViewProvider, vscode.Disposable {
+  static readonly viewId = 'thesmos.pantheonChat';
+
+  private readonly godMapper: GodMapper;
+  private readonly webviews = new Set<vscode.Webview>();
+  private readonly history: UiItem[] = [];
+  private readonly godStart = new Map<string, number>();
+  private session: AgentSession | undefined;
+  private model: string | undefined;
+  private permissionMode: PermissionMode = 'default';
+  private lastSessionId: string | undefined;
+  private totalCostUsd = 0;
+  private persistTimer: ReturnType<typeof setTimeout> | undefined;
+  private disposables: vscode.Disposable[] = [];
+  private permissionBridge: PermissionBridge | undefined;
+  private readonly alwaysAllowed = new Set<string>();
+
+  private readonly checkpoints: CheckpointManager;
+  private checkpointsUnavailableNoted = false;
+  private currentTodoId: string | undefined;
+  private readonly promptQueue: Array<{ text: string; attachments: string[] }> = [];
+  private turnRunning = false;
+  private readonly turnChangedFiles = new Set<string>();
+  private governanceUnavailable = false;
+  private readonly providers: ProviderManager;
+  private modelId = '';
+
+  // Credit Guardian — estimated savings vs flagship baseline (see savingsLedger.ts).
+  private savedUsdSession = 0;
+  private savingsCacheAt: number | undefined;
+  private savingsCacheVal = 0;
+
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly workspaceRoot: string,
+  ) {
+    this.godMapper = new GodMapper(workspaceRoot);
+    this.providers = new ProviderManager(context);
+    this.checkpoints = new CheckpointManager(
+      workspaceRoot,
+      vscode.Uri.joinPath(this.context.globalStorageUri, 'checkpoints', workspaceKey(workspaceRoot)).fsPath,
+    );
+    this.restore();
+  }
+
+  /** Create a session with the current mode/model/provider. Null = key not linked. */
+  private async createSession(resumeId: string | undefined): Promise<AgentSession | null> {
+    const preset = this.providers.active;
+    const env = await this.providers.envForActive();
+    if (env === null) {
+      this.pushItem({
+        kind: 'error',
+        text: `${preset.label} needs a linked API key — click the provider button in the header.`,
+      });
+      return null;
+    }
+    if (preset.cli === 'codex') {
+      // Codex's own permission model (--ask-for-approval) is set inside
+      // CodexSession — the in-chat permission dialog is Claude-only for now.
+      return new CodexSession(this.workspaceRoot, (e) => this.onSessionEvent(e), resumeId, {
+        model: this.modelId || undefined,
+      });
+    }
+    return new ClaudeSession(
+      this.workspaceRoot,
+      (e) => this.onSessionEvent(e),
+      this.permissionMode,
+      resumeId,
+      this.permissionGate(),
+      { model: this.modelId || undefined, env },
+    );
+  }
+
+  /** Restart the subprocess (mode/model/provider changed) but keep the conversation. */
+  private async restartSession(): Promise<void> {
+    const resumeId = this.session?.id ?? this.lastSessionId;
+    this.session?.dispose();
+    this.session = (await this.createSession(resumeId)) ?? undefined;
+    this.broadcastProviderInfo();
+    this.broadcast({
+      type: 'status',
+      running: false,
+      model: this.model,
+      sessionId: this.session?.id,
+      permissionMode: this.permissionMode,
+      totalCostUsd: this.totalCostUsd,
+    });
+  }
+
+  private broadcastProviderInfo(): void {
+    const preset = this.providers.active;
+    this.broadcast({
+      type: 'providerInfo',
+      label: preset.label,
+      models: preset.models,
+      currentModel: this.modelId,
+    });
+  }
+
+  /** Lazily create and start the permission bridge for this conversation. */
+  private ensureBridge(): PermissionBridge {
+    if (!this.permissionBridge) {
+      // The socket path gates tool approval — the nonce must be unguessable.
+      const nonce = randomBytes(16).toString('hex');
+      this.permissionBridge = new PermissionBridge(nonce, (req) => this.onPermissionRequest(req));
+      this.permissionBridge.start();
+    }
+    return this.permissionBridge;
+  }
+
+  private onPermissionRequest(req: PermissionRequest): void {
+    if (this.alwaysAllowed.has(req.toolName)) {
+      this.permissionBridge?.respond(req.requestId, { decision: 'allow' });
+      return;
+    }
+    this.pushItem({
+      kind: 'permission',
+      requestId: req.requestId,
+      toolName: req.toolName,
+      label: permissionLabel(req.toolName, req.toolInput),
+      status: 'pending',
+    });
+  }
+
+  private resolvePermission(requestId: string, decision: 'allow' | 'deny', alwaysAllow: boolean): void {
+    const item = this.history.find(
+      (i): i is Extract<UiItem, { kind: 'permission' }> => i.kind === 'permission' && i.requestId === requestId,
+    );
+    if (!item || item.status !== 'pending') return;
+    if (alwaysAllow && decision === 'allow') this.alwaysAllowed.add(item.toolName);
+    item.status = decision === 'allow' ? 'allowed' : 'denied';
+    this.permissionBridge?.respond(requestId, { decision });
+    this.broadcast({ type: 'permissionResolved', requestId, status: item.status });
+    this.schedulePersist();
+  }
+
+  /** Restore the last conversation after a window reload. */
+  private restore(): void {
+    const saved = this.context.workspaceState.get<PersistedChat>(STATE_KEY);
+    if (!saved || !Array.isArray(saved.items) || saved.items.length === 0) return;
+    // God bubbles can never still be running after a reload, and a pending
+    // permission request has no live socket to resolve it against anymore.
+    for (const item of saved.items) {
+      if (item.kind === 'god' && item.status === 'running') item.status = 'done';
+      if (item.kind === 'permission' && item.status === 'pending') item.status = 'denied';
+    }
+    // The prompt queue is in-memory only — queued bubbles never sent are dropped.
+    this.history.push(...saved.items.filter((i) => !(i.kind === 'user' && i.queued === true)));
+    this.lastSessionId = saved.sessionId;
+    this.permissionMode = saved.permissionMode ?? 'default';
+    this.totalCostUsd = saved.totalCostUsd ?? 0;
+    this.modelId = saved.modelId ?? '';
+    const lastTodo = [...saved.items].reverse().find((i): i is Extract<UiItem, { kind: 'todo' }> => i.kind === 'todo');
+    this.currentTodoId = lastTodo?.id;
+  }
+
+  private schedulePersist(): void {
+    if (this.persistTimer !== undefined) clearTimeout(this.persistTimer);
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = undefined;
+      const state: PersistedChat = {
+        items: this.history.slice(-200),
+        sessionId: this.session?.id ?? this.lastSessionId,
+        permissionMode: this.permissionMode,
+        totalCostUsd: this.totalCostUsd,
+        modelId: this.modelId,
+      };
+      void this.context.workspaceState.update(STATE_KEY, state);
+    }, 400);
+  }
+
+  // ── Webview hosting ─────────────────────────────────────────────────────
+
+  resolveWebviewView(view: vscode.WebviewView): void {
+    this.attach(view.webview);
+    view.onDidDispose(() => this.webviews.delete(view.webview));
+  }
+
+  openInTab(): void {
+    const location = vscode.workspace.getConfiguration('thesmos').get<string>('chat.openLocation', 'beside');
+    const column = location === 'active' ? vscode.ViewColumn.Active : vscode.ViewColumn.Beside;
+    const panel = vscode.window.createWebviewPanel(
+      'thesmos.pantheonChatTab',
+      '⚡ Pantheon Chat',
+      column,
+      { enableScripts: true, retainContextWhenHidden: true },
+    );
+    this.attach(panel.webview);
+    panel.onDidDispose(() => this.webviews.delete(panel.webview));
+  }
+
+  private attach(webview: vscode.Webview): void {
+    webview.options = {
+      enableScripts: true,
+      localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')],
+    };
+    webview.html = this.buildHtml(webview);
+    this.webviews.add(webview);
+    this.disposables.push(
+      webview.onDidReceiveMessage((msg: {
+        type: string;
+        text?: string;
+        mode?: string;
+        attachments?: string[];
+        data?: string;
+        mime?: string;
+        requestId?: string;
+        decision?: string;
+        alwaysAllow?: boolean;
+        checkpointId?: string;
+        model?: string;
+      }) => {
+        switch (msg.type) {
+          case 'ready':
+            this.post(webview, { type: 'history', items: this.history });
+            this.broadcastProviderInfo();
+            this.post(webview, {
+              type: 'status',
+              running: this.session?.running ?? false,
+              model: this.model,
+              sessionId: this.session?.id,
+              permissionMode: this.permissionMode,
+              totalCostUsd: this.totalCostUsd,
+            });
+            break;
+          case 'send':
+            if (typeof msg.text === 'string') {
+              void this.sendPrompt(msg.text, Array.isArray(msg.attachments) ? msg.attachments : []);
+            }
+            break;
+          case 'restore':
+            if (typeof msg.checkpointId === 'string') void this.restoreCheckpoint(msg.checkpointId);
+            break;
+          case 'stop':
+            this.stop();
+            break;
+          case 'newSession':
+            this.newSession();
+            break;
+          case 'setPermissionMode':
+            if (msg.mode === 'default' || msg.mode === 'acceptEdits' || msg.mode === 'plan' || msg.mode === 'auto') {
+              void this.setPermissionMode(msg.mode);
+            }
+            break;
+          case 'setModel':
+            if (typeof msg.model === 'string') void this.setModel(msg.model);
+            break;
+          case 'pickProvider':
+            void this.pickProvider();
+            break;
+          case 'permissionResponse':
+            if (typeof msg.requestId === 'string' && (msg.decision === 'allow' || msg.decision === 'deny')) {
+              this.resolvePermission(msg.requestId, msg.decision, msg.alwaysAllow === true);
+            }
+            break;
+          case 'pickImage':
+            void this.pickImages(webview);
+            break;
+          case 'listFiles':
+            void this.listWorkspaceFiles(webview);
+            break;
+          case 'openChronicles':
+            void this.openChronicles();
+            break;
+          case 'pasteImage':
+            if (typeof msg.data === 'string' && msg.data.length > 0) {
+              this.savePastedImage(webview, msg.data, msg.mime ?? 'image/png');
+            }
+            break;
+        }
+      }),
+    );
+  }
+
+  private buildHtml(webview: vscode.Webview): string {
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview', 'chat.js'),
+    );
+    const styleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview', 'pantheon.css'),
+    );
+    const csp = [
+      "default-src 'none'",
+      `style-src ${webview.cspSource}`,
+      `script-src ${webview.cspSource}`,
+      `font-src ${webview.cspSource}`,
+    ].join('; ');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="${styleUri.toString()}">
+  <title>Pantheon Chat</title>
+</head>
+<body>
+  <div id="app">
+    <div id="header">
+      <span class="title">⚡ PANTHEON</span>
+      <span class="session-meta" id="session-meta"></span>
+      <span id="savings" title="Credit Guardian — estimated savings vs flagship baseline. Ledger: .thesmos/savings.jsonl"></span>
+      <select id="model-select" title="Model for this session"></select>
+      <button id="provider-btn" title="LLM provider — link Anthropic, GLM, Kimi, DeepSeek, or a custom proxy (GPT/Gemini)">⚡</button>
+      <button id="chronicles" title="Chronicles — reopen a past session">📜</button>
+      <button id="new-session" title="New session">⟳ New</button>
+    </div>
+    <div id="log"></div>
+    <div id="empty">
+      <div class="glyph">🏛️</div>
+      <div class="headline">THE COUNCIL AWAITS</div>
+      <div>Describe your task — Zeus will route it to the right god.</div>
+      <div class="first-prompts">
+        <button class="suggest" data-prompt="Have Argus review my most recently changed files for security issues">👁 Argus: review my recent changes</button>
+        <button class="suggest" data-prompt="What is the current health of this repo? Summarize the top findings.">⚖ Judge this repo's health</button>
+        <button class="suggest" data-prompt="Explain what Thesmos governance is enforcing in this workspace">📜 What laws govern this place?</button>
+      </div>
+    </div>
+    <div id="attachments"></div>
+    <div id="mention-popup" class="hidden"></div>
+    <div id="composer">
+      <select id="mode" title="Permission mode — auto lets Claude's AI classifier approve safe tool calls and block dangerous ones without prompting">
+        <option value="default">🛡 default</option>
+        <option value="acceptEdits">✏️ accept edits</option>
+        <option value="auto">⚡ auto</option>
+        <option value="plan">🗺 plan</option>
+      </select>
+      <button id="attach" title="Attach image">📎</button>
+      <textarea id="input" rows="1" placeholder="Summon the gods…"></textarea>
+      <button id="send" title="Send (Enter)">Send</button>
+      <button id="stop" title="Stop the current turn">■ Stop</button>
+    </div>
+  </div>
+  <script src="${scriptUri.toString()}"></script>
+</body>
+</html>`;
+  }
+
+  // ── Conversation control ────────────────────────────────────────────────
+
+  /**
+   * The in-chat dialog gate applies in default/acceptEdits modes, where
+   * headless mode would otherwise silently deny ungranted tools. `auto`
+   * delegates to the CLI's own AI classifier and `plan` doesn't execute —
+   * neither needs (or wants) our dialogs.
+   */
+  private permissionGate(): { socketPath: string; hookScriptPath: string } | undefined {
+    if (this.permissionMode !== 'default' && this.permissionMode !== 'acceptEdits') return undefined;
+    return {
+      socketPath: this.ensureBridge().socketPath,
+      hookScriptPath: this.hookScriptPath(),
+    };
+  }
+
+  private userDisplayText(text: string, attachments: string[]): string {
+    const names = attachments.map((p) => p.split('/').pop() ?? p);
+    return [text, ...names.map((n) => `📎 ${n}`)].filter(Boolean).join('\n');
+  }
+
+  private async sendPrompt(text: string, attachments: string[] = []): Promise<void> {
+    if (this.turnRunning) {
+      // A turn is live — queue this prompt and dispatch it when the turn ends.
+      this.promptQueue.push({ text, attachments });
+      this.pushItem({ kind: 'user', text: this.userDisplayText(text, attachments), queued: true });
+      return;
+    }
+    await this.dispatchPrompt(text, attachments, false);
+  }
+
+  private async dispatchPrompt(text: string, attachments: string[], dequeued: boolean): Promise<void> {
+    if (!this.session) {
+      // Resume the restored conversation, if any.
+      this.session = (await this.createSession(this.lastSessionId)) ?? undefined;
+      if (!this.session) return;
+    }
+    this.turnRunning = true;
+    this.turnChangedFiles.clear();
+
+    const checkpointId = await this.checkpoints.snapshot(text.slice(0, 72));
+    if (checkpointId === undefined && !this.checkpointsUnavailableNoted) {
+      this.checkpointsUnavailableNoted = true;
+      this.pushItem({ kind: 'error', text: 'Checkpoints unavailable — git was not found on this machine.' });
+    }
+
+    if (dequeued) {
+      // The queued bubble already exists — promote it in place with its
+      // checkpoint (snapshotted now, at dispatch, not when it was typed).
+      const queuedItem = this.history.find(
+        (i): i is Extract<UiItem, { kind: 'user' }> => i.kind === 'user' && i.queued === true,
+      );
+      if (queuedItem) {
+        queuedItem.queued = false;
+        queuedItem.checkpointId = checkpointId;
+        this.broadcast({ type: 'history', items: this.history });
+      }
+    } else {
+      this.pushItem({ kind: 'user', text: this.userDisplayText(text, attachments), checkpointId });
+    }
+
+    this.broadcast({
+      type: 'status',
+      running: true,
+      model: this.model,
+      sessionId: this.session.id,
+      permissionMode: this.permissionMode,
+      totalCostUsd: this.totalCostUsd,
+    });
+    // The CLI reads image files via its Read tool when given absolute paths.
+    const prompt = [text, ...attachments.map((p) => `Attached image (read it): ${p}`)]
+      .filter(Boolean)
+      .join('\n\n');
+    this.session.send(prompt);
+  }
+
+  /** Called when a turn finishes — dispatch the next queued prompt, if any. */
+  private drainQueue(): void {
+    const next = this.promptQueue.shift();
+    if (next) void this.dispatchPrompt(next.text, next.attachments, true);
+  }
+
+  private async setPermissionMode(mode: PermissionMode): Promise<void> {
+    if (mode === this.permissionMode) return;
+    this.permissionMode = mode;
+    // Mode is a spawn-time CLI flag — restart and resume so it applies next turn.
+    if (this.session) await this.restartSession();
+    this.schedulePersist();
+    this.broadcast({
+      type: 'status',
+      running: false,
+      model: this.model,
+      sessionId: this.session?.id,
+      permissionMode: mode,
+      totalCostUsd: this.totalCostUsd,
+    });
+  }
+
+  private async setModel(modelId: string): Promise<void> {
+    if (modelId === this.modelId) return;
+    this.modelId = modelId;
+    if (this.session) await this.restartSession();
+    this.schedulePersist();
+    this.broadcastProviderInfo();
+  }
+
+  private async pickProvider(): Promise<void> {
+    const changed = await this.providers.pick();
+    if (!changed) return;
+    this.modelId = ''; // model ids are provider-specific — reset to default
+    await this.restartSession();
+    this.pushItem({
+      kind: 'turnFooter',
+      text: `— 🔗 power source: ${this.providers.active.label} —`,
+    });
+  }
+
+  /** Restore workspace files to a checkpoint — destructive, so confirm first. */
+  /**
+   * Restore workspace files to a checkpoint. Shows the diff first (neither
+   * Cursor nor Windsurf do this — their restores are one-shot and, by their
+   * own users' reports, effectively irreversible) and offers an honest
+   * choice: restoring files does NOT rewind what Claude remembers saying or
+   * doing after this point (the CLI's session transcript only ever grows,
+   * it can't be partially rewound) — so "Restore & Start Fresh Chat" is
+   * offered for when file state and conversation memory need to agree.
+   */
+  private async restoreCheckpoint(checkpointId: string): Promise<void> {
+    const diff = await this.checkpoints.diffSince(checkpointId);
+
+    if (!diff.trim()) {
+      void vscode.window.showInformationMessage('Pantheon Chat: the workspace already matches this checkpoint.');
+      return;
+    }
+
+    const diffDoc = await vscode.workspace.openTextDocument({ content: diff, language: 'diff' });
+    await vscode.window.showTextDocument(diffDoc, { preview: true, viewColumn: vscode.ViewColumn.Beside });
+
+    const RESTORE_FILES = '⟲ Restore Files';
+    const RESTORE_FRESH = '⟲ Restore & Start Fresh Chat';
+    const choice = await vscode.window.showWarningMessage(
+      'Restore workspace files to this checkpoint?',
+      {
+        modal: true,
+        detail:
+          'The diff just opened beside this chat — review it first. Files created since this point are removed ' +
+          '(node_modules and .git are untouched); your real git history is not affected.\n\n' +
+          `"${RESTORE_FILES}" keeps this conversation exactly as-is — Claude still remembers what happened after ` +
+          `this point even though the files no longer show it. "${RESTORE_FRESH}" resets both together.`,
+      },
+      RESTORE_FILES,
+      RESTORE_FRESH,
+    );
+    if (choice !== RESTORE_FILES && choice !== RESTORE_FRESH) return;
+
+    // Never restore under a live turn — the CLI would keep writing on top.
+    this.session?.stop();
+    try {
+      await this.checkpoints.restore(checkpointId);
+
+      if (choice === RESTORE_FRESH) {
+        const cutIndex = this.history.findIndex(
+          (i): i is Extract<UiItem, { kind: 'user' }> => i.kind === 'user' && i.checkpointId === checkpointId,
+        );
+        if (cutIndex !== -1) this.history.length = cutIndex + 1;
+        this.session?.dispose();
+        this.session = undefined;
+        this.lastSessionId = undefined;
+        this.totalCostUsd = 0;
+    this.savedUsdSession = 0;
+        this.currentTodoId = undefined;
+        this.pushItem({ kind: 'turnFooter', text: '— ⟲ Kronos restored the workspace and opened a fresh chapter —' });
+        this.broadcast({ type: 'history', items: this.history });
+      } else {
+        this.pushItem({ kind: 'turnFooter', text: '— ⟲ Kronos restored the workspace to this point —' });
+      }
+      void vscode.window.showInformationMessage('Pantheon Chat: workspace restored.');
+    } catch (err) {
+      this.pushItem({
+        kind: 'error',
+        text: `Restore failed: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+    this.broadcast({
+      type: 'status',
+      running: false,
+      model: this.model,
+      sessionId: this.session?.id,
+      permissionMode: this.permissionMode,
+      totalCostUsd: this.totalCostUsd,
+    });
+    this.schedulePersist();
+  }
+
+  /** File list for @ mention autocomplete — capped to keep the payload light. */
+  private async listWorkspaceFiles(webview: vscode.Webview): Promise<void> {
+    try {
+      const uris = await vscode.workspace.findFiles(
+        '**/*',
+        '{**/node_modules/**,**/.git/**,**/dist/**,**/.next/**,**/.turbo/**,**/__pycache__/**,**/.venv/**}',
+        1000,
+      );
+      const paths = uris.map((u) => this.relativize(u.fsPath)).sort();
+      this.post(webview, { type: 'fileList', paths });
+    } catch {
+      this.post(webview, { type: 'fileList', paths: [] });
+    }
+  }
+
+  private async pickImages(webview: vscode.Webview): Promise<void> {
+    const picked = await vscode.window.showOpenDialog({
+      canSelectMany: true,
+      openLabel: 'Attach',
+      filters: { Images: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'] },
+    });
+    if (!picked || picked.length === 0) return;
+    this.post(webview, { type: 'attachments', paths: picked.map((u) => u.fsPath) });
+  }
+
+  /** Write a pasted image (base64) to a temp file and attach it. */
+  private savePastedImage(webview: vscode.Webview, base64: string, mime: string): void {
+    try {
+      // The mime string crosses the webview boundary — allowlist the extension
+      // so a crafted subtype can never influence the file path.
+      const ALLOWED_EXT = new Set(['png', 'jpg', 'gif', 'webp', 'bmp']);
+      const subtype = mime.split('/')[1]?.toLowerCase().replace('jpeg', 'jpg');
+      const ext = subtype && ALLOWED_EXT.has(subtype) ? subtype : 'png';
+      const dir = join(tmpdir(), 'thesmos-pantheon-chat');
+      mkdirSync(dir, { recursive: true });
+      const path = join(dir, `pasted-${Date.now()}.${ext}`);
+      writeFileSync(path, Buffer.from(base64, 'base64'));
+      this.post(webview, { type: 'attachments', paths: [path] });
+    } catch (err) {
+      this.pushItem({
+        kind: 'error',
+        text: `Could not save pasted image: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  }
+
+  unlinkProvider(): void {
+    void this.providers.unlink();
+  }
+
+  stop(): void {
+    this.session?.stop();
+    this.turnRunning = false;
+    // Stop means stop — drop anything still waiting in the queue too.
+    if (this.promptQueue.length > 0) {
+      this.promptQueue.length = 0;
+      for (let i = this.history.length - 1; i >= 0; i--) {
+        const item = this.history[i];
+        if (item.kind === 'user' && item.queued === true) this.history.splice(i, 1);
+      }
+      this.broadcast({ type: 'history', items: this.history });
+    }
+    this.broadcast({ type: 'status', running: false, model: this.model, sessionId: this.session?.id });
+  }
+
+  /** 📜 Chronicles — browse past sessions and reopen one. */
+  private async openChronicles(): Promise<void> {
+    const sessions = listSessions(this.workspaceRoot).filter((s) => s.sessionId !== this.lastSessionId);
+    if (sessions.length === 0) {
+      void vscode.window.showInformationMessage('Pantheon Chat: no past chronicles found for this workspace.');
+      return;
+    }
+    const picked = await vscode.window.showQuickPick(
+      sessions.map((s) => ({
+        label: s.title,
+        description: `${s.modifiedAt.toLocaleDateString()} ${s.modifiedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        detail: `${s.messageCount} messages`,
+        sessionId: s.sessionId,
+      })),
+      { title: '📜 Chronicles — past sessions', placeHolder: 'Reopen a chronicle; the gods remember where you left off' },
+    );
+    if (!picked) return;
+
+    this.session?.dispose();
+    this.session = undefined;
+    this.turnRunning = false;
+    this.promptQueue.length = 0;
+    this.lastSessionId = picked.sessionId;
+    this.totalCostUsd = 0;
+    this.savedUsdSession = 0;
+    this.currentTodoId = undefined;
+    this.godStart.clear();
+    this.history.length = 0;
+    for (const t of loadTranscript(this.workspaceRoot, picked.sessionId)) {
+      this.history.push(t.role === 'user' ? { kind: 'user', text: t.text } : { kind: 'assistant', text: t.text });
+    }
+    this.history.push({ kind: 'turnFooter', text: '— 📜 chronicle reopened — the gods remember —' });
+    this.broadcast({ type: 'history', items: this.history });
+    this.broadcast({
+      type: 'status',
+      running: false,
+      sessionId: picked.sessionId,
+      permissionMode: this.permissionMode,
+      totalCostUsd: 0,
+    });
+    this.schedulePersist();
+  }
+
+  newSession(): void {
+    this.session?.dispose();
+    this.session = undefined;
+    this.model = undefined;
+    this.lastSessionId = undefined;
+    this.totalCostUsd = 0;
+    this.savedUsdSession = 0;
+    this.history.length = 0;
+    this.godStart.clear();
+    this.alwaysAllowed.clear();
+    this.currentTodoId = undefined;
+    this.permissionBridge?.dispose();
+    this.permissionBridge = undefined;
+    void this.context.workspaceState.update(STATE_KEY, undefined);
+    this.broadcast({ type: 'reset' });
+    this.broadcast({ type: 'status', running: false, permissionMode: this.permissionMode });
+  }
+
+  // ── Stream event shaping ────────────────────────────────────────────────
+
+  private onSessionEvent(event: SessionEvent): void {
+    switch (event.kind) {
+      case 'init':
+        this.model = event.model;
+        if (event.sessionId) this.lastSessionId = event.sessionId;
+        this.broadcast({
+          type: 'status',
+          running: true,
+          model: event.model,
+          sessionId: event.sessionId,
+          permissionMode: this.permissionMode,
+          totalCostUsd: this.totalCostUsd,
+        });
+        break;
+
+      case 'textDelta':
+        this.broadcast({ type: 'delta', text: event.text });
+        break;
+
+      case 'assistantText': {
+        this.broadcast({ type: 'deltaDone' });
+        const kind = ZEUS_BANNER.test(event.text.trimStart()) ? 'zeus' : 'assistant';
+        this.pushItem({ kind, text: event.text } as UiItem, /* alreadyStreamed */ kind === 'assistant');
+        break;
+      }
+
+      case 'toolUse': {
+        if (event.name === 'TodoWrite' && Array.isArray(event.input.todos)) {
+          const todos = event.input.todos as TodoEntry[];
+          const existing = this.currentTodoId
+            ? this.history.find(
+                (i): i is Extract<UiItem, { kind: 'todo' }> => i.kind === 'todo' && i.id === this.currentTodoId,
+              )
+            : undefined;
+          if (existing) {
+            existing.todos = todos;
+            this.broadcast({ type: 'todoUpdate', id: existing.id, todos });
+          } else {
+            const id = `todo-${Date.now()}`;
+            this.currentTodoId = id;
+            this.pushItem({ kind: 'todo', id, todos });
+          }
+        } else if (AGENT_TOOL_NAMES.has(event.name)) {
+          const subagentType = String(event.input.subagent_type ?? 'general-purpose');
+          const god = this.godMapper.resolve(subagentType);
+          this.godStart.set(event.toolUseId, Date.now());
+          this.pushItem({
+            kind: 'god',
+            toolUseId: event.toolUseId,
+            god,
+            description: String(event.input.description ?? event.input.prompt ?? '').slice(0, 200),
+            status: 'running',
+            startedAt: Date.now(),
+          });
+        } else if (event.name === 'Edit' && typeof event.input.file_path === 'string') {
+          this.turnChangedFiles.add(this.relativize(event.input.file_path));
+          this.pushItem({
+            kind: 'diff',
+            file: this.relativize(event.input.file_path),
+            oldText: String(event.input.old_string ?? '').slice(0, DIFF_PREVIEW_CHARS),
+            newText: String(event.input.new_string ?? '').slice(0, DIFF_PREVIEW_CHARS),
+          });
+        } else if (event.name === 'Write' && typeof event.input.file_path === 'string') {
+          this.turnChangedFiles.add(this.relativize(event.input.file_path));
+          this.pushItem({
+            kind: 'diff',
+            file: this.relativize(event.input.file_path),
+            newText: String(event.input.content ?? '').slice(0, DIFF_PREVIEW_CHARS),
+          });
+        } else if (event.name === 'MultiEdit' && typeof event.input.file_path === 'string') {
+          this.turnChangedFiles.add(this.relativize(event.input.file_path));
+          const edits = Array.isArray(event.input.edits) ? event.input.edits : [];
+          for (const edit of edits.slice(0, 5) as Array<Record<string, unknown>>) {
+            this.pushItem({
+              kind: 'diff',
+              file: this.relativize(event.input.file_path),
+              oldText: String(edit.old_string ?? '').slice(0, DIFF_PREVIEW_CHARS),
+              newText: String(edit.new_string ?? '').slice(0, DIFF_PREVIEW_CHARS),
+            });
+          }
+        } else {
+          this.pushItem({ kind: 'tool', name: event.name, label: toolLabel(event.name, event.input) });
+        }
+        break;
+      }
+
+      case 'toolResult': {
+        const startedAt = this.godStart.get(event.toolUseId);
+        if (startedAt === undefined) break; // Not a god bubble — plain tools show no result row.
+        this.godStart.delete(event.toolUseId);
+        const durationMs = Date.now() - startedAt;
+        const item = this.history.find(
+          (i): i is Extract<UiItem, { kind: 'god' }> => i.kind === 'god' && i.toolUseId === event.toolUseId,
+        );
+        if (item) {
+          item.status = event.isError ? 'error' : 'done';
+          item.summary = event.summary;
+          item.durationMs = durationMs;
+        }
+        this.broadcast({
+          type: 'godComplete',
+          toolUseId: event.toolUseId,
+          summary: event.summary,
+          isError: event.isError,
+          durationMs,
+        });
+        break;
+      }
+
+      case 'turnDone': {
+        this.broadcast({ type: 'deltaDone' });
+        this.turnRunning = false;
+        if (event.costUsd !== undefined) {
+          // Credit Guardian: cumulative-cost delta = this turn's cost. A turn
+          // that genuinely ran on a cheaper tier records an estimated saving
+          // vs the flagship baseline (never counts a recommendation not taken).
+          const turnCost = Math.max(0, event.costUsd - this.totalCostUsd);
+          const modelName = this.model ?? this.modelId;
+          const saved = estimateTierSaving(modelName, turnCost);
+          if (saved !== undefined && saved > 0) {
+            this.savedUsdSession += saved;
+            this.savingsCacheAt = undefined; // month figure changed — invalidate
+            try {
+              appendSavings(this.workspaceRoot, {
+                ts: new Date().toISOString(),
+                type: 'model_tier',
+                detail: `chat turn on ${modelName}`,
+                estSavedUsd: saved,
+                model: modelName,
+                costUsd: turnCost,
+              });
+            } catch {
+              // Ledger write is best-effort — never break a turn over it.
+            }
+          }
+        }
+        if (event.costUsd !== undefined) this.totalCostUsd = event.costUsd; // CLI reports cumulative session cost
+        const parts: string[] = [];
+        if (event.durationMs !== undefined) parts.push(`${(event.durationMs / 1000).toFixed(1)}s`);
+        if (event.costUsd !== undefined) parts.push(`$${event.costUsd.toFixed(4)}`);
+        if (event.inputTokens !== undefined || event.outputTokens !== undefined) {
+          parts.push(`${event.inputTokens ?? 0}→${event.outputTokens ?? 0} tok`);
+        }
+        if (parts.length > 0) this.pushItem({ kind: 'turnFooter', text: `— ${parts.join(' · ')} —` });
+        this.broadcast({
+          type: 'status',
+          running: false,
+          model: this.model,
+          sessionId: this.session?.id,
+          permissionMode: this.permissionMode,
+          totalCostUsd: this.totalCostUsd,
+        });
+        this.schedulePersist();
+        // Governance Turn Report: Argus inspects every turn that changed files.
+        if (this.turnChangedFiles.size > 0) {
+          void this.runGovernanceReport([...this.turnChangedFiles]);
+          this.turnChangedFiles.clear();
+        }
+        this.drainQueue();
+        break;
+      }
+
+      case 'stderr':
+        // Surface real failures only; the CLI logs routine notices to stderr.
+        if (/error|failed|not found|ENOENT/i.test(event.text)) {
+          this.pushItem({ kind: 'error', text: event.text.slice(0, 500) });
+        }
+        break;
+
+      case 'exit':
+        this.turnRunning = false;
+        this.broadcast({ type: 'status', running: false, model: this.model, sessionId: this.session?.id });
+        break;
+    }
+  }
+
+  /** Run `thesmos review` over the files this turn touched and render the verdict. */
+  private async runGovernanceReport(files: string[]): Promise<void> {
+    if (this.governanceUnavailable) return;
+    try {
+      const output = await runReview(this.workspaceRoot, undefined, files);
+      this.pushItem({
+        kind: 'governance',
+        fileCount: files.length,
+        findings: (output.findings ?? []).slice(0, 25).map((f: Finding) => ({
+          severity: f.severity,
+          category: f.category,
+          file: f.file,
+          line: f.line,
+          message: f.message,
+        })),
+      });
+    } catch (err) {
+      if (err instanceof ThesmosNotFoundError) {
+        // Thesmos isn't installed in this workspace — the report is a bonus,
+        // not a nag. Note it once in the log and stay quiet after that.
+        this.governanceUnavailable = true;
+        return;
+      }
+      // Best-effort feature: review failures never interrupt the conversation.
+    }
+  }
+
+  private hookScriptPath(): string {
+    return vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'permissionHook.cjs').fsPath;
+  }
+
+  private relativize(path: string): string {
+    return path.startsWith(this.workspaceRoot)
+      ? path.slice(this.workspaceRoot.length + 1)
+      : path;
+  }
+
+  /** Record an item in history and broadcast it, unless it was already streamed live. */
+  private pushItem(item: UiItem, alreadyStreamed = false): void {
+    this.history.push(item);
+    if (!alreadyStreamed) this.broadcast({ type: 'item', item });
+    this.schedulePersist();
+  }
+
+  private broadcast(message: unknown): void {
+    // Credit Guardian: every status update carries the savings figures so the
+    // header stays current without threading them through ten call sites.
+    if (typeof message === 'object' && message !== null && (message as { type?: string }).type === 'status') {
+      message = {
+        ...message,
+        savedUsdSession: this.savedUsdSession,
+        savedUsdMonth: this.monthSavings(),
+      };
+    }
+    for (const webview of this.webviews) this.post(webview, message);
+  }
+
+  /** Month savings, cached for 30s — the file is tiny but re-reading per status would be waste. */
+  private monthSavings(): number {
+    const now = Date.now();
+    if (this.savingsCacheAt === undefined || now - this.savingsCacheAt > 30_000) {
+      try {
+        this.savingsCacheVal = monthSavingsUsd(this.workspaceRoot, new Date());
+      } catch {
+        this.savingsCacheVal = 0;
+      }
+      this.savingsCacheAt = now;
+    }
+    return this.savingsCacheVal;
+  }
+
+  private post(webview: vscode.Webview, message: unknown): void {
+    void webview.postMessage(message);
+  }
+
+  dispose(): void {
+    if (this.persistTimer !== undefined) clearTimeout(this.persistTimer);
+    this.session?.dispose();
+    this.permissionBridge?.dispose();
+    for (const d of this.disposables) d.dispose();
+    this.webviews.clear();
+  }
+}

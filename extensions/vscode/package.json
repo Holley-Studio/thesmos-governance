@@ -261,6 +261,37 @@
         "title": "Pantheon Routing Mode",
         "category": "Thesmos Agents",
         "icon": "$(zap)"
+      },
+      {
+        "command": "thesmos.pantheon.chat.open",
+        "title": "Open Pantheon Chat",
+        "category": "Thesmos Agents",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "thesmos.pantheon.chat.openInTab",
+        "title": "Open Pantheon Chat in Editor Tab",
+        "category": "Thesmos Agents",
+        "icon": "$(window)"
+      },
+      {
+        "command": "thesmos.pantheon.chat.newSession",
+        "title": "Pantheon Chat: New Session",
+        "category": "Thesmos Agents",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "thesmos.pantheon.chat.unlinkProvider",
+        "title": "Pantheon Chat: Unlink Provider API Key",
+        "category": "Thesmos Agents",
+        "icon": "$(key)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "thesmos.pantheon.chat.open",
+        "key": "ctrl+shift+g",
+        "mac": "cmd+shift+g"
       }
     ],
     "viewsContainers": {
@@ -274,6 +305,12 @@
     },
     "views": {
       "thesmos": [
+        {
+          "id": "thesmos.pantheonChat",
+          "name": "Pantheon Chat",
+          "type": "webview",
+          "icon": "$(zap)"
+        },
         {
           "id": "thesmos.findingsView",
           "name": "Findings",
@@ -438,6 +475,12 @@
           "type": "boolean",
           "default": true,
           "description": "Enable Thesmos Governance."
+        },
+        "thesmos.chat.openLocation": {
+          "type": "string",
+          "enum": ["beside", "active"],
+          "default": "beside",
+          "description": "Where 'Open Pantheon Chat in Editor' places the chat tab: split to the right of the active editor (beside) or in the active column."
         },
         "thesmos.runOnSave": {
           "type": "boolean",
