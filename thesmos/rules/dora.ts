@@ -35,8 +35,29 @@ function isConfigFile(path: string): boolean {
   return /\.(json|yaml|yml|toml)$/.test(path) || path.endsWith('.env.example');
 }
 
-// Financial / ICT service patterns that trigger DORA applicability
-const FINANCIAL_SERVICE_RE = /payment|transaction|trading|settlement|clearing|custody|order.?book|portfolio|account.?balance|ledger|wire.?transfer/i;
+// Financial / ICT service patterns that trigger DORA applicability.
+// Strong terms are unambiguous finance; weak terms (ledger, transaction,
+// portfolio…) appear constantly in ordinary software (audit ledgers, DB
+// transactions, design portfolios) — a single weak hit must never classify a
+// repo as an EU financial entity. Require one strong hit or two distinct weak
+// hits in the same file.
+const STRONG_FINANCIAL_RE = /payment|trading|settlement|clearing|custody|wire.?transfer/i;
+const WEAK_FINANCIAL_TERMS: RegExp[] = [
+  /transaction/i,
+  /order.?book/i,
+  /portfolio/i,
+  /account.?balance/i,
+  /ledger/i,
+];
+
+function looksFinancial(content: string): boolean {
+  if (STRONG_FINANCIAL_RE.test(content)) return true;
+  let weakHits = 0;
+  for (const re of WEAK_FINANCIAL_TERMS) {
+    if (re.test(content) && ++weakHits >= 2) return true;
+  }
+  return false;
+}
 const THIRD_PARTY_ICT_RE = /(?:import|require|fetch|axios|got|sdk)\s*.*(?:stripe|twilio|sendgrid|datadog|cloudflare|aws|azure|gcp|snowflake|databricks|kafka|rabbitmq)/i;
 const CHANGE_DEPLOY_RE = /deploy|release|migration|rollout|upgrade|patch|hotfix/i;
 
@@ -62,7 +83,7 @@ const DORA_001: ThesmosRule = {
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
-    const hasFinancialService = files.some((cf) => FINANCIAL_SERVICE_RE.test(cf.content));
+    const hasFinancialService = files.some((cf) => looksFinancial(cf.content));
     if (!hasFinancialService) return [];
     const hasPolicy = existsSync(join(root, '.thesmos', 'incident-classification.md'))
       || existsSync(join(root, 'docs', 'incident-classification.md'))
@@ -133,7 +154,7 @@ const DORA_003: ThesmosRule = {
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
-    const hasFinancialService = files.some((cf) => FINANCIAL_SERVICE_RE.test(cf.content));
+    const hasFinancialService = files.some((cf) => looksFinancial(cf.content));
     if (!hasFinancialService) return [];
     const hasPlan = existsSync(join(root, '.thesmos', 'resilience-testing.md'))
       || existsSync(join(root, 'docs', 'resilience-testing.md'))
@@ -168,7 +189,7 @@ const DORA_004: ThesmosRule = {
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
-    const hasFinancialService = files.some((cf) => FINANCIAL_SERVICE_RE.test(cf.content));
+    const hasFinancialService = files.some((cf) => looksFinancial(cf.content));
     if (!hasFinancialService) return [];
     // Check for any BCP/DR document that contains RTO/RPO
     const bcpPaths = [
@@ -208,14 +229,14 @@ const DORA_005: ThesmosRule = {
   detect(input: DetectInput): Finding[] {
     const root = input.root ?? process.cwd();
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
-    const hasFinancialService = files.some((cf) => FINANCIAL_SERVICE_RE.test(cf.content));
+    const hasFinancialService = files.some((cf) => looksFinancial(cf.content));
     if (!hasFinancialService) return [];
     const hasThreatConfig = existsSync(join(root, '.thesmos', 'threat-intelligence.md'))
       || existsSync(join(root, 'docs', 'threat-intelligence.md'))
       || existsSync(join(root, 'compliance', 'dora', 'threat-intel.md'));
     if (hasThreatConfig) return [];
     // Only flag if there are multiple financial-service files (suggests a significant ICT footprint)
-    const count = files.filter((cf) => FINANCIAL_SERVICE_RE.test(cf.content)).length;
+    const count = files.filter((cf) => looksFinancial(cf.content)).length;
     if (count < 2) return [];
     return [f('dora_threat_intel_sharing_missing', 'HIGH',
       'No threat intelligence sharing framework found — DORA Art. 45 encourages ISAC/ISAO participation.',
@@ -251,7 +272,7 @@ const DORA_006: ThesmosRule = {
         && CHANGE_DEPLOY_RE.test(cf.content));
     if (!hasDeployConfig) return [];
     const hasFinancialService = allFiles.some(
-      (cf) => isSourceFile(cf.path) && FINANCIAL_SERVICE_RE.test(cf.content));
+      (cf) => isSourceFile(cf.path) && looksFinancial(cf.content));
     if (!hasFinancialService) return [];
     const hasChangePolicy = existsSync(join(root, '.thesmos', 'change-management.md'))
       || existsSync(join(root, 'docs', 'change-management.md'))

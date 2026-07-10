@@ -50,7 +50,7 @@ type InboundMessage =
   | { type: 'delta'; text: string }
   | { type: 'deltaDone' }
   | { type: 'godComplete'; toolUseId: string; summary: string; isError: boolean; durationMs: number }
-  | { type: 'status'; running: boolean; model?: string; sessionId?: string; permissionMode?: string; totalCostUsd?: number }
+  | { type: 'status'; running: boolean; model?: string; sessionId?: string; permissionMode?: string; totalCostUsd?: number; savedUsdSession?: number; savedUsdMonth?: number }
   | { type: 'providerInfo'; label: string; models: Array<{ id: string; label: string }>; currentModel: string }
   | { type: 'attachments'; paths: string[] }
   | { type: 'permissionResolved'; requestId: string; status: 'allowed' | 'denied' }
@@ -566,6 +566,17 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       if (!msg.running) {
         clearTimeout(thinkingGapTimer);
         hideThinking();
+      }
+      {
+        // Credit Guardian header figure — month-to-date, session detail in tooltip.
+        const savingsEl = document.getElementById('savings');
+        if (savingsEl) {
+          const s = msg.savedUsdSession ?? 0;
+          const m = msg.savedUsdMonth ?? 0;
+          savingsEl.textContent = m > 0 ? `⚖ ~$${m.toFixed(2)} saved` : '';
+          savingsEl.setAttribute('title',
+            `Credit Guardian (estimated vs flagship baseline)\nSession: ~$${s.toFixed(2)} · Month: ~$${m.toFixed(2)}\nLedger: .thesmos/savings.jsonl`);
+        }
       }
       // While a turn runs, Send becomes Queue — messages wait their turn.
       sendBtn.textContent = msg.running ? 'Queue' : 'Send';

@@ -20,6 +20,7 @@ import { GodMapper, type GodEntry } from './godMapper.js';
 import { PermissionBridge, type PermissionRequest } from './permissionBridge.js';
 import { ProviderManager } from './providerManager.js';
 import { listSessions, loadTranscript } from './sessionHistory.js';
+import { appendSavings, estimateTierSaving, monthSavingsUsd } from './savingsLedger.js';
 import { runReview, ThesmosNotFoundError } from '../runner.js';
 import type { Finding } from '../types.js';
 
@@ -143,6 +144,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private governanceUnavailable = false;
   private readonly providers: ProviderManager;
   private modelId = '';
+
+  // Credit Guardian — estimated savings vs flagship baseline (see savingsLedger.ts).
+  private savedUsdSession = 0;
+  private savingsCacheAt: number | undefined;
+  private savingsCacheVal = 0;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -414,6 +420,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     <div id="header">
       <span class="title">⚡ PANTHEON</span>
       <span class="session-meta" id="session-meta"></span>
+      <span id="savings" title="Credit Guardian — estimated savings vs flagship baseline. Ledger: .thesmos/savings.jsonl"></span>
       <select id="model-select" title="Model for this session"></select>
       <button id="provider-btn" title="LLM provider — link Anthropic, GLM, Kimi, DeepSeek, or a custom proxy (GPT/Gemini)">⚡</button>
       <button id="chronicles" title="Chronicles — reopen a past session">📜</button>
@@ -614,6 +621,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         this.session = undefined;
         this.lastSessionId = undefined;
         this.totalCostUsd = 0;
+    this.savedUsdSession = 0;
         this.currentTodoId = undefined;
         this.pushItem({ kind: 'turnFooter', text: '— ⟲ Kronos restored the workspace and opened a fresh chapter —' });
         this.broadcast({ type: 'history', items: this.history });
@@ -727,6 +735,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.promptQueue.length = 0;
     this.lastSessionId = picked.sessionId;
     this.totalCostUsd = 0;
+    this.savedUsdSession = 0;
     this.currentTodoId = undefined;
     this.godStart.clear();
     this.history.length = 0;
@@ -751,6 +760,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.model = undefined;
     this.lastSessionId = undefined;
     this.totalCostUsd = 0;
+    this.savedUsdSession = 0;
     this.history.length = 0;
     this.godStart.clear();
     this.alwaysAllowed.clear();
@@ -876,6 +886,30 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       case 'turnDone': {
         this.broadcast({ type: 'deltaDone' });
         this.turnRunning = false;
+        if (event.costUsd !== undefined) {
+          // Credit Guardian: cumulative-cost delta = this turn's cost. A turn
+          // that genuinely ran on a cheaper tier records an estimated saving
+          // vs the flagship baseline (never counts a recommendation not taken).
+          const turnCost = Math.max(0, event.costUsd - this.totalCostUsd);
+          const modelName = this.model ?? this.modelId;
+          const saved = estimateTierSaving(modelName, turnCost);
+          if (saved !== undefined && saved > 0) {
+            this.savedUsdSession += saved;
+            this.savingsCacheAt = undefined; // month figure changed — invalidate
+            try {
+              appendSavings(this.workspaceRoot, {
+                ts: new Date().toISOString(),
+                type: 'model_tier',
+                detail: `chat turn on ${modelName}`,
+                estSavedUsd: saved,
+                model: modelName,
+                costUsd: turnCost,
+              });
+            } catch {
+              // Ledger write is best-effort — never break a turn over it.
+            }
+          }
+        }
         if (event.costUsd !== undefined) this.totalCostUsd = event.costUsd; // CLI reports cumulative session cost
         const parts: string[] = [];
         if (event.durationMs !== undefined) parts.push(`${(event.durationMs / 1000).toFixed(1)}s`);
@@ -961,7 +995,30 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   private broadcast(message: unknown): void {
+    // Credit Guardian: every status update carries the savings figures so the
+    // header stays current without threading them through ten call sites.
+    if (typeof message === 'object' && message !== null && (message as { type?: string }).type === 'status') {
+      message = {
+        ...message,
+        savedUsdSession: this.savedUsdSession,
+        savedUsdMonth: this.monthSavings(),
+      };
+    }
     for (const webview of this.webviews) this.post(webview, message);
+  }
+
+  /** Month savings, cached for 30s — the file is tiny but re-reading per status would be waste. */
+  private monthSavings(): number {
+    const now = Date.now();
+    if (this.savingsCacheAt === undefined || now - this.savingsCacheAt > 30_000) {
+      try {
+        this.savingsCacheVal = monthSavingsUsd(this.workspaceRoot, new Date());
+      } catch {
+        this.savingsCacheVal = 0;
+      }
+      this.savingsCacheAt = now;
+    }
+    return this.savingsCacheVal;
   }
 
   private post(webview: vscode.Webview, message: unknown): void {
