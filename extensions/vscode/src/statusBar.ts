@@ -244,7 +244,7 @@ export class StatusBarManager implements vscode.Disposable {
     this.snapshotIdle();
   }
 
-  showTokenCost(sessionCostUSD: number, todayCostUSD: number): void {
+  showTokenCost(sessionCostUSD: number, todayCostUSD: number, monthSavedUSD = 0): void {
     const fmt = (n: number) =>
       n < 0.01 ? '<$0.01' : `$${n.toFixed(2)}`;
     this.tokenItem.text = `$(circuit-board) ${fmt(sessionCostUSD)}`;
@@ -252,6 +252,7 @@ export class StatusBarManager implements vscode.Disposable {
       `**Thesmos Token Usage**\n\n` +
       `Session: **${fmt(sessionCostUSD)}**\n\n` +
       `Today: **${fmt(todayCostUSD)}**\n\n` +
+      (monthSavedUSD > 0 ? `⚖ Saved this month: **~$${monthSavedUSD.toFixed(2)}** _(estimated vs flagship baseline)_\n\n` : '') +
       `_Click for full report_`,
     );
     this.tokenItem.show();

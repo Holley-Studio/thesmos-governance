@@ -28,6 +28,7 @@ import { DiagnosticsManager } from './diagnostics.js';
 import { StatusBarManager } from './statusBar.js';
 import { WorkingStateManager } from './workingState.js';
 import { GodMapper } from './chat/godMapper.js';
+import { appendSavings, monthSavingsUsd } from './chat/savingsLedger.js';
 import { FindingsTreeProvider } from './treeView.js';
 import { AutopilotWatcher } from './autopilotWatcher.js';
 import { AutopilotTreeProvider } from './autopilotView.js';
@@ -98,6 +99,7 @@ class ThesmosExtension implements vscode.Disposable {
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly working: WorkingStateManager;
   private readonly godMapper: GodMapper;
+  private readonly loggedContext1M = new Set<string>();
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -223,6 +225,20 @@ class ThesmosExtension implements vscode.Disposable {
         // thesmos-disable-next-line agent_context_1m_unguarded -- reason: this IS the 1M-context detector — the literal [1m] here is the pattern being searched for, not a model opt-in -- owner: @MHolley
         if (raw && JSON.stringify(raw).includes('[1m]')) {
           this.statusBar.show1MContextBadge(rel);
+          // Credit Guardian: record the block once per source per session.
+          // Event only — no dollar claim is made for prevented premium spend.
+          if (!this.loggedContext1M.has(rel)) {
+            this.loggedContext1M.add(rel);
+            try {
+              appendSavings(this.workspaceRoot, {
+                ts: new Date().toISOString(),
+                type: 'context_1m_block',
+                detail: `1M context flagged in ${rel} (AGNT_037, allow1M not set)`,
+              });
+            } catch {
+              // Ledger write is best-effort.
+            }
+          }
           return;
         }
       }
@@ -628,7 +644,13 @@ class ThesmosExtension implements vscode.Disposable {
     // Token meter — non-blocking, fail silently
     void runTokensReport(this.workspaceRoot, cfg.binaryPath || undefined).then((report) => {
       if (report) {
-        this.statusBar.showTokenCost(report.sessionCostUSD, report.todayCostUSD);
+        let monthSaved = 0;
+        try {
+          monthSaved = monthSavingsUsd(this.workspaceRoot, new Date());
+        } catch {
+          // Savings line is decoration — never break the token meter.
+        }
+        this.statusBar.showTokenCost(report.sessionCostUSD, report.todayCostUSD, monthSaved);
       }
     });
   }
