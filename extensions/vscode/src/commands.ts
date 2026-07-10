@@ -33,6 +33,8 @@ import { HealthPanel } from './panel.js';
 import type { HealthEntry } from './panel.js';
 import type { ExtensionConfig } from './types.js';
 import type { AutopilotWatcher } from './autopilotWatcher.js';
+import type { WorkingStateManager } from './workingState.js';
+import type { GodMapper } from './chat/godMapper.js';
 
 // ── Callback types (supplied by extension.ts) ─────────────────────────────────
 
@@ -99,6 +101,8 @@ export function registerCommands(
   onRefresh: RefreshCallback,
   onReviewFile: ReviewFileCallback,
   getAutopilotWatcher: GetAutopilotWatcher,
+  getWorking: () => WorkingStateManager,
+  godMapper: GodMapper,
 ): vscode.Disposable {
   const disposables: vscode.Disposable[] = [];
 
@@ -116,6 +120,8 @@ export function registerCommands(
           cancellable: false,
         },
         async () => {
+          const argus = godMapper.resolve('argus');
+          const reg = getWorking().begin(argus.emoji, argus.progressVerb);
           try {
             await runScan(workspaceRoot, cfg.binaryPath || undefined);
             void vscode.window.showInformationMessage(
@@ -124,6 +130,8 @@ export function registerCommands(
             await onRefresh();
           } catch (err) {
             handleError(err);
+          } finally {
+            reg.dispose();
           }
         },
       );
@@ -199,6 +207,8 @@ export function registerCommands(
           cancellable: false,
         },
         async () => {
+          const scribe = godMapper.resolve('mnemosyne');
+          const reg = getWorking().begin(scribe.emoji, scribe.progressVerb);
           try {
             await runAdapters(workspaceRoot, cfg.binaryPath || undefined);
             void vscode.window.showInformationMessage(
@@ -206,6 +216,8 @@ export function registerCommands(
             );
           } catch (err) {
             handleError(err);
+          } finally {
+            reg.dispose();
           }
         },
       );
@@ -705,6 +717,8 @@ export function registerCommands(
           cancellable: false,
         },
         async () => {
+          const smith = godMapper.resolve('hephaestus');
+          const reg = getWorking().begin(smith.emoji, smith.progressVerb);
           try {
             const output = await runFix(workspaceRoot, cfg.binaryPath || undefined, category);
             const changed = output.includes('fixed') || output.includes('changed') || output.includes('✓');
@@ -733,6 +747,8 @@ export function registerCommands(
             }
           } catch (err) {
             handleError(err);
+          } finally {
+            reg.dispose();
           }
         },
       );
@@ -760,6 +776,8 @@ export function registerCommands(
           cancellable: false,
         },
         async () => {
+          const smith = godMapper.resolve('hephaestus');
+          const reg = getWorking().begin(smith.emoji, smith.progressVerb);
           try {
             const output = await runFix(workspaceRoot, cfg.binaryPath || undefined);
             const lines = output.split('\n').filter((l) => l.trim());
@@ -770,6 +788,8 @@ export function registerCommands(
             await onRefresh();
           } catch (err) {
             handleError(err);
+          } finally {
+            reg.dispose();
           }
         },
       );

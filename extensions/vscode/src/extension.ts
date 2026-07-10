@@ -26,6 +26,8 @@ import type { LanguageClient as LanguageClientType } from 'vscode-languageclient
 
 import { DiagnosticsManager } from './diagnostics.js';
 import { StatusBarManager } from './statusBar.js';
+import { WorkingStateManager } from './workingState.js';
+import { GodMapper } from './chat/godMapper.js';
 import { FindingsTreeProvider } from './treeView.js';
 import { AutopilotWatcher } from './autopilotWatcher.js';
 import { AutopilotTreeProvider } from './autopilotView.js';
@@ -94,6 +96,8 @@ class ThesmosExtension implements vscode.Disposable {
   private allFindings: Finding[] = [];
   private lastBaselinedCount = 0;
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly working: WorkingStateManager;
+  private readonly godMapper: GodMapper;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -103,6 +107,12 @@ class ThesmosExtension implements vscode.Disposable {
 
     this.diagnostics = new DiagnosticsManager();
     this.statusBar = new StatusBarManager();
+    this.godMapper = new GodMapper(workspaceRoot);
+    this.working = new WorkingStateManager((label) => {
+      if (label !== undefined) this.statusBar.showWorking(label);
+      else this.statusBar.restoreIdle();
+    });
+    this.disposables.push({ dispose: () => this.working.dispose() });
     this.treeProvider = new FindingsTreeProvider();
     this.autopilotWatcher = new AutopilotWatcher(workspaceRoot);
     this.autopilotView = new AutopilotTreeProvider(workspaceRoot, this.autopilotWatcher);
@@ -378,6 +388,8 @@ class ThesmosExtension implements vscode.Disposable {
       () => this.runFullReview(),
       (uri) => this.reviewSingleFile(uri),
       () => this.autopilotWatcher,
+      () => this.working,
+      this.godMapper,
     );
     this.disposables.push(commands);
 
@@ -507,7 +519,8 @@ class ThesmosExtension implements vscode.Disposable {
   /** Runs a full repository review and refreshes all UI surfaces. */
   async runFullReview(): Promise<void> {
     const cfg = readConfig();
-    this.statusBar.showLoading();
+    const argus = this.godMapper.resolve('argus');
+    const reg = this.working.begin(argus.emoji, argus.progressVerb);
     this.treeProvider.setLoading();
 
     try {
@@ -542,6 +555,8 @@ class ThesmosExtension implements vscode.Disposable {
       await this.refreshStatusBar(cfg);
     } catch (err) {
       this.handleAnalysisError(err);
+    } finally {
+      reg.dispose();
     }
   }
 
@@ -553,6 +568,8 @@ class ThesmosExtension implements vscode.Disposable {
     const relPath = relative(this.workspaceRoot, uri.fsPath);
     if (relPath.startsWith('..') || relPath.startsWith('/')) return;
 
+    const argus = this.godMapper.resolve('argus');
+    const reg = this.working.begin(argus.emoji, argus.progressVerb);
     try {
       const output = await runReview(
         this.workspaceRoot,
@@ -583,6 +600,8 @@ class ThesmosExtension implements vscode.Disposable {
       if (!(err instanceof ThesmosReportMissingError)) {
         this.handleAnalysisError(err);
       }
+    } finally {
+      reg.dispose();
     }
   }
 
