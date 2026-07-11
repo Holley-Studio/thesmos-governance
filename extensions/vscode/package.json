@@ -341,7 +341,7 @@
       },
       {
         "view": "thesmos.agentActivity",
-        "contents": "No agent activity yet — god dispatches appear here live.\n\nSummon the full Pantheon: 66 specialist agents orchestrated by Zeus.\n[Get the Full Pantheon](https://holley.studio/thesmos)"
+        "contents": "No agent activity yet — god dispatches appear here live.\n\nSummon the full Pantheon: 67 specialist agents orchestrated by Zeus.\n[Get the Full Pantheon](https://holley.studio/thesmos)"
       }
     ],
     "menus": {
@@ -481,6 +481,11 @@
           "enum": ["beside", "active"],
           "default": "beside",
           "description": "Where 'Open Pantheon Chat in Editor' places the chat tab: split to the right of the active editor (beside) or in the active column."
+        },
+        "thesmos.chat.notifyOnTurnEnd": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a status-bar notice ('The gods have spoken') when a Pantheon Chat turn finishes while the panel is not visible."
         },
         "thesmos.runOnSave": {
           "type": "boolean",

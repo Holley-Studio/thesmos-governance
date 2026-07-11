@@ -31,9 +31,9 @@ type AgentSession = ClaudeSession | CodexSession;
 
 type UiItem =
   | { kind: 'user'; text: string; checkpointId?: string; queued?: boolean }
-  | { kind: 'assistant'; text: string }
+  | { kind: 'assistant'; text: string; god?: { emoji: string; name: string; color: string } }
   | { kind: 'zeus'; text: string }
-  | { kind: 'god'; toolUseId: string; god: GodUiInfo; description: string; status: 'running' | 'done' | 'error'; summary?: string; startedAt: number; durationMs?: number }
+  | { kind: 'god'; toolUseId: string; god: GodUiInfo; description: string; status: 'running' | 'done' | 'error'; summary?: string; startedAt: number; durationMs?: number; model?: string }
   | { kind: 'tool'; name: string; label: string }
   | { kind: 'diff'; file: string; oldText?: string; newText: string }
   | { kind: 'permission'; requestId: string; toolName: string; label: string; status: 'pending' | 'allowed' | 'denied' }
@@ -66,9 +66,27 @@ interface PersistedChat {
 
 const STATE_KEY = 'thesmos.pantheonChat.state';
 const DIFF_PREVIEW_CHARS = 2000;
+/** Standard (non-1M) Claude context window, used to compute the live usage meter %. */
+const CONTEXT_WINDOW_TOKENS = 200_000;
 
 const AGENT_TOOL_NAMES = new Set(['Agent', 'Task']);
 const ZEUS_BANNER = /^⚡\s*ZEUS/u;
+/** Lean-tier routing line: "⚡ ZEUS · 👁 Argus — Security & Threat Modeling". */
+const ZEUS_LEAN_LINE = /^⚡\s*ZEUS\s*·\s*(.+)$/u;
+
+/**
+ * Appended to the CLI's system prompt so headless Pantheon Chat sessions feel
+ * like the council chamber: every reply opens with the lean routing line and
+ * matching gods actually get dispatched instead of silently answered inline.
+ */
+const PANTHEON_SYSTEM_PROMPT =
+  'You are rendering inside Pantheon Chat, the Thesmos council chamber. ' +
+  "Open EVERY response with exactly one lean routing line: '⚡ ZEUS · <emoji> <God> — <domain>' " +
+  "when the task matches a Pantheon domain, or '⚡ ZEUS · direct response' otherwise — then answer " +
+  "in that god's voice, economically. When a task clearly matches a Pantheon specialist's domain, " +
+  'dispatch that god as a subagent via the Agent tool (one specialist by default; councils of 2-3 ' +
+  'only for genuinely cross-domain work). Per AGNT_031 model discipline, prefer lighter models for ' +
+  'mechanical subagent work and reserve heavier models for architecture or customer-facing output.';
 
 /** One-line label for a non-agent tool call. */
 function toolLabel(name: string, input: Record<string, unknown>): string {
@@ -102,11 +120,46 @@ function workspaceKey(root: string): string {
   return root.replace(/[^a-zA-Z0-9]/g, '-').slice(-80);
 }
 
+/**
+ * Read `model:` pinned in agent definition frontmatter (.claude/agents/*.md,
+ * project then user scope) keyed by the god's lowercase first name — so god
+ * bubbles can show which model each god actually runs on.
+ */
+function loadAgentModels(workspaceRoot: string): Map<string, string> {
+  const models = new Map<string, string>();
+  const { readdirSync, readFileSync } = require('node:fs') as typeof import('node:fs');
+  const { homedir } = require('node:os') as typeof import('node:os');
+  for (const dir of [join(homedir(), '.claude', 'agents'), join(workspaceRoot, '.claude', 'agents')]) {
+    let files: string[] = [];
+    try {
+      files = readdirSync(dir).filter((f) => f.endsWith('.md'));
+    } catch {
+      continue;
+    }
+    for (const file of files) {
+      try {
+        const head = readFileSync(join(dir, file), 'utf-8').slice(0, 2000);
+        const name = /^name:\s*(.+)$/m.exec(head)?.[1]?.trim();
+        const model = /^model:\s*(\S+)/m.exec(head)?.[1]?.trim();
+        if (!name || !model) continue;
+        const key = name.replace(/^[^\p{L}]+/u, '').split(/[\s—–-]/)[0]?.toLowerCase();
+        if (key) models.set(key, model); // project scope wins (scanned second)
+      } catch {
+        continue;
+      }
+    }
+  }
+  return models;
+}
+
 /** Fuller description for the permission dialog — the user is deciding, so show more. */
 function permissionLabel(name: string, input: Record<string, unknown>): string {
   switch (name) {
     case 'Bash':
-      return String(input.command ?? '').slice(0, 400);
+      // Security (Argus HIGH-1): never truncate the command the user is consenting to —
+      // a hidden tail past a cutoff defeats informed consent. The webview renders this
+      // as textContent in a scrollable block, so the full string is safe to send.
+      return String(input.command ?? '');
     case 'Edit':
     case 'Write':
     case 'MultiEdit':
@@ -142,6 +195,12 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private turnRunning = false;
   private readonly turnChangedFiles = new Set<string>();
   private governanceUnavailable = false;
+  private agentModels: Map<string, string> = new Map();
+  private currentActivity: string | null = null;
+  /** Persistent phase shown in the status strip for the whole turn (Thinking / Writing / Compacting / …). */
+  private currentPhase: string | null = null;
+  /** Latest input-context size (tokens) reported by the model, for the live usage meter. */
+  private contextTokens = 0;
   private readonly providers: ProviderManager;
   private modelId = '';
 
@@ -155,6 +214,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     private readonly workspaceRoot: string,
   ) {
     this.godMapper = new GodMapper(workspaceRoot);
+    this.agentModels = loadAgentModels(workspaceRoot);
     this.providers = new ProviderManager(context);
     this.checkpoints = new CheckpointManager(
       workspaceRoot,
@@ -187,8 +247,34 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       this.permissionMode,
       resumeId,
       this.permissionGate(),
-      { model: this.modelId || undefined, env },
+      { model: this.modelId || undefined, env, appendSystemPrompt: PANTHEON_SYSTEM_PROMPT },
     );
+  }
+
+  /** Live "what are the gods doing right now" strip above the composer. */
+  private setActivity(text: string | null): void {
+    if (text === this.currentActivity) return;
+    this.currentActivity = text;
+    this.broadcast({ type: 'activity', text });
+  }
+
+  /**
+   * Persistent phase label for the status strip. Unlike setActivity (which the
+   * streaming bubble clears), this stays visible for the whole turn so the user
+   * always knows the state — including compaction and inter-tool gaps.
+   */
+  private setPhase(text: string | null): void {
+    if (text === this.currentPhase) return;
+    this.currentPhase = text;
+    this.broadcast({ type: 'phase', text });
+  }
+
+  /** Push the live context-window usage to the strip meter. */
+  private updateUsage(contextTokens: number): void {
+    if (contextTokens <= this.contextTokens) return; // monotonic within a turn
+    this.contextTokens = contextTokens;
+    const pct = Math.min(100, Math.round((contextTokens / CONTEXT_WINDOW_TOKENS) * 100));
+    this.broadcast({ type: 'usage', contextTokens, contextPct: pct });
   }
 
   /** Restart the subprocess (mode/model/provider changed) but keep the conversation. */
@@ -247,11 +333,32 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       (i): i is Extract<UiItem, { kind: 'permission' }> => i.kind === 'permission' && i.requestId === requestId,
     );
     if (!item || item.status !== 'pending') return;
-    if (alwaysAllow && decision === 'allow') this.alwaysAllowed.add(item.toolName);
+    // Answer the pending request immediately; the one-shot status guard above makes this safe.
     item.status = decision === 'allow' ? 'allowed' : 'denied';
     this.permissionBridge?.respond(requestId, { decision });
     this.broadcast({ type: 'permissionResolved', requestId, status: item.status });
     this.schedulePersist();
+    // Session-wide always-allow is a privilege escalation — gate it separately (Argus HIGH-2).
+    if (alwaysAllow && decision === 'allow') void this.grantAlwaysAllow(item.toolName);
+  }
+
+  /**
+   * Grant session-wide auto-approval for a tool, gated behind a native modal.
+   * Bash is excluded entirely — a blanket grant would auto-run any shell command.
+   */
+  private async grantAlwaysAllow(toolName: string): Promise<void> {
+    if (toolName === 'Bash') {
+      void vscode.window.showWarningMessage(
+        'Bash is never added to always-allow — each shell command is reviewed on its own.',
+      );
+      return;
+    }
+    const ok = await vscode.window.showWarningMessage(
+      `Auto-approve every ${toolName} call for the rest of this session, without asking again?`,
+      { modal: true },
+      'Enable',
+    );
+    if (ok === 'Enable') this.alwaysAllowed.add(toolName);
   }
 
   /** Restore the last conversation after a window reload. */
@@ -291,12 +398,28 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
 
   // ── Webview hosting ─────────────────────────────────────────────────────
 
+  private sidebarVisible = false;
+  private panelVisible = false;
+
   resolveWebviewView(view: vscode.WebviewView): void {
     this.attach(view.webview);
-    view.onDidDispose(() => this.webviews.delete(view.webview));
+    this.sidebarVisible = view.visible;
+    view.onDidChangeVisibility(() => {
+      this.sidebarVisible = view.visible;
+    });
+    view.onDidDispose(() => {
+      this.sidebarVisible = false;
+      this.webviews.delete(view.webview);
+    });
   }
 
+  private tabPanel: vscode.WebviewPanel | undefined;
+
   openInTab(): void {
+    if (this.tabPanel) {
+      this.tabPanel.reveal();
+      return;
+    }
     const location = vscode.workspace.getConfiguration('thesmos').get<string>('chat.openLocation', 'beside');
     const column = location === 'active' ? vscode.ViewColumn.Active : vscode.ViewColumn.Beside;
     const panel = vscode.window.createWebviewPanel(
@@ -305,8 +428,17 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       column,
       { enableScripts: true, retainContextWhenHidden: true },
     );
+    this.tabPanel = panel;
     this.attach(panel.webview);
-    panel.onDidDispose(() => this.webviews.delete(panel.webview));
+    this.panelVisible = panel.visible;
+    panel.onDidChangeViewState((e) => {
+      this.panelVisible = e.webviewPanel.visible;
+    });
+    panel.onDidDispose(() => {
+      this.webviews.delete(panel.webview);
+      this.tabPanel = undefined;
+      this.panelVisible = false;
+    });
   }
 
   private attach(webview: vscode.Webview): void {
@@ -382,6 +514,12 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           case 'openChronicles':
             void this.openChronicles();
             break;
+          case 'openInTab':
+            this.openInTab();
+            break;
+          case 'exportRecord':
+            void this.exportCouncilRecord();
+            break;
           case 'pasteImage':
             if (typeof msg.data === 'string' && msg.data.length > 0) {
               this.savePastedImage(webview, msg.data, msg.mime ?? 'image/png');
@@ -424,6 +562,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       <select id="model-select" title="Model for this session"></select>
       <button id="provider-btn" title="LLM provider — link Anthropic, GLM, Kimi, DeepSeek, or a custom proxy (GPT/Gemini)">⚡</button>
       <button id="chronicles" title="Chronicles — reopen a past session">📜</button>
+      <button id="export-record" title="Export this session as a Council Record (markdown)">📤</button>
+      <button id="open-tab" title="Open in editor tab">↗️</button>
       <button id="new-session" title="New session">⟳ New</button>
     </div>
     <div id="log"></div>
@@ -438,6 +578,14 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       </div>
     </div>
     <div id="attachments"></div>
+    <div id="status-strip">
+      <span class="spinner"></span>
+      <span id="phase-label"></span>
+      <div id="usage-meter" title="Context window usage">
+        <div class="usage-bar"><div id="usage-fill"></div></div>
+        <span id="usage-text"></span>
+      </div>
+    </div>
     <div id="mention-popup" class="hidden"></div>
     <div id="composer">
       <select id="mode" title="Permission mode — auto lets Claude's AI classifier approve safe tool calls and block dangerous ones without prompting">
@@ -541,6 +689,27 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
 
   private async setPermissionMode(mode: PermissionMode): Promise<void> {
     if (mode === this.permissionMode) return;
+    // Entering auto mode disarms the per-call human gate — require explicit native
+    // confirmation so a stray webview message can't silently downgrade posture (Argus HIGH-3).
+    if (mode === 'auto') {
+      const ok = await vscode.window.showWarningMessage(
+        'Auto mode lets the model approve its own tool calls — including file writes and shell commands — without asking you first. Enable it for this session?',
+        { modal: true },
+        'Enable Auto',
+      );
+      if (ok !== 'Enable Auto') {
+        // Revert the optimistic dropdown change in the webview to the current mode.
+        this.broadcast({
+          type: 'status',
+          running: false,
+          model: this.model,
+          sessionId: this.session?.id,
+          permissionMode: this.permissionMode,
+          totalCostUsd: this.totalCostUsd,
+        });
+        return;
+      }
+    }
     this.permissionMode = mode;
     // Mode is a spawn-time CLI flag — restart and resume so it applies next turn.
     if (this.session) await this.restartSession();
@@ -704,6 +873,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   stop(): void {
     this.session?.stop();
     this.turnRunning = false;
+    this.setActivity(null);
+    this.setPhase(null);
     // Stop means stop — drop anything still waiting in the queue too.
     if (this.promptQueue.length > 0) {
       this.promptQueue.length = 0;
@@ -714,6 +885,96 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       this.broadcast({ type: 'history', items: this.history });
     }
     this.broadcast({ type: 'status', running: false, model: this.model, sessionId: this.session?.id });
+  }
+
+  /** 📤 Export the conversation as a shareable Council Record (markdown). */
+  private async exportCouncilRecord(): Promise<void> {
+    if (this.history.length === 0) {
+      void vscode.window.showInformationMessage('Pantheon Chat: nothing to export yet.');
+      return;
+    }
+    const lines: string[] = [];
+    const workspaceName = this.workspaceRoot.split('/').pop() ?? 'workspace';
+    const now = new Date();
+    lines.push(`# ⚡ Council Record — ${workspaceName}`);
+    lines.push('');
+    lines.push(
+      `_${now.toLocaleString()}${this.model ? ` · ${this.model}` : ''} · ${this.providers.active.label}` +
+        `${this.totalCostUsd > 0 ? ` · session cost $${this.totalCostUsd.toFixed(4)}` : ''}` +
+        `${this.savedUsdSession > 0 ? ` · ~$${this.savedUsdSession.toFixed(2)} saved (Credit Guardian)` : ''}_`,
+    );
+    lines.push('');
+
+    for (const item of this.history) {
+      switch (item.kind) {
+        case 'user':
+          if (item.queued) break;
+          lines.push('## 🧑 Mortal', '', item.text, '');
+          break;
+        case 'assistant':
+          lines.push(item.god ? `## ${item.god.emoji} ${item.god.name}` : '## ⚡ Response', '', item.text, '');
+          break;
+        case 'zeus':
+          lines.push('```', item.text, '```', '');
+          break;
+        case 'god': {
+          const model = item.model ? ` · \`${item.model}\`` : '';
+          const duration = item.durationMs !== undefined ? ` · ${(item.durationMs / 1000).toFixed(1)}s` : '';
+          lines.push(`### ${item.god.emoji} ${item.god.name} — ${item.god.domain}${model}${duration}`, '');
+          if (item.description) lines.push(`> Charge: ${item.description}`, '');
+          if (item.summary) lines.push(item.summary, '');
+          break;
+        }
+        case 'diff':
+          lines.push(`**🔨 ${item.file}**`, '');
+          if (item.oldText) lines.push('```diff', ...item.oldText.split('\n').map((l) => `- ${l}`), '```', '');
+          lines.push('```diff', ...item.newText.split('\n').map((l) => `+ ${l}`), '```', '');
+          break;
+        case 'tool':
+          lines.push(`- ⚙ \`${item.name}\` ${item.label}`);
+          break;
+        case 'permission':
+          lines.push(`- 🛡 ${item.toolName} — **${item.status}** (${item.label})`);
+          break;
+        case 'todo':
+          lines.push('**📋 Battle plan**', '');
+          for (const t of item.todos) {
+            lines.push(`- [${t.status === 'completed' ? 'x' : ' '}] ${t.content}`);
+          }
+          lines.push('');
+          break;
+        case 'governance': {
+          const verdict =
+            item.findings.length === 0
+              ? 'the gates hold — 0 findings'
+              : `${item.findings.length} finding${item.findings.length === 1 ? '' : 's'}`;
+          lines.push(`### 👁 Argus inspected this turn — ${verdict}`, '');
+          for (const f of item.findings) {
+            lines.push(`- **${f.severity}** \`${f.category}\` ${f.file}${f.line ? `:${f.line}` : ''} — ${f.message}`);
+          }
+          lines.push('');
+          break;
+        }
+        case 'turnFooter':
+          lines.push(`_${item.text}_`, '');
+          break;
+        case 'error':
+          lines.push(`> ⚠ ${item.text}`, '');
+          break;
+      }
+    }
+    lines.push('---', '', '_Recorded by Thesmos Pantheon Chat._', '');
+
+    const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const target = await vscode.window.showSaveDialog({
+      defaultUri: vscode.Uri.file(join(this.workspaceRoot, `council-record-${stamp}.md`)),
+      filters: { Markdown: ['md'] },
+      title: 'Export Council Record',
+    });
+    if (!target) return;
+    writeFileSync(target.fsPath, lines.join('\n'), 'utf-8');
+    const doc = await vscode.workspace.openTextDocument(target);
+    await vscode.window.showTextDocument(doc, { preview: true });
   }
 
   /** 📜 Chronicles — browse past sessions and reopen one. */
@@ -784,6 +1045,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       case 'init':
         this.model = event.model;
         if (event.sessionId) this.lastSessionId = event.sessionId;
+        this.contextTokens = 0;
+        this.setPhase('🔮 Thinking…');
         this.broadcast({
           type: 'status',
           running: true,
@@ -795,17 +1058,58 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         break;
 
       case 'textDelta':
+        this.setActivity(null); // the streaming bubble itself shows progress
+        this.setPhase('✍️ Writing…'); // strip stays lit even while the bubble streams
         this.broadcast({ type: 'delta', text: event.text });
+        break;
+
+      case 'thinkingDelta':
+        this.setActivity('🔮 divine deliberation…');
+        this.setPhase('🔮 Thinking…');
+        this.broadcast({ type: 'thinking', text: event.text });
+        break;
+
+      case 'compacting':
+        this.setPhase('📦 Compacting context…');
+        this.setActivity('📦 compacting context…');
+        break;
+
+      case 'usage':
+        this.updateUsage(event.contextTokens);
         break;
 
       case 'assistantText': {
         this.broadcast({ type: 'deltaDone' });
-        const kind = ZEUS_BANNER.test(event.text.trimStart()) ? 'zeus' : 'assistant';
-        this.pushItem({ kind, text: event.text } as UiItem, /* alreadyStreamed */ kind === 'assistant');
+        const trimmed = event.text.trimStart();
+        const firstLine = trimmed.split('\n')[0]?.trim() ?? '';
+        const leanMatch = ZEUS_LEAN_LINE.exec(firstLine);
+
+        if (leanMatch && trimmed.split('\n').length > 1) {
+          // Lean routing line — strip it and attribute the bubble to the god.
+          const body = trimmed.split('\n').slice(1).join('\n').trim();
+          const route = leanMatch[1].trim();
+          let god: { emoji: string; name: string; color: string } | undefined;
+          if (!/direct response/i.test(route)) {
+            const resolved = this.godMapper.resolve(route);
+            if (resolved.name !== 'Oracle') {
+              god = { emoji: resolved.emoji, name: resolved.name, color: resolved.color };
+            }
+          }
+          // The raw text (header included) already streamed — replace it.
+          this.broadcast({ type: 'removeLive' });
+          this.pushItem({ kind: 'assistant', text: body, god });
+        } else if (ZEUS_BANNER.test(trimmed)) {
+          this.pushItem({ kind: 'zeus', text: event.text });
+        } else {
+          this.pushItem({ kind: 'assistant', text: event.text }, /* alreadyStreamed */ true);
+        }
         break;
       }
 
       case 'toolUse': {
+        const activity = this.activityFor(event.name, event.input);
+        this.setActivity(activity);
+        this.setPhase(activity);
         if (event.name === 'TodoWrite' && Array.isArray(event.input.todos)) {
           const todos = event.input.todos as TodoEntry[];
           const existing = this.currentTodoId
@@ -824,6 +1128,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         } else if (AGENT_TOOL_NAMES.has(event.name)) {
           const subagentType = String(event.input.subagent_type ?? 'general-purpose');
           const god = this.godMapper.resolve(subagentType);
+          const godKey = subagentType.replace(/^[^\p{L}]+/u, '').split(/[\s—–-]/)[0]?.toLowerCase() ?? '';
+          const model =
+            typeof event.input.model === 'string' && event.input.model
+              ? event.input.model
+              : this.agentModels.get(godKey);
           this.godStart.set(event.toolUseId, Date.now());
           this.pushItem({
             kind: 'god',
@@ -832,6 +1141,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
             description: String(event.input.description ?? event.input.prompt ?? '').slice(0, 200),
             status: 'running',
             startedAt: Date.now(),
+            model,
           });
         } else if (event.name === 'Edit' && typeof event.input.file_path === 'string') {
           this.turnChangedFiles.add(this.relativize(event.input.file_path));
@@ -916,11 +1226,17 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           }
         }
         if (event.costUsd !== undefined) this.totalCostUsd = event.costUsd; // CLI reports cumulative session cost
+        this.setActivity(null);
+        this.setPhase(null);
+        const fmtTok = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
         const parts: string[] = [];
         if (event.durationMs !== undefined) parts.push(`${(event.durationMs / 1000).toFixed(1)}s`);
         if (event.costUsd !== undefined) parts.push(`$${event.costUsd.toFixed(4)}`);
         if (event.inputTokens !== undefined || event.outputTokens !== undefined) {
-          parts.push(`${event.inputTokens ?? 0}→${event.outputTokens ?? 0} tok`);
+          parts.push(`in ${fmtTok(event.inputTokens ?? 0)} → out ${fmtTok(event.outputTokens ?? 0)}`);
+        }
+        if (event.cacheReadTokens !== undefined && event.cacheReadTokens > 0) {
+          parts.push(`⚡ ${fmtTok(event.cacheReadTokens)} from cache`);
         }
         if (parts.length > 0) this.pushItem({ kind: 'turnFooter', text: `— ${parts.join(' · ')} —` });
         this.broadcast({
@@ -937,6 +1253,15 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           void this.runGovernanceReport([...this.turnChangedFiles]);
           this.turnChangedFiles.clear();
         }
+        // The gods have spoken — whisper via the status bar if nobody is watching.
+        if (
+          !this.sidebarVisible &&
+          !this.panelVisible &&
+          this.promptQueue.length === 0 &&
+          vscode.workspace.getConfiguration('thesmos').get<boolean>('chat.notifyOnTurnEnd', true)
+        ) {
+          vscode.window.setStatusBarMessage('⚡ The gods have spoken — Pantheon Chat is ready', 8000);
+        }
         this.drainQueue();
         break;
       }
@@ -950,6 +1275,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
 
       case 'exit':
         this.turnRunning = false;
+        this.setActivity(null);
+        this.setPhase(null);
         this.broadcast({ type: 'status', running: false, model: this.model, sessionId: this.session?.id });
         break;
     }
@@ -984,6 +1311,35 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
 
   private hookScriptPath(): string {
     return vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'permissionHook.cjs').fsPath;
+  }
+
+  /** Mythic activity line for the live ticker, per tool. */
+  private activityFor(name: string, input: Record<string, unknown>): string {
+    switch (name) {
+      case 'Agent':
+      case 'Task': {
+        const god = this.godMapper.resolve(String(input.subagent_type ?? ''));
+        return `${god.emoji} ${god.name} — ${god.progressVerb}…`;
+      }
+      case 'Read':
+        return `📖 reading the scrolls — ${toolLabel(name, input)}`;
+      case 'Grep':
+      case 'Glob':
+        return `🔍 searching the archives — ${toolLabel(name, input)}`;
+      case 'Edit':
+      case 'Write':
+      case 'MultiEdit':
+        return `🔨 forging — ${toolLabel(name, input)}`;
+      case 'Bash':
+        return `⚒ wielding the shell — ${toolLabel(name, input).slice(0, 60)}`;
+      case 'WebFetch':
+      case 'WebSearch':
+        return '🌐 consulting distant oracles…';
+      case 'TodoWrite':
+        return '📋 drawing up the battle plan…';
+      default:
+        return `⚙ ${name}…`;
+    }
   }
 
   private relativize(path: string): string {

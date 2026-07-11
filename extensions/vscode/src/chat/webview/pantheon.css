@@ -138,6 +138,65 @@ html, body {
   font-style: italic;
   opacity: 0.85;
 }
+
+/* Streamed extended thinking — collapsed by default */
+.msg.deliberation {
+  align-self: flex-start;
+  max-width: 92%;
+  border: 1px dashed rgba(176, 131, 240, 0.5);
+  border-radius: var(--pc-radius);
+  padding: 6px 11px;
+  font-size: 0.85em;
+}
+.msg.deliberation summary {
+  cursor: pointer;
+  color: #b083f0;
+  font-style: italic;
+  user-select: none;
+}
+.msg.deliberation:not(.done) summary::after {
+  content: ' ✨';
+  animation: thesmos-pulse 1.2s ease-in-out infinite;
+}
+.msg.deliberation pre {
+  margin: 6px 0 0;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--pc-dim);
+  font-family: var(--pc-font-mono);
+  font-size: 0.95em;
+  line-height: 1.45;
+}
+
+/* Assistant bubble speaking in a god's voice (lean routing header) */
+.msg.assistant.god-voiced {
+  border-left: 3px solid var(--god-color, var(--pc-gold));
+}
+.msg.assistant .god-attribution {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 0.85em;
+}
+.msg.assistant .god-attribution .god-name {
+  color: var(--god-color, var(--pc-gold));
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+/* Model tag on god bubbles — "this god runs on haiku" */
+.msg.god .god-model {
+  margin-left: auto;
+  font-family: var(--pc-font-mono);
+  font-size: 0.78em;
+  color: var(--pc-dim);
+  border: 1px solid var(--pc-border);
+  border-radius: 8px;
+  padding: 1px 7px;
+}
 .msg.thinking .pulse {
   width: 8px;
   height: 8px;
@@ -305,6 +364,34 @@ html, body {
   flex: none;
 }
 @keyframes pc-spin { to { transform: rotate(360deg); } }
+
+/* Council grid — parallel gods at the war table */
+.council {
+  align-self: stretch;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--pc-gold);
+  border-radius: var(--pc-radius);
+  background:
+    linear-gradient(135deg, rgba(212, 169, 65, 0.06), rgba(80, 60, 140, 0.08));
+  animation: pc-rise 0.3s ease-out;
+}
+.council .council-ribbon {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--pc-gold-bright);
+  font-size: 0.8em;
+  letter-spacing: 0.25em;
+  font-weight: 600;
+}
+.council .msg.god {
+  align-self: stretch;
+  min-width: 0;
+  animation: none;
+}
 
 /* Tool chip / card */
 .msg.tool {
@@ -565,6 +652,59 @@ html, body {
   flex-wrap: wrap;
   gap: 6px;
   padding: 7px 12px 0;
+}
+
+/* ── Persistent status strip (phase + live context meter) ─────────────────── */
+#status-strip {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-top: 1px solid var(--pc-border);
+  background: linear-gradient(180deg, rgba(212, 169, 65, .06), transparent);
+  font-size: .82em;
+  color: var(--pc-dim);
+}
+#status-strip.active { display: flex; }
+#status-strip #phase-label {
+  color: var(--pc-gold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+#usage-meter {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+#usage-meter.shown { display: flex; }
+#usage-meter .usage-bar {
+  width: 54px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--pc-border);
+  overflow: hidden;
+}
+#usage-meter #usage-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  background: var(--pc-gold);
+  transition: width .4s ease, background .3s ease;
+}
+#usage-meter #usage-fill.warn { background: #f0883e; }
+#usage-meter #usage-fill.crit { background: var(--pc-error); }
+#usage-meter #usage-text {
+  font-family: var(--pc-font-mono);
+  font-size: .92em;
+  color: var(--pc-dim);
+  min-width: 58px;
+  text-align: right;
+}
+@media (prefers-reduced-motion: reduce) {
+  #usage-meter #usage-fill { transition: none; }
 }
 .attachment-chip {
   display: inline-flex;
