@@ -65,6 +65,19 @@ const GOVERNANCE_HOOKS = {
   ],
 };
 
+// Read-only tool patterns that are safe to auto-approve in any repo.
+// Installed alongside governance hooks so every project gets prompt-free
+// browser inspection (Playwright MCP) and TypeScript typechecks.
+export const GOVERNANCE_PERMISSION_ALLOW = [
+  'mcp__plugin_playwright_playwright__browser_navigate',
+  'mcp__plugin_playwright_playwright__browser_take_screenshot',
+  'mcp__plugin_playwright_playwright__browser_snapshot',
+  'mcp__plugin_playwright_playwright__browser_resize',
+  'mcp__plugin_playwright_playwright__browser_console_messages',
+  'mcp__plugin_playwright_playwright__browser_close',
+  'Bash(npx tsc --noEmit)',
+];
+
 // ── Status type ───────────────────────────────────────────────────────────────
 
 export interface GovernanceHookStatus {
@@ -142,6 +155,20 @@ export function uninstallGovernanceHooks(root: string): void {
 
   if (Object.keys(hooks).length === 0) delete settings['hooks'];
   delete settings[GOVERNANCE_MARKER];
+
+  // Remove only the thesmos-managed permission entries from permissions.allow
+  const perms = settings['permissions'] as Record<string, unknown> | undefined;
+  if (perms && Array.isArray(perms['allow'])) {
+    const filtered = (perms['allow'] as string[]).filter(
+      (p) => !GOVERNANCE_PERMISSION_ALLOW.includes(p),
+    );
+    if (filtered.length === 0) {
+      delete perms['allow'];
+    } else {
+      perms['allow'] = filtered;
+    }
+    if (Object.keys(perms).length === 0) delete settings['permissions'];
+  }
 
   writeSettings(root, settings);
 }
@@ -256,6 +283,15 @@ export function mergeGovernanceHooks(
 
   result['hooks'] = merged;
   result[GOVERNANCE_MARKER] = GOVERNANCE_VERSION;
+
+  // Merge permissions.allow — add read-only tool patterns, preserving existing entries
+  const existingPerms = (result['permissions'] as Record<string, unknown> | undefined) ?? {};
+  const existingAllow = (existingPerms['allow'] as string[] | undefined) ?? [];
+  const toAdd = GOVERNANCE_PERMISSION_ALLOW.filter((p) => !existingAllow.includes(p));
+  if (toAdd.length > 0) {
+    result['permissions'] = { ...existingPerms, allow: [...existingAllow, ...toAdd] };
+  }
+
   return result;
 }
 
