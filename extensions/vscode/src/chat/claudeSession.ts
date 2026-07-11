@@ -39,6 +39,7 @@ export function resolveClaudeBinary(): string {
 export type SessionEvent =
   | { kind: 'init'; sessionId: string; model: string }
   | { kind: 'textDelta'; text: string }
+  | { kind: 'thinkingDelta'; text: string }
   | { kind: 'assistantText'; text: string }
   | { kind: 'toolUse'; toolUseId: string; name: string; input: Record<string, unknown> }
   | { kind: 'toolResult'; toolUseId: string; summary: string; isError: boolean }
@@ -48,8 +49,12 @@ export type SessionEvent =
       durationMs?: number;
       inputTokens?: number;
       outputTokens?: number;
+      cacheReadTokens?: number;
+      cacheCreationTokens?: number;
       isError: boolean;
     }
+  | { kind: 'compacting'; trigger: string; preTokens?: number }
+  | { kind: 'usage'; contextTokens: number }
   | { kind: 'stderr'; text: string }
   | { kind: 'exit'; code: number | null };
 
@@ -87,8 +92,8 @@ export class ClaudeSession {
     private readonly permissionMode: PermissionMode = 'default',
     private readonly resumeSessionId?: string,
     private readonly permissionGate?: PermissionGateConfig,
-    /** Optional model id/alias (--model) and provider env overrides. */
-    private readonly modelConfig?: { model?: string; env?: Record<string, string> },
+    /** Optional model id/alias (--model), provider env overrides, and a system-prompt suffix. */
+    private readonly modelConfig?: { model?: string; env?: Record<string, string>; appendSystemPrompt?: string },
   ) {}
 
   get id(): string | undefined {
@@ -117,6 +122,9 @@ export class ClaudeSession {
     if (resumeId) args.push('--resume', resumeId);
 
     if (this.modelConfig?.model) args.push('--model', this.modelConfig.model);
+    if (this.modelConfig?.appendSystemPrompt) {
+      args.push('--append-system-prompt', this.modelConfig.appendSystemPrompt);
+    }
 
     const env: NodeJS.ProcessEnv = { ...process.env, ...this.modelConfig?.env };
     if (this.permissionGate) {
@@ -228,16 +236,37 @@ export class ClaudeSession {
             sessionId: this.sessionId ?? '',
             model: typeof event.model === 'string' ? event.model : 'unknown',
           });
+        } else if (event.subtype === 'compact_boundary') {
+          // The CLI auto-compacts long conversations; surface it so the UI never goes silent.
+          const meta = event.compact_metadata as { trigger?: string; pre_tokens?: number } | undefined;
+          this.onEvent({
+            kind: 'compacting',
+            trigger: typeof meta?.trigger === 'string' ? meta.trigger : 'auto',
+            preTokens: typeof meta?.pre_tokens === 'number' ? meta.pre_tokens : undefined,
+          });
         }
         break;
 
       case 'stream_event': {
         // Anthropic SSE event wrapped by the CLI (--include-partial-messages).
         const inner = event.event as Record<string, unknown> | undefined;
-        if (inner?.type === 'content_block_delta') {
+        if (inner?.type === 'message_start') {
+          // message.usage carries the input context size — the live "context full" signal.
+          const msg = inner.message as { usage?: Record<string, unknown> } | undefined;
+          const u = msg?.usage;
+          if (u) {
+            const ctx =
+              (typeof u.input_tokens === 'number' ? u.input_tokens : 0) +
+              (typeof u.cache_read_input_tokens === 'number' ? u.cache_read_input_tokens : 0) +
+              (typeof u.cache_creation_input_tokens === 'number' ? u.cache_creation_input_tokens : 0);
+            if (ctx > 0) this.onEvent({ kind: 'usage', contextTokens: ctx });
+          }
+        } else if (inner?.type === 'content_block_delta') {
           const delta = inner.delta as Record<string, unknown> | undefined;
           if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
             this.onEvent({ kind: 'textDelta', text: delta.text });
+          } else if (delta?.type === 'thinking_delta' && typeof delta.thinking === 'string') {
+            this.onEvent({ kind: 'thinkingDelta', text: delta.thinking });
           }
         }
         break;
@@ -284,6 +313,10 @@ export class ClaudeSession {
           durationMs: typeof event.duration_ms === 'number' ? event.duration_ms : undefined,
           inputTokens: typeof usage?.input_tokens === 'number' ? usage.input_tokens : undefined,
           outputTokens: typeof usage?.output_tokens === 'number' ? usage.output_tokens : undefined,
+          cacheReadTokens:
+            typeof usage?.cache_read_input_tokens === 'number' ? usage.cache_read_input_tokens : undefined,
+          cacheCreationTokens:
+            typeof usage?.cache_creation_input_tokens === 'number' ? usage.cache_creation_input_tokens : undefined,
           isError: event.is_error === true,
         });
         break;

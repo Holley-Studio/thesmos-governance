@@ -18,9 +18,9 @@ interface GodInfo {
 
 type UiItem =
   | { kind: 'user'; text: string; checkpointId?: string; queued?: boolean }
-  | { kind: 'assistant'; text: string }
+  | { kind: 'assistant'; text: string; god?: { emoji: string; name: string; color: string } }
   | { kind: 'zeus'; text: string }
-  | { kind: 'god'; toolUseId: string; god: GodInfo; description: string; status: 'running' | 'done' | 'error'; summary?: string; startedAt: number; durationMs?: number }
+  | { kind: 'god'; toolUseId: string; god: GodInfo; description: string; status: 'running' | 'done' | 'error'; summary?: string; startedAt: number; durationMs?: number; model?: string }
   | { kind: 'tool'; name: string; label: string }
   | { kind: 'diff'; file: string; oldText?: string; newText: string }
   | { kind: 'permission'; requestId: string; toolName: string; label: string; status: 'pending' | 'allowed' | 'denied' }
@@ -52,6 +52,11 @@ type InboundMessage =
   | { type: 'godComplete'; toolUseId: string; summary: string; isError: boolean; durationMs: number }
   | { type: 'status'; running: boolean; model?: string; sessionId?: string; permissionMode?: string; totalCostUsd?: number; savedUsdSession?: number; savedUsdMonth?: number }
   | { type: 'providerInfo'; label: string; models: Array<{ id: string; label: string }>; currentModel: string }
+  | { type: 'activity'; text: string | null }
+  | { type: 'phase'; text: string | null }
+  | { type: 'usage'; contextTokens: number; contextPct: number }
+  | { type: 'thinking'; text: string }
+  | { type: 'removeLive' }
   | { type: 'attachments'; paths: string[] }
   | { type: 'permissionResolved'; requestId: string; status: 'allowed' | 'denied' }
   | { type: 'todoUpdate'; id: string; todos: TodoEntry[] }
@@ -66,6 +71,7 @@ const sendBtn = document.getElementById('send') as HTMLButtonElement;
 const stopBtn = document.getElementById('stop') as HTMLButtonElement;
 const newBtn = document.getElementById('new-session') as HTMLButtonElement;
 const chroniclesBtn = document.getElementById('chronicles') as HTMLButtonElement;
+const openTabBtn = document.getElementById('open-tab') as HTMLButtonElement;
 const meta = document.getElementById('session-meta') as HTMLSpanElement;
 const modeSelect = document.getElementById('mode') as HTMLSelectElement;
 const modelSelect = document.getElementById('model-select') as HTMLSelectElement;
@@ -118,8 +124,81 @@ function bumpThinkingGap(): void {
   }, 2000);
 }
 
+// ── Persistent status strip (phase + live context meter) ──────────────────────
+// Unlike the thinking bubble, this stays visible for the whole turn so the user
+// always knows the current state — thinking, writing, running a tool, compacting.
+const statusStrip = document.getElementById('status-strip') as HTMLDivElement | null;
+const phaseLabel = document.getElementById('phase-label') as HTMLSpanElement | null;
+const usageMeter = document.getElementById('usage-meter') as HTMLDivElement | null;
+const usageFill = document.getElementById('usage-fill') as HTMLDivElement | null;
+const usageText = document.getElementById('usage-text') as HTMLSpanElement | null;
+
+function setPhase(text: string | null): void {
+  if (!statusStrip || !phaseLabel) return;
+  if (text) {
+    phaseLabel.textContent = text;
+    statusStrip.classList.add('active');
+  } else {
+    statusStrip.classList.remove('active');
+    phaseLabel.textContent = '';
+  }
+}
+
+function setUsage(tokens: number, pct: number): void {
+  if (!usageMeter || !usageFill || !usageText) return;
+  usageMeter.classList.add('shown');
+  usageFill.style.width = `${pct}%`;
+  usageFill.classList.toggle('warn', pct >= 75 && pct < 90);
+  usageFill.classList.toggle('crit', pct >= 90);
+  const k = tokens >= 1000 ? `${Math.round(tokens / 1000)}k` : String(tokens);
+  usageText.textContent = `${k} · ${pct}%`;
+  usageMeter.title = `Context window: ${tokens.toLocaleString()} / 200,000 tokens (${pct}%)`;
+}
+
+function resetUsage(): void {
+  if (!usageMeter || !usageFill) return;
+  usageMeter.classList.remove('shown');
+  usageFill.style.width = '0%';
+  usageFill.classList.remove('warn', 'crit');
+}
+
+/** Named activity from the controller ("👁 Argus — inspecting the perimeter…"). */
+function setActivityLabel(text: string | null): void {
+  if (!text) return; // pulse removal is handled by the delta/done machinery
+  if (!thinkingEl) showThinking();
+  const verb = thinkingEl?.querySelector('.verb');
+  if (verb) verb.textContent = text;
+}
+
+/** Collapsible streamed extended-thinking block — one per deliberation. */
+let deliberationEl: HTMLElement | undefined;
+let deliberationPre: HTMLPreElement | undefined;
+
+function appendDeliberation(text: string): void {
+  if (!deliberationEl) {
+    deliberationEl = document.createElement('details');
+    deliberationEl.className = 'msg deliberation';
+    const summary = document.createElement('summary');
+    summary.textContent = '🔮 divine deliberation';
+    deliberationPre = document.createElement('pre');
+    deliberationEl.append(summary, deliberationPre);
+    append(deliberationEl);
+  }
+  if (deliberationPre) {
+    deliberationPre.textContent = (deliberationPre.textContent ?? '') + text;
+  }
+  scrollToEnd();
+}
+
+function finalizeDeliberation(): void {
+  deliberationEl?.classList.add('done');
+  deliberationEl = undefined;
+  deliberationPre = undefined;
+}
+
 let liveBubble: HTMLDivElement | undefined;
 let liveText = '';
+let councilEl: HTMLDivElement | undefined;
 const godElements = new Map<string, HTMLDivElement>();
 const godStart = new Map<string, number>();
 const permissionElements = new Map<string, HTMLDivElement>();
@@ -235,7 +314,20 @@ function renderItem(item: UiItem): void {
     case 'assistant': {
       finalizeLiveBubble();
       const el = div('msg assistant');
-      el.innerHTML = renderMarkdown(item.text);
+      if (item.god) {
+        el.classList.add('god-voiced');
+        el.style.setProperty('--god-color', item.god.color);
+        const tag = div('god-attribution');
+        tag.innerHTML =
+          `<span class="god-emoji">${escapeHtml(item.god.emoji)}</span>` +
+          `<span class="god-name">${escapeHtml(item.god.name)}</span>`;
+        el.appendChild(tag);
+        const body = div('god-voiced-body');
+        body.innerHTML = renderMarkdown(item.text);
+        el.appendChild(body);
+      } else {
+        el.innerHTML = renderMarkdown(item.text);
+      }
       attachCodeCopyButtons(el);
       append(el);
       break;
@@ -252,13 +344,15 @@ function renderItem(item: UiItem): void {
     }
     case 'god': {
       finalizeLiveBubble();
+      const runningBefore = [...godStart.keys()];
       const el = div(`msg god${item.status === 'done' ? ' done' : ''}${item.status === 'error' ? ' error' : ''}`);
       el.style.setProperty('--god-color', item.god.color);
       const head = div('god-head');
       head.innerHTML =
         `<span class="god-emoji">${escapeHtml(item.god.emoji)}</span>` +
         `<span class="god-name">${escapeHtml(item.god.name)}</span>` +
-        `<span class="god-domain">${escapeHtml(item.god.domain)}</span>`;
+        `<span class="god-domain">${escapeHtml(item.god.domain)}</span>` +
+        (item.model ? `<span class="god-model" title="Model this god runs on — lighter tiers save tokens">${escapeHtml(item.model)}</span>` : '');
       el.appendChild(head);
       const body = div('god-body');
       body.textContent = item.summary ?? item.description;
@@ -272,7 +366,30 @@ function renderItem(item: UiItem): void {
       }
       el.appendChild(status);
       godElements.set(item.toolUseId, el);
-      append(el);
+
+      // Council grid: a god dispatched while another still works — the war
+      // table assembles and parallel gods sit side by side.
+      if (item.status === 'running' && runningBefore.length > 0) {
+        if (!councilEl || !councilEl.isConnected) {
+          councilEl = div('council');
+          const ribbon = div('council-ribbon');
+          ribbon.textContent = '⚡ THE COUNCIL ASSEMBLES ⚡';
+          councilEl.appendChild(ribbon);
+          // Pull the already-running gods into the grid, preserving order.
+          const firstRunning = godElements.get(runningBefore[0]);
+          if (firstRunning?.parentElement === log) log.insertBefore(councilEl, firstRunning);
+          else append(councilEl);
+          for (const id of runningBefore) {
+            const runningEl = godElements.get(id);
+            if (runningEl && runningEl.parentElement === log) councilEl.appendChild(runningEl);
+          }
+        }
+        councilEl.appendChild(el);
+        empty.style.display = 'none';
+        scrollToEnd();
+      } else {
+        append(el);
+      }
       break;
     }
     case 'tool': {
@@ -522,7 +639,10 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       todoElements.clear();
       finalizeLiveBubble();
       thinkingEl = undefined; // log was cleared — drop the stale reference
+      councilEl = undefined;
       clearTimeout(thinkingGapTimer);
+      setPhase(null);
+      resetUsage();
       meta.textContent = '';
       break;
     case 'history':
@@ -533,6 +653,7 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       todoElements.clear();
       finalizeLiveBubble();
       thinkingEl = undefined; // log was cleared — drop the stale reference
+      councilEl = undefined;
       clearTimeout(thinkingGapTimer);
       for (const item of msg.items) renderItem(item);
       break;
@@ -547,7 +668,25 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       break;
     case 'deltaDone':
       finalizeLiveBubble();
+      finalizeDeliberation();
       bumpThinkingGap();
+      break;
+    case 'activity':
+      setActivityLabel(msg.text);
+      break;
+    case 'phase':
+      setPhase(msg.text);
+      break;
+    case 'usage':
+      setUsage(msg.contextTokens, msg.contextPct);
+      break;
+    case 'thinking':
+      appendDeliberation(msg.text);
+      bumpThinkingGap();
+      break;
+    case 'removeLive':
+      if (liveBubble) liveBubble.remove();
+      finalizeLiveBubble();
       break;
     case 'godComplete': {
       const el = godElements.get(msg.toolUseId);
@@ -566,6 +705,8 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       if (!msg.running) {
         clearTimeout(thinkingGapTimer);
         hideThinking();
+        setPhase(null);
+        resetUsage();
       }
       {
         // Credit Guardian header figure — month-to-date, session detail in tooltip.
@@ -662,6 +803,7 @@ function send(): void {
   vscode.postMessage({ type: 'send', text, attachments: pendingAttachments });
   pendingAttachments = [];
   renderAttachments();
+  if (!turnRunning) setPhase('🔮 Thinking…'); // fresh turn — light the strip instantly (queued sends keep the live phase)
   turnRunning = true;
   showThinking();
 }
@@ -688,6 +830,9 @@ modelSelect.addEventListener('change', () =>
 );
 providerBtn.addEventListener('click', () => vscode.postMessage({ type: 'pickProvider' }));
 chroniclesBtn.addEventListener('click', () => vscode.postMessage({ type: 'openChronicles' }));
+openTabBtn.addEventListener('click', () => vscode.postMessage({ type: 'openInTab' }));
+const exportBtn = document.getElementById('export-record') as HTMLButtonElement;
+exportBtn.addEventListener('click', () => vscode.postMessage({ type: 'exportRecord' }));
 
 input.addEventListener('keydown', (e) => {
   if (mentionOpen) {

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pantheon Chat — AI Code Governance in Your VS Code Sidebar | Thesmos</title>
+  <meta name="description" content="Pantheon Chat brings 67 specialist AI agents and 1,137 governance rules into your VS Code sidebar. Model-tier routing and Credit Guardian save tokens the longer you use it. Security-audited permission bridge." />
+  <meta name="keywords" content="AI code governance VS Code, Claude VS Code extension, AI agent governance, Pantheon Chat, Credit Guardian, token savings, vibe coding safety" />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#050408" />
+  <meta name="author" content="Holley Studio" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 90'%3E%3Cpath d='M40 4 C62 4 72 14 72 25 L72 48 Q72 70 40 86 Q8 70 8 48 L8 25 C8 14 18 4 40 4 Z' stroke='%23C9A84C' stroke-width='2.8' fill='none'/%3E%3Cpath d='M40 39 C36 32 31 25 34 15 C36 10 39 8 37 5 C45 10 47 22 42 31 C47 23 48 14 45 9 C52 20 50 32 44 39 Z' fill='%23F5C842'/%3E%3C/svg%3E" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;700&family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#050408; --bg-s:#09080F;
+      --card:rgba(255,255,255,.03); --card-h:rgba(255,255,255,.05);
+      --gold:#C9A84C; --gold-dim:rgba(201,168,76,.4); --gold-bright:#F5C842;
+      --cream:#F5F0E8; --t1:#F5F5F7; --t2:rgba(255,255,255,.55); --t3:rgba(255,255,255,.45);
+      --border:rgba(255,255,255,.07); --border-h:rgba(201,168,76,.2);
+      --blocker:#e5534b; --high:#f0883e; --clean:#57ab5a;
+      --ease:cubic-bezier(0.4,0,0.2,1);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{
+      background:var(--bg); color:var(--t1);
+      font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+      font-weight:300; line-height:1.6; overflow-x:hidden;
+      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    }
+    a{text-decoration:none; color:var(--gold-bright);}
+    body::before{
+      content:''; position:fixed; inset:0; z-index:9999; pointer-events:none; opacity:.016;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    body::after{
+      content:''; position:fixed; inset:0; z-index:9998; pointer-events:none;
+      background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.38) 100%);
+    }
+    .wrap{max-width:920px; margin:0 auto; padding:0 24px; position:relative; z-index:2;}
+
+    /* HERO */
+    header.hero{padding:96px 0 56px; text-align:center;}
+    .eyebrow{
+      font-family:'JetBrains Mono',monospace; font-size:.72rem; letter-spacing:.34em;
+      text-transform:uppercase; color:var(--gold); opacity:.85; margin-bottom:20px;
+    }
+    h1{
+      font-family:'Cinzel',serif; font-weight:700; line-height:1.1;
+      font-size:clamp(2.1rem,6vw,3.6rem); color:var(--cream); margin-bottom:22px;
+    }
+    h1 .accent{color:var(--gold-bright);}
+    .lede{font-size:clamp(1.05rem,2.2vw,1.28rem); color:var(--t2); max-width:640px; margin:0 auto 36px;}
+    .cta-row{display:flex; gap:14px; justify-content:center; flex-wrap:wrap;}
+    .btn{
+      font-family:'JetBrains Mono',monospace; font-size:.86rem; letter-spacing:.04em;
+      padding:13px 26px; border-radius:9px; cursor:pointer; transition:all .2s var(--ease);
+      border:1px solid var(--border-h);
+    }
+    .btn-primary{background:linear-gradient(135deg,var(--gold),#a87f22); color:#14141c; font-weight:600; border:none;}
+    .btn-primary:hover{filter:brightness(1.08); transform:translateY(-1px);}
+    .btn-ghost{background:transparent; color:var(--gold-bright);}
+    .btn-ghost:hover{border-color:var(--gold); background:rgba(201,168,76,.06);}
+
+    /* SECTION */
+    section{padding:52px 0; border-top:1px solid var(--border);}
+    .kicker{
+      font-family:'JetBrains Mono',monospace; font-size:.7rem; letter-spacing:.3em;
+      text-transform:uppercase; color:var(--gold); margin-bottom:14px;
+    }
+    h2{font-family:'Cinzel',serif; font-weight:500; font-size:clamp(1.5rem,3.4vw,2.1rem); color:var(--cream); margin-bottom:18px;}
+    h3{font-family:'Cinzel',serif; font-weight:500; font-size:1.15rem; color:var(--gold-bright); margin:26px 0 10px;}
+    p{color:var(--t2); margin-bottom:14px; max-width:70ch;}
+    p strong{color:var(--t1); font-weight:500;}
+
+    /* FEATURE GRID */
+    .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; margin-top:24px;}
+    .feat{
+      background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px 22px;
+      transition:border-color .2s var(--ease), background .2s var(--ease);
+    }
+    .feat:hover{border-color:var(--border-h); background:var(--card-h);}
+    .feat .fh{display:flex; align-items:center; gap:9px; margin-bottom:8px;}
+    .feat .fe{font-size:1.15rem;}
+    .feat .ft{font-family:'Inter'; font-weight:500; color:var(--t1); font-size:.98rem;}
+    .feat p{font-size:.9rem; color:var(--t3); margin:0;}
+
+    /* SAVINGS CALLOUT */
+    .callout{
+      background:linear-gradient(135deg,rgba(201,168,76,.08),rgba(80,60,140,.06));
+      border:1px solid var(--border-h); border-radius:14px; padding:28px 30px; margin-top:24px;
+    }
+    .callout .big{font-family:'Cinzel',serif; font-size:1.35rem; color:var(--gold-bright); margin-bottom:10px;}
+    .savings-list{list-style:none; margin-top:16px; display:flex; flex-direction:column; gap:12px;}
+    .savings-list li{display:flex; gap:12px; align-items:flex-start; color:var(--t2); font-size:.95rem;}
+    .savings-list .mk{color:var(--gold); flex:none; font-family:'JetBrains Mono',monospace;}
+
+    /* STEPS */
+    .steps{counter-reset:s; display:flex; flex-direction:column; gap:14px; margin-top:22px;}
+    .step{display:flex; gap:16px; align-items:flex-start;}
+    .step::before{
+      counter-increment:s; content:counter(s);
+      font-family:'Cinzel',serif; color:var(--gold-bright); font-size:1.1rem;
+      width:34px; height:34px; flex:none; border:1px solid var(--border-h); border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .step div{color:var(--t2); font-size:.96rem;}
+    .step strong{color:var(--t1);}
+
+    /* SECURITY / AUDIT */
+    .audit-head{display:flex; align-items:center; gap:12px; margin-bottom:8px;}
+    .badge{
+      font-family:'JetBrains Mono',monospace; font-size:.7rem; letter-spacing:.08em;
+      padding:4px 10px; border-radius:20px; border:1px solid var(--clean); color:var(--clean);
+    }
+    .finding{
+      background:var(--card); border:1px solid var(--border); border-left:3px solid var(--high);
+      border-radius:10px; padding:16px 18px; margin-top:12px;
+    }
+    .finding.blocker{border-left-color:var(--blocker);}
+    .finding.clean{border-left-color:var(--clean);}
+    .finding .sev{
+      font-family:'JetBrains Mono',monospace; font-size:.7rem; letter-spacing:.06em;
+      color:var(--high); margin-bottom:6px; text-transform:uppercase;
+    }
+    .finding.clean .sev{color:var(--clean);}
+    .finding .ftitle{color:var(--t1); font-weight:500; margin-bottom:6px;}
+    .finding p{font-size:.9rem; color:var(--t3); margin:0;}
+    .finding code{font-family:'JetBrains Mono',monospace; font-size:.82rem; color:var(--gold); background:rgba(201,168,76,.08); padding:1px 5px; border-radius:4px;}
+
+    footer{padding:56px 0 72px; border-top:1px solid var(--border); text-align:center; color:var(--t3); font-size:.85rem;}
+    footer a{margin:0 8px;}
+    .note{font-size:.8rem; color:var(--t3); font-style:italic; margin-top:18px;}
+
+    @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="hero">
+      <div class="eyebrow">⚡ Thesmos · Pantheon Chat</div>
+      <h1>Your AI writes fast.<br>This makes sure it <span class="accent">writes right.</span></h1>
+      <p class="lede">A council of 67 specialist AI agents and 1,137 governance rules, live in your VS Code sidebar. The right expert answers — and every turn is checked before it lands.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://marketplace.visualstudio.com/" rel="noopener">Install from Marketplace</a>
+        <a class="btn btn-ghost" href="index.html">Explore Thesmos</a>
+      </div>
+    </header>
+
+    <!-- WHAT IT IS -->
+    <section>
+      <div class="kicker">What it is</div>
+      <h2>Governance and a god council, in the editor</h2>
+      <p>Thesmos is an AI governance and multi-agent orchestration platform built for teams shipping code with Claude, Cursor, Copilot, or Gemini. The VS Code extension brings the full engine into your sidebar — inline findings, a live health score, and a council of specialized AI agents, all governed by the same 1,137 rules that run in your CI, your MCP server, and the CLI.</p>
+    </section>
+
+    <!-- KEY FEATURES -->
+    <section>
+      <div class="kicker">Capabilities</div>
+      <h2>Built for developers who ship with AI</h2>
+      <div class="grid">
+        <div class="feat"><div class="fh"><span class="fe">🔎</span><span class="ft">Inline findings on save</span></div><p>BLOCKER and HIGH violations surface as CodeLens and Error Lens-style diagnostics, right on the offending line. No terminal required.</p></div>
+        <div class="feat"><div class="fh"><span class="fe">💬</span><span class="ft">Pantheon Chat</span></div><p>A sidebar chat wired to 67 specialist agents. Ask Zeus to orchestrate, Argus to audit, Athena for strategy — the domain expert answers, not a generalist.</p></div>
+        <div class="feat"><div class="fh"><span class="fe">⚖️</span><span class="ft">Governance every turn</span></div><p>Each response is checked against SEC, AUTH, VIBE, GDPR, AGNT, CVE, and supply-chain rules. 1,137 total. BLOCKERs halt; HIGH findings flag.</p></div>
+        <div class="feat"><div class="fh"><span class="fe">🛡️</span><span class="ft">Credit Guardian</span></div><p>Per-turn token cost in the status bar, a monthly savings report, and hard budget stops before runaway costs compound.</p></div>
+        <div class="feat"><div class="fh"><span class="fe">🤖</span><span class="ft">Autopilot with a kill switch</span></div><p>Generate a plan, run it on a branch, review the diff, open a draft PR — or revert the whole session in one click.</p></div>
+        <div class="feat"><div class="fh"><span class="fe">🧹</span><span class="ft">AI Debt Scanner</span></div><p>Catches phantom imports, hallucinated packages, typosquat candidates, and slop patterns AI tools introduce silently.</p></div>
+      </div>
+    </section>
+
+    <!-- SAVINGS -->
+    <section>
+      <div class="kicker">The economics</div>
+      <h2>The longer you use it, the more it saves</h2>
+      <p>Pantheon Chat is designed to <strong>cost you fewer tokens over time, not more</strong>. Every visual flourish — the animated thinking oracle, the god cards, the star-field, the spinners — renders entirely in the VS Code webview. <strong>None of it makes a single model call.</strong> The ceremony is free; only real work costs credits.</p>
+      <div class="callout">
+        <div class="big">Zero-token badazzle, guaranteed</div>
+        <p>The interface is pure CSS and DOM. Token spend comes only from the Claude calls that actually do your work — and Thesmos routes those to the cheapest model that gets it right.</p>
+        <ul class="savings-list">
+          <li><span class="mk">→</span><div><strong>Model-tier routing.</strong> 60+ agents run on the mid tier, mechanical work drops to the fast tier, and only architecture, strategy, and security escalate to a flagship. Flagship ≈ 5× mid ≈ 5× fast — so right-sizing the model is where the savings live.</div></li>
+          <li><span class="mk">→</span><div><strong>Credit Guardian ledger.</strong> Every turn that ran on a cheaper tier is banked as a real, measured saving and totalled month-to-date in your status bar.</div></li>
+          <li><span class="mk">→</span><div><strong>Hard budget stops.</strong> Sessions carry a token ceiling. When it's reached, the loop stops — no silent overruns, no surprise bill.</div></li>
+          <li><span class="mk">→</span><div><strong>1M context stays opt-in.</strong> The premium-priced context window never turns on by accident — enabling it is a governed, explicit choice.</div></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- COUNCIL -->
+    <section>
+      <div class="kicker">The council</div>
+      <h2>67 specialists, one dispatch</h2>
+      <p>The Thesmos Pantheon is a team of specialist agents, each scoped to a domain. Zeus orchestrates. Argus runs security audits. Athena sets strategy. Hephaestus handles design systems. Cassandra writes tests. Chiron reviews architecture. Kratos runs DevOps.</p>
+      <p>You invoke them by describing your task — the routing layer matches the domain and dispatches the right agent, with no prompt engineering and no context switching. Each agent follows its own methodology, runs on the model tier that fits its work, and closes every response with a Thesmos governance check.</p>
+    </section>
+
+    <!-- SECURITY / TRUST -->
+    <section>
+      <div class="kicker">Built to be trusted</div>
+      <div class="audit-head">
+        <h2 style="margin-bottom:0">The permission bridge is audited</h2>
+        <span class="badge">👁 ARGUS · 0 BLOCKERS</span>
+      </div>
+      <p>Pantheon Chat runs tools on your machine, so the human-in-the-loop consent gate is the control that matters most. We put it through a full STRIDE threat model — webview to extension host to the CLI's blocking permission hook. The enforcement layer <strong>fails closed</strong>: a missing socket, a timeout, a malformed message, or a page reload all deny by default. Forged approvals are rejected — a request ID that was never displayed cannot be approved.</p>
+
+      <div class="finding clean">
+        <div class="sev">✓ Confirmed correct</div>
+        <div class="ftitle">Fail-closed enforcement &amp; spoof-resistant approvals</div>
+        <p>Every denial path defaults safe. Request IDs are validated against pending history, decisions are one-shot and immutable, and the webview cannot self-approve any tool call.</p>
+      </div>
+      <div class="finding">
+        <div class="sev">High · addressed</div>
+        <div class="ftitle">Full-command consent view</div>
+        <p>The approval dialog now renders the <em>complete</em> shell command in a scrollable, XSS-safe block — no truncation can ever hide a payload past a cutoff.</p>
+      </div>
+      <div class="finding">
+        <div class="sev">High · addressed</div>
+        <div class="ftitle">Escalations require explicit confirmation</div>
+        <p>Blanket "always allow" and auto-approve mode are gated behind native modal confirmations, and arbitrary shell is excluded from session-wide grants.</p>
+      </div>
+      <p class="note">Argus re-verifies the no-XSS invariant of the chat renderer on every change. Full audit evidence is recorded in the Thesmos knowledge base.</p>
+    </section>
+
+    <!-- GETTING STARTED -->
+    <section>
+      <div class="kicker">Getting started</div>
+      <h2>Three steps</h2>
+      <div class="steps">
+        <div class="step"><div><strong>Install the extension.</strong> Search "Thesmos Governance" in the VS Code Extensions panel, or install from the Marketplace page.</div></div>
+        <div class="step"><div><strong>Add your Anthropic API key.</strong> Open Pantheon Chat (<code>Cmd/Ctrl+Shift+G</code>) and enter your key when prompted. It's stored in VS Code secret storage — never in plaintext.</div></div>
+        <div class="step"><div><strong>Run your first scan.</strong> From the Command Palette, run <em>Thesmos: Scan Repository</em>. Findings appear in the sidebar tree — right-click any one to fix it inline or copy an AI fix prompt.</div></div>
+      </div>
+      <h3 style="margin-top:30px">Requirements</h3>
+      <p>VS Code 1.100.0 or later · an Anthropic API key for chat and AI fixes · Node.js in PATH for CLI scan commands (optional — UI scan works without it) · a <code>.thesmos/config.json</code> in your project root, generated on first scan.</p>
+    </section>
+
+    <footer>
+      <div style="font-family:'Cinzel',serif; color:var(--gold); margin-bottom:12px;">⚡ THESMOS</div>
+      <div>
+        <a href="index.html">Home</a> ·
+        <a href="pricing.html">Pricing</a> ·
+        <a href="vs.html">Compare</a> ·
+        <a href="https://github.com/Holley-Studio/thesmos-governance" rel="noopener">GitHub</a>
+      </div>
+      <p style="margin-top:16px; max-width:none;">© 2026 Holley Studio LLC · Pantheon Chat is powered by Claude · Bring your own key</p>
+    </footer>
+
+  </div>
+</body>
+</html>
