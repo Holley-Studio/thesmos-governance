@@ -580,8 +580,8 @@ export const FIXERS: Readonly<Record<string, Fixer>> = {
   /**
    * java_hardcoded_password — annotates the hardcoded credential line with a FIXME comment.
    *
-   * Before:  String password = "supersecret123";
-   * After:   String password = "supersecret123"; // FIXME: hardcoded credential — use System.getenv()
+   * Before:  String password = "hunter2";
+   * After:   String password = "hunter2"; // FIXME: hardcoded credential — use System.getenv()
    *
    * This is an additive annotation fixer. Replacing the literal value
    * automatically is unsafe because the variable name, the property key, and

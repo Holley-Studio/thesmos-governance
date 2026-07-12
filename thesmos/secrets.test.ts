@@ -6,6 +6,7 @@ import {
   isDirectEnvAccess,
   extractBracketEnvVars,
   hasAdminClientInClientFile,
+  isClientComponentFile,
   isMissingApiAuth,
   hasRlsDisable,
   extractAllEnvVars,
@@ -104,6 +105,39 @@ describe('hasAdminClientInClientFile', () => {
   it('does not flag admin import in server-only file', () => {
     const content = `import { adminClient } from 'lib/supabase/admin'`;
     expect(hasAdminClientInClientFile(content)).toBe(false);
+  });
+
+  it("does not flag a 'use client' string that is not the leading directive", () => {
+    const content = `import { x } from 'y'\nconst fixture = "'use client'"\nimport { adminClient } from 'lib/supabase/admin'`;
+    expect(hasAdminClientInClientFile(content)).toBe(false);
+  });
+});
+
+describe('isClientComponentFile', () => {
+  it('accepts the directive as the first statement', () => {
+    expect(isClientComponentFile(`'use client'\nexport default function C() {}`)).toBe(true);
+  });
+
+  it('accepts the directive with double quotes and semicolon', () => {
+    expect(isClientComponentFile(`"use client";\nexport default function C() {}`)).toBe(true);
+  });
+
+  it('accepts the directive after comments and blank lines', () => {
+    expect(
+      isClientComponentFile(`// Copyright\n/* header\n   block */\n\n'use client'\nexport {}`),
+    ).toBe(true);
+  });
+
+  it('rejects the directive appearing after code', () => {
+    expect(isClientComponentFile(`import { x } from 'y'\n'use client'`)).toBe(false);
+  });
+
+  it('rejects a directive-looking string buried in code', () => {
+    expect(isClientComponentFile(`const s = "'use client'";\nexport {}`)).toBe(false);
+  });
+
+  it('rejects files with no directive', () => {
+    expect(isClientComponentFile(`export const a = 1;`)).toBe(false);
   });
 });
 
