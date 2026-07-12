@@ -4,6 +4,8 @@
 
 Thesmos is an AI governance and multi-agent orchestration platform built for teams shipping code with Claude, Cursor, Copilot, or Gemini. The VS Code extension brings the full Thesmos engine into your sidebar — inline findings, a live health score, and a council of specialized AI agents, all governed by 1,137 rules that run on every turn.
 
+**[Pantheon Pro →](https://holleystudio.gumroad.com/l/thesmos-pantheon)** · 40 specialist agents · 1,075 rules · Free Essentials tier included with the extension
+
 ---
 
 ## Key Features

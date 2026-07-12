@@ -13,6 +13,8 @@ Thesmos is a source-available code governance toolkit that watches AI-generated 
 
 Built by [Holley Studio](https://holley.studio) — Thesmos governs its own repository; every PR merged here passed its own gate. Check the [Actions tab](https://github.com/Holley-Studio/thesmos-governance/actions) for proof.
 
+**[Get Pantheon Pro →](https://holleystudio.gumroad.com/l/thesmos-pantheon)** · 40 specialist agents · 1,075 rules · Free Essentials tier always available
+
 ---
 
 ## Why Thesmos
