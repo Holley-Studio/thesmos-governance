@@ -52,11 +52,11 @@ Each folder includes step-by-step INSTALL.md. Setup takes under 5 minutes.
 
 ## Own it once. Free essentials, or everything for $79.
 
-Thesmos ships free, forever: the governance CLI with **288 Essentials rules** (every BLOCKER + the full AI-code safety net) and **5 starter agents** — Zeus, Athena, Argus, Apollo, Hephaestus — across 9 platforms, no account required.
+Thesmos ships free, forever: the governance CLI with **288 Essentials rules** (every BLOCKER + the full AI-code safety net) and **6 starter agents** — Zeus, Athena, Argus, Apollo, Hephaestus, and Hebe for support — across 9 platforms, no account required.
 
 The **Full Pantheon** is a single one-time payment: **$79** — the complete **1,137-rule governance engine**, all **67 agents**, all 10 platforms, the VS Code extension, all 13 ChatGPT knowledge clusters, all 3 Claude.ai council bundles, and lifetime updates. No subscription. No recurring charge. Ever.
 
-Want to feel it work before you spend anything? Download the free **Essentials** agent pack — 5 agents across 9 platforms — at [holley.studio](https://holley.studio).
+Want to feel it work before you spend anything? Download the free **Essentials** agent pack — 6 agents across 9 platforms — at [holley.studio](https://holley.studio).
 
 ---
 

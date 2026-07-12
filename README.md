@@ -166,7 +166,7 @@ Rules are organized into 17 categories:
 | Imports | 20 | Barrel file cycles, deep internal imports |
 | Database | 23 | Missing transactions, unindexed foreign keys |
 
-Every rule ships with a paired regression test — a false-positive fixture that must **not** fire and a true-positive fixture that must fire (policy in [CONTRIBUTING.md](CONTRIBUTING.md)). As of this writing that's **2,827 passing tests** across 79 test files, verified on every PR.
+Every rule is covered by the regression suite — **3,105 passing tests across 85 test files** in the core engine (as of 2026-07-12), verified on every PR. The paired-fixture policy (a true-positive fixture that must fire and a false-positive fixture that must not, per [CONTRIBUTING.md](CONTRIBUTING.md)) covers most of the catalog; completing per-rule `detect()` fixtures for every BLOCKER rule is tracked openly in [issue #96](https://github.com/Holley-Studio/thesmos-governance/issues/96) and `.thesmos/known-gaps/detect-fixture-suite.md`.
 
 ---
 

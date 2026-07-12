@@ -4,7 +4,7 @@
  * Bundles exported agent files into downloadable ZIPs — two tiers only
  * (Operation Sovereign Gate retired the $49 Founders/Agencies verticals):
  *
- *   website/downloads/thesmos-starter-agents.zip — 5 free agents, all platforms
+ *   website/downloads/thesmos-starter-agents.zip — 6 free agents, all platforms
  *   dist-packs/thesmos-pantheon-agents.zip        — ALL agents + the premium
  *     engine unlock (premium/pack.json — flips the CLI from the 288-rule free
  *     Essentials tier to the full 1,137-rule engine). Paid, Gumroad only.
@@ -410,7 +410,7 @@ Gumroad library. Questions: holley42@yahoo.com
 const ROOT_README = (agentCount: number, tier: 'starter' | 'pantheon'): string => `# Thesmos ${tier === 'starter' ? 'Starter Pack' : 'Full Pantheon'} — Agent Bundle
 
 ${tier === 'starter'
-  ? `This package contains **5 free starter agents** from the Thesmos Pantheon.
+  ? `This package contains **6 free starter agents** from the Thesmos Pantheon.
 These are the best agents to start with — Zeus orchestrates, Athena strategises,
 Argus handles security, Apollo writes, and Hephaestus designs.`
   : `This package contains **${agentCount} agents** from the complete Thesmos Pantheon —

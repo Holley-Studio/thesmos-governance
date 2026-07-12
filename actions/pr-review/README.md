@@ -25,6 +25,13 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
+> **Security — use `pull_request`, not `pull_request_target`.** The
+> `pull_request_target` event grants an elevated base-repo token; combined
+> with a checkout of the PR head it lets a fork PR run attacker-controlled
+> code with write access (CVE-class privilege escalation, see GHA_002).
+> This action needs only the standard `pull_request` event with the
+> minimal permissions shown above.
+
 ## Inputs
 
 | Input | Required | Default | Description |
