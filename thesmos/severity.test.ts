@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { CONFIG_DEFAULTS } from './config';
-import type { Finding, Severity } from './types';
+import { CONFIG_DEFAULTS, loadConfig } from './config';
+import { THESMOS_RULES } from './rules/registry';
+import type { Finding, Severity, SeverityRule } from './types';
 import {
   classifySeverity,
   shouldFail,
@@ -18,8 +19,8 @@ function makeFinding(severity: Finding['severity'], category = 'test'): Finding 
 }
 
 describe('classifySeverity', () => {
-  it('returns BLOCKER for direct_env_access', () => {
-    expect(classifySeverity('direct_env_access', RULES)).toBe('BLOCKER');
+  it('returns LOW for direct_env_access', () => {
+    expect(classifySeverity('direct_env_access', RULES)).toBe('LOW');
   });
 
   it('returns HIGH for missing_api_auth', () => {
@@ -106,5 +107,47 @@ describe('sortFindings', () => {
     const r1 = JSON.stringify(sortFindings(findings));
     const r2 = JSON.stringify(sortFindings(findings));
     expect(r1).toBe(r2);
+  });
+});
+
+// ── BLOCKER severity regression ───────────────────────────────────────────────
+// This suite is the regression anchor for the silent-downgrade gap found in the
+// Momus challenger audit (2026-07-11): 198 BLOCKER-declared rules were resolving
+// to MEDIUM because mergeConfig replaced severityRules instead of merging.
+//
+// These tests use loadConfig with a partial _preloaded config — exactly the
+// pattern that triggered the original gap. If the merge fix is ever reverted,
+// all ~200 it.each cases below will fail.
+
+describe('BLOCKER severity regression — mergeConfig must not downgrade', () => {
+  // A minimal user config that lists only a few overrides — the same pattern
+  // that silenced 198 BLOCKER rules under the old replace behavior.
+  const partialUserRules: SeverityRule[] = [
+    { category: 'missing_ts_extension', severity: 'LOW'    },
+    { category: 'floating_promise',     severity: 'MEDIUM' },
+    { category: 'sync_fs_in_handler',   severity: 'MEDIUM' },
+  ];
+
+  // loadConfig with _preloaded skips filesystem reads and the first-run ack write.
+  const merged = loadConfig('/fake/root', { severityRules: partialUserRules });
+  const blockerRules = THESMOS_RULES.filter((r) => r.severity === 'BLOCKER');
+
+  it('registry contains ≥200 BLOCKER-declared rules', () => {
+    expect(blockerRules.length).toBeGreaterThanOrEqual(200);
+  });
+
+  it.each(blockerRules.map((r) => [r.id, r.category] as const))(
+    '[%s] %s resolves to BLOCKER after merging with partial user config',
+    (_id, category) => {
+      expect(classifySeverity(category, merged.severityRules)).toBe('BLOCKER');
+    },
+  );
+
+  it('user overrides in partial config still win — LOW stays LOW after merge', () => {
+    expect(classifySeverity('missing_ts_extension', merged.severityRules)).toBe('LOW');
+  });
+
+  it('user overrides in partial config still win — MEDIUM stays MEDIUM after merge', () => {
+    expect(classifySeverity('floating_promise', merged.severityRules)).toBe('MEDIUM');
   });
 });

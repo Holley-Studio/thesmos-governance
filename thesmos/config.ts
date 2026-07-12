@@ -1,9 +1,9 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import type { ThesmosConfig } from './types';
+import type { ThesmosConfig, SeverityRule } from './types';
 import { THESMOS_RULES } from './rules/registry';
 import { resolveTier } from './tiers';
 
@@ -116,6 +116,28 @@ export const CONFIG_DEFAULTS: ThesmosConfig = {
   },
 };
 
+// ── Severity rule helpers ─────────────────────────────────────────────────────
+
+/** Apply user-specified severity overrides on top of the full default rule list.
+ * User entries win; rules not mentioned keep their registry-declared severity.
+ * This is a merge, not a replace — fixes the silent-BLOCKER-downgrade gap.
+ */
+function mergeSeverityRules(base: SeverityRule[], overrides: SeverityRule[]): SeverityRule[] {
+  const map = new Map(base.map((r) => [r.category, r.severity]));
+  for (const r of overrides) map.set(r.category, r.severity);
+  return Array.from(map, ([category, severity]) => ({ category, severity }));
+}
+
+/** Count BLOCKER-declared rules that a partial user config would have silenced
+ * to MEDIUM under the old replace-behavior. Used for the first-run notice.
+ */
+function countSilencedBlockers(userRules: SeverityRule[]): number {
+  const userCategories = new Set(userRules.map((r) => r.category));
+  return THESMOS_RULES.filter(
+    (r) => r.severity === 'BLOCKER' && !userCategories.has(r.category),
+  ).length;
+}
+
 /**
  * Load and merge config.json with defaults.
  * Accepts an optional pre-parsed object (for tests that bypass fs).
@@ -146,8 +168,8 @@ export function loadConfig(
     raw = { ...preset, ...localOverrides };
   }
 
-  // Deep merge: scalars from raw override defaults; arrays from raw replace defaults
-  return {
+  // Deep merge: scalars from raw override defaults; severityRules merged (not replaced).
+  const merged = {
     ...CONFIG_DEFAULTS,
     ...raw,
     doctor: {
@@ -178,7 +200,10 @@ export function loadConfig(
       ? (raw.secretPatterns as string[])
       : CONFIG_DEFAULTS.secretPatterns,
     severityRules: Array.isArray(raw.severityRules)
-      ? (raw.severityRules as typeof CONFIG_DEFAULTS.severityRules)
+      ? mergeSeverityRules(
+          CONFIG_DEFAULTS.severityRules,
+          raw.severityRules as typeof CONFIG_DEFAULTS.severityRules,
+        )
       : CONFIG_DEFAULTS.severityRules,
     criticalLibPaths: Array.isArray(raw.criticalLibPaths)
       ? (raw.criticalLibPaths as string[])
@@ -197,6 +222,26 @@ export function loadConfig(
     // THESMOS_TIER env → explicit config.tier → premium-pack marker → 'free'.
     tier: resolveTier(raw.tier as ('free' | 'premium' | undefined), root),
   } as ThesmosConfig;
+
+  // First-run upgrade notice — fires once per project after the severity merge fix
+  // ships. Skipped in test/preloaded mode and in environments without a .thesmos/ dir.
+  if (!_preloaded && Array.isArray(raw.severityRules)) {
+    const ackPath = join(root, '.thesmos', '.severity-fix-ack');
+    if (!existsSync(ackPath)) {
+      const silenced = countSilencedBlockers(raw.severityRules as SeverityRule[]);
+      if (silenced > 0) {
+        process.stderr.write(
+          `[thesmos] ℹ️  ${silenced} rules now enforce as BLOCKER that were previously ` +
+          `silent under your config — see CHANGELOG.md for details.\n`,
+        );
+        try {
+          writeFileSync(ackPath, new Date().toISOString() + '\n', 'utf8');
+        } catch { /* best effort — read-only FS, CI environments */ }
+      }
+    }
+  }
+
+  return merged;
 }
 
 /** Type guard: minimal required-key check */

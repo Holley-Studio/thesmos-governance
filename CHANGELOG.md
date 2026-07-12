@@ -3,6 +3,57 @@
 All notable changes to the Pantheon agent bundles and tooling. Buyers get every
 update free, forever — re-download from your Gumroad library.
 
+## 2026-07 — Argus Awakens (severity resolution fix)
+
+### Fixed
+
+**Severity resolution gap** — found: internal Momus challenger audit, 2026-07-12.
+
+Any project with a `severityRules` array in `.thesmos/config.json` was silently
+running up to 198 BLOCKER-declared rules at MEDIUM severity. Those rules were not
+blocking CI. They appeared in scan output but at the wrong severity level, and
+`evaluateGovernFindings()` filtered them out before the exit-code check.
+
+**Root cause:** `mergeConfig()` in `config.ts` replaced the full 212-entry severity
+default with the user's partial override list. Any rule not in that list fell back to
+`SEVERITY_DEFAULT = 'MEDIUM'` in `classifySeverity()`, ignoring the rule's own
+declared severity.
+
+**The fix:** `mergeConfig()` now merges user `severityRules` on top of all registered
+rule defaults. User overrides still win. Rules not mentioned in your config now run
+at their registry-declared severity. This is implemented as `mergeSeverityRules()` in
+`config.ts` — a Map-based merge where user entries overwrite base entries and the
+remainder of the 212+ base entries are preserved.
+
+**What this means in practice:**
+- Rules you have explicitly configured: no change.
+- Rules you have NOT configured: previously ran at MEDIUM, now run at their declared
+  severity. For the 198 rules that declare BLOCKER, this means they now block CI.
+- If any of those 198 rules fire on your codebase, you'll see new CI failures on
+  the first scan after upgrading. Findings were already being reported; only the
+  severity and CI gate behavior change.
+
+**First-run notice:** On the first command after upgrading, if your config silences
+any BLOCKER rules under the old behavior, you'll see a one-time message on stderr:
+
+> [thesmos] ℹ️  N rules now enforce as BLOCKER that were previously silent under
+> your config — see CHANGELOG.md for details.
+
+**To verify the fix yourself:** Remove all entries from `severityRules` in your
+`.thesmos/config.json` (or delete the array entirely), run `thesmos scan`, and
+confirm that BLOCKER-declared rules still produce BLOCKER findings. Before this fix,
+they produced MEDIUM findings with no config entries.
+
+**Regression test added:** `thesmos/severity.test.ts` — `it.each` over all 200+
+BLOCKER-declared rules, asserting each resolves to BLOCKER after merging with a
+partial user config. This test would have caught the original 198-rule gap.
+
+**Deferred:** Per-rule `detect()` fixture suite is tracked in
+[issue #96](https://github.com/Holley-Studio/thesmos-governance/issues/96) and
+documented at `.thesmos/known-gaps/detect-fixture-suite.md`.
+
+---
+
 ## 2026-07 — Sovereign Gate
 
 ### Changed
