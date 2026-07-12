@@ -5,7 +5,7 @@
  * FREE ("Essentials"): every BLOCKER-severity rule plus the complete AI-code
  * safety net (VIBE_*, AI_*, SLOP_*) regardless of severity. This is the set that
  * stops disasters — the code that gets you breached, owned, or shipped broken by
- * an AI tool. ~289 rules.
+ * an AI tool. ~288 rules.
  *
  * PREMIUM ($79, lifetime): the full 1,137-rule engine — every framework
  * (React/Next/Prisma/Django/Go/Rust/…), the compliance packs (GDPR/HIPAA/EU AI

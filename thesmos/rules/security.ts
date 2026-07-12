@@ -739,7 +739,7 @@ export const SECURITY_RULES: ThesmosRule[] = [
     explain: {
       why: 'Hardcoded credentials are committed to git history permanently. Even if "only for dev", they often appear unchanged in staging or production. Automated scanners find them in minutes.',
       commonViolations: ["const ADMIN_PASS = 'admin123'", "password: 'password'", "apiKey = 'test-key-do-not-use'"],
-      goodExample: "const adminPass = process['env' as 'env']['ADMIN_PASSWORD'];",
+      goodExample: 'const adminPass = process.env.ADMIN_PASSWORD; // better: read via a schema-validated env module (env.ts)',
       badExample: "const DEFAULT_ADMIN = { email: 'admin@example.com', password: 'admin123' };  // hardcoded",
       relatedPlaybooks: ['secret-management.md'],
       relatedAgents: ['security-reviewer'],

@@ -66,9 +66,9 @@ describe('THESMOS_RULES', () => {
     expect(getRulesBySeverity(RULES, 'HIGH').length).toBeGreaterThan(0);
   });
 
-  it('direct_env_access is a BLOCKER', () => {
+  it('direct_env_access is LOW — a maintainability nudge, not a gate', () => {
     const rule = RULES.find((r) => r.category === 'direct_env_access');
-    expect(rule?.severity).toBe('BLOCKER');
+    expect(rule?.severity).toBe('LOW');
   });
 
   it('missing_api_auth is HIGH', () => {
@@ -124,8 +124,8 @@ describe('getRulesByTag', () => {
     expect(found.every((r) => r.tags.includes('security'))).toBe(true);
   });
 
-  it('includes ENV_001 under the security tag', () => {
-    expect(getRulesByTag(RULES, 'security').some((r) => r.id === 'ENV_001')).toBe(true);
+  it('includes ENV_001 under the maintainability tag', () => {
+    expect(getRulesByTag(RULES, 'maintainability').some((r) => r.id === 'ENV_001')).toBe(true);
   });
 
   it('returns empty array for unknown tag', () => {
@@ -341,7 +341,7 @@ describe('buildAdapterContent', () => {
     expect(result).toContain('Manual top.');
     expect(result).toContain('Manual footer.');
     expect(result).not.toContain('OLD RULES CONTENT');
-    expect(result).toContain('[ENV_001]');
+    expect(result).toContain('[SEC_003]');
   });
 
   it('is idempotent — applying twice produces identical output', () => {

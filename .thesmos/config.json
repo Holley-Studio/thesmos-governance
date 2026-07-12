@@ -40,78 +40,24 @@
     "HIGH"
   ],
   "severityRules": [
-    {
-      "category": "ai_output_used_as_command",
-      "severity": "HIGH"
-    },
-    {
-      "category": "missing_ts_extension",
-      "severity": "LOW"
-    },
-    {
-      "category": "n_plus_one_query",
-      "severity": "LOW"
-    },
-    {
-      "category": "log_in_tight_loop",
-      "severity": "LOW"
-    },
-    {
-      "category": "floating_promise",
-      "severity": "MEDIUM"
-    },
-    {
-      "category": "hardcoded_credentials",
-      "severity": "HIGH"
-    },
-    {
-      "category": "secret_in_diff",
-      "severity": "HIGH"
-    },
-    {
-      "category": "child_process_shell_injection",
-      "severity": "HIGH"
-    },
-    {
-      "category": "ssrf_fetch",
-      "severity": "HIGH"
-    },
-    {
-      "category": "ssrf_unvalidated_url",
-      "severity": "HIGH"
-    },
-    {
-      "category": "path_traversal",
-      "severity": "HIGH"
-    },
-    {
-      "category": "sql_injection",
-      "severity": "HIGH"
-    },
-    {
-      "category": "shell_injection",
-      "severity": "HIGH"
-    },
-    {
-      "category": "vibe_ssrf",
-      "severity": "HIGH"
-    },
-    {
-      "category": "vibe_sql_template_injection",
-      "severity": "HIGH"
-    },
-    {
-      "category": "vibe_path_traversal",
-      "severity": "HIGH"
-    },
-    {
-      "category": "sync_fs_in_handler",
-      "severity": "MEDIUM"
-    },
-    {
-      "category": "missing_api_auth",
-      "severity": "HIGH"
-    }
+    { "category": "ai_output_used_as_command",    "severity": "BLOCKER" },
+    { "category": "hardcoded_credentials",         "severity": "BLOCKER" },
+    { "category": "secret_in_diff",                "severity": "BLOCKER" },
+    { "category": "child_process_shell_injection", "severity": "BLOCKER" },
+    { "category": "ssrf_fetch",                    "severity": "BLOCKER" },
+    { "category": "path_traversal",                "severity": "BLOCKER" },
+    { "category": "sql_injection",                 "severity": "BLOCKER" },
+    { "category": "shell_injection",               "severity": "BLOCKER" },
+    { "category": "vibe_ssrf",                     "severity": "BLOCKER" },
+    { "category": "vibe_sql_template_injection",   "severity": "BLOCKER" },
+    { "category": "vibe_path_traversal",           "severity": "BLOCKER" },
+    { "category": "ssrf_unvalidated_url",          "severity": "BLOCKER" },
+    { "category": "missing_api_auth",              "severity": "HIGH"    },
+    { "category": "missing_ts_extension",          "severity": "LOW"     },
+    { "category": "n_plus_one_query",              "severity": "LOW"     },
+    { "category": "log_in_tight_loop",             "severity": "LOW"     },
+    { "category": "floating_promise",              "severity": "MEDIUM"  },
+    { "category": "sync_fs_in_handler",            "severity": "MEDIUM"  }
   ],
   "routing": {
     "mode": "auto",
@@ -119,5 +65,14 @@
   },
   "context1M": {
     "allow1M": false
+  },
+  "tokenBudget": {
+    "enabled": true,
+    "sessionMaxTokens": 2000000,
+    "sessionMaxCostUSD": 15,
+    "dailyMaxCostUSD": 75,
+    "projectMaxCostUSD": 1000,
+    "alertAt": 0.8,
+    "hardStopAt": 1.0
   }
 }

@@ -9,6 +9,33 @@
             "command": "node .claude/hooks/agent-activity.cjs"
           }
         ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx --no-install thesmos claude:govern check"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx --no-install thesmos claude:govern check"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx --no-install thesmos claude:govern check"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -20,11 +47,41 @@
             "command": "node .claude/hooks/agent-activity.cjs"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx --no-install thesmos claude:govern budget-check"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx --no-install thesmos drift --quiet 2>&1 || true"
+          }
+        ]
       }
     ]
   },
   "statusLine": {
     "type": "command",
     "command": "bash .claude/statusline-pantheon.sh"
+  },
+  "_thesmos_governance": "1.0.0",
+  "permissions": {
+    "allow": [
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "mcp__plugin_playwright_playwright__browser_resize",
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "mcp__plugin_playwright_playwright__browser_close",
+      "Bash(npx tsc --noEmit)"
+    ]
   }
 }

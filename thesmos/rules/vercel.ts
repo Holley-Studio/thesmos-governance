@@ -107,7 +107,7 @@ export const VERCEL_RULES: ThesmosRule[] = [
         'NEXT_PUBLIC_API_SECRET="sk-abc..."',
         'NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY="..."',
       ],
-      goodExample: 'DATABASE_URL="postgres://..."  # server-only, no NEXT_PUBLIC_ prefix',
+      goodExample: 'DATABASE_URL="postgres://..."      # server-only, no NEXT_PUBLIC_ prefix\nNEXT_PUBLIC_SUPABASE_ANON_KEY="..."  # OK — anon key is public by design (RLS-gated)',
       badExample: 'NEXT_PUBLIC_DATABASE_URL="postgres://..."  # ❌ ships to browser',
       relatedPlaybooks: ['nextjs-env-vars.md', 'secret-management.md'],
       relatedAgents: ['security-reviewer'],
@@ -116,6 +116,10 @@ export const VERCEL_RULES: ThesmosRule[] = [
     detect({ config, changedFiles = [] }: DetectInput): Finding[] {
       const severity = classifySeverity('vercel_server_secret_public_prefix', config.severityRules);
       const SENSITIVE_PUBLIC_RE = /NEXT_PUBLIC_(?:[A-Z_]*(?:SECRET|KEY|PASSWORD|TOKEN|DATABASE|SERVICE_ROLE|PRIVATE)[A-Z_]*)/g;
+      // Public-by-design keys are MEANT to ship to the browser: Supabase anon
+      // key (RLS-gated), Stripe/generic publishable keys, VAPID public keys,
+      // captcha site keys. Flagging them teaches users to distrust real docs.
+      const PUBLIC_BY_DESIGN_RE = /NEXT_PUBLIC_[A-Z_]*(?:ANON_KEY|PUBLISHABLE|PUBLIC_KEY|SITE_KEY)[A-Z_]*/i;
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
         if (!isSourceFile(path) && !path.includes('.env')) continue;
@@ -123,6 +127,7 @@ export const VERCEL_RULES: ThesmosRule[] = [
         for (let i = 0; i < lines.length; i++) {
           SENSITIVE_PUBLIC_RE.lastIndex = 0;
           const m = SENSITIVE_PUBLIC_RE.exec(lines[i]!);
+          if (m && PUBLIC_BY_DESIGN_RE.test(m[0])) continue;
           if (m) {
             findings.push({
               severity,

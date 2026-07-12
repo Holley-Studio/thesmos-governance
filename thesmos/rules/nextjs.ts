@@ -1573,13 +1573,13 @@ export const NEXTJS_RULES: ThesmosRule[] = [
     tags: ['nextjs', 'security', 'secrets', 'env'],
     sinceVersion: '2.1.0',
     explain: {
-      why: 'NEXT_PUBLIC_ variables are embedded in the client-side JavaScript bundle at build time. Any variable prefixed with NEXT_PUBLIC_ is readable by anyone who inspects the browser bundle — including secrets, API keys, and private configuration.',
+      why: 'NEXT_PUBLIC_ variables are embedded in the client-side JavaScript bundle at build time. Any variable prefixed with NEXT_PUBLIC_ is readable by anyone who inspects the browser bundle — including secrets, API keys, and private configuration. Keys that are public BY DESIGN are exempt: Supabase anon keys (RLS-protected), Stripe publishable keys, reCAPTCHA/Turnstile site keys, and similar browser-intended credentials belong under NEXT_PUBLIC_.',
       commonViolations: [
         'NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=...',
         'NEXT_PUBLIC_API_SECRET=...',
         'NEXT_PUBLIC_STRIPE_SECRET_KEY=...',
       ],
-      goodExample: 'NEXT_PUBLIC_SUPABASE_URL=...  # public\nSUPABASE_SERVICE_ROLE_KEY=...  # private, no prefix',
+      goodExample: 'NEXT_PUBLIC_SUPABASE_URL=...       # public\nNEXT_PUBLIC_SUPABASE_ANON_KEY=...  # public by design (RLS enforces access)\nSUPABASE_SERVICE_ROLE_KEY=...      # private, no prefix',
       badExample: 'NEXT_PUBLIC_API_SECRET=sk-...  // ❌ shipped to browser',
       relatedPlaybooks: ['nextjs-security.md', 'secret-management.md'],
       relatedAgents: ['security-reviewer'],
@@ -1588,13 +1588,17 @@ export const NEXTJS_RULES: ThesmosRule[] = [
       const severity = classifySeverity('next_env_public_secret', config.severityRules);
       const findings: Finding[] = [];
       const PUBLIC_SECRET_RE = /NEXT_PUBLIC_\w*(?:SECRET|KEY|PRIVATE|SERVICE_ROLE|STRIPE_SECRET|OPENAI_API|ANTHROPIC|PASSWORD|TOKEN_SECRET)\w*/i;
+      // Keys that are public BY DESIGN — safe (and intended) to ship to the
+      // browser: Supabase anon key (RLS-gated), Stripe/generic publishable
+      // keys, VAPID/other explicit public keys, captcha site keys.
+      const PUBLIC_BY_DESIGN_RE = /NEXT_PUBLIC_\w*(?:ANON_KEY|PUBLISHABLE|PUBLIC_KEY|SITE_KEY)\w*/i;
       for (const { path, content } of changedFiles) {
         if (!path.endsWith('.env') && !path.endsWith('.env.local') && !path.endsWith('.env.example') && !path.endsWith('.env.production')) continue;
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]!;
           if (isCommentLine(line)) continue;
-          if (PUBLIC_SECRET_RE.test(line)) {
+          if (PUBLIC_SECRET_RE.test(line) && !PUBLIC_BY_DESIGN_RE.test(line)) {
             findings.push({ severity, category: 'next_env_public_secret', file: path, line: i + 1, message: 'Secret key stored with NEXT_PUBLIC_ prefix — exposed to client bundle.', suggestion: 'Remove NEXT_PUBLIC_ prefix. Access the secret only in Server Components, Server Actions, or API routes.' });
           }
         }

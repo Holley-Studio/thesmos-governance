@@ -297,7 +297,7 @@ export const VIBE_CODING_RULES: ThesmosRule[] = [
         'apiKey: "your-api-key-here"',
         'Authorization: `Bearer ${hardcodedToken}`',
       ],
-      goodExample: "const apiKey = process['env' as 'env']['OPENAI_API_KEY'];",
+      goodExample: 'const apiKey = process.env.OPENAI_API_KEY; // better: read via a schema-validated env module (env.ts)',
       badExample: "const OPENAI = new OpenAI({ apiKey: 'sk-proj-yourkey' }); // ❌",
       relatedPlaybooks: ['secret-management.md'],
       relatedAgents: ['secret-scanner'],
@@ -321,7 +321,7 @@ export const VIBE_CODING_RULES: ThesmosRule[] = [
             findings.push({
               severity: sev, category: 'vibe_hardcoded_secret', file: path, line: i + 1,
               message: 'Potential hardcoded API key or secret — AI placeholder values get committed.',
-              suggestion: 'Move to an environment variable and access via process[\'env\' as \'env\'][\'VAR_NAME\'].',
+              suggestion: 'Move the value to an environment variable (process.env.VAR_NAME — ideally read via a schema-validated env module).',
             });
           }
         }

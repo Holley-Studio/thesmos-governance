@@ -4,9 +4,9 @@
  * Bundles exported agent files into downloadable ZIPs — two tiers only
  * (Operation Sovereign Gate retired the $49 Founders/Agencies verticals):
  *
- *   website/downloads/thesmos-starter-agents.zip — 5 free agents, all platforms
+ *   website/downloads/thesmos-starter-agents.zip — 6 free agents, all platforms
  *   dist-packs/thesmos-pantheon-agents.zip        — ALL agents + the premium
- *     engine unlock (premium/pack.json — flips the CLI from the 289-rule free
+ *     engine unlock (premium/pack.json — flips the CLI from the 288-rule free
  *     Essentials tier to the full 1,137-rule engine). Paid, Gumroad only.
  *
  * The paid bundle is NOT committed to the repo or served from the public
@@ -365,12 +365,12 @@ Learn more: https://agents.md
 // The $79 Full Pantheon bundle ships premium/pack.json — the distribution-gated
 // marker tiers.ts looks for (~/.thesmos/premium/pack.json or a project's
 // .thesmos/premium/pack.json). Its presence flips the CLI from the free
-// 289-rule Essentials tier to the full 1,137-rule engine. No license server,
+// 288-rule Essentials tier to the full 1,137-rule engine. No license server,
 // no key validation — buying IS the unlock (see thesmos/tiers.ts).
 
 const PREMIUM_INSTALL_GUIDE = `# Unlock the Full Engine — 1,137 rules
 
-The free Thesmos CLI runs the 289-rule Essentials tier (every BLOCKER + the
+The free Thesmos CLI runs the 288-rule Essentials tier (every BLOCKER + the
 complete AI-code safety net). This folder unlocks the rest — all frameworks,
 the compliance packs (GDPR / HIPAA / EU AI Act / DORA), and every quality and
 performance rule.
@@ -410,19 +410,19 @@ Gumroad library. Questions: holley42@yahoo.com
 const ROOT_README = (agentCount: number, tier: 'starter' | 'pantheon'): string => `# Thesmos ${tier === 'starter' ? 'Starter Pack' : 'Full Pantheon'} — Agent Bundle
 
 ${tier === 'starter'
-  ? `This package contains **5 free starter agents** from the Thesmos Pantheon.
+  ? `This package contains **6 free starter agents** from the Thesmos Pantheon.
 These are the best agents to start with — Zeus orchestrates, Athena strategises,
 Argus handles security, Apollo writes, and Hephaestus designs.`
   : `This package contains **${agentCount} agents** from the complete Thesmos Pantheon —
 every specialist, every domain, every platform — plus the **premium engine
-unlock** that flips the free 289-rule Essentials CLI to the full 1,137-rule
+unlock** that flips the free 288-rule Essentials CLI to the full 1,137-rule
 engine. Start with premium/INSTALL.md (10 seconds), then deploy the gods.`}
 
 ## What's inside
 
 | Folder | Platform | File type |
 |---|---|---|
-${tier === 'pantheon' ? '| premium/ | Full-engine unlock — 289 → 1,137 rules (see premium/INSTALL.md) | .json |\n' : ''}| for-claude/ | Claude Code (+ PANTHEON.md routing & live activity hooks) | .md |
+${tier === 'pantheon' ? '| premium/ | Full-engine unlock — 288 → 1,137 rules (see premium/INSTALL.md) | .json |\n' : ''}| for-claude/ | Claude Code (+ PANTHEON.md routing & live activity hooks) | .md |
 | for-claude-ai/ | Claude.ai Projects (Zeus orchestrator + council bundles) | .txt |
 | for-chatgpt/ | ChatGPT Custom GPTs (Zeus orchestrator + knowledge files) | .txt |
 | for-gemini/ | Gemini Gems (+ Zeus Receptionist) | .txt |
@@ -483,7 +483,10 @@ function collectAgentIds(srcDir: string, ext: string, filterFn?: (id: string) =>
 
 const VSIX_VERSION = '1.8.0'
 const VSIX_PATH = resolve(__dirname, `../../extensions/vscode/thesmos-governance-vscode-${VSIX_VERSION}.vsix`)
-const CLAUDE_EXTRAS_DIR = resolve(__dirname, '../../pantheon/exports/claude-extras')
+// Hand-authored (not generated) kit sources live in pantheon/sources/ so they
+// are version-controlled — unlike pantheon/exports/, which is regenerable and
+// gitignored. Do not move this back under exports/.
+const CLAUDE_EXTRAS_DIR = resolve(__dirname, '../../pantheon/sources/claude-extras')
 
 const VSIX_INSTALL_GUIDE = `# Thesmos Governance — VS Code Extension
 
@@ -619,7 +622,7 @@ function buildBundle(
 
   // Premium engine unlock — the marker tiers.ts's hasPremiumPack() looks for.
   // Paid bundle only; its presence in ~/.thesmos/premium/ (or a project's
-  // .thesmos/premium/) flips the CLI from 289 Essentials rules to all 1,137.
+  // .thesmos/premium/) flips the CLI from 288 Essentials rules to all 1,137.
   if (tier === 'pantheon') {
     const premiumDir = join(bundleDir, 'premium')
     ensureDir(premiumDir)
@@ -688,7 +691,7 @@ function main(): void {
   console.log('  1. Upload dist-packs/thesmos-pantheon-agents.zip to Gumroad as the Full Pantheon product ($79)')
   console.log('  2. Only website/downloads/thesmos-starter-agents.zip is committed to the repo — the paid')
   console.log('     bundle in dist-packs/ is gitignored and distributed exclusively through Gumroad')
-  console.log('  3. The zip\'s premium/pack.json is the full-engine unlock (289 → 1,137 rules) — see premium/INSTALL.md\n')
+  console.log('  3. The zip\'s premium/pack.json is the full-engine unlock (288 → 1,137 rules) — see premium/INSTALL.md\n')
 }
 
 main()

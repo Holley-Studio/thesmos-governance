@@ -1,6 +1,7 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 import type { ThesmosRule, DetectInput, Finding } from '../types';
 import { classifySeverity } from '../severity';
+import { isClientComponentFile } from '../secrets';
 import { SOURCE_EXT, TS_EXT, isTestPath, isCommentLine } from './helpers';
 
 export const IMPORT_RULES: ThesmosRule[] = [
@@ -171,7 +172,9 @@ export const IMPORT_RULES: ThesmosRule[] = [
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
         if (!/\.(tsx|jsx|ts|js)$/.test(path)) continue;
-        if (!content.includes("'use client'") && !content.includes('"use client"')) continue;
+        // Directive must actually lead the file — a "'use client'" string
+        // buried in fixtures or scanner source is not a client component.
+        if (!isClientComponentFile(content)) continue;
         const SERVER_MODULES = /from\s+['"](?:node:|@prisma\/client|better-sqlite3|bcrypt|argon2|jsonwebtoken)/;
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {

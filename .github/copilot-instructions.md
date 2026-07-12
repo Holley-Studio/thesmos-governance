@@ -10,13 +10,6 @@ When suggesting completions or reviewing code, enforce the following rules. Neve
 
 ### 🔴 BLOCKER
 
-**[ENV_001]** Use bracket-notation env access — process['env' as 'env']['VAR'] — never process.env.VAR dot notation.
-
-```ts
-// BAD:  const url = process.env.MY_VAR;
-// GOOD: const url = process['env' as 'env']['MY_VAR'];
-```
-
 **[SEC_001]** Never import the Supabase admin client in 'use client' files. Admin clients expose service-role keys to the browser.
 
 **[SEC_002]** Never disable Row Level Security. All Supabase tables must have RLS enabled with explicit policies.
@@ -378,6 +371,8 @@ When suggesting completions or reviewing code, enforce the following rules. Neve
 **[AGNT_014]** Agent autopilot config has no maxIterationsPerTask — tasks can loop indefinitely.
 
 **[AGNT_023]** Agent bash/edit tool granted without path restrictions — full filesystem access.
+
+**[AGNT_037]** 1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; use only when explicitly requested.
 
 **[DEP_001]** Dependency has a CRITICAL CVE — immediate upgrade required.
 
@@ -1167,8 +1162,6 @@ When suggesting completions or reviewing code, enforce the following rules. Neve
 **[AGNT_027]** .thesmos/audit.jsonl is being modified by the agent — audit trail must be append-only.
 
 **[AGNT_028]** Sub-agent spawned without forwarding parent session token — auth gap in agent chain.
-
-**[AGNT_037]** 1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; cost runaway risk.
 
 **[DEP_002]** Dependency has a HIGH severity CVE.
 
@@ -1989,6 +1982,13 @@ When suggesting completions or reviewing code, enforce the following rules. Neve
 
 
 ### 🔵 LOW
+
+**[ENV_001]** Read environment variables through one central, validated env module (e.g. env.ts with a schema) instead of scattering process.env.VAR reads across the codebase.
+
+```ts
+// BAD:  const url = process.env.DATABASE_URL; // scattered, unvalidated
+// GOOD: import { env } from '@/env'; const url = env.DATABASE_URL; // central + schema-validated
+```
 
 **[QUAL_001]** Remove console.log statements before merging. Use structured logging in production code.
 

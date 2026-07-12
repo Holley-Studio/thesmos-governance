@@ -20,13 +20,25 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-06T21:26:27.952Z",
+  "generatedAt": "2026-07-12T02:26:06.297Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
   "componentCount": 0,
   "sharedUiFiles": [],
   "designSystemFiles": [
+    "dist-packs/thesmos-pantheon-agents/for-chatgpt/techne-design-system-chatgpt-knowledge.txt",
+    "dist-packs/thesmos-pantheon-agents/for-chatgpt/techne-design-system-chatgpt.txt",
+    "dist-packs/thesmos-pantheon-agents/for-claude-ai/techne-design-system-claude-project.txt",
+    "dist-packs/thesmos-pantheon-agents/for-claude/skills/design-token-audit",
+    "dist-packs/thesmos-pantheon-agents/for-claude/skills/design-token-audit/SKILL.md",
+    "dist-packs/thesmos-pantheon-agents/for-claude/techne-design-system.md",
+    "dist-packs/thesmos-pantheon-agents/for-codex/techne-design-system.md",
+    "dist-packs/thesmos-pantheon-agents/for-copilot/techne-design-system.instructions.md",
+    "dist-packs/thesmos-pantheon-agents/for-copilot/techne-design-system.md",
+    "dist-packs/thesmos-pantheon-agents/for-cursor/techne-design-system.mdc",
+    "dist-packs/thesmos-pantheon-agents/for-gemini/techne-design-system-gemini.txt",
+    "dist-packs/thesmos-pantheon-agents/for-openai-api/techne-design-system-openai-assistant.json",
     "thesmos/catalog/agents/figma/techne-design-system.md",
     "thesmos/catalog/agents/reviewers/design-system-reviewer.md",
     "thesmos/catalog/skills/design-token-audit.md"
@@ -38,9 +50,15 @@
     "actions/pr-review/src/diff-lines.test.ts",
     "actions/pr-review/src/formatter.test.ts",
     "actions/pr-review/src/partition.test.ts",
+    "extensions/vscode/src/__tests__/checkpointManager.test.ts",
+    "extensions/vscode/src/__tests__/godMapper.test.ts",
+    "extensions/vscode/src/__tests__/permissionBridge.test.ts",
     "extensions/vscode/src/__tests__/sanitizer.test.ts",
+    "extensions/vscode/src/__tests__/savingsLedger.test.ts",
+    "extensions/vscode/src/__tests__/sessionHistory.test.ts",
     "extensions/vscode/src/__tests__/severityFilter.test.ts",
     "extensions/vscode/src/__tests__/watcher.test.ts",
+    "extensions/vscode/src/__tests__/workingState.test.ts",
     "thesmos/adapters.test.ts",
     "thesmos/advise.test.ts",
     "thesmos/ai-lint.test.ts",
@@ -59,6 +77,7 @@
     "thesmos/bin/commands/scan.test.ts",
     "thesmos/bin/lib/args.test.ts",
     "thesmos/bin/lib/git.test.ts",
+    "thesmos/bin/lib/oracle.test.ts",
     "thesmos/catalog.test.ts",
     "thesmos/ci-check.test.ts",
     "thesmos/claude-govern.test.ts",
@@ -91,6 +110,7 @@
     "thesmos/rules/design.test.ts",
     "thesmos/rules/django.test.ts",
     "thesmos/rules/dockerfile.test.ts",
+    "thesmos/rules/dora.test.ts",
     "thesmos/rules/eu-ai-act.test.ts",
     "thesmos/rules/github-actions.test.ts",
     "thesmos/rules/go.test.ts",
@@ -113,6 +133,7 @@
     "thesmos/rules/vercel.test.ts",
     "thesmos/rules/vibe-coding.test.ts",
     "thesmos/rules/websocket.test.ts",
+    "thesmos/savings.test.ts",
     "thesmos/scanner/files.test.ts",
     "thesmos/scanner/routes.test.ts",
     "thesmos/scanner/walker.test.ts",
@@ -139,7 +160,7 @@
     },
     {
       "file": "thesmos/rules/nextjs.ts",
-      "lines": 1606
+      "lines": 1610
     },
     {
       "file": "thesmos/rules/agents.ts",
@@ -147,11 +168,15 @@
     },
     {
       "file": "thesmos/fix.ts",
-      "lines": 1440
+      "lines": 1425
     },
     {
       "file": "thesmos/rules/vibe-coding.ts",
       "lines": 1418
+    },
+    {
+      "file": "extensions/vscode/src/chat/chatViewProvider.ts",
+      "lines": 1397
     },
     {
       "file": "thesmos/rules/database.ts",
@@ -194,6 +219,10 @@
       "lines": 1078
     },
     {
+      "file": "thesmos/scripts/export-agents.ts",
+      "lines": 1017
+    },
+    {
       "file": "thesmos/rules/terraform.ts",
       "lines": 1002
     },
@@ -206,12 +235,12 @@
       "lines": 990
     },
     {
-      "file": "thesmos/rules/design.test.ts",
+      "file": "extensions/vscode/src/chat/webview/chat.ts",
       "lines": 961
     },
     {
-      "file": "thesmos/scripts/export-agents.ts",
-      "lines": 953
+      "file": "thesmos/rules/design.test.ts",
+      "lines": 961
     },
     {
       "file": "thesmos/rules/ruby.test.ts",
@@ -243,7 +272,7 @@
     },
     {
       "file": "thesmos/init.ts",
-      "lines": 906
+      "lines": 915
     },
     {
       "file": "thesmos/bin/commands/pantheon.ts",
@@ -256,6 +285,14 @@
     {
       "file": "thesmos/rules/trpc.ts",
       "lines": 870
+    },
+    {
+      "file": "extensions/vscode/src/extension.ts",
+      "lines": 867
+    },
+    {
+      "file": "extensions/vscode/src/commands.ts",
+      "lines": 857
     },
     {
       "file": "thesmos/rules/rust.ts",
@@ -294,16 +331,8 @@
       "lines": 810
     },
     {
-      "file": "extensions/vscode/src/commands.ts",
-      "lines": 805
-    },
-    {
       "file": "thesmos/rules/csharp.test.ts",
       "lines": 805
-    },
-    {
-      "file": "extensions/vscode/src/extension.ts",
-      "lines": 803
     }
   ],
   "riskyFiles": [],
@@ -378,20 +407,20 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 408,
-      "lineCount": 123465
+      "fileCount": 1186,
+      "lineCount": 304023
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 321,
-      "lineCount": 123538
+      "fileCount": 346,
+      "lineCount": 128892
     },
     {
       "language": "JavaScript",
       "extension": ".js",
-      "fileCount": 4,
-      "lineCount": 244
+      "fileCount": 5,
+      "lineCount": 459
     }
   ],
   "detectedStacks": [
@@ -401,13 +430,13 @@
     "framework": "unknown",
     "auth": "none",
     "envVars": [
-      "${match[1]}",
       "ADMIN_PASSWORD",
       "AI_MODEL",
       "ALLOWED_ORIGIN",
       "ALLOWED_ORIGINS",
       "ANTHROPIC_API_KEY",
       "ANTHROPIC_KEY",
+      "API_BASE",
       "API_BASE_URL",
       "API_KEY",
       "API_SECRET",
@@ -428,13 +457,11 @@
       "INTERNAL_API_URL",
       "JWT_KEY",
       "JWT_SECRET",
-      "KEY",
       "LOG_LEVEL",
       "MCP_RESTRICTED_KEY",
       "MCP_SECRET",
       "MY_KEY",
       "MY_URL",
-      "MY_VAR",
       "NEXTAUTH_SECRET",
       "NEXT_PUBLIC_API_KEY",
       "NEXT_PUBLIC_API_SECRET",
@@ -445,6 +472,7 @@
       "NEXT_PUBLIC_SERVICE_ROLE_KEY",
       "NEXT_PUBLIC_SITE_URL",
       "NEXT_PUBLIC_STRIPE_SECRET_KEY",
+      "NEXT_PUBLIC_SUPABASE_URL",
       "NEXT_PUBLIC_SYSTEM_PROMPT",
       "NEXT_PUBLIC_URL",
       "NODE_ENV",
@@ -458,10 +486,12 @@
       "SECRET",
       "SHARED",
       "SHARED_KEY",
+      "SHELL",
       "STRIPE_SECRET",
       "STRIPE_SECRET_KEY",
       "STRIPE_WEBHOOK_SECRET",
       "SUPABASE_SERVICE_ROLE_KEY",
+      "THESMOS_PERM_SOCKET",
       "USERPROFILE",
       "VAR",
       "VAR_A",

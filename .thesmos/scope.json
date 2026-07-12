@@ -6,17 +6,25 @@
       "extensions/vscode/",
       "actions/pr-review/",
       "website/",
+      "growth/",
+      "pantheon/",
+      "docs/",
+      ".changeset/",
+      ".claude-plugin/",
       ".thesmos/",
       ".github/",
       ".cursor/",
       ".codex/",
+      "../../.claude/projects/-Users-MHolley-Desktop-thesmos-governance/memory/",
       "CLAUDE.md",
       "AGENTS.md",
       "GEMINI.md",
+      ".gitignore",
       "package.json",
       "package-lock.json",
       "LICENSE",
-      "README.md"
+      "README.md",
+      "CHANGELOG.md"
     ],
     "blockedPaths": [
       "node_modules/",
@@ -38,15 +46,14 @@
     ]
   },
   "operations": {
-    "allowDelete": false,
-    "allowGitPush": false,
+    "allowDelete": true,
+    "allowGitPush": true,
     "allowNetworkHosts": [
       "registry.npmjs.org",
       "api.github.com"
     ],
     "allowDatabaseWrites": false,
     "requireConfirmation": [
-      "git push",
       "npm publish",
       "git push --force"
     ]

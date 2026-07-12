@@ -21,17 +21,26 @@ export function matchesSecretPattern(line: string, patterns: string[]): string |
 }
 
 /**
- * Detect direct `process.env.VAR` dot-notation access (Thesmos Guard violation).
- * Returns the regex match (truthy) or null.
+ * Detect scattered `process.env.VAR` dot-notation access outside a central
+ * env module. Returns the regex match (truthy) or null.
  * Ignores lines in scripts/ — those are operator tooling, not app code.
+ *
+ * NEXT_PUBLIC_* and NODE_ENV are exempt: bundlers (Next.js, webpack, Vite's
+ * define) statically inline these at build time and ONLY recognize the
+ * literal dot-notation form — rewriting them breaks the build-time
+ * replacement and ships undefined to the browser.
  */
 export function isDirectEnvAccess(line: string): RegExpExecArray | null {
-  return /process\.env\.([A-Z_a-z][A-Z_a-z0-9]*)/.exec(line);
+  const match = /process\.env\.([A-Z_a-z][A-Z_a-z0-9]*)/.exec(line);
+  if (!match) return null;
+  if (match[1].startsWith('NEXT_PUBLIC_') || match[1] === 'NODE_ENV') return null;
+  return match;
 }
 
 /**
- * Detect bracket-notation env access — this is the CORRECT pattern.
- * Extracts the variable name(s) from `process['env' as 'env']['VAR']`.
+ * Extract variable name(s) from bracket-notation env access
+ * (`process['env' as 'env']['VAR']`) — a legacy pattern some governed repos
+ * still carry; env-var discovery must keep recognizing it.
  */
 export function extractBracketEnvVars(source: string): string[] {
   const re = /process\['env'\s+as\s+'env'\]\['([^']+)'\]/g;
@@ -44,13 +53,42 @@ export function extractBracketEnvVars(source: string): string[] {
 }
 
 /**
+ * True when the file genuinely declares the 'use client' directive — i.e. the
+ * first non-comment, non-blank statement is the directive. Next.js only honors
+ * it in that position, so a "'use client'" string anywhere else in the file
+ * (test fixtures, scanner source, docs) must not mark it as a client component.
+ */
+export function isClientComponentFile(content: string): boolean {
+  let inBlockComment = false;
+  for (const rawLine of content.split('\n', 30)) {
+    let line = rawLine.trim();
+    if (inBlockComment) {
+      const end = line.indexOf('*/');
+      if (end === -1) continue;
+      line = line.slice(end + 2).trim();
+      inBlockComment = false;
+    }
+    if (line === '' || line.startsWith('//')) continue;
+    if (line.startsWith('/*')) {
+      const end = line.indexOf('*/', 2);
+      if (end === -1) {
+        inBlockComment = true;
+        continue;
+      }
+      line = line.slice(end + 2).trim();
+      if (line === '') continue;
+    }
+    return /^['"]use client['"];?\s*$/.test(line);
+  }
+  return false;
+}
+
+/**
  * Detect admin client import pattern in a file's content.
  * Only relevant for client components (those with 'use client' directive).
  */
 export function hasAdminClientInClientFile(content: string): boolean {
-  const isClientComponent =
-    content.includes("'use client'") || content.includes('"use client"');
-  return isClientComponent && content.includes('supabase/admin');
+  return isClientComponentFile(content) && content.includes('supabase/admin');
 }
 
 /**
@@ -84,9 +122,9 @@ export function hasRlsDisable(content: string): boolean {
 
 /**
  * Extract ALL env var names from source — covers every access pattern:
- * - Approved bracket notation: process['env' as 'env']['VAR']
- * - Direct dot notation:       process.env.VAR  (violation, but still discovered)
- * - Vite env access:           import.meta.env.VAR
+ * - Legacy bracket notation: process['env' as 'env']['VAR']
+ * - Direct dot notation:     process.env.VAR
+ * - Vite env access:         import.meta.env.VAR
  * Returns a deduplicated, sorted list.
  */
 export function extractAllEnvVars(source: string): string[] {

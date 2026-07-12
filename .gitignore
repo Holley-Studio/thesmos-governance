@@ -23,6 +23,11 @@ build/
 *.log
 npm-debug.log*
 
+# Thesmos runtime artifacts (append-only usage log — per-machine, never committed)
+.thesmos/token-usage.jsonl
+# One-time upgrade ack — written by loadConfig on first run after severity merge fix
+.thesmos/.severity-fix-ack
+
 # Editor
 .idea/
 

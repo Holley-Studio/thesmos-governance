@@ -195,11 +195,11 @@ describe('formatExplainConsole', () => {
   });
 
   it('includes the severity', () => {
-    expect(formatExplainConsole(rule)).toContain('BLOCKER');
+    expect(formatExplainConsole(rule)).toContain('LOW');
   });
 
   it('includes the why text', () => {
-    expect(formatExplainConsole(rule)).toContain('Dot-notation');
+    expect(formatExplainConsole(rule)).toContain('Scattered process.env reads');
   });
 
   it('includes the bad example', () => {
@@ -207,7 +207,7 @@ describe('formatExplainConsole', () => {
   });
 
   it('includes the good example', () => {
-    expect(formatExplainConsole(rule)).toContain("process['env' as 'env']");
+    expect(formatExplainConsole(rule)).toContain("import { env } from '@/env'");
   });
 
   it('is deterministic', () => {

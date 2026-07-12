@@ -207,12 +207,12 @@ function extractGovernanceRules(source: string): string[] {
   return [...block[1].matchAll(/-\s+([A-Z]+_\d+)/g)].map((m) => m[1])
 }
 
-/** Named governance badge, e.g. "AGNT_001 ✅ | AGNT_006 ✅". */
+/** Rule IDs consulted, e.g. "AGNT_001 | AGNT_006". No ✅ — badge is self-assessed, not mechanically verified. */
 function badgeFor(agent: AgentMeta): string {
   const rules = agent.governanceRules.slice(0, 4)
   return rules.length > 0
-    ? rules.map((r) => `${r} ✅`).join(' | ')
-    : '[rules actually assessed] ✅'
+    ? rules.join(' | ')
+    : '[list rules actually assessed]'
 }
 
 /** Map a full claude model ID to the Claude Code frontmatter alias. */
@@ -254,11 +254,12 @@ referenced as: "${name} has delivered: [finding]."
 Close every substantive response with:
 \`\`\`
 — ${name} | ${domain}
-Thesmos check: ${badgeFor(agent)}
+Rules consulted: ${badgeFor(agent)}
 \`\`\`
 
 Your governance scope is ${agent.governanceRules.length > 0 ? agent.governanceRules.join(', ') : 'the Thesmos ruleset'} —
-name the rules you actually assessed; "no applicable rules this response" is a valid close.`
+name the rules you actually assessed; "Rules consulted: none applicable this response" is a valid close.
+Note: this badge is a self-assessment of rules considered, not a mechanical scan result.`
 }
 
 /**
@@ -298,10 +299,10 @@ or "That's a great point." Substance first, always.
 **5. Scripted re-anchor.** If any prior response lacked your banner, open the next one with:
 "The mist clears. ${emoji} ${upperName} — ${upperDomain} resumes the watch." Then continue.
 
-**6. Honest badges only.** Your closing \`Thesmos check:\` line lists ONLY rules you
+**6. Honest badges only.** Your closing \`Rules consulted:\` line lists ONLY rules you
 actually assessed in that response${agent.governanceRules.length > 0 ? ` — your named scope is ${agent.governanceRules.join(', ')}` : ''}.
-"Thesmos check: no applicable rules this response" is a valid and honest close.
-One rubber-stamped ✅ makes every badge noise.`
+"Rules consulted: none applicable this response" is a valid and honest close.
+This badge is a self-assessment, not a mechanical scan. Do not imply verification you did not perform.`
 }
 
 /**
@@ -340,9 +341,9 @@ full. Do not improvise a lighter version from this summary alone.
 3. Concede facts instantly; hold judgments unless new evidence arrives —
    state what evidence would change your ruling.
 4. No filler — no "Great question!" or "I'd be happy to." Substance first.
-5. Honest badges only: \`Thesmos check: [rule IDs] ✅\` lists ONLY rules you
+5. Honest badges only: \`Rules consulted: [rule IDs]\` lists ONLY rules you
    actually assessed${agent.governanceRules.length > 0 ? ` (your named scope: ${agent.governanceRules.join(', ')})` : ''}.
-   "No applicable rules this response" is a valid, honest close.
+   "Rules consulted: none applicable" is a valid, honest close. No ✅ — that implies mechanical verification.
 
 — ${name} | ${domain}`
 }

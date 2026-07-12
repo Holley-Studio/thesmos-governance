@@ -71,15 +71,19 @@ export function summarizeSavings(entries: SavingsEntry[], monthOf: Date): Saving
 }
 
 /**
- * Tier-discipline estimate vs the flagship baseline (AGNT_031 doctrine:
- * flagship ≈ 5× mid tier, mid ≈ 5× fast tier). A turn that cost $C on the mid
- * tier would have cost ≈ 5×$C on the flagship → estimated saving = 4×$C.
+ * Tier-discipline estimate vs the flagship (Opus) baseline, using the real
+ * price sheet — not the old 5×/25× doctrine multiples, which overstated
+ * savings ~6× after the 2026 price changes. Current ratios (per MTok, input
+ * and output move together): Opus $5/$25, Sonnet $3/$15, Haiku $1/$5.
+ * A turn that cost $C on Sonnet would have cost (5/3)×$C on Opus →
+ * saving = (2/3)×$C. On Haiku: 5×$C on Opus → saving = 4×$C.
  * Unknown/flagship models return undefined — no claim is made.
+ * Revisit if: Anthropic changes relative tier pricing.
  */
 export function estimateTierSaving(model: string, turnCostUsd: number): number | undefined {
   if (!Number.isFinite(turnCostUsd) || turnCostUsd <= 0) return undefined;
   if (/opus|fable/i.test(model)) return undefined;
-  if (/sonnet/i.test(model)) return turnCostUsd * 4;
-  if (/haiku/i.test(model)) return turnCostUsd * 24;
+  if (/sonnet/i.test(model)) return turnCostUsd * (2 / 3);
+  if (/haiku/i.test(model)) return turnCostUsd * 4;
   return undefined;
 }

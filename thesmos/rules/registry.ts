@@ -108,21 +108,24 @@ export const THESMOS_RULES: ThesmosRule[] = [
     id: 'ENV_001',
     category: 'direct_env_access',
     description:
-      "Use bracket-notation env access — process['env' as 'env']['VAR'] — never process.env.VAR dot notation.",
-    severity: 'BLOCKER',
-    tags: ['security', 'env'],
+      'Read environment variables through one central, validated env module (e.g. env.ts with a schema) instead of scattering process.env.VAR reads across the codebase.',
+    // LOW not BLOCKER: scattered process.env reads are a maintainability concern,
+    // not a security boundary — no exploitable attack surface, and the original
+    // BLOCKER (enforcing bracket-notation) fired on every standard env access.
+    severity: 'LOW',
+    tags: ['maintainability', 'env'],
     example:
-      "// BAD:  const url = process.env.MY_VAR;\n// GOOD: const url = process['env' as 'env']['MY_VAR'];",
+      "// BAD:  const url = process.env.DATABASE_URL; // scattered, unvalidated\n// GOOD: import { env } from '@/env'; const url = env.DATABASE_URL; // central + schema-validated",
     sinceVersion: '1.0.0',
     explain: {
-      why: "Dot-notation env access (process.env.VAR) is trivially searchable and frequently flagged by linters as a direct string. The bracket notation forces an explicit type cast, making mass-scraping of env var names harder and signalling intentional access to reviewers.",
+      why: 'Scattered process.env reads have no single place to validate, type, or document required variables — a missing var fails at whatever line happens to read it first, at runtime. A central env module (a zod-validated env.ts, or @t3-oss/env) fails fast at startup with a clear message and gives every consumer typed access. NEXT_PUBLIC_* and NODE_ENV are exempt: bundlers statically inline these at build time and only recognize the literal dot-notation form.',
       commonViolations: [
         'const url = process.env.DATABASE_URL',
-        'const key = process.env.NEXT_PUBLIC_API_KEY',
-        'if (process.env.NODE_ENV === "production")',
+        'const key = process.env.STRIPE_SECRET_KEY',
+        'fetch(process.env.API_BASE + "/users")',
       ],
-      goodExample: "const url = process['env' as 'env']['DATABASE_URL'];",
-      badExample: 'const url = process.env.DATABASE_URL;',
+      goodExample: "import { env } from '@/env';\nconst url = env.DATABASE_URL; // validated at startup, typed",
+      badExample: 'const url = process.env.DATABASE_URL; // scattered, unvalidated, untyped',
       relatedPlaybooks: ['env-access.md'],
       relatedAgents: ['env-guard'],
       relatedSkills: ['env-var-helper'],
@@ -132,6 +135,8 @@ export const THESMOS_RULES: ThesmosRule[] = [
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
         if (/^scripts\//.test(path)) continue; // operator tooling — exempt
+        // The central env module itself is where process.env reads belong.
+        if (/(^|\/)env\.(ts|js|mjs|cjs)$/.test(path) || /(^|\/)env\/index\.(ts|js)$/.test(path)) continue;
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
           const match = isDirectEnvAccess(lines[i]);
@@ -141,8 +146,8 @@ export const THESMOS_RULES: ThesmosRule[] = [
               category: 'direct_env_access',
               file: path,
               line: i + 1,
-              message: `Direct process.env.${match[1]} access — use the bracket-notation env helper.`,
-              suggestion: `Replace with process['env' as 'env']['${match[1]}']`,
+              message: `Scattered process.env.${match[1]} read — route env access through the central env module.`,
+              suggestion: `Read ${match[1]} via a central, schema-validated env module (e.g. env.ts) instead of inline process.env access`,
             });
           }
         }
