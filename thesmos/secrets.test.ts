@@ -48,12 +48,12 @@ describe('matchesSecretPattern', () => {
 
 describe('isDirectEnvAccess', () => {
   it('flags process.env.VAR dot-notation', () => {
-    expect(isDirectEnvAccess('const url = process.env.NEXT_PUBLIC_URL;')).not.toBeNull();
+    expect(isDirectEnvAccess('const url = process.env.DATABASE_URL;')).not.toBeNull();
   });
 
   it('does not flag bracket-notation access', () => {
     expect(
-      isDirectEnvAccess("const url = process['env' as 'env']['NEXT_PUBLIC_URL'];")
+      isDirectEnvAccess("const url = process['env' as 'env']['DATABASE_URL'];")
     ).toBeNull();
   });
 
@@ -63,6 +63,14 @@ describe('isDirectEnvAccess', () => {
 
   it('flags access in a template literal context', () => {
     expect(isDirectEnvAccess('const url = `${process.env.BASE_URL}/api`;')).not.toBeNull();
+  });
+
+  it('does not flag NEXT_PUBLIC_ vars — bundlers require literal dot notation to inline them', () => {
+    expect(isDirectEnvAccess('const url = process.env.NEXT_PUBLIC_SUPABASE_URL;')).toBeNull();
+  });
+
+  it('does not flag NODE_ENV — inlined by every bundler, idiomatic everywhere', () => {
+    expect(isDirectEnvAccess('if (process.env.NODE_ENV === "production") {')).toBeNull();
   });
 });
 

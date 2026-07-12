@@ -778,26 +778,11 @@ export const FIXERS: Readonly<Record<string, Fixer>> = {
 
   // ── TypeScript / JavaScript ────────────────────────────────────────────────
 
-  /**
-   * direct_env_access — replaces process.env.KEY with process['env']['KEY'].
-   *
-   * Before: const x = process.env.MY_VAR;
-   * After:  const x = process['env']['MY_VAR'];
-   *
-   * Safe: bracket notation is semantically identical.
-   * Idempotent: guard requires dot-access form.
-   */
-  direct_env_access: (content, finding) =>
-    replaceLine(
-      content,
-      finding,
-      /process\.env\.[A-Z_a-z]\w*/,
-      (line) =>
-        line.replace(
-          /process\.env\.([A-Z_a-z]\w*)/g,
-          (_, key: string) => `process['env']['${key}']`,
-        ),
-    ),
+  // direct_env_access is intentionally not registered — the fix is structural
+  // (route the read through a central, schema-validated env module), which is
+  // a judgment call, not a mechanical rewrite. The old bracket-notation
+  // rewrite (process['env']['KEY']) was removed: it obfuscates without adding
+  // security and breaks bundler inlining of NEXT_PUBLIC_*/NODE_ENV.
 
   /**
    * any_type_no_comment — replaces bare `: any` with `: unknown`.

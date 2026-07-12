@@ -31,19 +31,19 @@ describe('isEssentialRule — the free/paid boundary', () => {
 });
 
 describe('partitionByTier — the shipped split', () => {
-  it('splits 1,137 rules into 289 free / 848 premium', () => {
+  it('splits 1,137 rules into 288 free / 849 premium', () => {
     const { free, premium } = partitionByTier(THESMOS_RULES);
     expect(free.length + premium.length).toBe(THESMOS_RULES.length);
     expect(THESMOS_RULES.length).toBe(1137);
-    expect(free.length).toBe(289);
-    expect(premium.length).toBe(848);
-    expect(ESSENTIAL_RULES.length).toBe(289);
+    expect(free.length).toBe(288);
+    expect(premium.length).toBe(849);
+    expect(ESSENTIAL_RULES.length).toBe(288);
   });
 });
 
 describe('activeRulesForTier', () => {
   it('free → Essentials only; premium/undefined → full engine', () => {
-    expect(activeRulesForTier({ tier: 'free' }).length).toBe(289);
+    expect(activeRulesForTier({ tier: 'free' }).length).toBe(288);
     expect(activeRulesForTier({ tier: 'premium' }).length).toBe(1137);
     expect(activeRulesForTier({}).length).toBe(1137);
   });

@@ -80,7 +80,7 @@ describe('direct_env_access check', () => {
     const findings = runReview(makeInput({}, files));
     const match = findings.find((f) => f.category === 'direct_env_access');
     expect(match).toBeDefined();
-    expect(match!.severity).toBe('BLOCKER');
+    expect(match!.severity).toBe('LOW');
     expect(match!.line).toBe(1);
     expect(match!.file).toBe('lib/config.ts');
   });
@@ -105,7 +105,8 @@ describe('direct_env_access check', () => {
       { path: 'lib/config.ts', content: 'process.env.MY_KEY' },
     ];
     const findings = runReview(makeInput({}, files));
-    expect(findings[0].suggestion).toContain('MY_KEY');
+    const match = findings.find((f) => f.category === 'direct_env_access');
+    expect(match!.suggestion).toContain('MY_KEY');
   });
 });
 

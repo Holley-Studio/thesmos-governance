@@ -21,12 +21,20 @@ export function matchesSecretPattern(line: string, patterns: string[]): string |
 }
 
 /**
- * Detect direct `process.env.VAR` dot-notation access (Thesmos Guard violation).
- * Returns the regex match (truthy) or null.
+ * Detect scattered `process.env.VAR` dot-notation access outside a central
+ * env module. Returns the regex match (truthy) or null.
  * Ignores lines in scripts/ — those are operator tooling, not app code.
+ *
+ * NEXT_PUBLIC_* and NODE_ENV are exempt: bundlers (Next.js, webpack, Vite's
+ * define) statically inline these at build time and ONLY recognize the
+ * literal dot-notation form — rewriting them breaks the build-time
+ * replacement and ships undefined to the browser.
  */
 export function isDirectEnvAccess(line: string): RegExpExecArray | null {
-  return /process\.env\.([A-Z_a-z][A-Z_a-z0-9]*)/.exec(line);
+  const match = /process\.env\.([A-Z_a-z][A-Z_a-z0-9]*)/.exec(line);
+  if (!match) return null;
+  if (match[1].startsWith('NEXT_PUBLIC_') || match[1] === 'NODE_ENV') return null;
+  return match;
 }
 
 /**

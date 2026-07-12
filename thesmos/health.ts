@@ -51,6 +51,7 @@ import { partitionFindings, loadBaseline } from './baseline.js';
 import { runDriftForRoot } from './drift.js';
 import { runReview } from './review.js';
 import { loadReport } from './report.js';
+import { runScanner } from './scanner/index.js';
 import { extractSuppressions, auditSuppressions } from './suppress.js';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -326,7 +327,16 @@ function walkSourceFiles(dir: string): string[] {
 }
 
 export function computeHealthForRoot(root: string, config: ThesmosConfig): HealthScore {
-  const scan = loadReport(root);
+  // Scan fresh so the score reflects the repo AS IT IS NOW — a score derived
+  // only from the last saved report.json silently freezes until someone
+  // remembers to re-run `thesmos scan` (the #1 "health never updates" report).
+  // Fall back to the stored report if scanning fails (e.g. permissions).
+  let scan: ScanResult | null = null;
+  try {
+    scan = runScanner(root, config);
+  } catch {
+    scan = loadReport(root);
+  }
   const findings = scan ? runReview({ scan, config }) : [];
   const baseline = loadBaseline(root);
   const driftFindings = runDriftForRoot(root, config);
