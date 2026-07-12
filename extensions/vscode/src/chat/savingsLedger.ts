@@ -60,14 +60,16 @@ export function monthSavingsUsd(root: string, now: Date): number {
 }
 
 /**
- * Tier-discipline estimate vs the flagship baseline (AGNT_031 doctrine:
- * flagship ≈ 5× mid tier, mid ≈ 5× fast tier). Saving = cost × (multiple − 1).
+ * Tier-discipline estimate vs the flagship (Opus) baseline, using the real
+ * price sheet (Opus $5/$25, Sonnet $3/$15, Haiku $1/$5 per MTok) — kept in
+ * sync with thesmos/savings.ts. Saving = cost × (price ratio − 1):
+ * Sonnet → (2/3)×cost, Haiku → 4×cost.
  * Unknown/flagship models return undefined — no claim is made.
  */
 export function estimateTierSaving(model: string, turnCostUsd: number): number | undefined {
   if (!Number.isFinite(turnCostUsd) || turnCostUsd <= 0) return undefined;
   if (/opus|fable/i.test(model)) return undefined;
-  if (/sonnet/i.test(model)) return turnCostUsd * 4;
-  if (/haiku/i.test(model)) return turnCostUsd * 24;
+  if (/sonnet/i.test(model)) return turnCostUsd * (2 / 3);
+  if (/haiku/i.test(model)) return turnCostUsd * 4;
   return undefined;
 }
