@@ -1,0 +1,6 @@
+{
+  "$comment": "Agents whose catalog/exports exist but whose DROP IS NOT COMPLETE — not in pantheon-map.json (Zeus can't route to them), not in the decreed roster count, not announced. Excluded from every bundle AND from the published agent count so shipped artifacts match marketing exactly. To complete a drop: add the god to pantheon-map.json, update the roster decree + all count surfaces (docs/roadmap.md), announce it, THEN remove the holdback. Consumed by scripts/package-agents.ts and scripts/build-product-json.mjs.",
+  "holdbackAgentIds": [
+    "asclepius-debugging-agent"
+  ]
+}

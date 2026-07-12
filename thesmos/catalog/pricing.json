@@ -1,0 +1,20 @@
+{
+  "$comment": "Single source of truth for pricing facts pushed to every storefront surface (product.json dispatch, and eventually website copy generation). Matches the live billing implementations: Gumroad one-time product + Stripe checkout mode:'payment'. Change HERE first, then re-release. Consumed by scripts/build-product-json.mjs.",
+  "tiers": [
+    {
+      "id": "essentials",
+      "name": "Essentials",
+      "priceUsd": 0,
+      "model": "free",
+      "notes": "Free forever — every BLOCKER rule plus the full AI-code safety net, and the starter agents. FSL-1.1-MIT (→ MIT 2030)."
+    },
+    {
+      "id": "full-pantheon",
+      "name": "Full Pantheon",
+      "priceUsd": 79,
+      "model": "one-time",
+      "notes": "One-time purchase, lifetime updates. No subscription.",
+      "purchaseUrl": "https://holleystudio.gumroad.com/l/thesmos-pantheon"
+    }
+  ]
+}

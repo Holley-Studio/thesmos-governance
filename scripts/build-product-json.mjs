@@ -13,7 +13,7 @@
  *   node scripts/build-product-json.mjs --check     # build + validate, no output
  */
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { readFileSync, writeFileSync, unlinkSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -103,6 +103,32 @@ if (!testCount || vitestReport.numFailedTests > 0) {
   );
 }
 
+// ---- agent count: the SHIPPABLE roster — the per-platform export set minus
+// god-drop holdbacks. Exports are regenerated in the release job (agents:export
+// runs before this script); holdbacks share a single JSON source with the
+// packager so bundle contents and published counts can never disagree.
+const holdbacks = JSON.parse(
+  readFileSync(join(THESMOS_DIR, "catalog", "holdbacks.json"), "utf8"),
+).holdbackAgentIds;
+const EXPORTS_CLAUDE_DIR = join(ROOT, "pantheon", "exports", "claude-code");
+const agentFiles = readdirSync(EXPORTS_CLAUDE_DIR).filter(
+  (f) => f.endsWith(".md") && !holdbacks.some((h) => f.startsWith(h)),
+);
+const agentCount = agentFiles.length;
+if (agentCount < 5) {
+  throw new Error(
+    `build-product-json: only ${agentCount} agent exports found in ` +
+    `${EXPORTS_CLAUDE_DIR} — run \`npm run agents:export\` (workspace thesmos) first.`
+  );
+}
+
+// ---- pricing: single source at thesmos/catalog/pricing.json — matches the
+// live billing implementations (Gumroad one-time, Stripe mode:'payment').
+const pricingCatalog = JSON.parse(
+  readFileSync(join(THESMOS_DIR, "catalog", "pricing.json"), "utf8"),
+);
+const paidTier = pricingCatalog.tiers.find((t) => t.priceUsd > 0);
+
 const fmt = (n) => n.toLocaleString("en-US");
 
 const product = {
@@ -118,13 +144,15 @@ const product = {
   pricing: {
     model: "free",
     notes: "Free for open source and internal use. FSL-1.1-MIT (→ MIT 2030).",
+    tiers: pricingCatalog.tiers,
   },
   links: {
     github: "https://github.com/Holley-Studio/thesmos-governance",
-    purchase: "https://holleystudio.gumroad.com/l/thesmos-pantheon",
+    purchase: paidTier?.purchaseUrl ?? "https://holleystudio.gumroad.com/l/thesmos-pantheon",
   },
   stats: [
     { value: fmt(ruleCount), label: "Rules" },
+    { value: fmt(agentCount), label: "Agents" },
     { value: fmt(ecosystemCount), label: "Ecosystems" },
     { value: fmt(testCount), label: "Tests" },
   ],

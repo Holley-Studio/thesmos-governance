@@ -56,15 +56,12 @@ const FREE_AGENT_IDS = new Set([
 ])
 
 // ── God-drop holdbacks ────────────────────────────────────────────────────────
-// Agents whose catalog/exports exist but whose DROP IS NOT COMPLETE — not in
-// pantheon-map.json (Zeus can't route to them), not in the decreed roster
-// count, not announced. Excluded from every bundle so the shipped artifact
-// matches the marketed "67 agents" exactly. To complete a drop: add the god to
-// pantheon-map.json, update the roster decree + all count surfaces (see
-// docs/roadmap.md), announce it, THEN remove the holdback.
-const HOLDBACK_AGENT_IDS = [
-  'asclepius-debugging-agent', // committed in #73, exports generated 2026-07-05, drop never finished
-]
+// Single source: thesmos/catalog/holdbacks.json — shared with
+// build-product-json.mjs so the shipped bundle and the published agent count
+// can never disagree. See that file's $comment for the drop-completion steps.
+const HOLDBACK_AGENT_IDS: string[] = JSON.parse(
+  readFileSync(resolve(__dirname, '../catalog/holdbacks.json'), 'utf-8'),
+).holdbackAgentIds
 
 const isHeldBack = (id: string): boolean =>
   HOLDBACK_AGENT_IDS.some((h) => id.startsWith(h))
