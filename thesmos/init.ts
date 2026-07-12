@@ -380,6 +380,15 @@ const JSON_TEMPLATES: JsonTemplate[] = [
           severityRules: config.severityRules,
           reportMaxAgeDays: config.reportMaxAgeDays,
           protectedBranches: config.protectedBranches,
+          tokenBudget: {
+            enabled: true,
+            sessionMaxTokens: 500000,
+            sessionMaxCostUSD: 5,
+            dailyMaxCostUSD: 25,
+            projectMaxCostUSD: 500,
+            alertAt: 0.8,
+            hardStopAt: 1.0,
+          },
         },
         null,
         2
