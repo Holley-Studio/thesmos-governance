@@ -93,12 +93,14 @@ async function installFile(
   if (!dryRun && !noSync) {
     try {
       adapterPaths = syncAdapters(root);
+      // Audit write failure is non-fatal; adapter sync succeeded.
       try { appendAuditEntry(root, 'AgentAdapterSync', result.agentId, 'INFO', []); } catch { /**/ }
     } catch (err) {
+      // Audit write failure is non-fatal; adapter sync failure is reported and exits nonzero.
       try { appendAuditEntry(root, 'AgentAdapterSync', result.agentId, 'WARN', []); } catch { /**/ }
-      console.error(`\nagent:install: adapter synchronization failed: ${String(err)}`);
-      console.error(`Canonical file and registry are intact.`);
-      console.error(`Run \`thesmos adapters\` to retry adapter synchronization.`);
+      process.stderr.write(`\nagent:install: adapter synchronization failed: ${String(err)}\n`);
+      process.stderr.write(`Canonical file and registry are intact.\n`);
+      process.stderr.write(`Run \`thesmos adapters\` to retry adapter synchronization.\n`);
       process.exit(1);
     }
   }
@@ -215,15 +217,15 @@ async function installDirectory(
       });
     } catch (err) {
       // Partial failure — report installed/failed counts and exit nonzero.
-      console.error(`\nagent:install: batch partially completed.`);
-      console.error(`  installed (${installedResults.length}): ${
+      process.stderr.write(`\nagent:install: batch partially completed.\n`);
+      process.stderr.write(`  installed (${installedResults.length}): ${
         installedResults.length > 0
           ? installedResults.map((r) => r.agentId).join(', ')
           : 'none'
-      }`);
-      console.error(`  failed: ${basename(input.absPath)} — ${String(err)}`);
-      console.error(`\nThe ${installedResults.length} installed agent(s) remain in .thesmos/agents/ and the registry.`);
-      console.error(`Run \`thesmos adapters\` to synchronize them once you resolve the failure.`);
+      }\n`);
+      process.stderr.write(`  failed: ${basename(input.absPath)} — ${String(err)}\n`);
+      process.stderr.write(`\nThe ${installedResults.length} installed agent(s) remain in .thesmos/agents/ and the registry.\n`);
+      process.stderr.write(`Run \`thesmos adapters\` to synchronize them once you resolve the failure.\n`);
       process.exit(1);
     }
     installedResults.push(result);
@@ -235,16 +237,18 @@ async function installDirectory(
   if (!noSync) {
     try {
       adapterPaths = syncAdapters(root);
+      // Audit write failure is non-fatal; adapter sync succeeded.
       try {
         appendAuditEntry(root, 'AgentAdapterSync', `batch:${installedResults.length}`, 'INFO', []);
       } catch { /**/ }
     } catch (err) {
+      // Audit write failure is non-fatal; adapter sync failure is reported and exits nonzero.
       try {
         appendAuditEntry(root, 'AgentAdapterSync', `batch:${installedResults.length}`, 'WARN', []);
       } catch { /**/ }
-      console.error(`\nagent:install: adapter synchronization failed: ${String(err)}`);
-      console.error(`Canonical files and registry are intact.`);
-      console.error(`Run \`thesmos adapters\` to retry adapter synchronization.`);
+      process.stderr.write(`\nagent:install: adapter synchronization failed: ${String(err)}\n`);
+      process.stderr.write(`Canonical files and registry are intact.\n`);
+      process.stderr.write(`Run \`thesmos adapters\` to retry adapter synchronization.\n`);
       process.exit(1);
     }
   }

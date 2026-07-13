@@ -74,7 +74,8 @@ export async function cmdAgentCreate(argv: string[]): Promise<void> {
     try {
       appendAuditEntry(root, 'AgentCanonicalCreate', canonicalRel, 'INFO', []);
     } catch {
-      // non-fatal
+      // Audit write failure is non-fatal; the canonical create succeeded.
+      process.stderr.write('[warn] audit trail write failed (run manually: thesmos audit)\n');
     }
 
     // Sync adapters

@@ -16,7 +16,8 @@
  *   - The module is pure where possible; I/O is injectable for testing.
  */
 
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { basename, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { parseFrontmatter } from './catalog.js';
 import { appendAuditEntry } from './agent-audit.js';
@@ -112,15 +113,57 @@ type RegistryShape = Record<string, unknown>;
 function readRegistryRaw(root: string): RegistryShape {
   const p = join(root, REGISTRY_PATH);
   if (!existsSync(p)) return { rules: ['@thesmos/core'], agents: [], skills: [] };
+  const raw = readFileSync(p, 'utf8');
+  // Registry is user-controlled and bounded; 1 MB limit guards against accidental corruption.
+  if (raw.length > 1_048_576) {
+    throw new Error(`Registry file exceeds 1 MB — file may be corrupted: ${p}`);
+  }
   // Throw on parse failure so callers see the error rather than silently replacing
   // valid registry data with defaults — silent replacement would destroy existing state.
-  return JSON.parse(readFileSync(p, 'utf8')) as RegistryShape;
+  return JSON.parse(raw) as RegistryShape;
 }
 
-function writeRegistryRaw(root: string, data: RegistryShape): void {
-  const p = join(root, REGISTRY_PATH);
-  mkdirSync(join(root, '.thesmos'), { recursive: true });
-  writeFileSync(p, JSON.stringify(data, null, 2) + '\n', 'utf8');
+/**
+ * Write registry.json via a same-directory temp-file + rename.
+ *
+ * Placing the temp file in the same directory as the destination guarantees
+ * the rename is on the same filesystem, making it atomic on POSIX systems
+ * (rename(2) is atomic when src and dst are on the same device).
+ * On Windows, renameSync is not atomic but still protects against partial
+ * writes: the old file remains intact until the rename succeeds.
+ */
+function writeRegistryAtomic(root: string, data: RegistryShape): void {
+  const dir = join(root, '.thesmos');
+  const dest = join(dir, 'registry.json');
+  const tmpPath = join(dir, `.registry-${process.pid}-${randomUUID()}.tmp`);
+
+  mkdirSync(dir, { recursive: true });
+
+  // Preserve existing file mode if present (non-fatal if this fails)
+  let originalMode: number | undefined;
+  try {
+    if (existsSync(dest)) {
+      originalMode = statSync(dest).mode & 0o777;
+    }
+  } catch { /* non-fatal */ }
+
+  let tmpWritten = false;
+  try {
+    writeFileSync(tmpPath, JSON.stringify(data, null, 2) + '\n', 'utf8');
+    tmpWritten = true;
+
+    if (originalMode !== undefined) {
+      try { chmodSync(tmpPath, originalMode); } catch { /* non-fatal */ }
+    }
+
+    renameSync(tmpPath, dest);
+  } catch (err) {
+    // Clean up the temp file if the write succeeded but rename failed
+    if (tmpWritten) {
+      try { unlinkSync(tmpPath); } catch { /* best-effort cleanup */ }
+    }
+    throw err;
+  }
 }
 
 /**
@@ -132,7 +175,7 @@ export function addAgentToRegistry(root: string, id: string): 'added' | 'already
   const agents = (registry['agents'] as string[] | undefined) ?? [];
   if (agents.includes(id)) return 'already-present';
   registry['agents'] = [...agents, id];
-  writeRegistryRaw(root, registry);
+  writeRegistryAtomic(root, registry);
   return 'added';
 }
 
