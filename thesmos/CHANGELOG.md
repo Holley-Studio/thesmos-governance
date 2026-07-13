@@ -1,5 +1,109 @@
 # Changelog
 
+## 4.7.0
+
+### Minor Changes
+
+- 4e61cbf: The Divine First Hour — the extension never feels frozen, the chat feels alive, and Thesmos starts paying for itself:
+
+  - **Living presence.** A god-flavored working indicator in the status bar for every long operation (scan, save-review, adapters, AI fix), and an instant "the council deliberates…" thinking strip in Pantheon Chat between prompt and first token — with a 2s gap-detector so long tool calls never look frozen.
+  - **Credit Guardian.** An honest, append-only savings ledger (`.thesmos/savings.jsonl`): tier-discipline savings per chat turn, budget hard stops, and 1M-context blocks. Surfaced as `⚖ ~$X saved` in the chat header, the token-meter tooltip, and the new `thesmos savings` command. All figures estimated vs the flagship baseline — never counts a recommendation you didn't take.
+  - **Split-right chat.** "Open Pantheon Chat in Editor" now splits beside your code by default (`thesmos.chat.openLocation`), plus welcome-screen suggested first prompts.
+  - **Mythic first-run.** `thesmos init` greets with the Thesmos banner, an Argus scan line, and closes with an oracle verdict (health grade, first labor, next steps). TTY only — JSON/piped/CI output unchanged.
+  - **Two false-positive fixes found by dogfooding this release on this repo's own gate:** SC_002 no longer fires on package.json edits when a lockfile exists on disk (workspace root or alongside), and the DORA rules no longer classify a repo as an EU financial entity on a single weak keyword ("ledger", "transaction", "portfolio"…) — one strong term or two distinct weak terms are now required.
+
+- 9778fe2: Three false-positive/staleness fixes reported from real-world repos:
+
+  - **ENV_001 reworked.** The old rule demanded the meaningless obfuscation `process['env' as 'env']['VAR']` at BLOCKER severity — a pattern with no security value that also breaks bundler inlining. It is now a LOW maintainability rule recommending a central, schema-validated env module; `NEXT_PUBLIC_*` and `NODE_ENV` reads are fully exempt (bundlers require the literal dot form to inline them), the central `env.ts` module itself is exempt, and the bracket-notation auto-fixer was removed. Free-tier rule count shifts 289 → 288 (ENV_001 is no longer a BLOCKER, so it moves to the premium set).
+  - **Supabase anon key false positive.** NEXT*047 and VERCEL_002 no longer flag public-by-design keys (`*ANON_KEY*`, `*PUBLISHABLE*`, `*PUBLIC_KEY*`, `*SITE_KEY*`) stored under `NEXT_PUBLIC*` — the Supabase anon key, Stripe publishable key, and captcha site keys are meant to ship to the browser.
+  - **Health score no longer freezes.** `thesmos health` (and the VS Code status bar that calls it) now computes from a fresh in-memory scan instead of the last saved `report.json`, so the score reflects the repo as it is now — previously it silently never changed until someone re-ran `thesmos scan`.
+
+- 5c82407: `thesmos init` now generates AI adapter files (CLAUDE.md, GEMINI.md, AGENTS.md, Cursor/Copilot/Codex instructions) by default, so a single init command leaves the repo fully wired — no separate `thesmos adapters` step to forget. Opt out with `--no-adapters`. Adapter generation runs after profile application so the agent-context section reflects any profile agents just installed, and is skipped in `--dry-run`. The Pantheon routing doctrine (this repo's CLAUDE.md and the buyer kit's PANTHEON.md) also gains a "Skill Frameworks — Process vs. Personnel" section defining how Thesmos composes with process-skill frameworks like Superpowers: skills decide when/how to dispatch subagents, the Pantheon routing table decides which agent gets dispatched.
+- 9778fe2: `thesmos init` now scaffolds cost governance ON by default and detects adapter targets instead of shotgunning all six:
+
+  - **Token budgets enabled for new users.** The scaffolded `.thesmos/config.json` ships `tokenBudget.enabled: true` with the standard defaults ($5/session, $25/day, $500/project, alert at 80%). Enforcement activates when `thesmos claude:govern install` wires the PostToolUse hook — init prints that next step.
+  - **Detected adapter targets.** Plain `init` now generates CLAUDE.md + AGENTS.md always, and Gemini/Cursor/Copilot/Codex adapters only when that tool's footprint already exists in the repo — no more six-file spray into single-tool repos. `thesmos adapters` still generates every target explicitly.
+
+- 1c65117: Pantheon Chat: persistent status strip + permission-bridge hardening.
+
+  **Always-on status strip.** A persistent strip above the composer now reflects the live turn state — Thinking, Writing, running a specific tool, dispatching a god, and **Compacting context** (previously a silently-dropped `compact_boundary` event). It stays lit for the whole turn instead of blanking when text streams, and carries a **live context-window meter** (input + cache tokens vs the 200k window) that turns amber at 75% and red at 90% — so approaching the usage ceiling is visible instead of a surprise. All of it reads events the CLI already emits and renders client-side, so it adds zero token cost.
+
+  **Permission-bridge hardening (Argus security audit, 3× HIGH).**
+
+  - **HIGH-1** — the consent dialog no longer truncates Bash commands to 400 chars; the full command the user is approving is shown in a scrollable, XSS-safe block. A hidden tail past a cutoff can no longer defeat informed consent.
+  - **HIGH-2** — session-wide "always allow" is now a gated escalation: `Bash` is excluded entirely (no blanket shell auto-approval), and every other tool requires a native modal confirmation before the grant is added. The pending request still resolves immediately.
+  - **HIGH-3** — switching into `auto` permission mode (which disarms the per-call human gate) now requires an explicit native modal; declining reverts the dropdown, so a stray webview message can't silently downgrade posture.
+
+  **Model routing.** Zeus, Argus, and Athena resolve to Opus (matching the catalog source of truth); marketing copy and the extension welcome panel are aligned to the canonical 67-agent count.
+
+- 9778fe2: Fix severity resolution: `mergeConfig()` now merges user `severityRules` on top of
+  the full default rule list instead of replacing it. Previously, any project with a
+  `severityRules` array in `.thesmos/config.json` silently ran up to 198
+  BLOCKER-declared rules at MEDIUM severity — those rules never blocked CI.
+
+  **Root cause:** `config.ts` replaced `severityRules` with the user's partial list,
+  then `classifySeverity()` fell back to `SEVERITY_DEFAULT = 'MEDIUM'` for every rule
+  not in that list, ignoring each rule's declared severity.
+
+  **First-run notice:** On the first `thesmos scan` (or any command that loads config)
+  after upgrading, if your config would have silenced any BLOCKER rules under the old
+  behavior, thesmos prints a one-time notice to stderr:
+
+  > [thesmos] ℹ️ N rules now enforce as BLOCKER that were previously silent under
+  > your config — see CHANGELOG.md for details.
+
+  This fires once per project and is then acknowledged via `.thesmos/.severity-fix-ack`
+  (gitignored, per-machine).
+
+  **Migration:** If a rule now blocking CI is one you intentionally want at a lower
+  severity, add an explicit override in `.thesmos/config.json`:
+
+  ```json
+  {
+    "severityRules": [
+      { "category": "some_blocker_category", "severity": "MEDIUM" }
+    ]
+  }
+  ```
+
+  User-specified entries still win. Unspecified rules now use their registry-declared
+  severity instead of defaulting to MEDIUM.
+
+  **Bump rationale:** Minor, not patch — the behavioral change (previously-silent
+  BLOCKER rules now blocking CI) is intentional and expected after a bug fix, but has
+  breaking consequences for misconfigured pipelines that relied on the silent fallback.
+
+  **Deferred:** Per-rule `detect()` fixture suite (200+ fixtures) is tracked in
+  GitHub issue #96 and documented at `.thesmos/known-gaps/detect-fixture-suite.md`.
+  The regression test added here (`severity.test.ts` — `it.each` over all BLOCKER
+  rules with a partial user config) covers the config-merge path and would have caught
+  the original gap.
+
+### Patch Changes
+
+- 9778fe2: False-positive fixes for client-component detection and stale guidance text:
+
+  - **SEC_001 / IMPORT_005 now verify directive position.** A `'use client'`
+    string anywhere in a file no longer marks it as a client component — the
+    directive must be the first non-comment statement, exactly as Next.js
+    requires. Test fixtures, scanner sources, and docs containing the string
+    no longer trip `admin_client_in_browser` or `server_module_in_client`.
+    New helper: `isClientComponentFile()` in `secrets.ts`, with tests.
+  - **Retired bracket-notation guidance scrubbed.** `vibe_hardcoded_secret`'s
+    suggestion and the `hardcoded_credentials`/`vibe_hardcoded_secret` good
+    examples still recommended `process['env' as 'env']['VAR']` — they now
+    recommend standard `process.env` reads via a schema-validated env module,
+    matching the ENV_001 rework.
+
+- ce928aa: `claude:govern install` now writes a `permissions.allow` block alongside governance hooks.
+
+  Every project that runs `thesmos claude:govern install` (or `thesmos:adapters`) automatically gets prompt-free approval for read-only tool patterns extracted from real usage across sessions:
+
+  - **Playwright MCP** — `browser_navigate`, `browser_take_screenshot`, `browser_snapshot`, `browser_resize`, `browser_console_messages`, `browser_close` (observation-only; click/fill/eval remain gated)
+  - **TypeScript typecheck** — exact form `Bash(npx tsc --noEmit)` (no file writes)
+
+  `claude:govern uninstall` removes only the thesmos-managed entries; any user-added entries are preserved. Existing `permissions.allow` entries are never overwritten or removed during install.
+
 ## 4.6.0
 
 ### Minor Changes
@@ -200,7 +304,7 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 
 **6 New Governance Pillars:**
 
-- **Pillar 1 — MCP Server** (`thesmos mcp:serve`, `thesmos mcp:install`) — Thesmos becomes a Model Context Protocol server. AI assistants call `scan_file`, `explain_rule`, `get_health`, `lint_commit`, and `get_context` *before* generating code. `mcp:install` writes the server entry into `~/.claude/settings.json`. New files: `thesmos/mcp-server.ts`, `thesmos/bin/commands/mcp.ts`.
+- **Pillar 1 — MCP Server** (`thesmos mcp:serve`, `thesmos mcp:install`) — Thesmos becomes a Model Context Protocol server. AI assistants call `scan_file`, `explain_rule`, `get_health`, `lint_commit`, and `get_context` _before_ generating code. `mcp:install` writes the server entry into `~/.claude/settings.json`. New files: `thesmos/mcp-server.ts`, `thesmos/bin/commands/mcp.ts`.
 
 - **Pillar 2 — Dependency Security** (`thesmos deps:audit`) — Async CVE scanning via OSV.dev (`api.osv.dev/v1/querybatch`). Results cached in `.thesmos/dep-cache.json` (24h TTL) and consumed synchronously by 10 new DEP_001–010 rules: critical CVE (BLOCKER), high/medium CVE, abandoned-with-CVE, no integrity hash, git dependency, major drift, prerelease in prod, deprecated package, stale cache. SBOM export via `--sbom` flag in CycloneDX 1.4 format. New files: `thesmos/osv-client.ts`, `thesmos/rules/deps.ts`, `thesmos/bin/commands/deps.ts`.
 
@@ -235,7 +339,7 @@ Every `thesmos adapters` run now appends the Pantheon Universal Intelligence Pro
 ### Added
 
 - **Conventional Commits Governance** (`thesmos commit:lint`, `thesmos commit:create`) — 10 new COMMIT_001–010 rules validate commit messages against the Conventional Commits specification using the standard `detect()` sentinel pattern (path `.git/COMMIT_EDITMSG`). Rules integrate with `explain`, `baseline`, and `suppressions:audit` automatically. `commit:lint` validates messages from the `commit-msg` hook, `--last`, or `--message "..."`. `commit:create` is an interactive wizard for building valid commit messages step-by-step.
-- **Vercel Deployment Governance** (`thesmos vercel:lint`) — 10 new VERCEL_001–010 rules covering: literal secrets in `vercel.json` (BLOCKER), server secrets with `NEXT_PUBLIC_` prefix (BLOCKER), cron routes missing `CRON_SECRET` check (HIGH), env vars not documented in `.env.example` (HIGH), missing `.env.example` when env vars are used (HIGH), missing `maxDuration` in function config (MEDIUM), middleware missing edge runtime export (MEDIUM), missing security headers (MEDIUM), `maxDuration` exceeding plan limit (LOW), and open redirect patterns in redirects config (HIGH).
+- **Vercel Deployment Governance** (`thesmos vercel:lint`) — 10 new VERCEL*001–010 rules covering: literal secrets in `vercel.json` (BLOCKER), server secrets with `NEXT_PUBLIC*`prefix (BLOCKER), cron routes missing`CRON_SECRET`check (HIGH), env vars not documented in`.env.example`(HIGH), missing`.env.example`when env vars are used (HIGH), missing`maxDuration`in function config (MEDIUM), middleware missing edge runtime export (MEDIUM), missing security headers (MEDIUM),`maxDuration` exceeding plan limit (LOW), and open redirect patterns in redirects config (HIGH).
 - **`commit-msg` git hook enforcement** — `thesmos hooks install --commit-msg` now writes a real enforcement block calling `thesmos commit:lint "$1"`. Previously a no-op placeholder.
 - **`commitLint` and `vercel` config sections** in `ThesmosConfig` — customise allowed commit types, max subject length, ticket patterns, Vercel plan limits, and cron auth requirements via `.thesmos/config.json`.
 - Total rule count: **864** (844 previous + 10 COMMIT + 10 VERCEL).
