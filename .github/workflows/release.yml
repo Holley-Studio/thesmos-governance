@@ -166,10 +166,15 @@ jobs:
         working-directory: thesmos
         run: npm run build
 
+      - name: Regenerate agent exports (agent-count source for product.json)
+        working-directory: thesmos
+        run: npm run agents:export
+
       - name: Build product.json
         run: |
           # Generate product.json from the repo's own source of truth
-          # (package.json version, rule manifest count, etc.)
+          # (package.json version, rule manifest count, agent exports minus
+          # holdbacks, catalog/pricing.json — never hand-typed constants)
           node scripts/build-product-json.mjs > product.json
 
       - name: Dispatch to storefront
