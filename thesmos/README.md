@@ -429,7 +429,8 @@ npx thesmos fix --base=main             # applies changes
 | `catalog:list` | List available agents and skills |
 | `catalog:profiles` | List available profiles |
 | `catalog:enable` | Enable an agent or skill |
-| `agent:create` | Scaffold a new agent file |
+| `agent:create <name>` | Scaffold a new agent in `.thesmos/agents/` and register it |
+| `agent:install <file\|dir>` | Install an existing `.md` file (or directory of files) as a registered agent |
 | `skill:create` | Scaffold a new skill file |
 | `pack:list` | List installed rule packs |
 | `pack:validate` | Validate pack manifests |

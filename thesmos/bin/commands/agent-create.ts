@@ -5,44 +5,43 @@
  * Usage:
  *   thesmos agent:create "My Custom Agent"
  *   thesmos agent:create my-agent-id "My Custom Agent"
+ *
+ * Flags:
+ *   --no-sync   Create and register but skip adapter synchronization
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createContext } from '../lib/context.ts';
-import { parseArgs } from '../lib/args.ts';
+import { parseArgs, flag } from '../lib/args.ts';
 import { buildAgentStub } from '../../catalog.ts';
-
-function toKebabCase(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-');
-}
+import { toKebabCase, addAgentToRegistry, syncAdapters, AgentInstallError } from '../../agent-lifecycle.ts';
+import { appendAuditEntry } from '../../agent-audit.ts';
+import { mkdirSync, writeFileSync } from 'node:fs';
 
 export async function cmdAgentCreate(argv: string[]): Promise<void> {
   const { root } = createContext();
-  const { positionals } = parseArgs(argv);
+  const { positionals, flags } = parseArgs(argv);
+  const noSync = flag(flags, 'no-sync');
 
   let id: string;
   let name: string;
 
   if (positionals.length === 0) {
     process.stderr.write(
-      'agent:create: missing <name>\nUsage: thesmos agent:create "<Agent Name>"\n'
+      'agent:create: missing <name>\nUsage: thesmos agent:create "<Agent Name>" [--no-sync]\n'
     );
     process.exit(1);
   }
 
   if (positionals.length === 1) {
-    name = positionals[0];
+    name = positionals[0]!;
     id = toKebabCase(name);
   } else {
-    id = toKebabCase(positionals[0]);
-    name = positionals[1];
+    id = toKebabCase(positionals[0]!);
+    name = positionals[1]!;
   }
 
-  if (!/^[a-z0-9-]+$/.test(id)) {
+  if (!/^[a-z0-9-]+$/.test(id) || id.length === 0) {
     process.stderr.write(
       `agent:create: invalid id "${id}" — must be lowercase kebab-case\n`
     );
@@ -50,24 +49,65 @@ export async function cmdAgentCreate(argv: string[]): Promise<void> {
   }
 
   const agentsDir = join(root, '.thesmos', 'agents');
-  mkdirSync(agentsDir, { recursive: true });
-
   const filePath = join(agentsDir, `${id}.md`);
+  const canonicalRel = `.thesmos/agents/${id}.md`;
+
   if (existsSync(filePath)) {
     process.stderr.write(
-      `agent:create: file already exists: .thesmos/agents/${id}.md\n`
+      `agent:create: file already exists: ${canonicalRel}\n`
     );
     process.exit(1);
   }
 
   const content = buildAgentStub(id, name);
-  writeFileSync(filePath, content, 'utf8');
 
-  console.log(`agent:create — created .thesmos/agents/${id}.md`);
-  console.log('');
-  console.log('Next steps:');
-  console.log(`  1. Edit .thesmos/agents/${id}.md with your agent's logic`);
-  console.log(`  2. Add "${id}" to .thesmos/registry.json agents array`);
-  console.log(`     (or run: thesmos catalog:enable ${id} agent)`);
-  console.log('  3. Run: npm run thesmos:adapters  to regenerate adapter files');
+  try {
+    // Write canonical file
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(filePath, content, 'utf8');
+
+    // Register in registry
+    const registryResult = addAgentToRegistry(root, id);
+
+    // Audit
+    try {
+      appendAuditEntry(root, 'agent:create', canonicalRel, 'INFO', []);
+    } catch {
+      // non-fatal
+    }
+
+    // Sync adapters
+    let adapterPaths: string[] = [];
+    if (!noSync) {
+      try {
+        adapterPaths = syncAdapters(root);
+      } catch (err) {
+        process.stderr.write(`agent:create: adapter sync failed: ${String(err)}\n`);
+      }
+    }
+
+    const regLabel = registryResult === 'added' ? 'added' : 'already registered';
+    const adapterLabel = noSync
+      ? 'skipped'
+      : adapterPaths.length > 0
+      ? 'synchronized'
+      : 'none written';
+
+    console.log(`agent:create — created custom agent: ${id}`);
+    console.log(`  Canonical: ${canonicalRel}`);
+    console.log(`  Registry:  ${regLabel}`);
+    console.log(`  Adapters:  ${adapterLabel}`);
+    console.log('');
+    console.log(`Edit ${canonicalRel} with your agent's logic.`);
+
+    if (noSync) {
+      console.log(`\nTo synchronize adapters: thesmos adapters`);
+    }
+  } catch (err) {
+    if (err instanceof AgentInstallError) {
+      process.stderr.write(err.message + '\n');
+      process.exit(1);
+    }
+    throw err;
+  }
 }

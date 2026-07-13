@@ -148,10 +148,16 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
     const pattern = blocked.replace(/\./g, '\\.').replace(/\*/g, '.*');
     const re = new RegExp(`^${pattern}`);
     if (re.test(relPath) || re.test(filePath)) {
+      // Provide targeted guidance for the canonical agent/command/skill authoring surfaces.
+      const AGENT_SURFACES = ['.claude/agents/', '.claude/commands/', '.claude/skills/'];
+      const isAgentSurface = AGENT_SURFACES.some((s) => relPath.startsWith(s) || filePath.includes(s));
+      const suggestion = isAgentSurface
+        ? `Install or author the file under .thesmos/agents/ and run \`thesmos agent:install\` or \`thesmos adapters\` to synchronize platform adapter files.`
+        : `Edit .thesmos/scope.json to allow this path if needed, or handle this file outside the agent session.`;
       return {
         type: 'blocked_path',
         message: `Path "${filePath}" matches blocked pattern "${blocked}".`,
-        suggestion: `Edit .thesmos/scope.json to allow this path if needed, or handle this file outside the agent session.`,
+        suggestion,
       };
     }
   }

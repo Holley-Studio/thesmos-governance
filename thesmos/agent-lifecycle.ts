@@ -1,0 +1,278 @@
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
+/**
+ * Agent lifecycle — shared operations for agent:create and agent:install.
+ *
+ * Responsibilities:
+ *   1. Validate an agent Markdown document and derive a canonical ID.
+ *   2. Write the canonical file to .thesmos/agents/<id>.md.
+ *   3. Add the agent to .thesmos/registry.json (idempotent).
+ *   4. Synchronize platform adapter files via the existing adapter pipeline.
+ *   5. Record the operation in the audit trail.
+ *   6. Return a structured result — never swallow a failure and report success.
+ *
+ * Design:
+ *   - All validation completes before any filesystem mutation.
+ *   - Adapter sync is optional (--no-sync) and always runs once per batch, not per file.
+ *   - The module is pure where possible; I/O is injectable for testing.
+ */
+
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename, extname, isAbsolute, join, relative, resolve } from 'node:path';
+import { parseFrontmatter } from './catalog.js';
+import { appendAuditEntry } from './agent-audit.js';
+import { loadRegistryConfig, mergeRegistryConfig, REGISTRY_DEFAULTS, REGISTRY_PATH } from './registry.js';
+import { getActiveCatalog } from './catalog.js';
+import { THESMOS_RULES, writeAllAdapters, ADAPTER_OUTPUT_PATHS, type AdapterTarget } from './adapters.js';
+import { loadConfig } from './config.js';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+/** Input for a single agent install or create operation. */
+export interface AgentLifecycleInput {
+  /** Markdown content to install. */
+  content: string;
+  /** Original source path (for display only, no filesystem access). */
+  sourcePath: string;
+  /** Override the derived ID (used by agent:create which already knows the ID). */
+  targetId?: string;
+  /** Overwrite an existing canonical file. */
+  force?: boolean;
+  /** Validate and report without mutating any files, registry, or audit log. */
+  dryRun?: boolean;
+  /** Install canonical file + registry but skip adapter generation. */
+  noSync?: boolean;
+  /** Project root. */
+  root: string;
+}
+
+/** Result returned by installAgent (whether dry-run or real). */
+export interface AgentLifecycleResult {
+  agentId: string;
+  canonicalFile: string;
+  registryResult: 'added' | 'already-present' | 'dry-run';
+  adapterPaths: string[];
+  warnings: string[];
+}
+
+/** Validation error — thrown before any mutation. */
+export class AgentInstallError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AgentInstallError';
+  }
+}
+
+// ── ID utilities (pure) ───────────────────────────────────────────────────────
+
+/**
+ * Normalize a string to lowercase kebab-case.
+ * Strips non-alphanumeric characters (except spaces and hyphens), trims,
+ * and collapses whitespace/hyphens to a single hyphen.
+ */
+export function toKebabCase(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/[\s-]+/g, '-');
+}
+
+/** Return true if a string is a valid canonical agent ID. */
+export function isValidAgentId(id: string): boolean {
+  return /^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(id) || /^[a-z0-9]$/.test(id);
+}
+
+/**
+ * Derive a canonical ID from an agent document.
+ *
+ * Priority:
+ *   1. `id` field in frontmatter (already kebab-case, validated)
+ *   2. `name` field in frontmatter (normalized to kebab-case)
+ *   3. Source filename without extension (normalized to kebab-case)
+ */
+export function deriveAgentId(content: string, sourcePath: string): string {
+  const { frontmatter } = parseFrontmatter(content);
+
+  if (typeof frontmatter['id'] === 'string' && frontmatter['id'].trim()) {
+    return toKebabCase(frontmatter['id']);
+  }
+
+  if (typeof frontmatter['name'] === 'string' && frontmatter['name'].trim()) {
+    return toKebabCase(frontmatter['name']);
+  }
+
+  const stem = basename(sourcePath, extname(sourcePath));
+  return toKebabCase(stem);
+}
+
+// ── Registry helpers ──────────────────────────────────────────────────────────
+
+type RegistryShape = Record<string, unknown>;
+
+function readRegistryRaw(root: string): RegistryShape {
+  const p = join(root, REGISTRY_PATH);
+  if (!existsSync(p)) return { rules: ['@thesmos/core'], agents: [], skills: [] };
+  try {
+    return JSON.parse(readFileSync(p, 'utf8')) as RegistryShape;
+  } catch {
+    return { rules: ['@thesmos/core'], agents: [], skills: [] };
+  }
+}
+
+function writeRegistryRaw(root: string, data: RegistryShape): void {
+  const p = join(root, REGISTRY_PATH);
+  mkdirSync(join(root, '.thesmos'), { recursive: true });
+  writeFileSync(p, JSON.stringify(data, null, 2) + '\n', 'utf8');
+}
+
+/**
+ * Add an agent ID to .thesmos/registry.json idempotently.
+ * Returns 'added' when the registry was changed, 'already-present' when it was not.
+ */
+export function addAgentToRegistry(root: string, id: string): 'added' | 'already-present' {
+  const registry = readRegistryRaw(root);
+  const agents = (registry['agents'] as string[] | undefined) ?? [];
+  if (agents.includes(id)) return 'already-present';
+  registry['agents'] = [...agents, id];
+  writeRegistryRaw(root, registry);
+  return 'added';
+}
+
+// ── Adapter sync ──────────────────────────────────────────────────────────────
+
+export const ALL_ADAPTER_TARGETS = Object.keys(ADAPTER_OUTPUT_PATHS) as AdapterTarget[];
+
+/**
+ * Re-run the full adapter generation pipeline and return the output paths.
+ * This is identical to what `thesmos adapters` does internally.
+ */
+export function syncAdapters(root: string): string[] {
+  let config;
+  try {
+    config = loadConfig(root);
+  } catch {
+    // Non-thesmos project — use minimal config; adapters still generate.
+    config = { version: '0.0.0', project: basename(root) } as ReturnType<typeof loadConfig>;
+  }
+
+  const registryConfig = loadRegistryConfig(root);
+  const merged = mergeRegistryConfig(REGISTRY_DEFAULTS, registryConfig);
+  const activeCatalog = getActiveCatalog(root, { agents: merged.agents, skills: merged.skills });
+
+  const catalog =
+    activeCatalog.agents.length > 0 || activeCatalog.skills.length > 0
+      ? {
+          agents: activeCatalog.agents.map((a) => ({ id: a.frontmatter.id, name: a.frontmatter.name })),
+          skills: activeCatalog.skills.map((s) => ({ id: s.frontmatter.id, name: s.frontmatter.name })),
+          profile: merged.profiles[0],
+        }
+      : undefined;
+
+  const manifests = writeAllAdapters(root, THESMOS_RULES, config, ALL_ADAPTER_TARGETS, catalog);
+  return manifests.map((m) => m.outputPath);
+}
+
+// ── Path safety ───────────────────────────────────────────────────────────────
+
+/**
+ * Confirm the resolved canonical path stays within .thesmos/agents/ to prevent
+ * path traversal attacks via crafted frontmatter IDs.
+ */
+function assertNoTraversal(root: string, id: string): void {
+  const agentsDir = resolve(root, '.thesmos', 'agents');
+  const targetAbs = resolve(agentsDir, `${id}.md`);
+  const rel = relative(agentsDir, targetAbs);
+  if (rel.startsWith('..') || isAbsolute(rel)) {
+    throw new AgentInstallError(
+      `agent:install: ID "${id}" resolves outside the agents directory (path traversal rejected).`
+    );
+  }
+}
+
+// ── Core install operation ────────────────────────────────────────────────────
+
+/**
+ * Install a single agent document.
+ *
+ * All validation runs before any mutation.
+ * Returns a structured result describing what happened (or would happen in dry-run).
+ */
+export function installAgent(input: AgentLifecycleInput): AgentLifecycleResult {
+  const { content, sourcePath, targetId, force = false, dryRun = false, noSync = false, root } = input;
+
+  if (!content.trim()) {
+    throw new AgentInstallError(`agent:install: "${sourcePath}" is empty.`);
+  }
+
+  // ── Derive ID ──────────────────────────────────────────────────────────────
+  const rawId = targetId ?? deriveAgentId(content, sourcePath);
+
+  if (!rawId || !isValidAgentId(rawId)) {
+    throw new AgentInstallError(
+      `agent:install: could not derive a valid ID from "${sourcePath}" (got "${rawId}"). ` +
+      `Add \`id: your-agent-id\` frontmatter, or use a descriptive filename.`
+    );
+  }
+
+  // Path-traversal guard (pure check, no I/O)
+  assertNoTraversal(root, rawId);
+
+  // ── Check destination ──────────────────────────────────────────────────────
+  const agentsDir = join(root, '.thesmos', 'agents');
+  const canonicalPath = join(agentsDir, `${rawId}.md`);
+  const canonicalRel = `.thesmos/agents/${rawId}.md`;
+  const warnings: string[] = [];
+
+  if (existsSync(canonicalPath) && !force) {
+    throw new AgentInstallError(
+      `agent:install: "${canonicalRel}" already exists. Use --force to overwrite.`
+    );
+  }
+
+  if (existsSync(canonicalPath) && force) {
+    warnings.push(`Overwrote existing file: ${canonicalRel}`);
+  }
+
+  // ── All validation passed — begin mutations (skipped in dry-run) ───────────
+  if (dryRun) {
+    return {
+      agentId: rawId,
+      canonicalFile: canonicalRel,
+      registryResult: 'dry-run',
+      adapterPaths: [],
+      warnings,
+    };
+  }
+
+  // Write canonical file
+  mkdirSync(agentsDir, { recursive: true });
+  writeFileSync(canonicalPath, content, 'utf8');
+
+  // Update registry
+  const registryResult = addAgentToRegistry(root, rawId);
+
+  // Audit entry
+  try {
+    appendAuditEntry(root, 'agent:install', canonicalRel, 'INFO', []);
+  } catch {
+    warnings.push('audit trail write failed (non-fatal)');
+  }
+
+  // Adapter sync (deferred — caller does this once after a batch)
+  return {
+    agentId: rawId,
+    canonicalFile: canonicalRel,
+    registryResult,
+    adapterPaths: noSync ? [] : [],  // caller populates after batch sync
+    warnings,
+  };
+}
+
+// ── Filename filters ──────────────────────────────────────────────────────────
+
+/** Files that should be silently skipped during directory installs. */
+const IGNORED_FILENAMES = new Set(['README.md', 'readme.md', 'CHANGELOG.md', 'LICENSE.md']);
+
+export function isIgnoredAgentFile(filename: string): boolean {
+  return IGNORED_FILENAMES.has(filename) || IGNORED_FILENAMES.has(filename.toLowerCase());
+}

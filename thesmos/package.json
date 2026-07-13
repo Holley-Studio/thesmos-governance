@@ -114,6 +114,7 @@
     "thesmos:catalog:enable": "tsx bin/cli.ts catalog:enable",
     "thesmos:catalog:disable": "tsx bin/cli.ts catalog:disable",
     "thesmos:agent:create": "tsx bin/cli.ts agent:create",
+    "thesmos:agent:install": "tsx bin/cli.ts agent:install",
     "thesmos:skill:create": "tsx bin/cli.ts skill:create",
     "thesmos:baseline:create": "tsx bin/cli.ts baseline:create",
     "thesmos:baseline:update": "tsx bin/cli.ts baseline:update",

@@ -16,6 +16,7 @@ import { cmdAdapters } from './commands/adapters.ts';
 import { cmdCiCheck } from './commands/ci-check.ts';
 import { cmdCatalog } from './commands/catalog.ts';
 import { cmdAgentCreate } from './commands/agent-create.ts';
+import { cmdAgentInstall } from './commands/agent-install.ts';
 import { cmdSkillCreate } from './commands/skill-create.ts';
 import { cmdDrift } from './commands/drift.ts';
 import { cmdBaseline } from './commands/baseline.ts';
@@ -138,6 +139,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'catalog:disable': (argv) => cmdCatalog(['disable', ...argv]),
   'catalog:profiles': (argv) => cmdCatalog(['profiles', ...argv]),
   'agent:create': cmdAgentCreate,
+  'agent:install': cmdAgentInstall,
   'skill:create': cmdSkillCreate,
   'autopilot': (argv) => cmdAutopilot(argv),
   'autopilot:validate': (argv) => cmdAutopilot(['validate', ...argv]),
@@ -482,13 +484,21 @@ PACKS
     --access=<level>           npm publish access (default: public)
     --tag=<tag>                npm dist-tag (e.g. --tag=beta)
 
+CUSTOM AGENTS
+  agent:create "<Name>"    Scaffold a new agent in .thesmos/agents/ and register it
+    --no-sync                Skip adapter synchronization after creation
+  agent:install <file>     Install an agent .md file into .thesmos/agents/ and register it
+  agent:install <dir>      Install all .md files in a directory (non-recursive, sorted order)
+    --force                  Overwrite an existing canonical file
+    --dry-run                Validate and show proposed operations without mutating files
+    --no-sync                Install and register but skip adapter synchronization
+
 CATALOG
   catalog:list             List all agents and skills
   catalog:validate         Validate catalog frontmatter
   catalog:enable           Enable agents/skills into .thesmos/registry.json
   catalog:disable          Disable agents/skills
   catalog:profiles         List profiles
-  agent:create             Scaffold a new agent file
   skill:create             Scaffold a new skill file
 
 AUTOPILOT  (disabled by default — enable in .thesmos/config.json)
