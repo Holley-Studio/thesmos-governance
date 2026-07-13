@@ -20,6 +20,7 @@ import {
   installAgent,
   syncAdapters,
   isIgnoredAgentFile,
+  deriveAgentId,
   AgentInstallError,
 } from '../../agent-lifecycle.ts';
 
@@ -129,6 +130,22 @@ async function installDirectory(
       process.stderr.write(`agent:install: cannot read "${absPath}": ${String(err)}\n`);
       process.exit(1);
     }
+  }
+
+  // Detect normalized-ID collisions within the batch before any mutation
+  const idsInBatch = new Map<string, string>(); // id → source filename
+  for (const { absPath, content } of inputs) {
+    const id = deriveAgentId(content, absPath);
+    const filename = basename(absPath);
+    const existing = idsInBatch.get(id);
+    if (existing !== undefined) {
+      process.stderr.write(
+        `agent:install: two files in this batch normalize to the same ID "${id}": ` +
+        `"${existing}" and "${filename}". Rename one or add distinct frontmatter \`id:\` fields.\n`
+      );
+      process.exit(1);
+    }
+    idsInBatch.set(id, filename);
   }
 
   // Validate all first (all-or-nothing)

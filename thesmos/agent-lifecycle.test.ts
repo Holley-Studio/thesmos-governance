@@ -183,12 +183,12 @@ describe('addAgentToRegistry', () => {
     expect(reg['skills']).toContain('my-skill');
   });
 
-  it('handles malformed registry.json gracefully (starts fresh)', () => {
+  it('throws when registry.json exists but is malformed (does not silently reset)', () => {
+    // Silent reset would destroy valid registry state that happens to be temporarily malformed.
+    // Callers must see the error and handle it explicitly rather than discovering data loss later.
     mkdirSync(join(root, '.thesmos'), { recursive: true });
     writeFileSync(join(root, '.thesmos', 'registry.json'), '{bad json}');
-    expect(() => addAgentToRegistry(root, 'my-agent')).not.toThrow();
-    const reg = readRegistry(root);
-    expect(reg['agents']).toContain('my-agent');
+    expect(() => addAgentToRegistry(root, 'my-agent')).toThrow();
   });
 });
 
@@ -395,7 +395,7 @@ describe('scope: improved suggestion for .claude/ authoring surfaces', () => {
     saveScopeConfig(root, cfg);
   }
 
-  it('returns agent-install suggestion when .claude/agents/ is blocked', () => {
+  it('returns agent:install suggestion for .claude/agents/', () => {
     writeScopeWith(['.claude/']);
     const violation = checkScope({ toolName: 'Write', filePath: '.claude/agents/my-agent.md', root });
     expect(violation).not.toBeNull();
@@ -403,18 +403,22 @@ describe('scope: improved suggestion for .claude/ authoring surfaces', () => {
     expect(violation!.suggestion).toContain('.thesmos/agents/');
   });
 
-  it('returns agent-install suggestion when .claude/commands/ is blocked', () => {
-    writeScopeWith(['.claude/']);
-    const violation = checkScope({ toolName: 'Write', filePath: '.claude/commands/my-skill.md', root });
-    expect(violation).not.toBeNull();
-    expect(violation!.suggestion).toContain('thesmos agent:install');
-  });
-
-  it('returns agent-install suggestion when .claude/skills/ is blocked', () => {
+  it('returns skill:create suggestion for .claude/skills/ (NOT agent:install)', () => {
     writeScopeWith(['.claude/']);
     const violation = checkScope({ toolName: 'Write', filePath: '.claude/skills/my-skill.md', root });
     expect(violation).not.toBeNull();
-    expect(violation!.suggestion).toContain('thesmos agent:install');
+    expect(violation!.suggestion).toContain('skill:create');
+    // skill path should NOT suggest agent:install
+    expect(violation!.suggestion).not.toContain('agent:install');
+  });
+
+  it('returns no-installer advisory for .claude/commands/ (NOT agent:install)', () => {
+    writeScopeWith(['.claude/']);
+    const violation = checkScope({ toolName: 'Write', filePath: '.claude/commands/my-cmd.md', root });
+    expect(violation).not.toBeNull();
+    expect(violation!.suggestion).toContain('no Thesmos-managed installer');
+    // commands path should NOT suggest agent:install
+    expect(violation!.suggestion).not.toContain('agent:install');
   });
 
   it('returns generic suggestion for unrelated blocked paths', () => {
@@ -436,6 +440,83 @@ describe('scope: improved suggestion for .claude/ authoring surfaces', () => {
     expect(checkScope({ toolName: 'Write', filePath: 'node_modules/pkg/index.js', root })).not.toBeNull();
     expect(checkScope({ toolName: 'Write', filePath: '.env', root })).not.toBeNull();
     expect(checkScope({ toolName: 'Write', filePath: 'src/index.ts', root })).toBeNull();
+  });
+});
+
+// ── installAgent — source-equals-destination ──────────────────────────────────
+
+describe('installAgent — source-equals-destination', () => {
+  let root: string;
+  beforeEach(() => { root = makeTmpDir(); });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+
+  it('is a no-op (register-only) when source IS the canonical path', () => {
+    // Pre-create the canonical file
+    mkdirSync(join(root, '.thesmos', 'agents'), { recursive: true });
+    const canonicalPath = join(root, '.thesmos', 'agents', 'security-review.md');
+    writeFileSync(canonicalPath, AGENT_WITH_ID_FM, 'utf8');
+
+    // Install with the canonical path as source — should not throw, not try to overwrite itself
+    const result = installAgent({
+      content: AGENT_WITH_ID_FM,
+      sourcePath: canonicalPath,
+      noSync: true,
+      root,
+    });
+    expect(result.agentId).toBe('security-review');
+    // Registry should be updated
+    const reg = readRegistry(root);
+    expect(reg['agents']).toContain('security-review');
+    // The file content is unchanged
+    const written = readFileSync(canonicalPath, 'utf8');
+    expect(written).toBe(AGENT_WITH_ID_FM);
+  });
+});
+
+// ── installAgent — transaction integrity ──────────────────────────────────────
+
+describe('installAgent — transaction integrity', () => {
+  let root: string;
+  beforeEach(() => { root = makeTmpDir(); });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+
+  it('does not leave orphaned canonical file when registry update fails', () => {
+    // Write a broken registry to force addAgentToRegistry to throw
+    mkdirSync(join(root, '.thesmos'), { recursive: true });
+    writeFileSync(join(root, '.thesmos', 'registry.json'), '{bad json}', 'utf8');
+
+    expect(() =>
+      installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root })
+    ).toThrow(AgentInstallError);
+
+    // The canonical file must NOT exist (rolled back)
+    expect(existsSync(join(root, '.thesmos', 'agents', 'security-review.md'))).toBe(false);
+  });
+});
+
+// ── installAgent — audit trail ────────────────────────────────────────────────
+
+describe('installAgent — audit trail', () => {
+  let root: string;
+  beforeEach(() => { root = makeTmpDir(); });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+
+  it('writes an audit entry after successful install', () => {
+    installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root });
+    const auditFile = join(root, '.thesmos', 'audit.jsonl');
+    expect(existsSync(auditFile)).toBe(true);
+    const lines = readFileSync(auditFile, 'utf8').trim().split('\n').filter(Boolean);
+    expect(lines.length).toBe(1);
+    const entry = JSON.parse(lines[0]!) as Record<string, unknown>;
+    expect(entry['tool']).toBe('agent:install');
+    expect(entry['status']).toBe('INFO');
+    expect(String(entry['file'])).toContain('security-review');
+  });
+
+  it('does NOT write an audit entry on dry-run', () => {
+    installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', dryRun: true, noSync: true, root });
+    const auditFile = join(root, '.thesmos', 'audit.jsonl');
+    expect(existsSync(auditFile)).toBe(false);
   });
 });
 

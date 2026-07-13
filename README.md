@@ -199,6 +199,34 @@ No config file is required. To customize, create `.thesmos/config.json`:
 
 ---
 
+## Custom Agents
+
+You can install your own agent Markdown files alongside the Pantheon agents. Thesmos writes the canonical file to `.thesmos/agents/`, registers it in `.thesmos/registry.json`, and regenerates platform adapter files in one step.
+
+```bash
+# Scaffold a new agent (opens an editable stub in .thesmos/agents/)
+thesmos agent:create "My Security Reviewer"
+
+# Install an existing Markdown file as a governed agent
+thesmos agent:install path/to/my-agent.md
+
+# Install all .md files in a directory (non-recursive, sorted)
+thesmos agent:install path/to/agents-dir/
+
+# Preview without writing anything
+thesmos agent:install path/to/my-agent.md --dry-run
+
+# Install without regenerating adapter files (useful in scripts)
+thesmos agent:install path/to/my-agent.md --no-sync
+thesmos adapters  # regenerate once after all installs
+```
+
+**Canonical vs. generated surfaces:** Agent Markdown files live in `.thesmos/agents/` (source of truth). Platform adapter files — `.claude/agents/`, `AGENTS.md`, `.cursor/rules/`, etc. — are generated from that canonical source and should not be edited directly. If your agent scope config blocks `.claude/agents/`, the violation message will tell you exactly what to do.
+
+**ID derivation:** The agent ID comes from `id:` frontmatter → `name:` frontmatter → filename stem, all normalized to lowercase kebab-case.
+
+---
+
 ## Community Rule Packs
 
 Drop any `.json` rule pack into `.thesmos/packs/` — they load at runtime without a rebuild. See `CONTRIBUTING.md` for the schema.

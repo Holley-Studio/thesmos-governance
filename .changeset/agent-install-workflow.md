@@ -13,9 +13,20 @@ Add `thesmos agent:install` command and shared agent lifecycle module.
 - `--no-sync` flag installs and registers but skips adapter regeneration (useful in batch scripts that call `thesmos adapters` once at the end).
 - `thesmos agent:create` is refactored to use the shared lifecycle module — agents created with `agent:create` are now auto-registered and adapter-synced in the same pipeline used by `agent:install`.
 
-**Improved blocked-path guidance:**
+**Improved blocked-path guidance (path-specific):**
 
-When the agent tries to write directly to `.claude/agents/`, `.claude/commands/`, or `.claude/skills/` and those paths are in `scope.json` `blockedPaths`, the violation message now includes an actionable suggestion pointing to `thesmos agent:install` and `.thesmos/agents/`.
+When the agent tries to write directly to a `.claude/` surface and that path is in `scope.json` `blockedPaths`, the violation now provides surface-specific guidance:
+- `.claude/agents/` → points to `thesmos agent:install` and `.thesmos/agents/`
+- `.claude/skills/` → points to `thesmos skill:create` / `thesmos adapters`
+- `.claude/commands/` → states there is no Thesmos-managed installer and suggests handling outside the governed session
+
+**Safety fixes:**
+
+- Malformed `.thesmos/registry.json` now throws instead of silently resetting to defaults (which would destroy existing registry state).
+- Transaction rollback: if the registry update fails after the canonical file was written, the file is removed to prevent orphaned state.
+- Source-equals-destination: installing a file that is already the canonical path is handled as a register-only no-op (no self-overwrite).
+- Batch duplicate detection: `agent:install <dir>` now detects when two files normalize to the same agent ID before any mutation and exits with an actionable error.
+- Audit entry is written only after all mutations succeed; dry-run never writes an audit entry.
 
 **Architecture:**
 

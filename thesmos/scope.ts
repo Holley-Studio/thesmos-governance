@@ -148,12 +148,32 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
     const pattern = blocked.replace(/\./g, '\\.').replace(/\*/g, '.*');
     const re = new RegExp(`^${pattern}`);
     if (re.test(relPath) || re.test(filePath)) {
-      // Provide targeted guidance for the canonical agent/command/skill authoring surfaces.
-      const AGENT_SURFACES = ['.claude/agents/', '.claude/commands/', '.claude/skills/'];
-      const isAgentSurface = AGENT_SURFACES.some((s) => relPath.startsWith(s) || filePath.includes(s));
-      const suggestion = isAgentSurface
-        ? `Install or author the file under .thesmos/agents/ and run \`thesmos agent:install\` or \`thesmos adapters\` to synchronize platform adapter files.`
-        : `Edit .thesmos/scope.json to allow this path if needed, or handle this file outside the agent session.`;
+      // Provide targeted, path-specific guidance for each canonical authoring surface.
+      const AGENT_SURFACE   = '.claude/agents/';
+      const SKILL_SURFACE   = '.claude/skills/';
+      const COMMAND_SURFACE = '.claude/commands/';
+      const isAgentPath   = relPath.startsWith(AGENT_SURFACE)   || filePath.includes(AGENT_SURFACE);
+      const isSkillPath   = relPath.startsWith(SKILL_SURFACE)   || filePath.includes(SKILL_SURFACE);
+      const isCommandPath = relPath.startsWith(COMMAND_SURFACE) || filePath.includes(COMMAND_SURFACE);
+
+      let suggestion: string;
+      if (isAgentPath) {
+        suggestion =
+          `Author the file under .thesmos/agents/ and run \`thesmos agent:install <file>\` ` +
+          `or \`thesmos adapters\` to synchronize platform adapter files.`;
+      } else if (isSkillPath) {
+        suggestion =
+          `Author the skill outside .claude/skills/ and run \`thesmos skill:create\` ` +
+          `or \`thesmos adapters\` to synchronize platform skill files.`;
+      } else if (isCommandPath) {
+        suggestion =
+          `There is no Thesmos-managed installer for .claude/commands/ files. ` +
+          `Handle this file outside the governed agent session, or add its path to ` +
+          `\`allowedPaths\` in .thesmos/scope.json.`;
+      } else {
+        suggestion =
+          `Edit .thesmos/scope.json to allow this path if needed, or handle this file outside the agent session.`;
+      }
       return {
         type: 'blocked_path',
         message: `Path "${filePath}" matches blocked pattern "${blocked}".`,

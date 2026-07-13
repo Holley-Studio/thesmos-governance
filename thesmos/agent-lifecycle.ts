@@ -16,7 +16,7 @@
  *   - The module is pure where possible; I/O is injectable for testing.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { parseFrontmatter } from './catalog.js';
 import { appendAuditEntry } from './agent-audit.js';
@@ -112,11 +112,9 @@ type RegistryShape = Record<string, unknown>;
 function readRegistryRaw(root: string): RegistryShape {
   const p = join(root, REGISTRY_PATH);
   if (!existsSync(p)) return { rules: ['@thesmos/core'], agents: [], skills: [] };
-  try {
-    return JSON.parse(readFileSync(p, 'utf8')) as RegistryShape;
-  } catch {
-    return { rules: ['@thesmos/core'], agents: [], skills: [] };
-  }
+  // Throw on parse failure so callers see the error rather than silently replacing
+  // valid registry data with defaults — silent replacement would destroy existing state.
+  return JSON.parse(readFileSync(p, 'utf8')) as RegistryShape;
 }
 
 function writeRegistryRaw(root: string, data: RegistryShape): void {
@@ -223,13 +221,17 @@ export function installAgent(input: AgentLifecycleInput): AgentLifecycleResult {
   const canonicalRel = `.thesmos/agents/${rawId}.md`;
   const warnings: string[] = [];
 
-  if (existsSync(canonicalPath) && !force) {
+  // Source-equals-destination: the source file IS the canonical file — skip write.
+  const sourceAbs = isAbsolute(sourcePath) ? sourcePath : resolve(root, sourcePath);
+  const sourceIsCanonical = sourceAbs === resolve(canonicalPath);
+
+  if (!sourceIsCanonical && existsSync(canonicalPath) && !force) {
     throw new AgentInstallError(
       `agent:install: "${canonicalRel}" already exists. Use --force to overwrite.`
     );
   }
 
-  if (existsSync(canonicalPath) && force) {
+  if (!sourceIsCanonical && existsSync(canonicalPath) && force) {
     warnings.push(`Overwrote existing file: ${canonicalRel}`);
   }
 
@@ -244,26 +246,41 @@ export function installAgent(input: AgentLifecycleInput): AgentLifecycleResult {
     };
   }
 
-  // Write canonical file
-  mkdirSync(agentsDir, { recursive: true });
-  writeFileSync(canonicalPath, content, 'utf8');
+  // Write canonical file (skipped when source IS the canonical path)
+  let wroteFile = false;
+  if (!sourceIsCanonical) {
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(canonicalPath, content, 'utf8');
+    wroteFile = true;
+  }
 
-  // Update registry
-  const registryResult = addAgentToRegistry(root, rawId);
+  // Update registry — if this throws, roll back the file we just wrote
+  let registryResult: 'added' | 'already-present';
+  try {
+    registryResult = addAgentToRegistry(root, rawId);
+  } catch (err) {
+    if (wroteFile) {
+      try { unlinkSync(canonicalPath); } catch { /* ignore rollback failure */ }
+    }
+    throw new AgentInstallError(
+      `agent:install: registry update failed: ${String(err)}`
+    );
+  }
 
-  // Audit entry
+  // Audit entry (recorded after all mutations succeed; adapter sync is separate)
   try {
     appendAuditEntry(root, 'agent:install', canonicalRel, 'INFO', []);
   } catch {
     warnings.push('audit trail write failed (non-fatal)');
   }
 
-  // Adapter sync (deferred — caller does this once after a batch)
+  // Adapter sync is intentionally deferred: callers (agent-install.ts / agent-create.ts)
+  // run syncAdapters once per batch after all installAgent calls complete.
   return {
     agentId: rawId,
     canonicalFile: canonicalRel,
     registryResult,
-    adapterPaths: noSync ? [] : [],  // caller populates after batch sync
+    adapterPaths: [],  // populated by caller after batch adapter sync
     warnings,
   };
 }
