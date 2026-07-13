@@ -69,9 +69,10 @@ export async function cmdAgentCreate(argv: string[]): Promise<void> {
     // Register in registry
     const registryResult = addAgentToRegistry(root, id);
 
-    // Audit
+    // Audit — 'AgentCanonicalCreate' covers the canonical-file write + registry update.
+    // A second event 'AgentAdapterSync' is appended below after adapter sync completes.
     try {
-      appendAuditEntry(root, 'agent:create', canonicalRel, 'INFO', []);
+      appendAuditEntry(root, 'AgentCanonicalCreate', canonicalRel, 'INFO', []);
     } catch {
       // non-fatal
     }
@@ -81,22 +82,27 @@ export async function cmdAgentCreate(argv: string[]): Promise<void> {
     if (!noSync) {
       try {
         adapterPaths = syncAdapters(root);
+        try { appendAuditEntry(root, 'AgentAdapterSync', id, 'INFO', []); } catch { /**/ }
       } catch (err) {
-        process.stderr.write(`agent:create: adapter sync failed: ${String(err)}\n`);
+        try { appendAuditEntry(root, 'AgentAdapterSync', id, 'WARN', []); } catch { /**/ }
+        console.error(`\nagent:create: adapter synchronization failed: ${String(err)}`);
+        console.error(`Canonical file and registry are intact.`);
+        console.error(`Run \`thesmos adapters\` to retry adapter synchronization.`);
+        process.exit(1);
       }
     }
 
-    const regLabel = registryResult === 'added' ? 'added' : 'already registered';
+    const regLabel = registryResult === 'added' ? 'registry: added' : 'registry: already registered';
     const adapterLabel = noSync
-      ? 'skipped'
+      ? 'adapters: skipped (--no-sync)'
       : adapterPaths.length > 0
-      ? 'synchronized'
-      : 'none written';
+      ? `adapters: synchronized (${adapterPaths.length} files)`
+      : 'adapters: none written';
 
     console.log(`agent:create — created custom agent: ${id}`);
-    console.log(`  Canonical: ${canonicalRel}`);
-    console.log(`  Registry:  ${regLabel}`);
-    console.log(`  Adapters:  ${adapterLabel}`);
+    console.log(`  canonical: created ${canonicalRel}`);
+    console.log(`  ${regLabel}`);
+    console.log(`  ${adapterLabel}`);
     console.log('');
     console.log(`Edit ${canonicalRel} with your agent's logic.`);
 

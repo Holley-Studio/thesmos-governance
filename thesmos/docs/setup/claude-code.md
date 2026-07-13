@@ -59,6 +59,8 @@ npm install --save-dev thesmos-governance
 thesmos adapters
 ```
 
+> **Recovery:** If adapter synchronization fails after `agent:install` or `agent:create`, the canonical file and registry entry are preserved. Run `thesmos adapters` to retry synchronization.
+
 ## Custom Agents
 
 To scaffold your own agent with governance:

@@ -246,30 +246,50 @@ export function installAgent(input: AgentLifecycleInput): AgentLifecycleResult {
     };
   }
 
+  // Capture rollback state before any writes.
+  // destinationExisted=true + originalContent=string → forced replacement → restore on failure.
+  // destinationExisted=false                          → new file          → unlink on failure.
+  // sourceIsCanonical=true                            → no write at all   → no rollback needed.
+  const destinationExisted = !sourceIsCanonical && existsSync(canonicalPath);
+  let originalContent: string | null = null;
+  if (destinationExisted && force) {
+    originalContent = readFileSync(canonicalPath, 'utf8');
+  }
+
   // Write canonical file (skipped when source IS the canonical path)
-  let wroteFile = false;
   if (!sourceIsCanonical) {
     mkdirSync(agentsDir, { recursive: true });
     writeFileSync(canonicalPath, content, 'utf8');
-    wroteFile = true;
   }
 
-  // Update registry — if this throws, roll back the file we just wrote
+  // Update registry — if this throws, roll back the canonical file to its pre-call state.
   let registryResult: 'added' | 'already-present';
   try {
     registryResult = addAgentToRegistry(root, rawId);
   } catch (err) {
-    if (wroteFile) {
-      try { unlinkSync(canonicalPath); } catch { /* ignore rollback failure */ }
+    if (!sourceIsCanonical) {
+      try {
+        if (!destinationExisted) {
+          // New file — remove it entirely.
+          unlinkSync(canonicalPath);
+        } else if (originalContent !== null) {
+          // Forced replacement — restore original bytes rather than deleting the file.
+          writeFileSync(canonicalPath, originalContent, 'utf8');
+        }
+        // If destinationExisted=true but originalContent=null (shouldn't happen with --force
+        // logic above), leave the file as-is; the caller sees the AgentInstallError below.
+      } catch { /* rollback failure is non-fatal; the real error surfaces below */ }
     }
     throw new AgentInstallError(
       `agent:install: registry update failed: ${String(err)}`
     );
   }
 
-  // Audit entry (recorded after all mutations succeed; adapter sync is separate)
+  // Audit entry (recorded after all mutations succeed; adapter sync is separate).
+  // Action label 'AgentCanonicalInstall' covers the canonical-file write + registry update.
+  // A second event 'AgentAdapterSync' is appended by callers after adapter sync completes.
   try {
-    appendAuditEntry(root, 'agent:install', canonicalRel, 'INFO', []);
+    appendAuditEntry(root, 'AgentCanonicalInstall', canonicalRel, 'INFO', []);
   } catch {
     warnings.push('audit trail write failed (non-fatal)');
   }

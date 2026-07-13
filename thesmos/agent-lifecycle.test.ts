@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, writeFileSync, existsSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, readFileSync, rmSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -494,21 +494,21 @@ describe('installAgent — transaction integrity', () => {
   });
 });
 
-// ── installAgent — audit trail ────────────────────────────────────────────────
+// ── installAgent — audit trail (legacy describe, kept for suite continuity) ───
 
 describe('installAgent — audit trail', () => {
   let root: string;
   beforeEach(() => { root = makeTmpDir(); });
   afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
 
-  it('writes an audit entry after successful install', () => {
+  it('writes an audit entry with AgentCanonicalInstall after successful install', () => {
     installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root });
     const auditFile = join(root, '.thesmos', 'audit.jsonl');
     expect(existsSync(auditFile)).toBe(true);
     const lines = readFileSync(auditFile, 'utf8').trim().split('\n').filter(Boolean);
     expect(lines.length).toBe(1);
     const entry = JSON.parse(lines[0]!) as Record<string, unknown>;
-    expect(entry['tool']).toBe('agent:install');
+    expect(entry['tool']).toBe('AgentCanonicalInstall');
     expect(entry['status']).toBe('INFO');
     expect(String(entry['file'])).toContain('security-review');
   });
@@ -517,6 +517,232 @@ describe('installAgent — audit trail', () => {
     installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', dryRun: true, noSync: true, root });
     const auditFile = join(root, '.thesmos', 'audit.jsonl');
     expect(existsSync(auditFile)).toBe(false);
+  });
+});
+
+// ── rollback behavior ─────────────────────────────────────────────────────────
+
+describe('rollback behavior', () => {
+  let root: string;
+  beforeEach(() => { root = makeTmpDir(); });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+
+  /**
+   * Simulate registry failure by making registry.json read-only after writing it.
+   * Only works on macOS/Linux; Windows is not targeted by this repo (Node ≥20, macOS CI).
+   */
+  function makeRegistryUnwritable(root: string): void {
+    mkdirSync(join(root, '.thesmos'), { recursive: true });
+    writeFileSync(join(root, '.thesmos', 'registry.json'), '{"agents":[]}', 'utf8');
+    chmodSync(join(root, '.thesmos', 'registry.json'), 0o444); // read-only
+  }
+
+  function restoreRegistryPermissions(root: string): void {
+    try { chmodSync(join(root, '.thesmos', 'registry.json'), 0o644); } catch { /**/ }
+  }
+
+  it('new-file rollback: canonical file does not exist after registry failure', () => {
+    makeRegistryUnwritable(root);
+    try {
+      expect(() =>
+        installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root })
+      ).toThrow(AgentInstallError);
+      // The canonical file must NOT exist — rollback removed it.
+      expect(existsSync(join(root, '.thesmos', 'agents', 'security-review.md'))).toBe(false);
+    } finally {
+      restoreRegistryPermissions(root);
+    }
+  });
+
+  it('force-replace rollback: original content is restored, not deleted', () => {
+    // Pre-create canonical file with original content.
+    mkdirSync(join(root, '.thesmos', 'agents'), { recursive: true });
+    const canonicalPath = join(root, '.thesmos', 'agents', 'security-review.md');
+    const originalContent = '# Original content that must be restored';
+    writeFileSync(canonicalPath, originalContent, 'utf8');
+
+    // Now make registry unwritable so the write succeeds but registry fails.
+    makeRegistryUnwritable(root);
+    try {
+      expect(() =>
+        installAgent({
+          content: AGENT_WITH_ID_FM,
+          sourcePath: 'test.md',
+          force: true,
+          noSync: true,
+          root,
+        })
+      ).toThrow(AgentInstallError);
+      // The canonical file must still exist with the ORIGINAL content.
+      expect(existsSync(canonicalPath)).toBe(true);
+      const restored = readFileSync(canonicalPath, 'utf8');
+      expect(restored).toBe(originalContent);
+    } finally {
+      restoreRegistryPermissions(root);
+    }
+  });
+
+  it('force-replace rollback does NOT delete the destination', () => {
+    mkdirSync(join(root, '.thesmos', 'agents'), { recursive: true });
+    const canonicalPath = join(root, '.thesmos', 'agents', 'security-review.md');
+    writeFileSync(canonicalPath, 'original', 'utf8');
+
+    makeRegistryUnwritable(root);
+    try {
+      expect(() =>
+        installAgent({
+          content: AGENT_WITH_ID_FM,
+          sourcePath: 'test.md',
+          force: true,
+          noSync: true,
+          root,
+        })
+      ).toThrow(AgentInstallError);
+      // File must still exist — it was restored, not deleted.
+      expect(existsSync(canonicalPath)).toBe(true);
+    } finally {
+      restoreRegistryPermissions(root);
+    }
+  });
+
+  it('source-equals-destination: original file still exists after registry failure', () => {
+    // Pre-create canonical file.
+    mkdirSync(join(root, '.thesmos', 'agents'), { recursive: true });
+    const canonicalPath = join(root, '.thesmos', 'agents', 'security-review.md');
+    writeFileSync(canonicalPath, AGENT_WITH_ID_FM, 'utf8');
+
+    makeRegistryUnwritable(root);
+    try {
+      expect(() =>
+        installAgent({
+          content: AGENT_WITH_ID_FM,
+          sourcePath: canonicalPath,  // source IS the destination
+          noSync: true,
+          root,
+        })
+      ).toThrow(AgentInstallError);
+      // File must still exist with original content (no write was attempted).
+      expect(existsSync(canonicalPath)).toBe(true);
+      const content = readFileSync(canonicalPath, 'utf8');
+      expect(content).toBe(AGENT_WITH_ID_FM);
+    } finally {
+      restoreRegistryPermissions(root);
+    }
+  });
+
+  it('no audit entry is written after rollback', () => {
+    makeRegistryUnwritable(root);
+    try {
+      expect(() =>
+        installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root })
+      ).toThrow(AgentInstallError);
+      // No audit file should exist — audit is written only after all mutations succeed.
+      expect(existsSync(join(root, '.thesmos', 'audit.jsonl'))).toBe(false);
+    } finally {
+      restoreRegistryPermissions(root);
+    }
+  });
+});
+
+// ── audit trail ───────────────────────────────────────────────────────────────
+
+describe('audit trail', () => {
+  let root: string;
+  beforeEach(() => { root = makeTmpDir(); });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+
+  it('no audit file created on dry-run', () => {
+    installAgent({
+      content: AGENT_WITH_ID_FM, sourcePath: 'test.md', dryRun: true, noSync: true, root,
+    });
+    expect(existsSync(join(root, '.thesmos', 'audit.jsonl'))).toBe(false);
+  });
+
+  it('no audit file created on validation failure', () => {
+    expect(() =>
+      installAgent({ content: AGENT_EMPTY, sourcePath: 'empty.md', noSync: true, root })
+    ).toThrow(AgentInstallError);
+    expect(existsSync(join(root, '.thesmos', 'audit.jsonl'))).toBe(false);
+  });
+
+  it('audit file created on success with AgentCanonicalInstall action label', () => {
+    installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root });
+    const auditFile = join(root, '.thesmos', 'audit.jsonl');
+    expect(existsSync(auditFile)).toBe(true);
+    const lines = readFileSync(auditFile, 'utf8').trim().split('\n').filter(Boolean);
+    expect(lines.length).toBe(1);
+    const entry = JSON.parse(lines[0]!) as Record<string, unknown>;
+    expect(entry['tool']).toBe('AgentCanonicalInstall');
+    expect(entry['status']).toBe('INFO');
+    expect(String(entry['file'])).toContain('security-review');
+  });
+
+  it('no audit entry after rollback due to registry failure', () => {
+    // Use malformed registry to force a throw after file write.
+    mkdirSync(join(root, '.thesmos'), { recursive: true });
+    writeFileSync(join(root, '.thesmos', 'registry.json'), '{bad json}', 'utf8');
+    expect(() =>
+      installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root })
+    ).toThrow(AgentInstallError);
+    expect(existsSync(join(root, '.thesmos', 'audit.jsonl'))).toBe(false);
+  });
+});
+
+// ── batch partial-success semantics ───────────────────────────────────────────
+
+describe('batch partial-success semantics', () => {
+  let root: string;
+  beforeEach(() => { root = makeTmpDir(); });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+
+  // Preflight catches ID collisions and --force-less conflicts before any mutation.
+  // Unexpected mutation-time failures (rare: e.g. filesystem permission change between
+  // the preflight and real-write phase) are NOT whole-batch-rolled-back — the installed
+  // agents remain, and the CLI exits nonzero with a partial-success report including
+  // the recovery command `thesmos adapters`.
+
+  it('preflight rejects ID collision: validation pass throws before any mutation', () => {
+    // Two files that both normalize to 'security-review'.
+    // We test at the installAgent level: the second dry-run call would catch
+    // duplicate canonical path via existsSync (since the first dry-run doesn't write).
+    // The real batch preflight uses ID-map tracking — exercise it by pre-creating the file.
+    mkdirSync(join(root, '.thesmos', 'agents'), { recursive: true });
+    writeFileSync(join(root, '.thesmos', 'agents', 'security-review.md'), 'existing', 'utf8');
+
+    // A dry-run (preflight) for a duplicate without --force throws AgentInstallError.
+    expect(() =>
+      installAgent({
+        content: AGENT_WITH_ID_FM,
+        sourcePath: 'other-source.md',
+        dryRun: true,
+        noSync: true,
+        root,
+      })
+    ).toThrow(AgentInstallError);
+
+    // The canonical file was not overwritten by the failed preflight.
+    const content = readFileSync(join(root, '.thesmos', 'agents', 'security-review.md'), 'utf8');
+    expect(content).toBe('existing');
+  });
+
+  it('preflight catches --force-less conflict before any mutation', () => {
+    mkdirSync(join(root, '.thesmos', 'agents'), { recursive: true });
+    writeFileSync(join(root, '.thesmos', 'agents', 'security-review.md'), 'old', 'utf8');
+
+    // Without --force, installAgent throws on duplicate.
+    expect(() =>
+      installAgent({
+        content: AGENT_WITH_ID_FM,
+        sourcePath: 'new-source.md',
+        force: false,
+        dryRun: false,
+        noSync: true,
+        root,
+      })
+    ).toThrow(AgentInstallError);
+
+    // Original file must still say 'old'.
+    expect(readFileSync(join(root, '.thesmos', 'agents', 'security-review.md'), 'utf8')).toBe('old');
   });
 });
 

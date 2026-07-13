@@ -7,7 +7,7 @@ Add `thesmos agent:install` command and shared agent lifecycle module.
 **New features:**
 
 - `thesmos agent:install <file>` — install an agent Markdown file into `.thesmos/agents/`, register it in `.thesmos/registry.json`, and synchronize platform adapters in one step.
-- `thesmos agent:install <dir>` — batch-install all `.md` files in a directory (non-recursive, deterministic sort, all-or-nothing). `README.md`, `CHANGELOG.md`, and similar meta-files are skipped automatically.
+- `thesmos agent:install <dir>` — batch-install all `.md` files in a directory (non-recursive, deterministic sort). A preflight pass validates every file before any mutation; if preflight passes but an unexpected mutation-time failure occurs (e.g. permission change between phases), the installed/failed split is reported as partial-success with recovery instructions. `README.md`, `CHANGELOG.md`, and similar meta-files are skipped automatically.
 - `--dry-run` flag validates all inputs and shows the proposed operations without mutating any files.
 - `--force` flag overwrites an existing canonical file.
 - `--no-sync` flag installs and registers but skips adapter regeneration (useful in batch scripts that call `thesmos adapters` once at the end).
@@ -31,5 +31,5 @@ When the agent tries to write directly to a `.claude/` surface and that path is 
 **Architecture:**
 
 - `thesmos/agent-lifecycle.ts` — new shared module: `toKebabCase`, `isValidAgentId`, `deriveAgentId`, `addAgentToRegistry`, `syncAdapters`, `installAgent`, `isIgnoredAgentFile`, `AgentInstallError`.
-- All validation runs before any filesystem mutation (all-or-nothing guarantee).
+- All validation runs before any filesystem mutation. Preflight catches ID collisions, conflicts, and format errors before the first write; unexpected mutation-time failures are reported as partial-success with a recovery command (`thesmos adapters`).
 - Adapter sync is called once per batch, never once per file.
