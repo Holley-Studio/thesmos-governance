@@ -19,6 +19,8 @@ export class StatusBarManager implements vscode.Disposable {
   private readonly governanceItem: vscode.StatusBarItem;
   private readonly tokenItem: vscode.StatusBarItem;
   private readonly pantheonItem: vscode.StatusBarItem;
+  /** Permanent Pantheon Chat launcher — always visible next to the health badge. */
+  private readonly chatItem: vscode.StatusBarItem;
 
   /** Last idle (non-working) main-item state, restored when work completes. */
   private idleSnapshot: { text: string; tooltip: string | vscode.MarkdownString; bg: vscode.ThemeColor | undefined } | undefined;
@@ -54,6 +56,18 @@ export class StatusBarManager implements vscode.Disposable {
     );
     this.pantheonItem.command = 'thesmos.pantheon.routingMode';
     this.pantheonItem.hide();
+
+    this.chatItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      96,
+    );
+    this.chatItem.text = '⚡ Pantheon';
+    this.chatItem.command = 'thesmos.pantheon.chat.openInTab';
+    this.chatItem.tooltip = new vscode.MarkdownString(
+      '**Open Pantheon Chat** in an editor tab\n\n' +
+      '_67 specialist AI agents orchestrated by Zeus_',
+    );
+    this.chatItem.show();
   }
 
   /** Routing-mode indicator — shown only when routing is not the default 'auto'. */
@@ -181,12 +195,10 @@ export class StatusBarManager implements vscode.Disposable {
   }
 
   showNotInstalled(): void {
-    this.item.text = '$(error) Thesmos: not installed';
-    this.item.tooltip =
-      'thesmos-governance not found — run: npm install --save-dev thesmos-governance';
-    this.item.backgroundColor = new vscode.ThemeColor(
-      'statusBarItem.errorBackground',
-    );
+    this.item.text = '$(cloud-download) Set Up Thesmos';
+    this.item.tooltip = 'thesmos-governance not installed — click to install and initialise';
+    this.item.command = 'thesmos.setup';
+    this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
     this.snapshotIdle();
   }
 
@@ -240,6 +252,7 @@ export class StatusBarManager implements vscode.Disposable {
   showInactive(): void {
     this.item.text = '$(shield) Thesmos';
     this.item.tooltip = 'Thesmos Governance';
+    this.item.command = 'thesmos.health';
     this.item.backgroundColor = undefined;
     this.snapshotIdle();
   }
@@ -275,5 +288,6 @@ export class StatusBarManager implements vscode.Disposable {
     this.governanceItem.dispose();
     this.tokenItem.dispose();
     this.pantheonItem.dispose();
+    this.chatItem.dispose();
   }
 }

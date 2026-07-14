@@ -341,6 +341,26 @@ class ThesmosExtension implements vscode.Disposable {
       vscode.commands.registerCommand('thesmos.pantheon.chat.unlinkProvider', () => {
         this.pantheonChat.unlinkProvider();
       }),
+      vscode.commands.registerCommand('thesmos.setup', () => {
+        const terminal = vscode.window.createTerminal({ name: 'Thesmos Setup', iconPath: new vscode.ThemeIcon('cloud-download') });
+        terminal.show();
+        // Governance setup only — no agent installation. Agents are a separate explicit step.
+        terminal.sendText('npm install --save-dev thesmos-governance && npx thesmos init && npx thesmos scan');
+      }),
+      vscode.commands.registerCommand('thesmos.installAgents', async () => {
+        const choice = await vscode.window.showInformationMessage(
+          'Install Pantheon Agents — this writes 40+ AI agent definition files to .thesmos/agents/ ' +
+          'and regenerates .claude/agents/ so they are available as Claude Code subagents. ' +
+          'The files come from the Thesmos catalog and can be reviewed in .thesmos/agents/ after install.',
+          { modal: true },
+          'Install Agents',
+          'Cancel',
+        );
+        if (choice !== 'Install Agents') return;
+        const terminal = vscode.window.createTerminal({ name: 'Thesmos: Install Agents', iconPath: new vscode.ThemeIcon('person-add') });
+        terminal.show();
+        terminal.sendText('npx thesmos pantheon:install --all --write');
+      }),
     );
 
     // Agents invoke command — opens terminal with claude, shows spinning indicator

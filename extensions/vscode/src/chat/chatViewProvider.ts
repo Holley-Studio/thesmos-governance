@@ -456,6 +456,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         attachments?: string[];
         data?: string;
         mime?: string;
+        name?: string;
         requestId?: string;
         decision?: string;
         alwaysAllow?: boolean;
@@ -523,6 +524,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           case 'pasteImage':
             if (typeof msg.data === 'string' && msg.data.length > 0) {
               this.savePastedImage(webview, msg.data, msg.mime ?? 'image/png');
+            }
+            break;
+          case 'dropFile':
+            if (typeof msg.data === 'string' && typeof msg.name === 'string' && msg.data.length > 0) {
+              this.saveDroppedFile(webview, msg.data, msg.name, msg.mime ?? 'application/octet-stream');
             }
             break;
         }
@@ -862,6 +868,30 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       this.pushItem({
         kind: 'error',
         text: `Could not save pasted image: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  }
+
+  /** Write a dropped non-image file (base64) to a temp file and attach it. */
+  private saveDroppedFile(webview: vscode.Webview, base64: string, name: string, _mime: string): void {
+    try {
+      // Strip directory components — a crafted name cannot escape the temp dir.
+      const safeStem = name
+        .replace(/[/\\]/g, '_')
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
+        .slice(0, 120);
+      const lastDot = safeStem.lastIndexOf('.');
+      const stem = lastDot > 0 ? safeStem.slice(0, lastDot) : safeStem || 'dropped';
+      const ext = lastDot > 0 ? safeStem.slice(lastDot) : '';
+      const dir = join(tmpdir(), 'thesmos-pantheon-chat');
+      mkdirSync(dir, { recursive: true });
+      const filePath = join(dir, `${stem}-${Date.now()}${ext}`);
+      writeFileSync(filePath, Buffer.from(base64, 'base64'));
+      this.post(webview, { type: 'attachments', paths: [filePath] });
+    } catch (err) {
+      this.pushItem({
+        kind: 'error',
+        text: `Could not save dropped file: ${err instanceof Error ? err.message : String(err)}`,
       });
     }
   }
