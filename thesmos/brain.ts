@@ -16,6 +16,8 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeLogger } from './logger.js';
+import { THESMOS_RULES } from './rules/registry.js';
+import { ruleNameById, categoryTitle } from './rule-labels.js';
 
 const log = makeLogger('brain');
 
@@ -290,7 +292,8 @@ function formatFullBrain(s: BrainSnapshot): string {
   if (s.activeSuppressions.length > 0) {
     lines.push('## Active Suppressions (intentional)');
     for (const sup of s.activeSuppressions) {
-      lines.push(`- **${sup.ruleId}** on \`${sup.file}\` — ${sup.reason}`);
+      const name = ruleNameById(sup.ruleId, THESMOS_RULES);
+      lines.push(`- **${sup.ruleId}** · *${name}* on \`${sup.file}\` — ${sup.reason}`);
     }
     lines.push('');
   }
@@ -298,7 +301,8 @@ function formatFullBrain(s: BrainSnapshot): string {
   if (s.knownFalsePositives.length > 0) {
     lines.push('## Known False Positives');
     for (const fp of s.knownFalsePositives) {
-      lines.push(`- **${fp.ruleId}** — ${fp.evidence}`);
+      const name = ruleNameById(fp.ruleId, THESMOS_RULES);
+      lines.push(`- **${fp.ruleId}** · *${name}* — ${fp.evidence}`);
     }
     lines.push('');
   }
@@ -306,8 +310,9 @@ function formatFullBrain(s: BrainSnapshot): string {
   if (s.frequentFindings.length > 0) {
     lines.push('## Frequent Findings (most common)');
     for (const f of s.frequentFindings.slice(0, 5)) {
+      const name = ruleNameById(f.ruleId, THESMOS_RULES);
       const files = f.files.length > 0 ? ` (${f.files[0]}…)` : '';
-      lines.push(`- **${f.ruleId}** × ${f.count}${files}`);
+      lines.push(`- **${f.ruleId}** · *${name}* × ${f.count}${files}`);
     }
     lines.push('');
   }
@@ -361,7 +366,10 @@ function formatCompactBrain(s: BrainSnapshot): string {
   ];
 
   if (s.activeSuppressions.length > 0) {
-    lines.push('**Suppressions:** ' + s.activeSuppressions.map((s) => `${s.ruleId}(${s.file})`).join(', '));
+    lines.push('**Suppressions:** ' + s.activeSuppressions.map((sup) => {
+      const name = ruleNameById(sup.ruleId, THESMOS_RULES);
+      return `${sup.ruleId} [${name}](${sup.file})`;
+    }).join(', '));
     lines.push('');
   }
 
