@@ -2,7 +2,7 @@
   "name": "thesmos-governance-vscode",
   "displayName": "Thesmos Governance",
   "description": "Real-time AI repo governance — inline findings, health scores, and adapter sync for Claude, Gemini, Cursor, Copilot, and Codex.",
-  "version": "4.8.0",
+  "version": "4.9.0",
   "private": true,
   "publisher": "holleystudio",
   "author": {
@@ -505,7 +505,10 @@
         },
         "thesmos.chat.openLocation": {
           "type": "string",
-          "enum": ["beside", "active"],
+          "enum": [
+            "beside",
+            "active"
+          ],
           "default": "beside",
           "description": "Where 'Open Pantheon Chat in Editor' places the chat tab: split to the right of the active editor (beside) or in the active column."
         },
