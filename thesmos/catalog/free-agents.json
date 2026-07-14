@@ -1,0 +1,14 @@
+{
+  "$comment": "Single source of truth for the free/paid Pantheon boundary. freeAgentIds ship in the npm tarball (see package.json files + pack-gate.test.ts); everything else is content-gated behind the paid pack. pantheonTotal is the marketed god count used in upsell copy.",
+  "freeAgentIds": [
+    "zeus-executive-agent",
+    "athena-strategy-agent",
+    "argus-security-agent",
+    "apollo-content-agent",
+    "hephaestus-design-agent",
+    "hebe-support-agent"
+  ],
+  "pantheonTotal": 67,
+  "storeUrl": "https://holleystudio.gumroad.com/l/thesmos-pantheon",
+  "priceUsd": 24
+}

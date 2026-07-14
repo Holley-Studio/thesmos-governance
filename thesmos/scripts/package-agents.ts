@@ -41,18 +41,19 @@ const DOWNLOADS_DIR = resolve(__dirname, '../../website/downloads')
 const DIST_PACKS_DIR = resolve(__dirname, '../../dist-packs')
 const TMP_DIR      = resolve(__dirname, '../../.tmp-pack')
 
+// Canonical free/paid boundary — single source of truth shared with the CLI
+// (catalog/free-agents.json ships in the npm tarball; see pack-gate.test.ts).
+// Zeus orchestrator variants and marketing meta-agents are pack-build-only
+// additions on top of the canonical 6.
+const freeAgentsManifest = JSON.parse(
+  readFileSync(resolve(__dirname, '../catalog/free-agents.json'), 'utf-8'),
+) as { freeAgentIds: string[] }
 const FREE_AGENT_IDS = new Set([
-  'zeus-executive-agent',
-  'athena-strategy-agent',
-  'argus-security-agent',
-  'apollo-content-agent',
-  'hephaestus-design-agent',
+  ...freeAgentsManifest.freeAgentIds,
   // Zeus orchestrators are the front door to the Pantheon — always free
   'zeus-pantheon-orchestrator',
   'zeus-receptionist',
   'zeus-figma-card',
-  // Support is never paywalled — Hebe ships free in every tier
-  'hebe-support-agent',
 ])
 
 // ── God-drop holdbacks ────────────────────────────────────────────────────────
