@@ -1,20 +1,16 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * Rule tiering — the free/paid boundary for the Thesmos engine.
+ * Rule tiering — legacy free/paid metadata, kept for back-compat.
  *
- * FREE ("Essentials"): every BLOCKER-severity rule plus the complete AI-code
- * safety net (VIBE_*, AI_*, SLOP_*) regardless of severity. This is the set that
- * stops disasters — the code that gets you breached, owned, or shipped broken by
- * an AI tool. ~288 rules.
+ * Since 5.0.0 the rule engine is 100% free: activeRulesForTier() in
+ * rules/registry.ts returns every rule for every tier. The paid product is
+ * the Pantheon agent pack ($24 one-time, content-gated: premium agents are
+ * simply absent from the free npm distribution).
  *
- * PREMIUM ($79, lifetime): the full 1,137-rule engine — every framework
- * (React/Next/Prisma/Django/Go/Rust/…), the compliance packs (GDPR/HIPAA/EU AI
- * Act/DORA), and the quality/perf/debt rules — plus all Pantheon agents for every
- * LLM.
- *
- * Distribution gating is honor-system by design (rule source is public on GitHub,
- * matching the FSL license): the premium tier is unlocked by a downloaded pack
- * marker or an explicit config/env flag — no license server, no runtime key.
+ * ESSENTIAL_RULES / isEssentialRule / partitionByTier remain exported because
+ * downstream tooling and the tier CLI report on the historical boundary, and
+ * premiumPackPaths/hasPremiumPack still detect a purchased pack marker
+ * (used to hide upsell messaging for buyers).
  */
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';

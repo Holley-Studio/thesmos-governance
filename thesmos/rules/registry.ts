@@ -702,11 +702,12 @@ export const THESMOS_RULES: ThesmosRule[] = [
 export const ESSENTIAL_RULES: ThesmosRule[] = THESMOS_RULES.filter(isEssentialRule);
 
 /**
- * The rules that run for a given resolved tier. Pure — reads config.tier only
- * (loadConfig resolves and stamps it). Anything other than an explicit 'free'
- * runs the full engine, so library callers that build a config by hand default
- * to full coverage; the free-tier restriction is opt-in via config.tier.
+ * The rules that run for a given resolved tier. Since 5.0.0 this ALWAYS
+ * returns the full engine: rules are never paywalled — a security tool that
+ * withholds safety rules for money is not honest, and the source is public
+ * anyway. The paid product is the Pantheon agent pack (content, not code).
+ * The signature keeps the config parameter for API compatibility.
  */
-export function activeRulesForTier(config: { tier?: 'free' | 'premium' }): ThesmosRule[] {
-  return config.tier === 'free' ? ESSENTIAL_RULES : THESMOS_RULES;
+export function activeRulesForTier(_config: { tier?: 'free' | 'premium' }): ThesmosRule[] {
+  return THESMOS_RULES;
 }
