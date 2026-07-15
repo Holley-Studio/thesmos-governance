@@ -67,7 +67,7 @@ That's it. You now have:
 
 ## Why Thesmos is different
 
-Other platforms give you AI assistants. Thesmos gives you a governed AI team — 38 God Agents with domain expertise, built-in challengers, and every output governance-checked.
+Other platforms give you AI assistants. Thesmos gives you a governed AI team — 67 God Agents with domain expertise, built-in challengers, and every output governance-checked.
 
 | Capability | ChatGPT GPTs | Cursor Agents | Claude Projects | Thesmos Pantheon Agents |
 | --- | --- | --- | --- | --- |
@@ -85,7 +85,7 @@ Other platforms give you AI assistants. Thesmos gives you a governed AI team —
 **7 things no other agent platform does:**
 
 1. **Governance badge on every output** — Every God Agent delivery closes with `Thesmos check: [RULE_ID] ✅`. No other platform runs 1,137 governance rules against AI outputs automatically.
-2. **38 world-class God Agents — not assistants** — Each agent has a named methodology, failure mode taxonomy, and adversarial self-check. Not "I know marketing" but "I use Ehrenberg-Bass reach theory, and here's the specific thing your brief gets wrong."
+2. **67 world-class God Agents — not assistants** — Each agent has a named methodology, failure mode taxonomy, and adversarial self-check. Not "I know marketing" but "I use Ehrenberg-Bass reach theory, and here's the specific thing your brief gets wrong."
 3. **God Council arbitration** — When agents conflict, Zeus arbitrates. Argus holds a permanent security veto; Themis holds a permanent legal veto. You get one decision, not a debate.
 4. **God Agent Momus** — The only agent platform with a mandatory challenger. Momus challenges every major decision before it ships using Socratic method, Gary Klein's Pre-mortem, and Munger's Inversion.
 5. **God Agent Proteus** — Drift detection built into the team. Product, prompt, architecture, brand, and strategy drift — caught before it costs a sprint.
@@ -96,12 +96,26 @@ Other platforms give you AI assistants. Thesmos gives you a governed AI team —
 
 ## The Thesmos Pantheon
 
-38 God Agents — a governed AI team named after Greek gods, covering every major business and engineering function. Every agent has deep methodology, failure mode taxonomy, domain mastery sections, and the Universal Intelligence Protocol injected by `thesmos adapters`.
+### Pricing
 
-Install the full team:
+| | Free, forever | Full Pantheon — $24 one-time |
+| --- | --- | --- |
+| **Rules** | Complete 1,137-rule engine — every framework pack, every compliance pack (GDPR / HIPAA / EU AI Act / DORA), every BLOCKER | ✓ same |
+| **Starter agents** | 6 gods included in the npm tarball (Zeus, Athena, Argus, Apollo, Hephaestus, Hebe) | ✓ included |
+| **Full agent team** | — | All 67 specialist agents for every LLM platform |
+| **Lifetime updates** | — | Re-download + re-run to update |
+| **Install** | `npm install --save-dev thesmos-governance` | `thesmos pantheon:install --pack <zip>` after purchase |
+
+**Purchase the Full Pantheon:** [holleystudio.gumroad.com/l/thesmos-pantheon](https://holleystudio.gumroad.com/l/thesmos-pantheon)
+
+---
+
+67 God Agents — a governed AI team named after Greek gods, covering every major business and engineering function. Every agent has deep methodology, failure mode taxonomy, domain mastery sections, and the Universal Intelligence Protocol injected by `thesmos adapters`.
+
+Install the Full Pantheon after purchase:
 
 ```bash
-thesmos pantheon:install --all
+thesmos pantheon:install --pack <path-to-purchased-zip>
 thesmos pantheon:export --target=claude-code
 ```
 
@@ -150,7 +164,11 @@ Or download any agent directly — no install required:
 
 See [pantheon/README.md](../pantheon/README.md) for the full documentation, all platform exports, and the installation guide.
 
-### Pantheon Grid
+### Starter Gods (free, included in npm tarball)
+
+Zeus · Athena · Argus · Apollo · Hephaestus · Hebe
+
+### Full Pantheon Grid (67 agents — $24 one-time)
 
 | | Agent | One-liner |
 | --- | --- | --- |
@@ -195,7 +213,7 @@ See [pantheon/README.md](../pantheon/README.md) for the full documentation, all 
 **Pantheon commands:**
 
 ```bash
-thesmos pantheon:list                          # List all 38 agents
+thesmos pantheon:list                          # List all 67 agents
 thesmos pantheon:export --target=claude-code   # Export as Claude Code native agents
 thesmos pantheon:export --target=all           # Export for all 7 platforms
 thesmos pantheon:orchestrate "<task>"          # Zeus routes task to specialists
@@ -429,7 +447,8 @@ npx thesmos fix --base=main             # applies changes
 | `catalog:list` | List available agents and skills |
 | `catalog:profiles` | List available profiles |
 | `catalog:enable` | Enable an agent or skill |
-| `agent:create` | Scaffold a new agent file |
+| `agent:create <name>` | Scaffold a new agent in `.thesmos/agents/` and register it |
+| `agent:install <file\|dir>` | Install an existing `.md` file (or directory of files) as a registered agent |
 | `skill:create` | Scaffold a new skill file |
 | `pack:list` | List installed rule packs |
 | `pack:validate` | Validate pack manifests |

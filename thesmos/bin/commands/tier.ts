@@ -3,7 +3,7 @@
  * thesmos tier — show the active licensing tier and what it unlocks.
  *
  * FREE (Essentials): all BLOCKERs + the AI-code net (VIBE/AI/SLOP).
- * PREMIUM ($79 lifetime): the full engine + all Pantheon agents for every LLM.
+ * PREMIUM ($24 lifetime): the full 67-god agent pack for every LLM. Every rule is free.
  *
  * Flags:
  *   --json   machine-readable output
@@ -27,7 +27,7 @@ export async function cmdTier(argv: string[]): Promise<void> {
       total: THESMOS_RULES.length,
       free: free.length,
       premium: premium.length,
-      active: tier === 'premium' ? THESMOS_RULES.length : free.length,
+      active: THESMOS_RULES.length,
       upgradeUrl: tier === 'premium' ? null : UPGRADE_URL,
     }, null, 2) + '\n');
     return;
@@ -39,13 +39,13 @@ export async function cmdTier(argv: string[]): Promise<void> {
     lines.push(`   ${THESMOS_RULES.length} rules active · all Pantheon agents unlocked.`);
     lines.push('   Thank you — lifetime updates included.');
   } else {
-    lines.push('🜃 Thesmos — FREE (Essentials)');
-    lines.push(`   ${free.length} rules active: every BLOCKER + the full AI-code safety net.`);
-    lines.push(`   ${premium.length} more rules are premium — frameworks, compliance packs,`);
-    lines.push('   quality/perf, and all 67 Pantheon agents for every LLM.');
+    lines.push('🜃 Thesmos — FREE');
+    lines.push(`   ALL ${THESMOS_RULES.length} rules active — the complete engine is free. Every framework,`);
+    lines.push('   every compliance pack, every BLOCKER. Rules are never paywalled.');
     lines.push('');
-    lines.push(`   Unlock everything, once, forever — $79:  ${UPGRADE_URL}`);
-    lines.push('   Already bought? Drop your pack in ~/.thesmos/premium/ or set THESMOS_TIER=premium.');
+    lines.push('   The Full Pantheon — 67 specialist agents orchestrated by Zeus —');
+    lines.push(`   is $24, one-time, yours forever:  ${UPGRADE_URL}`);
+    lines.push('   Already bought? thesmos pantheon:install --pack <downloaded-zip>');
   }
   process.stdout.write(lines.join('\n') + '\n');
 }

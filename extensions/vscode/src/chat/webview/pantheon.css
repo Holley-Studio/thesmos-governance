@@ -827,3 +827,52 @@ body.running #send {
 }
 #empty .glyph { font-size: 2.6em; }
 #empty .headline { color: var(--pc-gold); font-size: 1.15em; letter-spacing: 0.06em; }
+
+/* ── Drag-and-drop overlay ────────────────────────────────────────────────── */
+#drop-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 28, 0.82);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+#drop-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.drop-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  border: 2px dashed var(--pc-gold);
+  border-radius: 14px;
+  padding: 42px 56px;
+  color: var(--pc-gold);
+  background: rgba(212, 169, 65, 0.06);
+  box-shadow: 0 0 32px rgba(212, 169, 65, 0.18);
+}
+.drop-icon {
+  font-size: 2.8em;
+  line-height: 1;
+  animation: drop-pulse 1.4s ease-in-out infinite;
+}
+.drop-label {
+  font-size: 1.05em;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+@keyframes drop-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(0.88); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drop-icon { animation: none; }
+  #drop-overlay { transition: none; }
+}

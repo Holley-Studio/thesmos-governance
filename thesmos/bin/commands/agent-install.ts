@@ -1,0 +1,327 @@
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
+/**
+ * thesmos agent:install <file-or-directory>
+ *
+ * Install a custom agent Markdown file (or all .md files in a directory) into
+ * .thesmos/agents/, register it in .thesmos/registry.json, and synchronize
+ * platform adapter files.
+ *
+ * Flags:
+ *   --force      Overwrite an existing canonical file
+ *   --dry-run    Validate and print proposed operations without mutating anything
+ *   --no-sync    Install and register but skip adapter generation
+ */
+
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
+import { createContext } from '../lib/context.ts';
+import { parseArgs, flag } from '../lib/args.ts';
+import {
+  installAgent,
+  syncAdapters,
+  isIgnoredAgentFile,
+  deriveAgentId,
+  AgentInstallError,
+} from '../../agent-lifecycle.ts';
+import { appendAuditEntry } from '../../agent-audit.ts';
+
+export async function cmdAgentInstall(argv: string[]): Promise<void> {
+  const { root } = createContext();
+  const { positionals, flags } = parseArgs(argv);
+
+  const force   = flag(flags, 'force');
+  const dryRun  = flag(flags, 'dry-run');
+  const noSync  = flag(flags, 'no-sync');
+
+  if (positionals.length === 0) {
+    process.stderr.write(
+      'agent:install: missing <file-or-directory>\n' +
+      'Usage: thesmos agent:install <file.md|directory> [--force] [--dry-run] [--no-sync]\n'
+    );
+    process.exit(1);
+  }
+
+  const target = resolve(positionals[0]!);
+
+  if (!existsSync(target)) {
+    process.stderr.write(`agent:install: not found: ${positionals[0]}\n`);
+    process.exit(1);
+  }
+
+  const stat = statSync(target);
+
+  if (stat.isDirectory()) {
+    await installDirectory(target, root, { force, dryRun, noSync });
+  } else if (stat.isFile()) {
+    await installFile(target, root, { force, dryRun, noSync });
+  } else {
+    process.stderr.write(`agent:install: not a file or directory: ${positionals[0]}\n`);
+    process.exit(1);
+  }
+}
+
+// ── Single-file install ───────────────────────────────────────────────────────
+
+async function installFile(
+  absPath: string,
+  root: string,
+  opts: { force: boolean; dryRun: boolean; noSync: boolean }
+): Promise<void> {
+  const { force, dryRun, noSync } = opts;
+
+  let content: string;
+  try {
+    content = readFileSync(absPath, 'utf8');
+  } catch (err) {
+    process.stderr.write(`agent:install: cannot read "${absPath}": ${String(err)}\n`);
+    process.exit(1);
+    return;
+  }
+
+  let result;
+  try {
+    result = installAgent({ content, sourcePath: absPath, force, dryRun, noSync, root });
+  } catch (err) {
+    if (err instanceof AgentInstallError) {
+      process.stderr.write(err.message + '\n');
+      process.exit(1);
+    }
+    throw err;
+  }
+
+  let adapterPaths: string[] = [];
+  if (!dryRun && !noSync) {
+    try {
+      adapterPaths = syncAdapters(root);
+      // Audit write failure is non-fatal; adapter sync succeeded.
+      try { appendAuditEntry(root, 'AgentAdapterSync', result.agentId, 'INFO', []); } catch { /**/ }
+    } catch (err) {
+      // Audit write failure is non-fatal; adapter sync failure is reported and exits nonzero.
+      try { appendAuditEntry(root, 'AgentAdapterSync', result.agentId, 'WARN', []); } catch { /**/ }
+      process.stderr.write(`\nagent:install: adapter synchronization failed: ${String(err)}\n`);
+      process.stderr.write(`Canonical file and registry are intact.\n`);
+      process.stderr.write(`Run \`thesmos adapters\` to retry adapter synchronization.\n`);
+      process.exit(1);
+    }
+  }
+
+  printSingleResult(result.agentId, absPath, result, adapterPaths, dryRun, noSync);
+}
+
+// ── Directory install ─────────────────────────────────────────────────────────
+
+async function installDirectory(
+  absDir: string,
+  root: string,
+  opts: { force: boolean; dryRun: boolean; noSync: boolean }
+): Promise<void> {
+  const { force, dryRun, noSync } = opts;
+
+  // Enumerate .md files non-recursively, deterministic (sorted) order
+  const files = readdirSync(absDir)
+    .filter((f) => f.endsWith('.md') && !isIgnoredAgentFile(f))
+    .sort()
+    .map((f) => join(absDir, f));
+
+  if (files.length === 0) {
+    console.log('agent:install: no .md files found (README.md excluded).');
+    return;
+  }
+
+  // Read all files first
+  type FileInput = { absPath: string; content: string };
+  const inputs: FileInput[] = [];
+  for (const absPath of files) {
+    try {
+      inputs.push({ absPath, content: readFileSync(absPath, 'utf8') });
+    } catch (err) {
+      process.stderr.write(`agent:install: cannot read "${absPath}": ${String(err)}\n`);
+      process.exit(1);
+    }
+  }
+
+  // Detect normalized-ID collisions within the batch before any mutation
+  const idsInBatch = new Map<string, string>(); // id → source filename
+  for (const { absPath, content } of inputs) {
+    const id = deriveAgentId(content, absPath);
+    const filename = basename(absPath);
+    const existing = idsInBatch.get(id);
+    if (existing !== undefined) {
+      process.stderr.write(
+        `agent:install: two files in this batch normalize to the same ID "${id}": ` +
+        `"${existing}" and "${filename}". Rename one or add distinct frontmatter \`id:\` fields.\n`
+      );
+      process.exit(1);
+    }
+    idsInBatch.set(id, filename);
+  }
+
+  // Validate all first (all-or-nothing)
+  const pendingResults: Array<{ input: FileInput; result: ReturnType<typeof installAgent> }> = [];
+  const validationErrors: string[] = [];
+
+  for (const input of inputs) {
+    try {
+      const result = installAgent({
+        content: input.content,
+        sourcePath: input.absPath,
+        force,
+        dryRun: true,  // validate-only first pass
+        noSync: true,
+        root,
+      });
+      pendingResults.push({ input, result });
+    } catch (err) {
+      if (err instanceof AgentInstallError) {
+        validationErrors.push(`  ✗  ${basename(input.absPath)}: ${err.message}`);
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  if (validationErrors.length > 0) {
+    process.stderr.write(
+      `agent:install: ${validationErrors.length} validation failure(s) — no files installed.\n` +
+      validationErrors.join('\n') + '\n'
+    );
+    process.exit(1);
+  }
+
+  if (dryRun) {
+    console.log(`agent:install: dry-run — ${pendingResults.length} agent(s) would be installed\n`);
+    for (const { result } of pendingResults) {
+      printSingleResult(result.agentId, result.canonicalFile, result, [], true, noSync);
+    }
+    return;
+  }
+
+  // Real install pass.
+  // Preflight above validated all inputs. Unexpected mutation-time failures (e.g. filesystem
+  // permission changes between preflight and real write) are reported as partial-success rather
+  // than whole-batch rollback — rolling back already-written canonical files would require
+  // capturing original bytes for every file before the loop, which adds disproportionate
+  // complexity for a rare edge case. The partial-success state is explicit: callers see which
+  // agents installed and which failed, and adapter sync is skipped until the failure is resolved.
+  const installedResults: Array<ReturnType<typeof installAgent>> = [];
+  for (const { input } of pendingResults) {
+    let result: ReturnType<typeof installAgent>;
+    try {
+      result = installAgent({
+        content: input.content,
+        sourcePath: input.absPath,
+        force,
+        dryRun: false,
+        noSync: true,  // sync once at the end
+        root,
+      });
+    } catch (err) {
+      // Partial failure — report installed/failed counts and exit nonzero.
+      process.stderr.write(`\nagent:install: batch partially completed.\n`);
+      process.stderr.write(`  installed (${installedResults.length}): ${
+        installedResults.length > 0
+          ? installedResults.map((r) => r.agentId).join(', ')
+          : 'none'
+      }\n`);
+      process.stderr.write(`  failed: ${basename(input.absPath)} — ${String(err)}\n`);
+      process.stderr.write(`\nThe ${installedResults.length} installed agent(s) remain in .thesmos/agents/ and the registry.\n`);
+      process.stderr.write(`Run \`thesmos adapters\` to synchronize them once you resolve the failure.\n`);
+      process.exit(1);
+    }
+    installedResults.push(result);
+    console.log(`  canonical: ${result.warnings.some((w) => w.includes('Overwrote')) ? 'replaced' : 'created'} ${result.canonicalFile}`);
+  }
+
+  // Sync adapters once for the whole batch (only when all installs succeeded).
+  let adapterPaths: string[] = [];
+  if (!noSync) {
+    try {
+      adapterPaths = syncAdapters(root);
+      // Audit write failure is non-fatal; adapter sync succeeded.
+      try {
+        appendAuditEntry(root, 'AgentAdapterSync', `batch:${installedResults.length}`, 'INFO', []);
+      } catch { /**/ }
+    } catch (err) {
+      // Audit write failure is non-fatal; adapter sync failure is reported and exits nonzero.
+      try {
+        appendAuditEntry(root, 'AgentAdapterSync', `batch:${installedResults.length}`, 'WARN', []);
+      } catch { /**/ }
+      process.stderr.write(`\nagent:install: adapter synchronization failed: ${String(err)}\n`);
+      process.stderr.write(`Canonical files and registry are intact.\n`);
+      process.stderr.write(`Run \`thesmos adapters\` to retry adapter synchronization.\n`);
+      process.exit(1);
+    }
+  }
+
+  // Summary output
+  console.log(`\nagent:install — ${installedResults.length} agent(s) installed`);
+  for (const result of installedResults) {
+    const reg = result.registryResult === 'added' ? 'registry: added' : 'registry: already registered';
+    console.log(`  ✓  ${result.agentId}  (${reg})`);
+    for (const w of result.warnings) {
+      console.log(`     ⚠  ${w}`);
+    }
+  }
+
+  if (!noSync && adapterPaths.length > 0) {
+    console.log(`\n  adapters: synchronized (${adapterPaths.length} files)`);
+  } else if (noSync) {
+    console.log(`\n  adapters: skipped (--no-sync)`);
+  }
+}
+
+// ── Output ────────────────────────────────────────────────────────────────────
+
+function printSingleResult(
+  agentId: string,
+  sourcePath: string,
+  result: ReturnType<typeof installAgent>,
+  adapterPaths: string[],
+  dryRun: boolean,
+  noSync: boolean
+): void {
+  const prefix = dryRun ? '(dry-run) ' : '';
+
+  // Canonical file state label
+  let canonicalLabel: string;
+  if (dryRun) {
+    canonicalLabel = `(dry-run) would write ${result.canonicalFile}`;
+  } else if (result.warnings.some((w) => w.includes('Overwrote'))) {
+    canonicalLabel = `replaced ${result.canonicalFile}`;
+  } else if (result.canonicalFile === sourcePath.replace(/^.*\.thesmos\//, '.thesmos/')) {
+    // source was already the canonical path (source=dest, no write)
+    canonicalLabel = `already at ${result.canonicalFile} (no write)`;
+  } else {
+    canonicalLabel = `created ${result.canonicalFile}`;
+  }
+
+  const regLabel =
+    result.registryResult === 'dry-run'
+      ? 'would add'
+      : result.registryResult === 'added'
+      ? 'registry: added'
+      : 'registry: already registered';
+
+  const adapterLabel =
+    dryRun
+      ? 'would synchronize'
+      : noSync
+      ? 'adapters: skipped (--no-sync)'
+      : adapterPaths.length > 0
+      ? `adapters: synchronized (${adapterPaths.length} files)`
+      : 'adapters: none written';
+
+  console.log(`${prefix}agent:install — ${agentId}`);
+  console.log(`  source:    ${sourcePath}`);
+  console.log(`  canonical: ${canonicalLabel}`);
+  console.log(`  ${regLabel}`);
+  console.log(`  ${adapterLabel}`);
+
+  for (const w of result.warnings) {
+    console.log(`  ⚠  ${w}`);
+  }
+
+  if (noSync && !dryRun) {
+    console.log(`\n  To synchronize adapters: thesmos adapters`);
+  }
+}

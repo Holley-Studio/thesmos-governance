@@ -1,5 +1,136 @@
 # Changelog
 
+## 5.0.0
+
+### Major Changes
+
+- 0ccee2a: **5.0: The tool is free. The gods are $24.**
+
+  Every governance rule is now free for everyone — the complete 1,137-rule
+  engine, every framework pack, every compliance pack (GDPR/HIPAA/EU AI
+  Act/DORA). `activeRulesForTier()` returns the full engine regardless of
+  tier (BREAKING for anyone depending on the free-tier restriction).
+
+  The paid product is the **Full Pantheon** — all 67 specialist agents,
+  **$24 one-time** (was $79), content-gated: premium agents are physically
+  absent from the free npm distribution rather than honor-system-gated.
+
+  New:
+
+  - The npm tarball now ships the 6 free starter gods (Zeus, Athena, Argus,
+    Apollo, Hephaestus, Hebe) — previously it shipped ZERO pantheon agents,
+    so the free tier was broken for real npm installs.
+  - `thesmos pantheon:install --pack <zip|dir>` — one-command install of the
+    purchased Gumroad pack: extracts, validates, installs all agents,
+    regenerates adapters, drops the purchase marker. Idempotent; re-download
+    - re-run is the update channel.
+  - `pantheon:list` / `pantheon:install` show computed god counts and a $24
+    upsell only when running on the free distribution.
+  - `pack-gate.test.ts` guards the content gate in CI — premium agents can
+    never silently leak into the tarball again.
+
+## 4.8.0
+
+### Minor Changes
+
+- 7499d19: Add `thesmos agent:install` command and shared agent lifecycle module.
+
+  **New features:**
+
+  - `thesmos agent:install <file>` — install an agent Markdown file into `.thesmos/agents/`, register it in `.thesmos/registry.json`, and synchronize platform adapters in one step.
+  - `thesmos agent:install <dir>` — batch-install all `.md` files in a directory (non-recursive, deterministic sort). A preflight pass validates every file before any mutation; if preflight passes but an unexpected mutation-time failure occurs (e.g. permission change between phases), the installed/failed split is reported as partial-success with recovery instructions. `README.md`, `CHANGELOG.md`, and similar meta-files are skipped automatically.
+  - `--dry-run` flag validates all inputs and shows the proposed operations without mutating any files.
+  - `--force` flag overwrites an existing canonical file.
+  - `--no-sync` flag installs and registers but skips adapter regeneration (useful in batch scripts that call `thesmos adapters` once at the end).
+  - `thesmos agent:create` is refactored to use the shared lifecycle module — agents created with `agent:create` are now auto-registered and adapter-synced in the same pipeline used by `agent:install`.
+
+  **Improved blocked-path guidance (path-specific):**
+
+  When the agent tries to write directly to a `.claude/` surface and that path is in `scope.json` `blockedPaths`, the violation now provides surface-specific guidance:
+
+  - `.claude/agents/` → points to `thesmos agent:install` and `.thesmos/agents/`
+  - `.claude/skills/` → points to `thesmos skill:create` / `thesmos adapters`
+  - `.claude/commands/` → states there is no Thesmos-managed installer and suggests handling outside the governed session
+
+  **Safety fixes:**
+
+  - Malformed `.thesmos/registry.json` now throws instead of silently resetting to defaults (which would destroy existing registry state).
+  - Registry writes use a same-directory temporary-file + rename pattern. On POSIX systems, `rename(2)` is atomic when source and destination share a filesystem, so the old file remains intact until the new file is fully written. On Windows, the rename still protects against partial writes even though it is not atomic at the OS level. A 1 MB size guard on registry reads guards against accidental corruption.
+  - Transaction rollback: if the registry update fails after the canonical file was written, the file is removed to prevent orphaned state.
+  - Source-equals-destination: installing a file that is already the canonical path is handled as a register-only no-op (no self-overwrite).
+  - Batch duplicate detection: `agent:install <dir>` now detects when two files normalize to the same agent ID before any mutation and exits with an actionable error.
+  - Audit entry is written only after all mutations succeed; dry-run never writes an audit entry.
+  - Audit write failures are non-fatal but now emit a warning via `process.stderr.write` rather than silently swallowing the error.
+
+  **Architecture:**
+
+  - `thesmos/agent-lifecycle.ts` — new shared module: `toKebabCase`, `isValidAgentId`, `deriveAgentId`, `addAgentToRegistry`, `syncAdapters`, `installAgent`, `isIgnoredAgentFile`, `AgentInstallError`.
+  - All validation runs before any filesystem mutation. Preflight catches ID collisions, conflicts, and format errors before the first write; unexpected mutation-time failures are reported as partial-success with a recovery command (`thesmos adapters`).
+  - Adapter sync is called once per batch, never once per file.
+
+- 62d7185: Add `thesmos pantheon:install --write` and VS Code extension UX improvements.
+
+  **`pantheon:install --write`:**
+
+  A new `--write` flag on `pantheon:install` writes agent content directly to `.thesmos/agents/<id>.md` and runs `thesmos adapters` in a single pass — no intermediate `pantheon/exports/` directory required.
+
+  This replaces the previous three-step export flow (`pantheon:export` → `pantheon/exports/` → `agent:install`) with a single intentional command:
+
+  ```bash
+  thesmos pantheon:install --all --write
+  ```
+
+  The `--write` path uses the `agent-lifecycle` module: each agent file is written to the canonical `.thesmos/agents/` location, registered in `.thesmos/registry.json`, and adapters are regenerated once at the end. The original registry-only behaviour (no `--write`) is unchanged.
+
+  **VS Code extension v4.8.0:**
+
+  - **`⚡ Pantheon` status bar item** — permanent, always-visible launcher that opens Pantheon Chat in an editor tab from anywhere in VS Code.
+  - **`$(cloud-download) Set Up Thesmos` status bar state** — replaces the previous "not installed" error badge with a clickable button that runs the full setup flow (`npm install && thesmos init && thesmos scan`).
+  - **"Install Pantheon Agents" command** — separate from setup; shows a modal confirmation before writing agent files, making the two-step onboarding explicit for new users.
+  - **Two-step welcome card** — Findings panel welcome view now shows Step 1 (setup) and Step 2 (install agents) with dedicated buttons.
+  - **Drag-and-drop attachments** in Pantheon Chat — drag files or images from Finder or VS Code Explorer onto the chat to attach them. Shows a gold ⚡ overlay during drag; falls back to base64 temp-file flow in sandboxed contexts.
+  - **"Open in Editor Tab" panel button** — `$(window)` icon in the Pantheon Chat panel title bar.
+  - **`thesmos.setup` command** — wired to a new terminal that runs governance setup only (no agent installation mixed in).
+
+### Patch Changes
+
+- Replace cryptic rule IDs with Pantheon guardian names and human descriptions.
+
+  Rule categories like `agent_no_scope_declared` and IDs like `AGNT_004` now surface as readable god attributions everywhere they appear:
+
+  **Governance block messages** (`thesmos claude:govern check`):
+
+  Before:
+
+  ```
+  [SC_MISSING_LOCKFILE] package.json present but no lockfile found
+  ```
+
+  After:
+
+  ```
+  [🔒 Nemesis · Supply Chain: Missing Lockfile]
+  package.json present but no lockfile found
+  ```
+
+  **Brain file** (`.thesmos/brain.md` — read by Claude Code):
+
+  Before:
+
+  ```
+  - **AGNT_004** × 3 (src/config.ts…)
+  ```
+
+  After:
+
+  ```
+  - ⚡ Zeus · Agent: No Token Budget — No agent token budget configured _(AGNT_004)_ × 3 (src/config.ts…)
+  ```
+
+  Human name and guardian god lead; the rule ID is tucked in parens for `thesmos explain` reference.
+
+  New module `thesmos/rule-labels.ts` exports `categoryLabel()`, `categoryGuardian()`, `categoryTitle()`, and `ruleNameById()` — available as a public import for downstream tooling.
+
 ## 4.7.0
 
 ### Minor Changes

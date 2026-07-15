@@ -42,10 +42,10 @@ describe('partitionByTier — the shipped split', () => {
 });
 
 describe('activeRulesForTier', () => {
-  it('free → Essentials only; premium/undefined → full engine', () => {
-    expect(activeRulesForTier({ tier: 'free' }).length).toBe(288);
-    expect(activeRulesForTier({ tier: 'premium' }).length).toBe(1137);
-    expect(activeRulesForTier({}).length).toBe(1137);
+  it('returns the full engine for every tier — rules are never paywalled', () => {
+    expect(activeRulesForTier({ tier: 'free' }).length).toBe(THESMOS_RULES.length);
+    expect(activeRulesForTier({ tier: 'premium' }).length).toBe(THESMOS_RULES.length);
+    expect(activeRulesForTier({}).length).toBe(THESMOS_RULES.length);
   });
 });
 
@@ -64,23 +64,24 @@ describe('resolveTier — precedence', () => {
   });
 });
 
-describe('runReview honors the tier gate', () => {
-  // apiKey="PLACEHOLDER" → VIBE_007 (essential BLOCKER); debugger; → TS_011 (premium HIGH).
+describe('runReview — full engine for every tier (rules are never paywalled)', () => {
+  // apiKey="PLACEHOLDER" → VIBE_007 (hardcoded secret); debugger; → TS_011 (debugger statement).
+  // Since 5.0.0 both rules fire on every tier.
   const input = (tier: 'free' | 'premium'): { scan: ScanResult; config: ThesmosConfig; changedFiles: { path: string; content: string }[] } => ({
     scan: EMPTY_SCAN,
     config: { ...CONFIG_DEFAULTS, tier } as ThesmosConfig,
     changedFiles: [{ path: 'src/x.ts', content: 'const apiKey = "PLACEHOLDER";\ndebugger;' }],
   });
 
-  it('premium reports both the essential and the premium rule', () => {
+  it('premium reports both the essential and the formerly-premium rule', () => {
     const cats = runReview(input('premium')).map((f) => f.category);
     expect(cats).toContain('vibe_hardcoded_secret');
     expect(cats).toContain('debugger_statement');
   });
 
-  it('free reports the essential rule but NOT the premium rule', () => {
+  it('free ALSO reports both rules — the tier gate is gone', () => {
     const cats = runReview(input('free')).map((f) => f.category);
     expect(cats).toContain('vibe_hardcoded_secret');
-    expect(cats).not.toContain('debugger_statement');
+    expect(cats).toContain('debugger_statement');
   });
 });

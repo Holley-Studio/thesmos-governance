@@ -341,6 +341,61 @@ class ThesmosExtension implements vscode.Disposable {
       vscode.commands.registerCommand('thesmos.pantheon.chat.unlinkProvider', () => {
         this.pantheonChat.unlinkProvider();
       }),
+      vscode.commands.registerCommand('thesmos.setup', () => {
+        const terminal = vscode.window.createTerminal({ name: 'Thesmos Setup', iconPath: new vscode.ThemeIcon('cloud-download') });
+        terminal.show();
+        // Governance setup only — no agent installation. Agents are a separate explicit step.
+        terminal.sendText('npm install --save-dev thesmos-governance && npx thesmos init && npx thesmos scan');
+      }),
+      vscode.commands.registerCommand('thesmos.installAgents', async () => {
+        const choice = await vscode.window.showInformationMessage(
+          'Install Starter Agents — this writes the 6 free Pantheon agents (Zeus, Athena, Argus, Apollo, Hephaestus, Hebe) to .thesmos/agents/ ' +
+          'and regenerates .claude/agents/ so they are available as Claude Code subagents. ' +
+          'The Full Pantheon (67 gods, $24 one-time) is available via "Unlock Full Pantheon".',
+          { modal: true },
+          'Install Starter Agents',
+          'Cancel',
+        );
+        if (choice !== 'Install Starter Agents') return;
+        const terminal = vscode.window.createTerminal({ name: 'Thesmos: Install Agents', iconPath: new vscode.ThemeIcon('person-add') });
+        terminal.show();
+        terminal.sendText('npx thesmos pantheon:install --all --write');
+      }),
+
+      vscode.commands.registerCommand('thesmos.unlockPantheon', () => {
+        void vscode.env.openExternal(
+          vscode.Uri.parse('https://holleystudio.gumroad.com/l/thesmos-pantheon'),
+        );
+      }),
+
+      vscode.commands.registerCommand('thesmos.installPantheonPack', async () => {
+        const picked = await vscode.window.showOpenDialog({
+          canSelectFiles: true,
+          canSelectFolders: true,
+          canSelectMany: false,
+          openLabel: 'Install Pantheon Pack',
+          filters: { 'Pantheon Pack': ['zip'] },
+          title: 'Select the downloaded thesmos-pantheon-agents.zip (or its extracted folder)',
+        });
+        const path = picked?.[0]?.fsPath;
+        if (!path) return;
+        // Validate path against shell metacharacters before interpolating into terminal command.
+        // VS Code's terminal.sendText() passes through the shell, so we must sanitise.
+        if (/[$`\\!;|&<>()*?\r\n]/.test(path)) {
+          void vscode.window.showErrorMessage(
+            'Thesmos: The selected path contains characters that cannot be safely passed to the terminal. ' +
+            'Please move the pack to a path without special characters and try again.',
+          );
+          return;
+        }
+        const escapedPath = path.replace(/"/g, '\\"');
+        const terminal = vscode.window.createTerminal({
+          name: 'Thesmos: Install Pantheon Pack',
+          iconPath: new vscode.ThemeIcon('package'),
+        });
+        terminal.show();
+        terminal.sendText(`npx thesmos pantheon:install --pack "${escapedPath}"`);
+      }),
     );
 
     // Agents invoke command — opens terminal with claude, shows spinning indicator

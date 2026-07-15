@@ -1,7 +1,7 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * thesmos pantheon:list        — list all 38 God Agents
- * thesmos pantheon:install     — add agents to .thesmos/registry.json
+ * thesmos pantheon:install     — install agents (--write also writes files + runs adapters)
  * thesmos pantheon:status      — show installed Pantheon agents
  * thesmos pantheon:export      — export agents to platform-specific formats
  * thesmos pantheon:orchestrate — Zeus routes a task to the right agents
@@ -9,14 +9,17 @@
  * thesmos pantheon:upgrade     — check for newer agent versions
  * thesmos pantheon:remove      — remove installed agents
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, mkdtempSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { tmpdir, homedir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { createContext } from '../lib/context.ts';
 import { parseArgs, flag } from '../lib/args.ts';
 import { logAgentSpawn } from '../../agent-activity.ts';
 import { modelFor } from '../../generated/pantheon-models.ts';
+import { addAgentToRegistry, syncAdapters, installAgent, isIgnoredAgentFile } from '../../agent-lifecycle.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Resolve catalog path for both dev (bin/commands/) and bundle (dist/) locations.
@@ -28,6 +31,40 @@ const AGENTS_DIR = _agentsDirCandidates.find(p => existsSync(p)) ?? _agentsDirCa
 const PANTHEON_DIR = join(AGENTS_DIR, 'pantheon');
 const FIGMA_DIR = join(AGENTS_DIR, 'figma');
 const MEMORY_DIR_REL = '.thesmos/pantheon/memory';
+
+// Pricing/boundary facts for upsell copy — shipped in the tarball next to the
+// catalog. Null (silently, no upsell shown) if the file is missing (dev trees
+// that predate it, or exotic installs).
+interface FreeAgentsManifest {
+  freeAgentIds: string[];
+  pantheonTotal: number;
+  storeUrl: string;
+  priceUsd: number;
+}
+
+function loadFreeAgentsManifest(): FreeAgentsManifest | null {
+  const candidates = [
+    join(__dirname, '../../catalog/free-agents.json'), // dev: bin/commands/ → thesmos/
+    join(__dirname, '../catalog/free-agents.json'),    // bundle: dist/ → thesmos/
+  ];
+  const path = candidates.find(p => existsSync(p));
+  if (!path) return null;
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')) as FreeAgentsManifest;
+  } catch {
+    return null;
+  }
+}
+
+// One-line upsell shown when the install is running on the free distribution.
+// Returns null when the full pantheon is present (or facts are unavailable).
+function upsellLine(installedGodCount: number): string | null {
+  const m = loadFreeAgentsManifest();
+  if (!m || installedGodCount > m.freeAgentIds.length) return null;
+  return `  ${installedGodCount} of ${m.pantheonTotal} gods installed. The full Pantheon — ` +
+    `${m.pantheonTotal} specialists orchestrated by Zeus — is $${m.priceUsd} (one-time):\n` +
+    `  ${m.storeUrl}\n`;
+}
 
 // Slugs of agent .md files directly in a directory (non-recursive), excluding
 // README.md and any <slug>-README.md companion doc (identified by lacking the
@@ -361,7 +398,7 @@ function exportAgentsMd(agents: PantheonAgent[]): string {
 // ── pantheon:list ──────────────────────────────────────────────────────────────
 
 function cmdList(agents: PantheonAgent[]): void {
-  console.log('\n  THE THESMOS PANTHEON — 40 Governed AI Business Agents\n');
+  console.log(`\n  THE THESMOS PANTHEON — ${agents.length} Governed AI Business Agents\n`);
   console.log(`  ${'GOD'.padEnd(16)} ${'ROLE'.padEnd(36)} VERSION`);
   console.log(`  ${''.padEnd(16, '─')} ${''.padEnd(36, '─')} ${''.padEnd(7, '─')}`);
   for (const a of agents) {
@@ -370,6 +407,109 @@ function cmdList(agents: PantheonAgent[]): void {
   console.log(`\n  Total: ${agents.length} agents\n`);
   console.log('  Install all:  thesmos pantheon:install --all');
   console.log('  Export:       thesmos pantheon:export --target claude-code\n');
+  const upsell = upsellLine(agents.length);
+  if (upsell) console.log(upsell);
+}
+
+// ── pantheon:install --pack ───────────────────────────────────────────────────
+
+/** True when a file parses as a Claude Code agent (frontmatter with name+description). */
+function isAgentFileContent(content: string): boolean {
+  const fm = content.match(/^---\n([\s\S]*?)\n---\n/);
+  if (!fm) return false;
+  return /^name:\s*\S/m.test(fm[1]!) && /^description:\s*\S/m.test(fm[1]!);
+}
+
+/** Resolve the agents directory inside an extracted pack (for-claude/ preferred). */
+function resolvePackAgentsDir(packDir: string): string {
+  const direct = join(packDir, 'for-claude');
+  if (existsSync(direct)) return direct;
+  // Zips often extract into a single top-level folder — look one level down.
+  for (const entry of readdirSync(packDir)) {
+    const candidate = join(packDir, entry);
+    if (statSync(candidate).isDirectory()) {
+      const nested = join(candidate, 'for-claude');
+      if (existsSync(nested)) return nested;
+    }
+  }
+  return packDir;
+}
+
+/**
+ * Install every agent found in a purchased Pantheon pack (extracted directory
+ * or .zip). Exported for tests. Throws on missing path / empty pack; individual
+ * agent failures are collected, not fatal.
+ */
+export function installFromPack(packPath: string, root: string): { installed: number; skipped: number; errors: string[] } {
+  if (!existsSync(packPath)) {
+    throw new Error(`Pack not found: ${packPath}\nDownload it from your Gumroad library, then re-run with the correct path.`);
+  }
+
+  let packDir = packPath;
+  let tempDir: string | null = null;
+
+  if (statSync(packPath).isFile() && packPath.endsWith('.zip')) {
+    tempDir = mkdtempSync(join(tmpdir(), 'thesmos-pack-'));
+    try {
+      execFileSync('unzip', ['-o', '-q', packPath, '-d', tempDir]);
+    } catch {
+      rmSync(tempDir, { recursive: true, force: true });
+      throw new Error(
+        `Could not extract ${packPath} automatically (is \`unzip\` installed?).\n` +
+        `Extract it manually, then run: thesmos pantheon:install --pack <extracted-folder>`,
+      );
+    }
+    packDir = tempDir;
+  }
+
+  try {
+    const agentsDir = resolvePackAgentsDir(packDir);
+    const candidates = readdirSync(agentsDir)
+      .filter(f => f.endsWith('.md') && !isIgnoredAgentFile(f))
+      .map(f => ({ file: f, content: readFileSync(join(agentsDir, f), 'utf8') }))
+      .filter(({ content }) => isAgentFileContent(content));
+
+    if (candidates.length === 0) {
+      throw new Error(
+        `No agent files found in ${agentsDir}.\n` +
+        `Expected the Gumroad pack layout (a for-claude/ folder of agent .md files).`,
+      );
+    }
+
+    let installed = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const { file, content } of candidates) {
+      try {
+        const result = installAgent({
+          content,
+          sourcePath: join(agentsDir, file),
+          force: true,
+          noSync: true,
+          root,
+        });
+        if (result.registryResult === 'added') installed++;
+        else skipped++;
+      } catch (err) {
+        errors.push(`${file}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    if (installed + skipped > 0) {
+      syncAdapters(root);
+      const markerDir = join(homedir(), '.thesmos', 'premium');
+      mkdirSync(markerDir, { recursive: true });
+      writeFileSync(
+        join(markerDir, 'pack.json'),
+        JSON.stringify({ product: 'thesmos-pantheon', installedAt: new Date().toISOString(), source: 'pantheon:install --pack' }, null, 2),
+      );
+    }
+
+    return { installed, skipped, errors };
+  } finally {
+    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+  }
 }
 
 // ── pantheon:install ───────────────────────────────────────────────────────────
@@ -377,10 +517,30 @@ function cmdList(agents: PantheonAgent[]): void {
 function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void {
   const { flags, positionals } = parseArgs(argv);
   const all = flag(flags, 'all');
+  const write = flag(flags, 'write');
+
+  const packPath = flags['pack'] as string | undefined;
+  if (packPath) {
+    try {
+      const { installed, skipped, errors } = installFromPack(packPath, root);
+      if (errors.length > 0) {
+        console.error(`\n  ✗ ${errors.length} agent(s) failed:\n`);
+        for (const e of errors) console.error(`    ${e}`);
+      }
+      console.log(`\n  ⚡ Full Pantheon installed: ${installed} new, ${skipped} updated.`);
+      console.log('  Adapters regenerated. The gods are at your service.\n');
+      if (errors.length > 0 && installed + skipped === 0) process.exit(1);
+    } catch (err) {
+      console.error(`\n  ✗ ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exit(1);
+    }
+    return;
+  }
 
   const toInstall = all ? agents.map(a => a.id) : positionals;
   if (toInstall.length === 0) {
-    console.error('  Usage: thesmos pantheon:install [agent-id...] [--all]');
+    console.error('  Usage: thesmos pantheon:install [agent-id...] [--all] [--write] [--pack <zip|dir>]');
+    console.error('  --write  also write agent files to .thesmos/agents/ and regenerate adapters');
     process.exit(1);
   }
 
@@ -392,18 +552,66 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
     process.exit(1);
   }
 
+  if (write) {
+    // Write agent content directly to .thesmos/agents/ — no export directory needed.
+    const canonicalDir = join(root, '.thesmos', 'agents');
+    mkdirSync(canonicalDir, { recursive: true });
+
+    let written = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const id of toInstall) {
+      const agent = agents.find(a => a.id === id)!;
+      const content = exportClaudeCode(agent);
+      const dest = join(canonicalDir, `${id}.md`);
+      try {
+        writeFileSync(dest, content, 'utf8');
+        const result = addAgentToRegistry(root, id);
+        if (result === 'added') written++;
+        else skipped++;
+      } catch (err) {
+        errors.push(`${id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      console.error(`\n  ✗ ${errors.length} error(s) during install:\n`);
+      for (const e of errors) console.error(`    ${e}`);
+    }
+
+    if (written + skipped > 0) {
+      console.log(`\n  ✓ ${written} agent(s) written to .thesmos/agents/`);
+      if (skipped > 0) console.log(`    ${skipped} already present — skipped`);
+
+      try {
+        const synced = syncAdapters(root);
+        console.log(`  ✓ Adapters regenerated (${synced.length} file${synced.length === 1 ? '' : 's'})\n`);
+      } catch (err) {
+        console.error(`\n  ✗ Adapter sync failed — run \`thesmos adapters\` to retry\n`);
+      }
+    }
+
+    const upsell = upsellLine(written + skipped);
+    if (upsell) console.log(upsell);
+
+    if (errors.length > 0 && written + skipped === 0) process.exit(1);
+    return;
+  }
+
+  // Registry-only path (original behaviour — no file writes).
   const reg = readRegistry(root);
   const existing = (reg['agents'] as string[] | undefined) ?? [];
   const merged = [...new Set([...existing, ...toInstall])];
   reg['agents'] = merged;
   writeRegistry(root, reg);
 
-  console.log(`\n  ✓ Installed ${toInstall.length} Pantheon agent(s):\n`);
+  console.log(`\n  ✓ Registered ${toInstall.length} Pantheon agent(s) in .thesmos/registry.json`);
   for (const id of toInstall) {
     const a = agents.find(x => x.id === id)!;
     console.log(`    ${a.god.padEnd(16)} ${a.role}`);
   }
-  console.log('\n  Agents are now active in .thesmos/registry.json\n');
+  console.log('\n  Run with --write to also write agent files and regenerate platform adapters.\n');
 }
 
 // ── pantheon:status ────────────────────────────────────────────────────────────

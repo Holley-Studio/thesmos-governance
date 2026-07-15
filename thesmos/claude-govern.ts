@@ -21,6 +21,7 @@ import {
 } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 import { activeRulesForTier } from './rules/registry.js';
+import { categoryLabel } from './rule-labels.js';
 import { loadConfig, CONFIG_DEFAULTS } from './config.js';
 import { classifySeverity, SEVERITY_ORDER } from './severity.js';
 import { extractSuppressions, applySuppressions } from './suppress.js';
@@ -519,7 +520,8 @@ export async function runPreToolCheck(root: string): Promise<void> {
   // Format block message for Claude Code to show to the user
   const lines: string[] = ['🚫 Thesmos blocked this write — BLOCKER violation(s) found:\n'];
   for (const f of findings) {
-    lines.push(`  [${f.category.toUpperCase()}] ${f.message}`);
+    lines.push(`  [${categoryLabel(f.category)}]`);
+    lines.push(`  ${f.message}`);
     if (f.line) lines.push(`  File: ${f.file}:${f.line}`);
     if (f.suggestion) lines.push(`  Fix:  ${f.suggestion}`);
     lines.push('');

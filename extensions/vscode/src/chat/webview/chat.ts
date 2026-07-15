@@ -957,4 +957,73 @@ input.addEventListener('paste', (e: ClipboardEvent) => {
   }
 });
 
+// ── Drag-and-drop to attach files / images ───────────────────────────────────
+const dropOverlay = (() => {
+  const el = document.createElement('div');
+  el.id = 'drop-overlay';
+  const inner = document.createElement('div');
+  inner.className = 'drop-inner';
+  const icon = document.createElement('div');
+  icon.className = 'drop-icon';
+  icon.textContent = '⚡';
+  const label = document.createElement('div');
+  label.className = 'drop-label';
+  label.textContent = 'Drop files or images to attach';
+  inner.append(icon, label);
+  el.appendChild(inner);
+  document.getElementById('app')?.appendChild(el);
+  return el;
+})();
+
+let dragDepth = 0;
+
+document.addEventListener('dragenter', (e) => {
+  if (!e.dataTransfer?.types.includes('Files')) return;
+  e.preventDefault();
+  dragDepth++;
+  dropOverlay.classList.add('active');
+});
+
+document.addEventListener('dragleave', () => {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) dropOverlay.classList.remove('active');
+});
+
+document.addEventListener('dragover', (e) => {
+  if (!e.dataTransfer?.types.includes('Files')) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+});
+
+document.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dragDepth = 0;
+  dropOverlay.classList.remove('active');
+
+  const files = e.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+
+  for (const file of Array.from(files)) {
+    // Electron exposes an absolute fs path on File objects — use it directly when available
+    const fsPath = (file as unknown as { path?: string }).path;
+    if (fsPath && fsPath.length > 0) {
+      vscode.postMessage({ type: 'attachments', paths: [fsPath] });
+      continue;
+    }
+    // No fs path (sandboxed context) — read content and hand off to extension host
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result ?? '');
+      const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+      if (!base64) return;
+      if (file.type.startsWith('image/')) {
+        vscode.postMessage({ type: 'pasteImage', data: base64, mime: file.type });
+      } else {
+        vscode.postMessage({ type: 'dropFile', data: base64, name: file.name, mime: file.type || 'application/octet-stream' });
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
 vscode.postMessage({ type: 'ready' });
