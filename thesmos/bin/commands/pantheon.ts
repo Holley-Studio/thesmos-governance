@@ -30,6 +30,40 @@ const PANTHEON_DIR = join(AGENTS_DIR, 'pantheon');
 const FIGMA_DIR = join(AGENTS_DIR, 'figma');
 const MEMORY_DIR_REL = '.thesmos/pantheon/memory';
 
+// Pricing/boundary facts for upsell copy — shipped in the tarball next to the
+// catalog. Null (silently, no upsell shown) if the file is missing (dev trees
+// that predate it, or exotic installs).
+interface FreeAgentsManifest {
+  freeAgentIds: string[];
+  pantheonTotal: number;
+  storeUrl: string;
+  priceUsd: number;
+}
+
+function loadFreeAgentsManifest(): FreeAgentsManifest | null {
+  const candidates = [
+    join(__dirname, '../../catalog/free-agents.json'), // dev: bin/commands/ → thesmos/
+    join(__dirname, '../catalog/free-agents.json'),    // bundle: dist/ → thesmos/
+  ];
+  const path = candidates.find(p => existsSync(p));
+  if (!path) return null;
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')) as FreeAgentsManifest;
+  } catch {
+    return null;
+  }
+}
+
+// One-line upsell shown when the install is running on the free distribution.
+// Returns null when the full pantheon is present (or facts are unavailable).
+function upsellLine(installedGodCount: number): string | null {
+  const m = loadFreeAgentsManifest();
+  if (!m || installedGodCount > m.freeAgentIds.length) return null;
+  return `  ${installedGodCount} of ${m.pantheonTotal} gods installed. The full Pantheon — ` +
+    `${m.pantheonTotal} specialists orchestrated by Zeus — is $${m.priceUsd} (one-time):\n` +
+    `  ${m.storeUrl}\n`;
+}
+
 // Slugs of agent .md files directly in a directory (non-recursive), excluding
 // README.md and any <slug>-README.md companion doc (identified by lacking the
 // --- frontmatter block a real agent file has — see parsePantheonAgent).
@@ -362,7 +396,7 @@ function exportAgentsMd(agents: PantheonAgent[]): string {
 // ── pantheon:list ──────────────────────────────────────────────────────────────
 
 function cmdList(agents: PantheonAgent[]): void {
-  console.log('\n  THE THESMOS PANTHEON — 40 Governed AI Business Agents\n');
+  console.log(`\n  THE THESMOS PANTHEON — ${agents.length} Governed AI Business Agents\n`);
   console.log(`  ${'GOD'.padEnd(16)} ${'ROLE'.padEnd(36)} VERSION`);
   console.log(`  ${''.padEnd(16, '─')} ${''.padEnd(36, '─')} ${''.padEnd(7, '─')}`);
   for (const a of agents) {
@@ -371,6 +405,8 @@ function cmdList(agents: PantheonAgent[]): void {
   console.log(`\n  Total: ${agents.length} agents\n`);
   console.log('  Install all:  thesmos pantheon:install --all');
   console.log('  Export:       thesmos pantheon:export --target claude-code\n');
+  const upsell = upsellLine(agents.length);
+  if (upsell) console.log(upsell);
 }
 
 // ── pantheon:install ───────────────────────────────────────────────────────────
@@ -434,6 +470,9 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
         console.error(`\n  ✗ Adapter sync failed — run \`thesmos adapters\` to retry\n`);
       }
     }
+
+    const upsell = upsellLine(written + skipped);
+    if (upsell) console.log(upsell);
 
     if (errors.length > 0 && written + skipped === 0) process.exit(1);
     return;
