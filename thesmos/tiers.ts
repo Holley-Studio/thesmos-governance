@@ -59,7 +59,7 @@ export function hasPremiumPack(root: string): boolean {
  * Resolve the active tier. Precedence, highest first:
  *   1. THESMOS_TIER env ('free' | 'premium') — CI / test / vendor override
  *   2. explicit config.tier
- *   3. a premium-pack marker on disk (the $79 download drops this in)
+ *   3. a premium-pack marker on disk (the $24 download drops this in)
  *   4. default: 'free'
  *
  * fs-touching — call this at the config-load layer, then stamp the result onto

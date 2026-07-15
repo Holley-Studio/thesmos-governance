@@ -360,7 +360,7 @@ Learn more: https://agents.md
 ]
 
 // ── Premium engine unlock ─────────────────────────────────────────────────────
-// The $79 Full Pantheon bundle ships premium/pack.json — the distribution-gated
+// The $24 Full Pantheon bundle ships premium/pack.json — the distribution-gated
 // marker tiers.ts looks for (~/.thesmos/premium/pack.json or a project's
 // .thesmos/premium/pack.json). Its presence flips the CLI from the free
 // 288-rule Essentials tier to the full 1,137-rule engine. No license server,
@@ -686,7 +686,7 @@ function main(): void {
 
   console.log('\n✅ Packaging complete.\n')
   console.log('Next steps:')
-  console.log('  1. Upload dist-packs/thesmos-pantheon-agents.zip to Gumroad as the Full Pantheon product ($79)')
+  console.log('  1. Upload dist-packs/thesmos-pantheon-agents.zip to Gumroad as the Full Pantheon product ($24)')
   console.log('  2. Only website/downloads/thesmos-starter-agents.zip is committed to the repo — the paid')
   console.log('     bundle in dist-packs/ is gitignored and distributed exclusively through Gumroad')
   console.log('  3. The zip\'s premium/pack.json is the full-engine unlock (288 → 1,137 rules) — see premium/INSTALL.md\n')

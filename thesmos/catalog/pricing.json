@@ -6,14 +6,14 @@
       "name": "Essentials",
       "priceUsd": 0,
       "model": "free",
-      "notes": "Free forever — every BLOCKER rule plus the full AI-code safety net, and the starter agents. FSL-1.1-MIT (→ MIT 2030)."
+      "notes": "Free forever — the COMPLETE 1,137-rule engine (every framework, every compliance pack) plus 6 starter agents. FSL-1.1-MIT (→ MIT 2030)."
     },
     {
       "id": "full-pantheon",
       "name": "Full Pantheon",
-      "priceUsd": 79,
+      "priceUsd": 24,
       "model": "one-time",
-      "notes": "One-time purchase, lifetime updates. No subscription.",
+      "notes": "One-time purchase, lifetime updates via Gumroad re-download. No subscription. Every governance rule is free — this buys the 67-god agent pack.",
       "purchaseUrl": "https://holleystudio.gumroad.com/l/thesmos-pantheon"
     }
   ]
