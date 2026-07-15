@@ -379,12 +379,22 @@ class ThesmosExtension implements vscode.Disposable {
         });
         const path = picked?.[0]?.fsPath;
         if (!path) return;
+        // Validate path against shell metacharacters before interpolating into terminal command.
+        // VS Code's terminal.sendText() passes through the shell, so we must sanitise.
+        if (/[$`\\!;|&<>()*?\r\n]/.test(path)) {
+          void vscode.window.showErrorMessage(
+            'Thesmos: The selected path contains characters that cannot be safely passed to the terminal. ' +
+            'Please move the pack to a path without special characters and try again.',
+          );
+          return;
+        }
+        const escapedPath = path.replace(/"/g, '\\"');
         const terminal = vscode.window.createTerminal({
           name: 'Thesmos: Install Pantheon Pack',
           iconPath: new vscode.ThemeIcon('package'),
         });
         terminal.show();
-        terminal.sendText(`npx thesmos pantheon:install --pack "${path.replace(/"/g, '\\"')}"`);
+        terminal.sendText(`npx thesmos pantheon:install --pack "${escapedPath}"`);
       }),
     );
 
