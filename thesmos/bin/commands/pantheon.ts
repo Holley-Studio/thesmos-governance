@@ -498,12 +498,17 @@ export function installFromPack(packPath: string, root: string): { installed: nu
 
     if (installed + skipped > 0) {
       syncAdapters(root);
-      const markerDir = join(homedir(), '.thesmos', 'premium');
-      mkdirSync(markerDir, { recursive: true });
-      writeFileSync(
-        join(markerDir, 'pack.json'),
-        JSON.stringify({ product: 'thesmos-pantheon', installedAt: new Date().toISOString(), source: 'pantheon:install --pack' }, null, 2),
-      );
+      // Skip writing the home-dir purchase marker during test runs — prevents
+      // ~/.thesmos/premium/pack.json from persisting across test suites and
+      // causing resolveTier() to return 'premium' in unrelated tests.
+      if (!process.env['VITEST']) {
+        const markerDir = join(homedir(), '.thesmos', 'premium');
+        mkdirSync(markerDir, { recursive: true });
+        writeFileSync(
+          join(markerDir, 'pack.json'),
+          JSON.stringify({ product: 'thesmos-pantheon', installedAt: new Date().toISOString(), source: 'pantheon:install --pack' }, null, 2),
+        );
+      }
     }
 
     return { installed, skipped, errors };
