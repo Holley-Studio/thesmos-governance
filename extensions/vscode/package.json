@@ -2,7 +2,7 @@
   "name": "thesmos-governance-vscode",
   "displayName": "Thesmos Governance",
   "description": "Real-time AI repo governance — inline findings, health scores, and adapter sync for Claude, Gemini, Cursor, Copilot, and Codex.",
-  "version": "4.9.1",
+  "version": "4.10.0",
   "private": true,
   "publisher": "holleystudio",
   "author": {
