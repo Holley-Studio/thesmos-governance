@@ -19,6 +19,40 @@ import { makeLogger } from './logger.js';
 
 const log = makeLogger('review');
 
+/**
+ * Grace margin (in lines) around changed hunks. Context-dependent findings
+ * that sit just next to an edit (e.g. a hook moved by an inserted line above)
+ * survive; findings deep in untouched code are dropped.
+ */
+const HUNK_GRACE_LINES = 3;
+
+/**
+ * When a ChangedFile carries changedRanges (populated only in --base mode),
+ * drop line-numbered findings that fall outside every changed range ±grace.
+ * Findings without a line number (file-level: missing lockfile, no-auth route)
+ * are kept, as are findings in files without range data — so full-repo scans
+ * and explicit-file reviews are unaffected.
+ */
+function scopeFindingsToChangedRanges(
+  findings: Finding[],
+  changedFiles: import('./types').ChangedFile[] | undefined
+): Finding[] {
+  const rangesByFile = new Map<string, Array<{ start: number; end: number }>>();
+  for (const cf of changedFiles ?? []) {
+    if (cf.changedRanges) rangesByFile.set(cf.path, cf.changedRanges);
+  }
+  if (rangesByFile.size === 0) return findings;
+
+  return findings.filter((f) => {
+    if (typeof f.line !== 'number') return true;
+    const ranges = rangesByFile.get(f.file);
+    if (!ranges) return true;
+    return ranges.some(
+      (r) => f.line! >= r.start - HUNK_GRACE_LINES && f.line! <= r.end + HUNK_GRACE_LINES
+    );
+  });
+}
+
 // ── Public input types ─────────────────────────────────────────────────────────
 
 export type { ChangedFile } from './types';
@@ -84,6 +118,10 @@ export function runReview(
     }
   }
 
+  // --base mode: findings must land on (or near) the changed hunks — a 2-line
+  // diff must not report the whole file. No-op when no changedRanges present.
+  const scoped = scopeFindingsToChangedRanges(findings, input.changedFiles);
+
   // Inline suppressions: thesmos-disable-next-line comments in changed files
   // remove matching findings. Expired suppressions are ignored by
   // applySuppressions and the finding stays active.
@@ -91,13 +129,14 @@ export function runReview(
     extractSuppressions(cf.content, cf.path)
   );
   const active = suppressions.length > 0
-    ? applySuppressions(findings, suppressions, new Date()).activeFindings
-    : findings;
+    ? applySuppressions(scoped, suppressions, new Date()).activeFindings
+    : scoped;
 
   log.info('scan complete', {
     files: input.changedFiles?.length ?? 0,
     findings: active.length,
-    suppressed: findings.length - active.length,
+    outsideHunks: findings.length - scoped.length,
+    suppressed: scoped.length - active.length,
     rulesSkipped,
     durationMs: Date.now() - scanStart,
   });

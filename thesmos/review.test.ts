@@ -527,3 +527,65 @@ describe('shell_injection rules skip test fixture paths', () => {
     expect(findings.filter((f) => f.category === 'child_process_shell_injection').length).toBeGreaterThan(0);
   });
 });
+
+// ── changedRanges — --base mode scopes findings to changed hunks ──────────────
+
+describe('runReview — changedRanges hunk scoping', () => {
+  // process.env on lines 2 and 30; only line 30 was actually changed vs base.
+  const LINES = Array.from({ length: 30 }, (_, i) => {
+    if (i === 1) return 'const old = process.env.UNTOUCHED_SECRET;';
+    if (i === 29) return 'const fresh = process.env.NEW_SECRET;';
+    return `const l${i + 1} = ${i + 1};`;
+  });
+  const CONTENT = LINES.join('\n');
+
+  it('drops line-numbered findings outside changed ranges (the 71-findings bug)', () => {
+    const findings = runReview(makeInput({}, [
+      { path: 'lib/analyze.ts', content: CONTENT, changedRanges: [{ start: 29, end: 30 }] },
+    ]));
+    const env = findings.filter((f) => f.category === 'direct_env_access');
+    expect(env).toHaveLength(1);
+    expect(env[0].line).toBe(30);
+  });
+
+  it('keeps findings within ±3 lines of a changed range (grace margin)', () => {
+    // Finding on line 2; change on line 4 → within grace.
+    const findings = runReview(makeInput({}, [
+      { path: 'lib/analyze.ts', content: CONTENT, changedRanges: [{ start: 4, end: 4 }] },
+    ]));
+    const env = findings.filter((f) => f.category === 'direct_env_access');
+    expect(env.map((f) => f.line)).toEqual([2]);
+  });
+
+  it('keeps findings with no line number (file-level findings)', () => {
+    const scan = {
+      ...EMPTY_SCAN,
+      apiRoutes: [
+        { path: '/api/users', file: 'app/api/users/route.ts', methods: ['POST'], auth: false, desc: '' },
+      ],
+    };
+    const findings = runReview(makeInput({ scan }, [
+      { path: 'app/api/users/route.ts', content: 'export async function POST() {}', changedRanges: [{ start: 1, end: 1 }] },
+    ]));
+    expect(findings.filter((f) => f.category === 'missing_api_auth')).toHaveLength(1);
+  });
+
+  it('does not filter files without changedRanges (full-scan behavior unchanged)', () => {
+    const findings = runReview(makeInput({}, [
+      { path: 'lib/analyze.ts', content: CONTENT },
+    ]));
+    const env = findings.filter((f) => f.category === 'direct_env_access');
+    expect(env.map((f) => f.line).sort((a, b) => a! - b!)).toEqual([2, 30]);
+  });
+
+  it('does not filter findings in files not present in changedFiles', () => {
+    const scan = {
+      ...EMPTY_SCAN,
+      largeFiles: [{ file: 'huge.ts', lines: 900 }],
+    };
+    const findings = runReview(makeInput({ scan }, [
+      { path: 'lib/analyze.ts', content: 'const a = 1;', changedRanges: [{ start: 1, end: 1 }] },
+    ]));
+    expect(findings.filter((f) => f.category === 'large_file')).toHaveLength(1);
+  });
+});
