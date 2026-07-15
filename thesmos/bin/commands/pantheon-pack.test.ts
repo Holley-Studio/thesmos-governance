@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { installFromPack } from './pantheon.ts';
@@ -70,6 +70,39 @@ describe('installFromPack', () => {
   it('throws an actionable error when the pack contains no agents', () => {
     writeFileSync(join(pack, 'notes.txt'), 'hi');
     expect(() => installFromPack(pack, root)).toThrow(/no agent/i);
+  });
+
+  it('does not follow a symlinked for-claude/ directory pointing outside the pack', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'thesmos-pack-outside-'));
+    try {
+      writeFileSync(join(outside, 'stolen-agent.md'), AGENT('stolen-agent'));
+      symlinkSync(outside, join(pack, 'for-claude'), 'dir');
+
+      expect(() => installFromPack(pack, root)).toThrow(/no agent/i);
+      expect(existsSync(join(root, '.thesmos', 'agents', 'stolen-agent.md'))).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('skips symlinked .md entries pointing to files outside the pack', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'thesmos-pack-outside-'));
+    try {
+      writeFileSync(join(outside, 'secret.md'), AGENT('stolen-agent'));
+      const dir = join(pack, 'for-claude');
+      mkdirSync(dir);
+      writeFileSync(join(dir, 'ares-sales-agent.md'), AGENT('ares-sales-agent'));
+      symlinkSync(join(outside, 'secret.md'), join(dir, 'stolen-agent.md'), 'file');
+
+      const result = installFromPack(pack, root);
+
+      expect(result.errors).toEqual([]);
+      expect(result.installed).toBe(1);
+      expect(existsSync(join(root, '.thesmos', 'agents', 'ares-sales-agent.md'))).toBe(true);
+      expect(existsSync(join(root, '.thesmos', 'agents', 'stolen-agent.md'))).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 
   it('registers installed agents in registry.json', () => {

@@ -9,7 +9,7 @@
  * thesmos pantheon:upgrade     — check for newer agent versions
  * thesmos pantheon:remove      — remove installed agents
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, lstatSync, mkdtempSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -420,16 +420,23 @@ function isAgentFileContent(content: string): boolean {
   return /^name:\s*\S/m.test(fm[1]!) && /^description:\s*\S/m.test(fm[1]!);
 }
 
-/** Resolve the agents directory inside an extracted pack (for-claude/ preferred). */
+/** True when the path exists AND is a real directory (not a symlink — packs must not link outside themselves). */
+function isRealDirectory(path: string): boolean {
+  if (!existsSync(path)) return false;
+  const st = lstatSync(path);
+  return st.isDirectory() && !st.isSymbolicLink();
+}
+
+/** Resolve the agents directory inside an extracted pack (for-claude/ preferred). Symlinked dirs are ignored. */
 function resolvePackAgentsDir(packDir: string): string {
   const direct = join(packDir, 'for-claude');
-  if (existsSync(direct)) return direct;
+  if (isRealDirectory(direct)) return direct;
   // Zips often extract into a single top-level folder — look one level down.
   for (const entry of readdirSync(packDir)) {
     const candidate = join(packDir, entry);
-    if (statSync(candidate).isDirectory()) {
+    if (isRealDirectory(candidate)) {
       const nested = join(candidate, 'for-claude');
-      if (existsSync(nested)) return nested;
+      if (isRealDirectory(nested)) return nested;
     }
   }
   return packDir;
@@ -466,6 +473,8 @@ export function installFromPack(packPath: string, root: string): { installed: nu
     const agentsDir = resolvePackAgentsDir(packDir);
     const candidates = readdirSync(agentsDir)
       .filter(f => f.endsWith('.md') && !isIgnoredAgentFile(f))
+      // Skip symlinked entries — a crafted pack could link to files outside the archive.
+      .filter(f => !lstatSync(join(agentsDir, f)).isSymbolicLink())
       .map(f => ({ file: f, content: readFileSync(join(agentsDir, f), 'utf8') }))
       .filter(({ content }) => isAgentFileContent(content));
 
