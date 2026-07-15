@@ -349,17 +349,42 @@ class ThesmosExtension implements vscode.Disposable {
       }),
       vscode.commands.registerCommand('thesmos.installAgents', async () => {
         const choice = await vscode.window.showInformationMessage(
-          'Install Pantheon Agents — this writes 40+ AI agent definition files to .thesmos/agents/ ' +
+          'Install Starter Agents — this writes the 6 free Pantheon agents (Zeus, Athena, Argus, Apollo, Hephaestus, Hebe) to .thesmos/agents/ ' +
           'and regenerates .claude/agents/ so they are available as Claude Code subagents. ' +
-          'The files come from the Thesmos catalog and can be reviewed in .thesmos/agents/ after install.',
+          'The Full Pantheon (67 gods, $24 one-time) is available via "Unlock Full Pantheon".',
           { modal: true },
-          'Install Agents',
+          'Install Starter Agents',
           'Cancel',
         );
-        if (choice !== 'Install Agents') return;
+        if (choice !== 'Install Starter Agents') return;
         const terminal = vscode.window.createTerminal({ name: 'Thesmos: Install Agents', iconPath: new vscode.ThemeIcon('person-add') });
         terminal.show();
         terminal.sendText('npx thesmos pantheon:install --all --write');
+      }),
+
+      vscode.commands.registerCommand('thesmos.unlockPantheon', () => {
+        void vscode.env.openExternal(
+          vscode.Uri.parse('https://holleystudio.gumroad.com/l/thesmos-pantheon'),
+        );
+      }),
+
+      vscode.commands.registerCommand('thesmos.installPantheonPack', async () => {
+        const picked = await vscode.window.showOpenDialog({
+          canSelectFiles: true,
+          canSelectFolders: true,
+          canSelectMany: false,
+          openLabel: 'Install Pantheon Pack',
+          filters: { 'Pantheon Pack': ['zip'] },
+          title: 'Select the downloaded thesmos-pantheon-agents.zip (or its extracted folder)',
+        });
+        const path = picked?.[0]?.fsPath;
+        if (!path) return;
+        const terminal = vscode.window.createTerminal({
+          name: 'Thesmos: Install Pantheon Pack',
+          iconPath: new vscode.ThemeIcon('package'),
+        });
+        terminal.show();
+        terminal.sendText(`npx thesmos pantheon:install --pack "${path.replace(/"/g, '\\"')}"`);
       }),
     );
 

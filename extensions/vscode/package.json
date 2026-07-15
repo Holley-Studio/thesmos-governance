@@ -83,6 +83,18 @@
         "icon": "$(person-add)"
       },
       {
+        "command": "thesmos.unlockPantheon",
+        "title": "Unlock Full Pantheon ($24)",
+        "category": "Thesmos Agents",
+        "icon": "$(star-full)"
+      },
+      {
+        "command": "thesmos.installPantheonPack",
+        "title": "Install Pantheon Pack…",
+        "category": "Thesmos Agents",
+        "icon": "$(package)"
+      },
+      {
         "command": "thesmos.scan",
         "title": "Scan Repository",
         "category": "Thesmos",
@@ -359,6 +371,10 @@
       {
         "view": "thesmos.agentActivity",
         "contents": "No agent activity yet — god dispatches appear here live.\n\nSummon the full Pantheon: 67 specialist agents orchestrated by Zeus.\n[Get the Full Pantheon](https://holley.studio/thesmos)"
+      },
+      {
+        "view": "thesmos.agentsView",
+        "contents": "**Starter gods installed?** The free tier ships 6 gods — Zeus, Athena, Argus, Apollo, Hephaestus, and Hebe.\n\n[Install Starter Agents](command:thesmos.installAgents)\n\n**The Full Pantheon** — all 67 specialists, $24 one-time, yours forever.\n\n[Unlock Full Pantheon ($24)](command:thesmos.unlockPantheon)\n\n[Install Pantheon Pack…](command:thesmos.installPantheonPack)\n\nAlready bought? Download the zip from your Gumroad library, then use Install Pantheon Pack."
       }
     ],
     "menus": {
