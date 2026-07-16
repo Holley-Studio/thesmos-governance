@@ -43,16 +43,16 @@ export function partitionByTier<T extends TierableRule>(rules: T[]): { free: T[]
 }
 
 /** Candidate locations for the downloaded premium-pack marker. */
-export function premiumPackPaths(root: string): string[] {
+export function premiumPackPaths(root: string, homeDir: string = homedir()): string[] {
   return [
     join(root, '.thesmos', 'premium', 'pack.json'),
-    join(homedir(), '.thesmos', 'premium', 'pack.json'),
+    join(homeDir, '.thesmos', 'premium', 'pack.json'),
   ];
 }
 
 /** True if a premium-pack marker is present on disk. */
-export function hasPremiumPack(root: string): boolean {
-  return premiumPackPaths(root).some((p) => existsSync(p));
+export function hasPremiumPack(root: string, homeDir: string = homedir()): boolean {
+  return premiumPackPaths(root, homeDir).some((p) => existsSync(p));
 }
 
 /**
@@ -64,11 +64,18 @@ export function hasPremiumPack(root: string): boolean {
  *
  * fs-touching — call this at the config-load layer, then stamp the result onto
  * config.tier so the pure review/govern engines can filter without fs access.
+ *
+ * `homeDir` is injectable for tests so a developer machine's ~/.thesmos/premium
+ * marker cannot flip the default.
  */
-export function resolveTier(configTier: RuleTier | undefined, root: string): RuleTier {
+export function resolveTier(
+  configTier: RuleTier | undefined,
+  root: string,
+  homeDir: string = homedir()
+): RuleTier {
   const env = process.env['THESMOS_TIER'];
   if (env === 'premium' || env === 'free') return env;
   if (configTier === 'premium' || configTier === 'free') return configTier;
-  if (hasPremiumPack(root)) return 'premium';
+  if (hasPremiumPack(root, homeDir)) return 'premium';
   return 'free';
 }

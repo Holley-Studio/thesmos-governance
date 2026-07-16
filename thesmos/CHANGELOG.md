@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Minor Changes
+
+- **Federated agent architecture:** Thesmos governs agent behavior without claiming ownership of every file under `.claude/agents/`.
+
+  - Ownership manifest: `.thesmos/managed-agents.json` (only listed paths are Thesmos-owned).
+  - Managed Claude fallbacks write to `.claude/agents/thesmos/` (and `~/.claude/agents/thesmos/` for local install).
+  - Scope allows creating/editing unmanaged project agents; overwriting managed files is blocked with guidance.
+  - Discovery: `thesmos agents:list --all`, `agents:doctor`, `agents:conflicts` (project > user > plugin precedence).
+  - Adoption: `thesmos agent:adopt` / `agent:release` (external agents are never auto-adopted).
+  - Adapter and local installer sync never overwrite or delete untracked files; modified managed files are preserved and reported.
+  - Zeus uses unrestricted `Agent` tooling and documents external-agent interoperability.
+  - New package layout: `pantheon-plugin/` for Claude Code plugin distribution (fallback copy path remains).
+
 ## 5.0.0
 
 ### Major Changes

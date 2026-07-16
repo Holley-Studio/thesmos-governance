@@ -465,12 +465,41 @@ function toClaudeProjectInstructions(agent: AgentMeta): string {
  * `description`; `model` takes the alias (sonnet/opus/haiku/fable). Raw
  * Thesmos catalog frontmatter does not register as a subagent.
  */
+function isOrchestratorAgent(agent: AgentMeta): boolean {
+  const tags = new Set(agent.tags.map((t) => t.toLowerCase()))
+  return (
+    agent.id === 'zeus-executive-agent' ||
+    tags.has('orchestration') ||
+    tags.has('orchestrator') ||
+    tags.has('executive')
+  )
+}
+
 function toClaudeCodeAgent(agent: AgentMeta): string {
   const name = godName(agent)
   const domain = godDomain(agent)
   const triggers = agent.tags.filter(t => t !== 'pantheon').slice(0, 5).join(', ')
   const description = `${domain}. Invoke for ${triggers || domain.toLowerCase()} tasks. Responds in character as ${name} of the Thesmos Pantheon.`
-  const body = agent.body.replace(/^# .+\r?\n+/, '')
+  let body = agent.body.replace(/^# .+\r?\n+/, '')
+
+  // Ensure Zeus (and other orchestrators) carry federated interoperability doctrine.
+  if (isOrchestratorAgent(agent) && !body.includes('## External Agent Interoperability')) {
+    body +=
+      '\n\n## External Agent Interoperability\n\n' +
+      'Agents outside the Pantheon may be available through the Agent tool.\n\n' +
+      '- Treat project, user, and third-party plugin agents as valid specialists.\n' +
+      '- Invoke external agents by their exact registered name.\n' +
+      '- Prefer an explicitly requested external agent over a Pantheon equivalent.\n' +
+      '- Do not require an agent to be registered with Thesmos before using it.\n' +
+      '- Apply Thesmos governance to resulting tool calls and outputs.\n' +
+      '- Report name collisions or unavailable agents instead of silently substituting.\n' +
+      '- Prefer the minimum specialist set required for the task.\n' +
+      '- Do not claim an agent is available until it appears in discovered or supplied context.\n'
+  }
+
+  const tools = isOrchestratorAgent(agent)
+    ? ['Agent', 'Read', 'Write', 'Grep', 'Glob', 'Bash']
+    : ['Read', 'Write', 'Bash']
 
   return [
     '---',
@@ -478,9 +507,7 @@ function toClaudeCodeAgent(agent: AgentMeta): string {
     `description: ${description.replace(/:/g, ' —')}`,
     `model: ${claudeCodeAlias(agent.claudeModel)}`,
     'tools:',
-    '  - Read',
-    '  - Write',
-    '  - Bash',
+    ...tools.map((t) => `  - ${t}`),
     '---',
     '',
     `# ${godEmoji(agent)} ${name} — ${domain}`,

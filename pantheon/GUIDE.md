@@ -73,16 +73,25 @@ Browse [pantheon/exports/](https://github.com/Holley-Studio/thesmos-governance/t
 
 ### Claude Code — Native Sub-Agents (Best Experience)
 
-Claude Code natively supports custom agents via `.claude/agents/*.md`. Thesmos generates these files directly.
+Claude Code natively supports custom agents via `.claude/agents/*.md`, user agents under `~/.claude/agents/`, and plugins. Thesmos does not claim ownership of every file in those directories.
 
-**Install all agents:**
+**Preferred: Pantheon plugin** (no per-repo copy):
+
+Install from [`pantheon-plugin/`](../pantheon-plugin/). Scoped names: `pantheon:hermes-marketing-agent`, `pantheon:zeus-executive-agent`.
+
+**Fallback: ownership-aware managed copies** under `.claude/agents/thesmos/` (or `~/.claude/agents/thesmos/`):
+
 ```bash
-thesmos pantheon:export --target=claude-code
-# Creates: .claude/agents/zeus-executive-agent.md (and 20 more)
+thesmos pantheon:install --all --write
+thesmos adapters
+# or user-level:
+npm run agents:install:local -- --dry-run
+npm run agents:install:local
 ```
 
-**Install a single agent:**
+**Export only (kit / packaging):**
 ```bash
+thesmos pantheon:export --target=claude-code
 thesmos pantheon:export --target=claude-code --agent=hermes-marketing-agent
 ```
 
@@ -93,16 +102,12 @@ claude --agent=ares-sales-agent "Help me handle the objection: we already have a
 claude --agent=zeus-executive-agent "Orchestrate a product launch for Thesmos v4.0"
 ```
 
-Claude Code will also auto-route tasks to the right agent based on the task description matching the agent's description field.
+Project agents you create under `.claude/agents/` remain external. They shadow Pantheon names when they collide; use `pantheon:<id>` or `thesmos agents:conflicts` to see what is active.
 
-**Global install (available in all projects):**
+**Global user-level fallback:**
 ```bash
-# Download directly
-curl -L https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/hermes-marketing-agent.md \
-  -o ~/.claude/agents/hermes-marketing-agent.md
-
-# Or export all to global agents directory
-thesmos pantheon:export --target=claude-code --out=~/.claude/agents
+npm run agents:install:local
+# writes only ~/.claude/agents/thesmos/<id>.md — never overwrites untracked files
 ```
 
 ---

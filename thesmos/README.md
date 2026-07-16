@@ -350,6 +350,8 @@ npx thesmos validate --base=origin/$GITHUB_BASE_REF
 
 Generates AI assistant instruction files from the canonical rule registry. Preserves any content you have written outside `<!-- THESMOS:GENERATED -->` markers.
 
+Also runs an ownership-aware Claude agent sync: Pantheon fallbacks are written only under `.claude/agents/thesmos/`, tracked in `.thesmos/managed-agents.json`. External files under `.claude/agents/` are never overwritten or deleted.
+
 ```bash
 npx thesmos adapters
 npx thesmos adapters --targets=claude,gemini
@@ -459,6 +461,11 @@ npx thesmos fix --base=main             # applies changes
 | `catalog:enable` | Enable an agent or skill |
 | `agent:create <name>` | Scaffold a new agent in `.thesmos/agents/` and register it |
 | `agent:install <file\|dir>` | Install an existing `.md` file (or directory of files) as a registered agent |
+| `agent:adopt <path>` | Adopt an external agent into Thesmos ownership (copy + register) |
+| `agent:release <id>` | Stop managing an agent (preserves the file by default) |
+| `agents:list [--all]` | Federated list: project, user, plugin, Pantheon (`--json` supported) |
+| `agents:doctor` | Manifest, duplicates, modified managed files, sync health (`--strict` → exit 2) |
+| `agents:conflicts` | Shadowing, collisions, and modified managed files only |
 | `skill:create` | Scaffold a new skill file |
 | `pack:list` | List installed rule packs |
 | `pack:validate` | Validate pack manifests |

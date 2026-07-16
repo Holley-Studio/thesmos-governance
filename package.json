@@ -17,6 +17,7 @@
     "thesmos:doctor": "tsx thesmos/bin/cli.ts doctor",
     "thesmos:audit": "tsx thesmos/bin/cli.ts audit",
     "thesmos:adapters": "tsx thesmos/bin/cli.ts adapters",
+    "agents:install:local": "npm run agents:install:local --workspace=thesmos",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "npm run build:lib && changeset publish",

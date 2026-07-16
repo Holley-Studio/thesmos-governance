@@ -1,86 +1,156 @@
 # Claude Code Setup Guide
 
-## Install a God Agent in Claude Code
+## Federated agents
 
-Claude Code supports agents via the `.claude/agents/` directory. Each `.md` file in that directory becomes an available agent.
+Claude Code discovers agents from several locations. Thesmos does **not** own `.claude/agents/` as a whole. Thesmos governs agent **tool actions** (scope, hooks, destructive commands). Existence of an agent file is open.
 
-### Step 1: Locate the files
+**Precedence (Claude Code order):**
 
-Your kit's `claude-code/` folder contains 34 `.md` files — one per God Agent.
+1. Project agents (`.claude/agents/`)
+2. User agents (`~/.claude/agents/`)
+3. Plugin agents (for example Pantheon via `pantheon-plugin/`)
 
-### Step 2: Install via Thesmos (recommended)
+Thesmos mirrors this precedence in `thesmos agents:list` and conflict reporting.
 
-If you have `thesmos-governance` installed, use the managed install path:
+| Kind | Typical path | Ownership |
+|---|---|---|
+| Your project agent | `.claude/agents/my-agent.md` | External (yours) |
+| Your user agent | `~/.claude/agents/my-agent.md` | External (yours) |
+| Pantheon fallback (managed) | `.claude/agents/thesmos/<id>.md` | Managed (manifest) |
+| Pantheon plugin | Claude Code plugin | External / plugin |
+| Adopted into registry | `.thesmos/agents/<id>.md` | Adopted |
+
+Core rule: **Thesmos governs what an agent does, not whether the agent is allowed to exist.**
+
+---
+
+## Preferred: Pantheon as a Claude Code plugin
+
+Install the Pantheon plugin from `pantheon-plugin/` so agents are not copied into every repository. Scoped names look like:
+
+```text
+pantheon:zeus-executive-agent
+pantheon:argus-security-agent
+```
+
+See [pantheon-plugin/README.md](../../../pantheon-plugin/README.md).
+
+---
+
+## Fallback: ownership-aware local sync
+
+If you need files on disk (no plugin), Thesmos writes **only** under a managed namespace:
+
+```text
+.claude/agents/thesmos/<agent-id>.md
+~/.claude/agents/thesmos/<agent-id>.md
+```
+
+Ownership is recorded in `.thesmos/managed-agents.json` (project) or `~/.thesmos/managed-agents.json` (user). Filename alone is never proof of ownership.
 
 ```bash
-# Install all agents in a directory (non-recursive, sorted order)
-thesmos agent:install claude-code/
+# User-level fallback (never overwrites untracked files)
+npm run agents:install:local
+npm run agents:install:local -- --dry-run
 
-# Or install a single agent
-thesmos agent:install claude-code/zeus-executive-agent.md
-```
-
-This copies each file to `.thesmos/agents/<id>.md` (the canonical source), registers it in `.thesmos/registry.json`, and regenerates platform adapter files — including `.claude/agents/` — automatically.
-
-Preview what would happen without making changes:
-
-```bash
-thesmos agent:install claude-code/ --dry-run
-```
-
-### Step 2 (alternative): Direct copy — platform-specific fallback
-
-If you are not using `thesmos-governance`, copy files directly:
-
-```bash
-# Install all agents (bypasses Thesmos governance)
-cp -r claude-code/* .claude/agents/
-
-# Or install a single agent
-cp claude-code/zeus-executive-agent.md .claude/agents/
-```
-
-> **Note:** Files placed directly in `.claude/agents/` are not tracked by Thesmos and will not appear in governance reports or registry. Use the managed path above when Thesmos is installed.
-
-### Step 3: Invoke an agent in Claude Code
-
-```
-# In Claude Code, agents are invoked by name
-/agent zeus-executive-agent
-
-# Or use the Task tool with the agent's name
-God Agent Zeus, I need to prioritize our Q3 roadmap.
-```
-
-### Step 4: Verify the Thesmos governance
-
-```bash
-npm install --save-dev thesmos-governance
+# After pantheon:install --write / agent:install, adapters also sync managed Claude agents
 thesmos adapters
 ```
 
-> **Recovery:** If adapter synchronization fails after `agent:install` or `agent:create`, the canonical file and registry entry are preserved. Run `thesmos adapters` to retry synchronization.
+Synchronization rules:
 
-## Custom Agents
+- Update only files Thesmos owns and that still match the recorded hash
+- Never overwrite or delete untracked files
+- Preserve modified managed files and report a conflict
+- Remove stale managed files only when unmodified
 
-To scaffold your own agent with governance:
+---
+
+## Custom agents (create freely)
+
+Create agents directly. Scope allows writes to unmanaged paths under `.claude/agents/`:
 
 ```bash
-# Creates .thesmos/agents/my-agent.md and registers it
-thesmos agent:create "My Agent"
-
-# Install an existing .md file
-thesmos agent:install path/to/my-agent.md
+mkdir -p .claude/agents
+# Create .claude/agents/my-blender-director.md with Claude Code frontmatter
 ```
 
-Edit the generated file in `.thesmos/agents/`, then run `thesmos adapters` to propagate changes to `.claude/agents/` and other platforms.
+These remain **external**. They are not added to `.thesmos/registry.json` until you adopt them.
+
+Optional adoption into Thesmos ownership:
+
+```bash
+thesmos agent:adopt .claude/agents/my-blender-director.md
+thesmos agent:adopt .claude/agents/my-blender-director.md --dry-run
+thesmos agent:release my-blender-director
+```
+
+Adoption copies into `.thesmos/agents/`, registers the agent, and marks ownership. The original file is kept unless you request otherwise.
+
+---
+
+## Managed install into the registry
+
+To install into `.thesmos/agents/` and the registry (Cursor / AGENTS.md / etc.):
+
+```bash
+thesmos agent:install path/to/agent.md
+thesmos agent:install claude-code/ --dry-run
+thesmos pantheon:install --all --write
+```
+
+This updates canonical registry agents and regenerates adapters. Claude Code **managed** copies land under `.claude/agents/thesmos/`, not the root of `.claude/agents/`.
+
+Direct copies into `.claude/agents/*.md` are supported: they are external agents. They stay outside Thesmos ownership unless you adopt them. Adapter sync will not overwrite them.
+
+---
+
+## Discovery, conflicts, and doctor
+
+```bash
+thesmos agents:list --all
+thesmos agents:list --all --json
+thesmos agents:conflicts
+thesmos agents:doctor
+thesmos agents:doctor --strict   # exit 2 when CI-relevant conflicts exist
+```
+
+Example conflict:
+
+```text
+argus-security-agent
+Status: shadowed
+Pantheon invocation: pantheon:argus-security-agent
+Active override: .claude/agents/argus-security-agent.md
+```
+
+Exit codes: `0` success, `1` hard error, `2` conflicts when `--strict` is set.
+
+---
+
+## Zeus and external agents
+
+Zeus may use the Agent tool without a Pantheon-only allowlist. Project, user, and third-party plugin agents are valid specialists when available. Prefer an explicitly requested external agent over a Pantheon equivalent. External agents do not need registry membership. Governance still applies to their tool calls.
+
+---
+
+## Legacy migration
+
+Older installs may have Pantheon files at `.claude/agents/<id>.md`. Migration to `.claude/agents/thesmos/` runs only with strong evidence (managed marker or exact known hash). Filename alone never triggers ownership. Modified legacy files are preserved. Prefer `--dry-run` before mutating.
+
+```bash
+thesmos agents:doctor
+npm run agents:install:local -- --dry-run
+```
+
+---
 
 ## Tips
 
-- Install Zeus first — he orchestrates the other 33 agents
-- Read `setup/zeus-orchestration-guide.md` before your first session
-- Agents persist across Claude Code sessions once installed
-- Use `God Agent [Name]` as the invocation prefix for the best results
+- Install or enable Zeus for orchestration; he can route to Pantheon and external agents
+- Read `setup/zeus-orchestration-guide.md` before your first multi-agent session
+- Use `God Agent [Name]` or the exact registered name for best results
+- Keep governance hooks active so external agents stay governed at execution time
 
 ## Support
 

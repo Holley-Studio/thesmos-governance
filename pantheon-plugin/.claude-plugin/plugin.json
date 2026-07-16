@@ -1,0 +1,15 @@
+{
+  "name": "thesmos-pantheon",
+  "displayName": "Thesmos Pantheon",
+  "version": "1.0.0",
+  "description": "Pantheon specialist agents for Claude Code. Install as a plugin so agents are available without copying files into every repository. Thesmos Core still governs tool actions; plugin agents remain external until explicitly adopted.",
+  "author": {
+    "name": "Holley Studio",
+    "email": "holley42@yahoo.com"
+  },
+  "homepage": "https://holley.studio/thesmos",
+  "repository": "https://github.com/Holley-Studio/thesmos-governance",
+  "license": "FSL-1.1-MIT",
+  "keywords": ["pantheon", "agents", "orchestration", "thesmos", "claude-code"],
+  "defaultEnabled": false
+}

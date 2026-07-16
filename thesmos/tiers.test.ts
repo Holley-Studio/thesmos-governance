@@ -59,8 +59,10 @@ describe('resolveTier — precedence', () => {
 
   it('falls back to explicit config.tier, then defaults to free', () => {
     vi.stubEnv('THESMOS_TIER', '');
-    expect(resolveTier('premium', '/nonexistent-root')).toBe('premium');
-    expect(resolveTier(undefined, '/nonexistent-root')).toBe('free');
+    // Isolate from any ~/.thesmos/premium/pack.json on the host
+    const isolatedHome = '/tmp/thesmos-tiers-test-home-empty';
+    expect(resolveTier('premium', '/nonexistent-root', isolatedHome)).toBe('premium');
+    expect(resolveTier(undefined, '/nonexistent-root', isolatedHome)).toBe('free');
   });
 });
 

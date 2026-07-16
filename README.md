@@ -199,31 +199,36 @@ No config file is required. To customize, create `.thesmos/config.json`:
 
 ---
 
-## Custom Agents
+## Custom Agents (federated)
 
-You can install your own agent Markdown files alongside the Pantheon agents. Thesmos writes the canonical file to `.thesmos/agents/`, registers it in `.thesmos/registry.json`, and regenerates platform adapter files in one step.
+Thesmos governs what an agent does, not whether the agent may exist. You can create agents directly under `.claude/agents/`, install user agents under `~/.claude/agents/`, or use Claude Code plugins (including Pantheon). Those files stay **external** until you explicitly adopt them.
 
 ```bash
-# Scaffold a new agent (opens an editable stub in .thesmos/agents/)
+# Create a project agent yourself (allowed; not Thesmos-owned)
+# → .claude/agents/my-security-reviewer.md
+
+# Optional: adopt into Thesmos registry ownership
+thesmos agent:adopt .claude/agents/my-security-reviewer.md
+thesmos agent:release my-security-reviewer
+
+# Registry install (canonical .thesmos/agents/ + adapters)
 thesmos agent:create "My Security Reviewer"
-
-# Install an existing Markdown file as a governed agent
 thesmos agent:install path/to/my-agent.md
+thesmos agent:install path/to/agents-dir/ --dry-run
 
-# Install all .md files in a directory (non-recursive, sorted)
-thesmos agent:install path/to/agents-dir/
-
-# Preview without writing anything
-thesmos agent:install path/to/my-agent.md --dry-run
-
-# Install without regenerating adapter files (useful in scripts)
-thesmos agent:install path/to/my-agent.md --no-sync
-thesmos adapters  # regenerate once after all installs
+# Discover everything Claude Code can see
+thesmos agents:list --all
+thesmos agents:conflicts
+thesmos agents:doctor
 ```
 
-**Canonical vs. generated surfaces:** Agent Markdown files live in `.thesmos/agents/` (source of truth). Platform adapter files — `.claude/agents/`, `AGENTS.md`, `.cursor/rules/`, etc. — are generated from that canonical source and should not be edited directly. If your agent scope config blocks `.claude/agents/`, the violation message will tell you exactly what to do.
+**Ownership model:** Only paths listed in `.thesmos/managed-agents.json` are Thesmos-managed. Managed Claude fallbacks live under `.claude/agents/thesmos/`. Adapter sync never overwrites unowned files. Matching filenames alone never prove ownership.
 
-**ID derivation:** The agent ID comes from `id:` frontmatter → `name:` frontmatter → filename stem, all normalized to lowercase kebab-case.
+**Precedence:** project agents → user agents → plugin agents (Claude Code order). Pantheon plugin names use `pantheon:<id>` when scoped.
+
+**Governance:** External agents still pass through project scope and hooks for tool actions. Existence is open; execution is governed.
+
+**ID derivation (registry path):** `id:` frontmatter → `name:` frontmatter → filename stem, normalized to lowercase kebab-case.
 
 ---
 
