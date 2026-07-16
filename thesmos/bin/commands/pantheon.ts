@@ -8,6 +8,7 @@
  * thesmos pantheon:memory      — manage persistent agent memory files
  * thesmos pantheon:upgrade     — check for newer agent versions
  * thesmos pantheon:remove      — remove installed agents
+ * thesmos pantheon:mode        — set/get power mode (normal vs god power)
  */
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, mkdtempSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -31,6 +32,7 @@ const AGENTS_DIR = _agentsDirCandidates.find(p => existsSync(p)) ?? _agentsDirCa
 const PANTHEON_DIR = join(AGENTS_DIR, 'pantheon');
 const FIGMA_DIR = join(AGENTS_DIR, 'figma');
 const MEMORY_DIR_REL = '.thesmos/pantheon/memory';
+const CONFIG_PATH_REL = '.thesmos/config.json';
 
 // Pricing/boundary facts for upsell copy — shipped in the tarball next to the
 // catalog. Null (silently, no upsell shown) if the file is missing (dev trees
@@ -307,6 +309,50 @@ function writeRegistry(root: string, data: Record<string, unknown>): void {
   const p = join(root, '.thesmos/registry.json');
   mkdirSync(dirname(p), { recursive: true });
   writeFileSync(p, JSON.stringify(data, null, 2) + '\n', 'utf8');
+}
+
+interface ThesmosConfig {
+  power?: string;
+  [key: string]: unknown;
+}
+
+function readConfig(root: string): ThesmosConfig {
+  const path = join(root, CONFIG_PATH_REL);
+  if (!existsSync(path)) return {};
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')) as ThesmosConfig;
+  } catch {
+    return {};
+  }
+}
+
+function writeConfig(root: string, config: ThesmosConfig): void {
+  const path = join(root, CONFIG_PATH_REL);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(config, null, 2) + '\n', 'utf8');
+}
+
+function normalizePowerMode(input: string): 'lean' | 'god' | null {
+  const mode = input.trim().toLowerCase();
+  if (mode === 'lean' || mode === 'normal' || mode === 'conservative') return 'lean';
+  if (mode === 'god' || mode === 'power' || mode === 'god-power') return 'god';
+  return null;
+}
+
+export function getPowerMode(root: string): 'lean' | 'god' {
+  const mode = normalizePowerMode(String(readConfig(root).power ?? 'lean'));
+  return mode ?? 'lean';
+}
+
+export function setPowerMode(root: string, modeInput: string): 'lean' | 'god' {
+  const mode = normalizePowerMode(modeInput);
+  if (!mode) {
+    throw new Error('Unknown mode. Use: normal|conservative|lean or god|power');
+  }
+  const config = readConfig(root);
+  config.power = mode;
+  writeConfig(root, config);
+  return mode;
 }
 
 // ── Export generators ──────────────────────────────────────────────────────────
@@ -1118,6 +1164,37 @@ function cmdUpgrade(agents: PantheonAgent[]): void {
   console.log('  To update: npm update -g thesmos-governance\n');
 }
 
+// ── pantheon:mode ─────────────────────────────────────────────────────────────
+
+function cmdMode(argv: string[], root: string): void {
+  const { positionals } = parseArgs(argv);
+  const requested = positionals[0];
+
+  if (!requested) {
+    const current = getPowerMode(root);
+    const label = current === 'lean' ? 'normal (conservative, token-saving)' : 'god power (full ceremony)';
+    console.log(`\n  Current Pantheon mode: ${current} — ${label}\n`);
+    console.log('  Set mode:');
+    console.log('    thesmos pantheon:mode normal');
+    console.log('    thesmos pantheon:mode god\n');
+    return;
+  }
+
+  try {
+    const mode = setPowerMode(root, requested);
+    if (mode === 'lean') {
+      console.log('\n  ✓ Pantheon mode set to NORMAL (lean).');
+      console.log('    Conservative routing + lower-ceremony responses to save tokens.\n');
+    } else {
+      console.log('\n  ✓ Pantheon mode set to GOD POWER.');
+      console.log('    Full Zeus ceremony and council-grade orchestration enabled.\n');
+    }
+  } catch (err) {
+    console.error(`\n  ✗ ${err instanceof Error ? err.message : String(err)}\n`);
+    process.exit(1);
+  }
+}
+
 // ── main ───────────────────────────────────────────────────────────────────────
 
 export async function cmdPantheon(argv: string[]): Promise<void> {
@@ -1156,9 +1233,12 @@ export async function cmdPantheon(argv: string[]): Promise<void> {
     case 'upgrade':
       cmdUpgrade(agents);
       break;
+    case 'mode':
+      cmdMode(rest, root);
+      break;
     default:
       console.error(`  Unknown pantheon subcommand: ${sub}`);
-      console.error('  Available: list, install, status, export, council, orchestrate, memory, remove, upgrade');
+      console.error('  Available: list, install, status, export, council, orchestrate, memory, remove, upgrade, mode');
       process.exit(1);
   }
 }

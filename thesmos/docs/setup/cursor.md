@@ -59,6 +59,23 @@ thesmos pantheon:team phalanx "Score and advance the Acme enterprise deal"
 
 Agent rules use `alwaysApply: false` so they do not flood every chat. Zeus routing (in CLAUDE.md / AGENTS.md / governance adapters) still suggests the right specialist.
 
+## Choose your power mode (token-saving vs god power)
+
+Use Pantheon mode to control ceremony and token usage:
+
+```bash
+# Normal mode (default): conservative, token-saving
+thesmos pantheon:mode normal
+
+# God Power mode: full Zeus ceremony + council style
+thesmos pantheon:mode god
+
+# Check current mode
+thesmos pantheon:mode
+```
+
+Mode is stored in `.thesmos/config.json` as `power: "lean"` (normal) or `power: "god"` (god power).
+
 ## Team councils (high-value packs)
 
 | Team | Slug | Use when |

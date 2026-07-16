@@ -119,6 +119,16 @@ thesmos pantheon:install --pack <path-to-purchased-zip>
 thesmos pantheon:export --target=claude-code
 ```
 
+Set your interaction power mode:
+
+```bash
+# Default, conservative mode (token-saving)
+thesmos pantheon:mode normal
+
+# Full "feel of the gods" mode
+thesmos pantheon:mode god
+```
+
 Or download any agent directly — no install required:
 
 | Agent | Role | Download |
