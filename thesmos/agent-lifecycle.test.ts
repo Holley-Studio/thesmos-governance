@@ -396,12 +396,10 @@ describe('scope: improved suggestion for .claude/ authoring surfaces', () => {
     saveScopeConfig(root, cfg);
   }
 
-  it('returns agent:install suggestion for .claude/agents/', () => {
+  it('allows external writes under .claude/agents/ (federated coexistence)', () => {
     writeScopeWith(['.claude/']);
     const violation = checkScope({ toolName: 'Write', filePath: '.claude/agents/my-agent.md', root });
-    expect(violation).not.toBeNull();
-    expect(violation!.suggestion).toContain('thesmos agent:install');
-    expect(violation!.suggestion).toContain('.thesmos/agents/');
+    expect(violation).toBeNull();
   });
 
   it('returns skill:create suggestion for .claude/skills/ (NOT agent:install)', () => {
@@ -430,9 +428,9 @@ describe('scope: improved suggestion for .claude/ authoring surfaces', () => {
     expect(violation!.suggestion).not.toContain('thesmos agent:install');
   });
 
-  it('preserves blocking behavior — violation type is still blocked_path', () => {
+  it('still blocks other .claude/ surfaces (skills) when .claude/ is blocked', () => {
     writeScopeWith(['.claude/']);
-    const violation = checkScope({ toolName: 'Write', filePath: '.claude/agents/x.md', root });
+    const violation = checkScope({ toolName: 'Write', filePath: '.claude/skills/x.md', root });
     expect(violation!.type).toBe('blocked_path');
   });
 

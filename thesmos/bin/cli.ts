@@ -17,6 +17,14 @@ import { cmdCiCheck } from './commands/ci-check.ts';
 import { cmdCatalog } from './commands/catalog.ts';
 import { cmdAgentCreate } from './commands/agent-create.ts';
 import { cmdAgentInstall } from './commands/agent-install.ts';
+import {
+  cmdAgentAdopt,
+  cmdAgentRelease,
+  cmdAgents,
+  cmdAgentsConflicts,
+  cmdAgentsDoctor,
+  cmdAgentsList,
+} from './commands/agents-federation.ts';
 import { cmdSkillCreate } from './commands/skill-create.ts';
 import { cmdDrift } from './commands/drift.ts';
 import { cmdBaseline } from './commands/baseline.ts';
@@ -141,6 +149,12 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'catalog:profiles': (argv) => cmdCatalog(['profiles', ...argv]),
   'agent:create': cmdAgentCreate,
   'agent:install': cmdAgentInstall,
+  'agent:adopt': cmdAgentAdopt,
+  'agent:release': cmdAgentRelease,
+  'agents': cmdAgents,
+  'agents:list': cmdAgentsList,
+  'agents:doctor': cmdAgentsDoctor,
+  'agents:conflicts': cmdAgentsConflicts,
   'skill:create': cmdSkillCreate,
   'autopilot': (argv) => cmdAutopilot(argv),
   'autopilot:validate': (argv) => cmdAutopilot(['validate', ...argv]),
@@ -496,6 +510,16 @@ CUSTOM AGENTS
     --force                  Overwrite an existing canonical file
     --dry-run                Validate and show proposed operations without mutating files
     --no-sync                Install and register but skip adapter synchronization
+  agent:adopt <path>       Adopt an external agent into Thesmos ownership
+    --force --dry-run --no-sync
+  agent:release <id>       Stop managing an agent (preserves file by default)
+    --dry-run --delete
+
+FEDERATED AGENTS
+  agents:list [--all] [--json]     List project, user, plugin, and Pantheon agents
+  agents:doctor [--json] [--strict]
+  agents:conflicts [--json] [--strict]
+    Exit 2 with --strict when conflicts/shadows exist (CI)
 
 CATALOG
   catalog:list             List all agents and skills

@@ -59,10 +59,18 @@ Pick any agent from the platform-specific export directories:
 
 ### Use Claude Code native agents
 
+**Preferred:** install [`pantheon-plugin/`](../pantheon-plugin/) so agents are not copied into every repo. Invoke with scoped names such as `pantheon:hermes-marketing-agent`.
+
+**Fallback:** ownership-aware sync into `.claude/agents/thesmos/` (never overwrites your external agents):
+
 ```bash
-thesmos pantheon:export --target=claude-code
+thesmos pantheon:install --all --write
+thesmos adapters
+thesmos agents:list --all
 claude --agent=hermes-marketing-agent "Write a campaign brief for our product launch"
 ```
+
+Custom agents under `.claude/agents/` coexist with Pantheon. Thesmos governs tool actions for all of them; it does not require registry membership before an agent can exist.
 
 ### Orchestrate the full team
 
@@ -70,7 +78,7 @@ claude --agent=hermes-marketing-agent "Write a campaign brief for our product la
 thesmos pantheon:orchestrate "launch our developer tool to fintech CTOs"
 ```
 
-Zeus automatically routes the task to the right specialists and outputs a structured brief.
+Zeus routes to Pantheon specialists and may invoke external project, user, or plugin agents by their exact registered names when available.
 
 ---
 

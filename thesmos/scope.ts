@@ -15,6 +15,12 @@
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, resolve, relative, isAbsolute } from 'node:path';
+import {
+  isClaudeAgentsPath,
+  isManagedPath,
+  loadManagedManifest,
+  normalizeRelPath,
+} from './agent-ownership.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -131,6 +137,7 @@ export function saveScopeConfig(root: string, config: ScopeConfig): void {
 function isPathAllowed(filePath: string, root: string, config: ScopeConfig): ScopeViolation | null {
   const absPath = isAbsolute(filePath) ? filePath : resolve(root, filePath);
   const relPath = relative(root, absPath);
+  const relNorm = normalizeRelPath(relPath.replace(/\\/g, '/'));
 
   // Check absolute block paths first (always blocked, regardless of allow list)
   for (const blocked of config.workspace.absoluteBlockPaths) {
@@ -143,25 +150,46 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
     }
   }
 
+  // Federated agents: Thesmos governs execution, not existence.
+  // External agents under .claude/agents/ may be created freely.
+  // Only explicitly managed files are write-protected.
+  if (isClaudeAgentsPath(relNorm)) {
+    let managed = false;
+    try {
+      const manifest = loadManagedManifest(root);
+      managed = isManagedPath(manifest, relNorm);
+    } catch {
+      managed = false;
+    }
+    if (managed) {
+      return {
+        type: 'blocked_path',
+        message:
+          `Path "${filePath}" is a Thesmos-managed agent file. ` +
+          `Direct edits are blocked so adapter sync does not lose ownership metadata.`,
+        suggestion:
+          `Update the canonical source under .thesmos/agents/ and run \`thesmos adapters\`, ` +
+          `or run \`thesmos agent:release <agent-id>\` to stop managing this file before editing it directly.`,
+      };
+    }
+    // Unmanaged / external agent path — allow even when `.claude/` is blocked
+    // and even when allowedPaths would otherwise exclude it.
+    return null;
+  }
+
   // Check blocked paths (glob-style prefix matching)
   for (const blocked of config.workspace.blockedPaths) {
     const pattern = blocked.replace(/\./g, '\\.').replace(/\*/g, '.*');
     const re = new RegExp(`^${pattern}`);
-    if (re.test(relPath) || re.test(filePath)) {
+    if (re.test(relPath) || re.test(filePath) || re.test(relNorm)) {
       // Provide targeted, path-specific guidance for each canonical authoring surface.
-      const AGENT_SURFACE   = '.claude/agents/';
       const SKILL_SURFACE   = '.claude/skills/';
       const COMMAND_SURFACE = '.claude/commands/';
-      const isAgentPath   = relPath.startsWith(AGENT_SURFACE)   || filePath.includes(AGENT_SURFACE);
-      const isSkillPath   = relPath.startsWith(SKILL_SURFACE)   || filePath.includes(SKILL_SURFACE);
-      const isCommandPath = relPath.startsWith(COMMAND_SURFACE) || filePath.includes(COMMAND_SURFACE);
+      const isSkillPath   = relNorm.startsWith(SKILL_SURFACE)   || filePath.includes(SKILL_SURFACE);
+      const isCommandPath = relNorm.startsWith(COMMAND_SURFACE) || filePath.includes(COMMAND_SURFACE);
 
       let suggestion: string;
-      if (isAgentPath) {
-        suggestion =
-          `Author the file under .thesmos/agents/ and run \`thesmos agent:install <file>\` ` +
-          `or \`thesmos adapters\` to synchronize platform adapter files.`;
-      } else if (isSkillPath) {
+      if (isSkillPath) {
         suggestion =
           `Author the skill outside .claude/skills/ and run \`thesmos skill:create\` ` +
           `or \`thesmos adapters\` to synchronize platform skill files.`;
@@ -186,7 +214,8 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
   if (config.workspace.allowedPaths.length > 0) {
     const isAllowed = config.workspace.allowedPaths.some((allowed) => {
       const norm = allowed.endsWith('/') ? allowed : allowed + '/';
-      return relPath.startsWith(norm) || relPath === allowed;
+      return relNorm.startsWith(normalizeRelPath(norm)) || relNorm === normalizeRelPath(allowed) ||
+        relPath.startsWith(norm) || relPath === allowed;
     });
     if (!isAllowed) {
       return {

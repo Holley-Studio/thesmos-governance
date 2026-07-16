@@ -358,12 +358,31 @@ export function setPowerMode(root: string, modeInput: string): 'lean' | 'god' {
 // ── Export generators ──────────────────────────────────────────────────────────
 
 function exportClaudeCode(agent: PantheonAgent): string {
-  const tools = ['Read', 'Write', 'Bash'];
+  const isOrchestrator =
+    agent.id === 'zeus-executive-agent' ||
+    /\borchestrat/i.test(agent.role) ||
+    /\bexecutive/i.test(agent.role);
+  const tools = isOrchestrator
+    ? ['Agent', 'Read', 'Write', 'Grep', 'Glob', 'Bash']
+    : ['Read', 'Write', 'Bash'];
   // Model comes from the catalog (via the generated PANTHEON_MODELS map) so it
   // never drifts from platforms.claude_model. Was: hardcoded OPUS/HAIKU sets.
   const model = modelFor(agent.id);
 
   const mythologySnippet = agent.mythology ? ' ' + agent.mythology.slice(0, 90).replace(/\n/g, ' ') : '';
+  let body = agent.body;
+  if (isOrchestrator && !body.includes('## External Agent Interoperability')) {
+    body +=
+      '\n\n## External Agent Interoperability\n\n' +
+      'Agents outside the Pantheon may be available through the Agent tool.\n\n' +
+      '- Treat project, user, and third-party plugin agents as valid specialists.\n' +
+      '- Invoke external agents by their exact registered name.\n' +
+      '- Prefer an explicitly requested external agent over a Pantheon equivalent.\n' +
+      '- Do not require an agent to be registered with Thesmos before using it.\n' +
+      '- Apply Thesmos governance to resulting tool calls and outputs.\n' +
+      '- Report name collisions or unavailable agents instead of silently substituting.\n' +
+      '- Prefer the minimum specialist set required for the task.\n';
+  }
 
   return `---
 name: ${agent.name}
@@ -374,7 +393,7 @@ tools:
 ${tools.map(t => `  - ${t}`).join('\n')}
 ---
 
-${agent.body}
+${body}
 `;
 }
 

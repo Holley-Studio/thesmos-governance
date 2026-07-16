@@ -3,6 +3,21 @@
 All notable changes to the Pantheon agent bundles and tooling. Buyers get every
 update free, forever — re-download from your Gumroad library.
 
+## 2026-07 — Federated agents (coexistence with external Claude agents)
+
+### Added
+
+- **`pantheon-plugin/`** — Claude Code plugin packaging for Pantheon agents (preferred over per-repo copies).
+- Ownership-aware sync into `.claude/agents/thesmos/` with `.thesmos/managed-agents.json`.
+- Zeus **External Agent Interoperability** guidance; unrestricted `Agent` tool for orchestration.
+- CLI: `agents:list`, `agents:doctor`, `agents:conflicts`, `agent:adopt`, `agent:release`.
+
+### Changed
+
+- Direct copies under `.claude/agents/` are supported as **external** agents (not Thesmos-owned unless adopted).
+- Local installer (`agents:install:local`) no longer overwrites untracked user files by filename match.
+- Legacy root Pantheon copies migrate only with strong ownership evidence (marker or exact hash).
+
 ## 2026-07 — Argus Awakens (severity resolution fix)
 
 ### Fixed
