@@ -351,7 +351,7 @@ class ThesmosExtension implements vscode.Disposable {
         const choice = await vscode.window.showInformationMessage(
           'Install Starter Agents — this writes the 6 free Pantheon agents (Zeus, Athena, Argus, Apollo, Hephaestus, Hebe) to .thesmos/agents/ ' +
           'and regenerates .claude/agents/ so they are available as Claude Code subagents. ' +
-          'The Full Pantheon (67 gods, $24 one-time) is available via "Unlock Full Pantheon".',
+          'The Full Pantheon (68 gods, $24 one-time) is available via "Unlock Full Pantheon".',
           { modal: true },
           'Install Starter Agents',
           'Cancel',
