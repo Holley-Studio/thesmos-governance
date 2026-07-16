@@ -3,7 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { cmdAgentAdopt, cmdAgentRelease, cmdAgentsList } from './agents-federation.ts';
+import {
+  cmdAgentAdopt,
+  cmdAgentRelease,
+  cmdAgentsDoctor,
+  cmdAgentsList,
+} from './agents-federation.ts';
 import { loadManagedManifest } from '../../agent-ownership.ts';
 
 function tmpRoot(): string {
@@ -100,6 +105,53 @@ describe('agent:adopt / agent:release', () => {
     expect(existsSync(join(root, '.thesmos', 'agents', 'release-me.md'))).toBe(true);
     const manifest = loadManagedManifest(root);
     expect(manifest.files['.thesmos/agents/release-me.md']).toBeUndefined();
+  });
+});
+
+describe('agents:doctor hostile manifest', () => {
+  let root: string;
+  beforeEach(() => {
+    root = tmpRoot();
+    mkdirSync(join(root, '.thesmos'), { recursive: true });
+    mkdirSync(join(root, '.claude', 'agents'), { recursive: true });
+    writeFileSync(
+      join(root, '.thesmos', 'config.json'),
+      JSON.stringify({ version: '1.0.0', project: 'test' }),
+      'utf8'
+    );
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /* */
+    }
+  });
+
+  it('does not crash when managed-agents.json contains traversal keys', async () => {
+    writeFileSync(
+      join(root, '.thesmos', 'managed-agents.json'),
+      JSON.stringify({
+        version: 1,
+        files: {
+          '../../../tmp/evil.md': {
+            owner: 'thesmos',
+            source: 'pantheon',
+            agentId: 'evil',
+            hash: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          },
+        },
+      }),
+      'utf8'
+    );
+
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const { exitCode } = await withRoot(root, async () => {
+      await cmdAgentsDoctor(['--json']);
+    });
+    writeSpy.mockRestore();
+    // Must exit with a status code (error/warn), never throw an uncaught path error
+    expect(exitCode).toBeGreaterThan(0);
   });
 });
 

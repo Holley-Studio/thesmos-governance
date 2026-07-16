@@ -207,7 +207,7 @@ export function discoverAgents(opts: DiscoveryOptions): DiscoveryResult {
     const marker = parseManagedMarker(content);
     const underManagedNs = relPath.startsWith('.claude/agents/thesmos/');
 
-    if (managed || (underManagedNs && marker)) {
+    if (managed) {
       const inspection = inspectManagedFile(root, relPath, manifest, fs);
       let statusHint: AgentStatus = 'active';
       if (inspection.state === 'modified') {
@@ -216,6 +216,13 @@ export function discoverAgents(opts: DiscoveryOptions): DiscoveryResult {
           kind: 'modified_managed',
           agentId: meta.id,
           message: `Managed file was modified outside Thesmos: ${relPath}`,
+          paths: [relPath],
+        });
+      } else if (inspection.state === 'missing') {
+        conflicts.push({
+          kind: 'missing_managed',
+          agentId: meta.id,
+          message: `Managed manifest lists missing file: ${relPath}`,
           paths: [relPath],
         });
       }
@@ -245,6 +252,29 @@ export function discoverAgents(opts: DiscoveryOptions): DiscoveryResult {
         rank: RANK.pantheon_managed + 0.5,
         managedRel: relPath,
         statusHint,
+      });
+    } else if (underManagedNs) {
+      // File sits in the managed namespace but is not in the ownership manifest.
+      // Treat as external — never infer ownership from path or marker alone.
+      candidates.push({
+        id: meta.id,
+        name: meta.name,
+        invocationName: meta.id,
+        origin: 'project',
+        ownership: 'external',
+        sourcePath: abs,
+        frontmatterName: meta.frontmatterName,
+        hash: contentHash(content),
+        rank: RANK.project,
+      });
+      conflicts.push({
+        kind: 'legacy_collision',
+        agentId: meta.id,
+        message:
+          `File under .claude/agents/thesmos/ is not listed in the ownership manifest` +
+          (marker ? ' (marker present but ownership unproven)' : '') +
+          `: ${relPath}. Treated as external.`,
+        paths: [relPath],
       });
     } else {
       // External project agent (including legacy root copies)
@@ -366,14 +396,23 @@ export function discoverAgents(opts: DiscoveryOptions): DiscoveryResult {
     });
   }
 
-  // Missing managed files
+  // Missing managed files (skip unsafe / unreadable keys — never throw from discovery)
   for (const [path, record] of Object.entries(manifest.files)) {
-    const inspection = inspectManagedFile(root, path, manifest, fs);
-    if (inspection.state === 'missing') {
+    try {
+      const inspection = inspectManagedFile(root, path, manifest, fs);
+      if (inspection.state === 'missing') {
+        conflicts.push({
+          kind: 'missing_managed',
+          agentId: record.agentId,
+          message: `Managed agent file is missing: ${path}`,
+          paths: [path],
+        });
+      }
+    } catch {
       conflicts.push({
-        kind: 'missing_managed',
+        kind: 'legacy_collision',
         agentId: record.agentId,
-        message: `Managed agent file is missing: ${path}`,
+        message: `Managed manifest path is unsafe or unreadable: ${path}`,
         paths: [path],
       });
     }

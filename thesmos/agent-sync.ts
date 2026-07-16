@@ -35,6 +35,10 @@ import {
   writeManagedManifestAtomic,
   MANAGED_CLAUDE_DIR_REL,
 } from './agent-ownership.js';
+/** Local copy — avoid circular import with agent-lifecycle. */
+function isValidManagedAgentId(id: string): boolean {
+  return /^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(id) || /^[a-z0-9]$/.test(id);
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -132,6 +136,12 @@ export function syncManagedClaudeAgents(opts: SyncOptions): SyncResult {
 
   const desiredById = new Map<string, DesiredManagedAgent>();
   for (const d of opts.desired) {
+    if (!d.agentId || !isValidManagedAgentId(d.agentId)) {
+      throw new Error(
+        `Invalid agent id for managed sync: ${JSON.stringify(d.agentId)}. ` +
+          `IDs must be lowercase kebab-case (e.g. zeus-executive-agent).`
+      );
+    }
     desiredById.set(d.agentId, d);
   }
 
@@ -140,9 +150,17 @@ export function syncManagedClaudeAgents(opts: SyncOptions): SyncResult {
   for (const d of opts.desired) {
     const body = ensureManagedMarker(d.content, d.agentId, d.source ?? 'pantheon');
     const rel = managedClaudeAgentRel(d.agentId);
-    desiredRels.add(rel);
+    // Defense in depth: reject any resolved path that escapes the managed namespace
     const abs = resolveSafePath(root, rel);
-    const inspection = inspectManagedFile(root, rel, manifest, fs);
+    const normalizedRel = normalizeRelPath(rel);
+    if (
+      !normalizedRel.startsWith(`${MANAGED_CLAUDE_DIR_REL}/`) ||
+      normalizedRel.includes('..')
+    ) {
+      throw new Error(`Refusing managed path outside namespace: ${rel}`);
+    }
+    desiredRels.add(normalizedRel);
+    const inspection = inspectManagedFile(root, normalizedRel, manifest, fs);
 
     if (inspection.state === 'unowned') {
       if (fs.exists(abs)) {
@@ -150,7 +168,7 @@ export function syncManagedClaudeAgents(opts: SyncOptions): SyncResult {
         collisions++;
         actions.push({
           action: 'collision',
-          path: rel,
+          path: normalizedRel,
           agentId: d.agentId,
           message:
             `Target path is occupied by an untracked file. ` +
@@ -162,20 +180,20 @@ export function syncManagedClaudeAgents(opts: SyncOptions): SyncResult {
         written++;
         actions.push({
           action: 'would_write',
-          path: rel,
+          path: normalizedRel,
           agentId: d.agentId,
           message: 'Would create managed agent file.',
         });
-        manifest = upsertManagedRecord(manifest, rel, d.agentId, body, d.source ?? 'pantheon');
+        // Do not mutate returned manifest on dry-run — callers must not persist it.
         continue;
       }
       fs.mkdir(dirname(abs));
       fs.write(abs, body);
-      manifest = upsertManagedRecord(manifest, rel, d.agentId, body, d.source ?? 'pantheon');
+      manifest = upsertManagedRecord(manifest, normalizedRel, d.agentId, body, d.source ?? 'pantheon');
       written++;
       actions.push({
         action: 'written',
-        path: rel,
+        path: normalizedRel,
         agentId: d.agentId,
         message: 'Created managed agent file.',
       });
@@ -186,7 +204,7 @@ export function syncManagedClaudeAgents(opts: SyncOptions): SyncResult {
       preserved++;
       actions.push({
         action: 'preserved_modified',
-        path: rel,
+        path: normalizedRel,
         agentId: d.agentId,
         message:
           `Managed file was modified outside Thesmos. Preserving local edits. ` +
@@ -200,7 +218,7 @@ export function syncManagedClaudeAgents(opts: SyncOptions): SyncResult {
       if (inspection.state === 'unmodified' && inspection.hash === currentHash) {
         actions.push({
           action: 'skipped_unmodified',
-          path: rel,
+          path: normalizedRel,
           agentId: d.agentId,
           message: 'Already up to date.',
         });
@@ -210,20 +228,19 @@ export function syncManagedClaudeAgents(opts: SyncOptions): SyncResult {
         updated++;
         actions.push({
           action: 'would_update',
-          path: rel,
+          path: normalizedRel,
           agentId: d.agentId,
           message: 'Would update managed agent file.',
         });
-        manifest = upsertManagedRecord(manifest, rel, d.agentId, body, d.source ?? 'pantheon');
         continue;
       }
       fs.mkdir(dirname(abs));
       fs.write(abs, body);
-      manifest = upsertManagedRecord(manifest, rel, d.agentId, body, d.source ?? 'pantheon');
+      manifest = upsertManagedRecord(manifest, normalizedRel, d.agentId, body, d.source ?? 'pantheon');
       updated++;
       actions.push({
         action: 'updated',
-        path: rel,
+        path: normalizedRel,
         agentId: d.agentId,
         message: inspection.state === 'missing' ? 'Restored missing managed file.' : 'Updated managed agent file.',
       });
@@ -315,7 +332,7 @@ export function syncManagedClaudeAgents(opts: SyncOptions): SyncResult {
         agentId: record.agentId,
         message: 'Would remove stale unmodified managed file.',
       });
-      manifest = removeManagedRecord(manifest, rel);
+      // Keep returned manifest unchanged on dry-run.
       continue;
     }
     const abs = resolveSafePath(root, rel);

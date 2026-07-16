@@ -131,19 +131,30 @@ export async function cmdAgentsDoctor(argv: string[]): Promise<void> {
           code: 'path_traversal',
           message: `Managed path fails traversal check: ${path}`,
         });
+        continue; // never call inspectManagedFile on unsafe keys
       }
-      const inspection = inspectManagedFile(root, path, manifest);
-      if (inspection.state === 'missing') {
+      try {
+        const inspection = inspectManagedFile(root, path, manifest);
+        if (inspection.state === 'missing') {
+          findings.push({
+            level: 'warn',
+            code: 'missing_managed',
+            message: `Missing managed file for ${record.agentId}: ${path}`,
+          });
+        } else if (inspection.state === 'modified') {
+          findings.push({
+            level: 'warn',
+            code: 'modified_managed',
+            message: `Modified managed file for ${record.agentId}: ${path}`,
+          });
+        }
+      } catch (inspectErr) {
         findings.push({
-          level: 'warn',
-          code: 'missing_managed',
-          message: `Missing managed file for ${record.agentId}: ${path}`,
-        });
-      } else if (inspection.state === 'modified') {
-        findings.push({
-          level: 'warn',
-          code: 'modified_managed',
-          message: `Modified managed file for ${record.agentId}: ${path}`,
+          level: 'error',
+          code: 'inspect_failed',
+          message: `Could not inspect managed file ${path}: ${
+            inspectErr instanceof Error ? inspectErr.message : String(inspectErr)
+          }`,
         });
       }
     }

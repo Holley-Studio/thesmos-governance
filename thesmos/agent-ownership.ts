@@ -197,6 +197,21 @@ export function defaultOwnershipFs(): OwnershipFs {
 
 // ── Manifest I/O ──────────────────────────────────────────────────────────────
 
+const SHA256_HEX_RE = /^sha256:[a-f0-9]{64}$/;
+
+/** Reject path keys that contain traversal segments (checked without root). */
+export function isSafeManifestPathKey(pathKey: string): boolean {
+  if (!pathKey || pathKey.includes('\0')) return false;
+  const forward = pathKey.replace(/\\/g, '/');
+  if (isAbsolute(pathKey) || isAbsolute(forward) || forward.startsWith('/') || /^[a-zA-Z]:/.test(forward)) {
+    return false;
+  }
+  const normalized = normalizeRelPath(pathKey);
+  if (!normalized) return false;
+  if (normalized.startsWith('..') || normalized.split('/').includes('..')) return false;
+  return true;
+}
+
 export function isValidManifest(raw: unknown): raw is ManagedAgentsManifest {
   if (raw === null || typeof raw !== 'object') return false;
   const obj = raw as Record<string, unknown>;
@@ -206,11 +221,12 @@ export function isValidManifest(raw: unknown): raw is ManagedAgentsManifest {
   }
   for (const [pathKey, record] of Object.entries(obj['files'] as Record<string, unknown>)) {
     if (typeof pathKey !== 'string' || !pathKey) return false;
+    if (!isSafeManifestPathKey(pathKey)) return false;
     if (record === null || typeof record !== 'object') return false;
     const r = record as Record<string, unknown>;
     if (r['owner'] !== 'thesmos') return false;
     if (typeof r['agentId'] !== 'string' || !r['agentId']) return false;
-    if (typeof r['hash'] !== 'string' || !r['hash'].startsWith('sha256:')) return false;
+    if (typeof r['hash'] !== 'string' || !SHA256_HEX_RE.test(r['hash'])) return false;
     if (typeof r['source'] !== 'string' || !r['source']) return false;
   }
   return true;
@@ -227,10 +243,12 @@ export function loadManagedManifest(
     if (!isValidManifest(raw)) {
       throw new Error('Invalid managed-agents.json schema.');
     }
-    // Normalize keys
+    // Normalize keys and re-validate under root (defense in depth vs hand-edited manifests)
     const files: Record<string, ManagedAgentRecord> = {};
     for (const [k, v] of Object.entries(raw.files)) {
-      files[normalizeRelPath(k)] = v;
+      const nk = normalizeRelPath(k);
+      resolveSafePath(root, nk); // throws on traversal / absolute
+      files[nk] = v;
     }
     return { version: 1, files };
   } catch (err) {
