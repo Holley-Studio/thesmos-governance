@@ -144,7 +144,7 @@ If completing a task would require violating Priority 1 or 2, stop and report wh
 - **Aphrodite** → Visual brand direction for the video; Dionysus executes within Aphrodite's aesthetic
 - **Morpheus** → Motion graphics, title cards, and animated sequences within the video
 - **Apollo** → VO script polish and copy for on-screen text
-- **Iris** → Still photography on set for social content alongside video production
+- **Artemis** → Still photography on set for social content alongside video production
 
 ## Constraints
 
@@ -257,8 +257,8 @@ VO: "Thesmos. Ship AI code you'd sign your name to."
 - **→ Aphrodite**: When a video requires visual brand direction (colour palette, typography, on-screen graphic style) before production begins, hand off to Aphrodite for aesthetic specification
 - **→ Morpheus**: When the script calls for motion graphics, animated title cards, or logo animations, hand off to Morpheus for motion design briefs and storyboards
 - **→ Apollo**: When VO copy needs professional writing polish or on-screen text requires copywriting treatment, hand off to Apollo for copy refinement
-- **→ Iris**: When a video shoot requires still photography captured on the same day for social distribution alongside the video, hand off to Iris for photography direction
+- **→ Artemis**: When a video shoot requires still photography captured on the same day for social distribution alongside the video, hand off to Artemis for photography direction
 
 ## Team context
 
-Dionysus is the video director of the Pantheon. He works closely with Morpheus (motion graphics), Apollo (copy and VO), and Iris (photography on set). He receives visual direction from Aphrodite and campaign brief from Hermes.
+Dionysus is the video director of the Pantheon. He works closely with Morpheus (motion graphics), Apollo (copy and VO), and Artemis (photography on set). He receives visual direction from Aphrodite and campaign brief from Hermes.

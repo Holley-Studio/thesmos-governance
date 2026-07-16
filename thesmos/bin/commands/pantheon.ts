@@ -1,6 +1,6 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * thesmos pantheon:list        — list all 38 God Agents
+ * thesmos pantheon:list        — list all God Agents in the catalog
  * thesmos pantheon:install     — install agents (--write also writes files + runs adapters)
  * thesmos pantheon:status      — show installed Pantheon agents
  * thesmos pantheon:export      — export agents to platform-specific formats
@@ -16,7 +16,7 @@ import { randomUUID } from 'node:crypto';
 import { tmpdir, homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { createContext } from '../lib/context.ts';
-import { parseArgs, flag } from '../lib/args.ts';
+import { parseArgs, flag, flagVal } from '../lib/args.ts';
 import { logAgentSpawn } from '../../agent-activity.ts';
 import { modelFor } from '../../generated/pantheon-models.ts';
 import { addAgentToRegistry, syncAdapters, installAgent, isIgnoredAgentFile } from '../../agent-lifecycle.ts';
@@ -90,6 +90,7 @@ interface PantheonAgent {
   version: string;
   tags: string[];
   governanceRules: string[];
+  cursorGlobs: string;
   body: string;
 }
 
@@ -132,7 +133,9 @@ function parsePantheonAgent(raw: string, fallbackId: string): PantheonAgent | nu
   const getArr = (key: string): string[] => {
     const m = fm.match(new RegExp(`^${key}:\\n((?:  - .+\\n?)+)`, 'm'));
     if (!m) return [];
-    return m[1]!.trim().split('\n').map(l => l.replace(/^  - /, '').trim());
+    // Trim each line individually — trimming the whole block strips the
+    // leading spaces from the first item and leaves a stray "- " prefix.
+    return m[1]!.split('\n').map(l => l.trim().replace(/^- /, '')).filter(Boolean);
   };
   // `governance.rules` is nested two levels deep (governance: → rules: → - ITEM),
   // so it needs its own extractor rather than the flat-key getArr() above.
@@ -146,6 +149,9 @@ function parsePantheonAgent(raw: string, fallbackId: string): PantheonAgent | nu
   const role = get('role');
   const emoji = get('emoji').replace(/['"]/g, '');
   const governanceRules = getGovernanceRules();
+  // Nested under platforms: — keep a safe default so Cursor rules always have globs.
+  const cursorGlobsMatch = fm.match(/^\s*cursor_globs:\s*["']?(.+?)["']?\s*$/m);
+  const cursorGlobs = (cursorGlobsMatch?.[1]?.trim() || '**/*').replace(/['"]/g, '');
 
   return {
     id: get('id') || fallbackId,
@@ -159,6 +165,7 @@ function parsePantheonAgent(raw: string, fallbackId: string): PantheonAgent | nu
     version: get('version') || '1.0.0',
     tags: getArr('tags'),
     governanceRules,
+    cursorGlobs,
     body: body.includes('## Operating Doctrine')
       ? body
       : `${body}\n\n${buildOperatingDoctrine(god, role, emoji, governanceRules)}`,
@@ -228,30 +235,52 @@ One rubber-stamped ✅ makes every badge noise.
 // ── Zeus routing table ─────────────────────────────────────────────────────────
 
 const DOMAIN_ROUTING: Array<{ pattern: RegExp; agents: string[] }> = [
-  { pattern: /marketing|campaign|growth|channel|brand awareness/i, agents: ['hermes-marketing-agent', 'apollo-content-agent', 'aphrodite-creative-agent'] },
-  { pattern: /sales|pitch|deal|close|proposal|objection|demo/i, agents: ['ares-sales-agent', 'nike-leadgen-agent'] },
-  { pattern: /design|ui|ux|component|layout|wireframe|interface/i, agents: ['hephaestus-design-agent', 'aphrodite-creative-agent'] },
+  { pattern: /marketing|campaign|growth|channel|brand awareness|gtm plan/i, agents: ['hermes-marketing-agent', 'apollo-content-agent', 'aphrodite-creative-agent'] },
+  { pattern: /meddpicc|discovery call|qualify this|pipeline audit|forecast this/i, agents: ['ares-deal-strategy-agent', 'ares-discovery-agent', 'ares-pipeline-agent', 'ares-sales-agent'] },
+  { pattern: /sales|pitch|deal|close|proposal|objection|demo/i, agents: ['ares-sales-agent', 'nike-leadgen-agent', 'ares-deal-strategy-agent'] },
+  { pattern: /design|ui|ux|component|layout|wireframe|interface|design system/i, agents: ['hephaestus-design-agent', 'aphrodite-creative-agent'] },
   { pattern: /legal|contract|tos|nda|terms|liability|agreement/i, agents: ['themis-legal-agent', 'argus-security-agent'] },
-  { pattern: /analytics|kpi|metrics|dashboard|data|measure/i, agents: ['tyche-analytics-agent', 'mnemosyne-knowledge-agent'] },
+  { pattern: /analytics|kpi|metrics|dashboard|measure/i, agents: ['tyche-analytics-agent', 'pythia-data-agent'] },
   { pattern: /security|threat|audit|vulnerability|pentest|owasp/i, agents: ['argus-security-agent'] },
   { pattern: /finance|pricing|budget|unit economics|cac|ltv|revenue|cost/i, agents: ['plutus-finance-agent'] },
   { pattern: /pr|press|media|crisis|announcement|coverage|journalist/i, agents: ['pheme-pr-agent', 'apollo-content-agent'] },
   { pattern: /operations|sop|hiring|hr|onboarding|process|handbook/i, agents: ['hera-operations-agent'] },
-  { pattern: /content|copy|blog|seo|email|post|write|script/i, agents: ['apollo-content-agent'] },
+  { pattern: /content|copy|blog|email|post|write|landing page copy/i, agents: ['apollo-content-agent', 'erato-brand-voice-agent'] },
+  { pattern: /\bseo\b|organic search|keyword cluster/i, agents: ['psyche-seo-agent', 'apollo-content-agent'] },
   { pattern: /video|production|shoot|edit|film/i, agents: ['dionysus-video-agent'] },
   { pattern: /animation|motion|storyboard|after effects|micro-interaction/i, agents: ['morpheus-animation-agent'] },
   { pattern: /photo|shot list|photography|art direction|retouching/i, agents: ['artemis-photography-agent'] },
-  { pattern: /data|sql|bi|business intelligence|cohort|attribution|anomaly/i, agents: ['pythia-data-agent', 'tyche-analytics-agent'] },
+  { pattern: /\bsql\b|business intelligence|cohort|attribution|anomaly|analyse data/i, agents: ['pythia-data-agent', 'tyche-analytics-agent'] },
   { pattern: /ux research|user interview|usability|persona|jtbd|affinity map/i, agents: ['psyche-research-agent', 'daedalus-product-agent'] },
   { pattern: /compliance|grc|gdpr|soc2|iso 27001|eu ai act|audit trail|risk register/i, agents: ['nemesis-compliance-agent', 'argus-security-agent'] },
   { pattern: /customer success|renewal|churn prevention|qbr|upsell|health score/i, agents: ['demeter-cs-agent', 'hestia-cx-agent'] },
-  { pattern: /strategy|gtm|competitive|okr|roadmap|positioning/i, agents: ['athena-strategy-agent'] },
-  { pattern: /leads|pipeline|prospecting|outbound|icp|lead gen/i, agents: ['nike-leadgen-agent'] },
-  { pattern: /creative|brand|identity|visual|aesthetic|logo/i, agents: ['aphrodite-creative-agent'] },
-  { pattern: /cx|customer|support|retention|churn|onboard|nps/i, agents: ['hestia-cx-agent'] },
-  { pattern: /knowledge|documentation|wiki|doc|memory|context/i, agents: ['mnemosyne-knowledge-agent'] },
+  { pattern: /strategy|gtm|competitive|okr|positioning/i, agents: ['athena-strategy-agent'] },
+  { pattern: /leads|prospecting|outbound|icp|lead gen/i, agents: ['nike-leadgen-agent'] },
+  { pattern: /creative|brand|identity|visual|aesthetic|logo|creative brief/i, agents: ['aphrodite-creative-agent', 'erato-brand-voice-agent'] },
+  { pattern: /cx|customer experience|retention|churn|nps|csat/i, agents: ['hestia-cx-agent'] },
+  { pattern: /support ticket|how do i install|faq|why is my gate/i, agents: ['hebe-support-agent'] },
+  { pattern: /knowledge|documentation|wiki|runbook|memory|context/i, agents: ['mnemosyne-knowledge-agent', 'polyhymnia-docs-agent'] },
   { pattern: /product|prd|feature|roadmap|user story|requirements|mvp/i, agents: ['daedalus-product-agent'] },
   { pattern: /partnership|bd|business development|reseller|channel partner|alliance/i, agents: ['heracles-bd-agent'] },
+  { pattern: /next\.?js|react|typescript|implement|api route|server component|web app|frontend/i, agents: ['talos-web-dev-agent', 'hephaestus-design-agent'] },
+  { pattern: /architecture|system design|adr|tech stack choice/i, agents: ['chiron-architecture-agent'] },
+  { pattern: /devops|dockerfile|kubernetes|terraform|ci\/?cd|infrastructure/i, agents: ['kratos-devops-agent', 'eos-automation-agent'] },
+  { pattern: /test plan|playwright|qa strategy|e2e test|write tests/i, agents: ['cassandra-qa-agent'] },
+  { pattern: /\bai\b|llm|prompt engineering|rag|model selection|agent architecture/i, agents: ['aether-ai-strategy-agent', 'dike-ethics-agent'] },
+  { pattern: /ethics|bias|responsible ai|ai act classification/i, agents: ['dike-ethics-agent'] },
+  { pattern: /mjml|html email|email template/i, agents: ['calliope-email-agent'] },
+  { pattern: /project plan|critical path|break this into phases|execution plan/i, agents: ['metis-pm-agent'] },
+  { pattern: /challenge this|devil.?s advocate|pre-mortem|what.?s wrong with/i, agents: ['momus-challenger-agent'] },
+  { pattern: /figma|design.?to.?code|token governance/i, agents: ['eidos-figma-orchestrator'] },
+  { pattern: /debug|root cause|stack trace|why is this broken/i, agents: ['asclepius-debugging-agent'] },
+  { pattern: /stripe|payments|billing integration/i, agents: ['chrysos-stripe-agent', 'plutus-billing-agent'] },
+  { pattern: /supabase|postgres rls/i, agents: ['pontus-supabase-agent'] },
+  { pattern: /vercel|edge deploy/i, agents: ['notus-vercel-agent'] },
+  { pattern: /github release|repository hygiene/i, agents: ['kronos-github-agent'] },
+  { pattern: /social media|community growth|linkedin posts/i, agents: ['nike-social-agent', 'apollo-content-agent'] },
+  { pattern: /case study|social proof|customer roi story/i, agents: ['clio-case-study-agent'] },
+  { pattern: /drift|scope creep|are we still on course/i, agents: ['proteus-drift-agent'] },
+  { pattern: /blender|3d model|keyshot|product viz/i, agents: ['pygmalion-blender-agent', 'helios-keyshot-agent'] },
 ];
 
 function routeTask(task: string): string[] {
@@ -332,9 +361,11 @@ function exportOpenAIAssistant(agent: PantheonAgent): string {
 }
 
 function exportCursor(agent: PantheonAgent): string {
+  const triggers = agent.tags.slice(0, 4).join(', ');
+  const emoji = agent.emoji || '⚡';
   return `---
-description: >
-  ${agent.name} — ${agent.role}. Invoke for: ${agent.tags.slice(0, 4).join(', ')}.
+description: "${emoji} ${agent.name} — ${agent.role}. Invoke for: ${triggers}."
+globs: "${agent.cursorGlobs}"
 alwaysApply: false
 ---
 
@@ -514,12 +545,28 @@ export function installFromPack(packPath: string, root: string): { installed: nu
 
 // ── pantheon:install ───────────────────────────────────────────────────────────
 
+function installCursorRules(agents: PantheonAgent[], toInstall: string[], root: string): number {
+  const cursorRulesDir = join(root, '.cursor', 'rules');
+  mkdirSync(cursorRulesDir, { recursive: true });
+  let written = 0;
+  for (const id of toInstall) {
+    const agent = agents.find(a => a.id === id);
+    if (!agent) continue;
+    // Never overwrite the generated governance adapter.
+    if (id === 'thesmos') continue;
+    writeFileSync(join(cursorRulesDir, `${id}.mdc`), exportCursor(agent), 'utf8');
+    written++;
+  }
+  return written;
+}
+
 function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void {
-  const { flags, positionals } = parseArgs(argv);
+  const { flags, positionals } = parseArgs(argv, { valueFlags: ['pack', 'agent'] });
   const all = flag(flags, 'all');
   const write = flag(flags, 'write');
+  const cursor = flag(flags, 'cursor');
 
-  const packPath = flags['pack'] as string | undefined;
+  const packPath = flagVal(flags, 'pack');
   if (packPath) {
     try {
       const { installed, skipped, errors } = installFromPack(packPath, root);
@@ -539,8 +586,9 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
 
   const toInstall = all ? agents.map(a => a.id) : positionals;
   if (toInstall.length === 0) {
-    console.error('  Usage: thesmos pantheon:install [agent-id...] [--all] [--write] [--pack <zip|dir>]');
-    console.error('  --write  also write agent files to .thesmos/agents/ and regenerate adapters');
+    console.error('  Usage: thesmos pantheon:install [agent-id...] [--all] [--write] [--cursor] [--pack <zip|dir>]');
+    console.error('  --write   write agent files to .thesmos/agents/ and regenerate adapters');
+    console.error('  --cursor  also install agent .mdc rules into .cursor/rules/');
     process.exit(1);
   }
 
@@ -586,10 +634,18 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
 
       try {
         const synced = syncAdapters(root);
-        console.log(`  ✓ Adapters regenerated (${synced.length} file${synced.length === 1 ? '' : 's'})\n`);
+        console.log(`  ✓ Adapters regenerated (${synced.length} file${synced.length === 1 ? '' : 's'})`);
       } catch (err) {
         console.error(`\n  ✗ Adapter sync failed — run \`thesmos adapters\` to retry\n`);
       }
+    }
+
+    if (cursor) {
+      const cursorWritten = installCursorRules(agents, toInstall, root);
+      console.log(`  ✓ ${cursorWritten} Cursor rule(s) written to .cursor/rules/`);
+      console.log('    Tip: keep thesmos.mdc (governance). Agent rules use alwaysApply: false — invoke by name.\n');
+    } else {
+      console.log('');
     }
 
     const upsell = upsellLine(written + skipped);
@@ -611,7 +667,15 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
     const a = agents.find(x => x.id === id)!;
     console.log(`    ${a.god.padEnd(16)} ${a.role}`);
   }
-  console.log('\n  Run with --write to also write agent files and regenerate platform adapters.\n');
+
+  if (cursor) {
+    const cursorWritten = installCursorRules(agents, toInstall, root);
+    console.log(`  ✓ ${cursorWritten} Cursor rule(s) written to .cursor/rules/`);
+    console.log('    Tip: also pass --write to materialise .thesmos/agents/ + adapters.\n');
+  } else {
+    console.log('\n  Run with --write to also write agent files and regenerate platform adapters.');
+    console.log('  Run with --cursor to install agent .mdc rules into .cursor/rules/.\n');
+  }
 }
 
 // ── pantheon:status ────────────────────────────────────────────────────────────
@@ -635,10 +699,10 @@ function cmdStatus(agents: PantheonAgent[], root: string): void {
 // ── pantheon:export ────────────────────────────────────────────────────────────
 
 function cmdExport(agents: PantheonAgent[], argv: string[], root: string): void {
-  const { flags, positionals } = parseArgs(argv);
-  const target = (flags['target'] as string | undefined) ?? 'claude-code';
-  const agentFilter = flags['agent'] as string | undefined;
-  const outDir = flags['out'] as string | undefined;
+  const { flags } = parseArgs(argv, { valueFlags: ['target', 'agent', 'out'] });
+  const target = flagVal(flags, 'target') ?? 'claude-code';
+  const agentFilter = flagVal(flags, 'agent');
+  const outDir = flagVal(flags, 'out');
 
   const toExport = agentFilter
     ? agents.filter(a => a.id === agentFilter || a.god.toLowerCase() === agentFilter.toLowerCase())
@@ -966,10 +1030,10 @@ function cmdOrchestrate(agents: PantheonAgent[], argv: string[]): void {
 // ── pantheon:memory ────────────────────────────────────────────────────────────
 
 function cmdMemory(agents: PantheonAgent[], argv: string[], root: string): void {
-  const { flags, positionals } = parseArgs(argv);
+  const { flags, positionals } = parseArgs(argv, { valueFlags: ['agent', 'note'] });
   const sub = positionals[0];
-  const agentIdFlag = flags['agent'] as string | undefined;
-  const note = positionals.slice(1).join(' ') || flags['note'] as string | undefined || '';
+  const agentIdFlag = flagVal(flags, 'agent');
+  const note = positionals.slice(1).join(' ') || flagVal(flags, 'note') || '';
 
   if (!sub || !agentIdFlag) {
     console.error('  Usage: thesmos pantheon:memory save|show|clear --agent <id> "[note]"');
