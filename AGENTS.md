@@ -615,6 +615,32 @@
 All agents operate under Thesmos governance rules.
 Run `thesmos eval` after any session to view compliance report.
 
+## Cursor Cloud specific instructions
+
+This repo is an **npm workspaces monorepo** (Node ≥ 20) with three buildable products under
+`thesmos/` (core CLI/engine), `actions/pr-review/` (GitHub Action), and `extensions/vscode/`
+(VS Code extension). It is a developer tooling package — there are **no databases, servers, or
+long-running services** to start. State is plain JSON under `.thesmos/`.
+
+- Dependencies for all three workspaces install from the single root lockfile with `npm ci`
+  (the startup update script already runs this).
+- Standard commands are the npm scripts in the root and per-workspace `package.json` and the CI
+  workflow (`.github/workflows/ci.yml`) — refer to those rather than duplicating them here.
+- **Build order matters for typecheck (non-obvious):** the root `npm run typecheck` typechecks
+  `actions/pr-review` too, which resolves `thesmos-governance` via `file:../../thesmos`. If the
+  core is not built, the action typecheck fails with `import.meta` TS1343 errors. Build the core
+  first (`npm run build --workspace=thesmos`), then run the action typecheck — this is exactly
+  the CI order (typecheck core+vscode → build core → typecheck action → test → build action).
+- Run the CLI from the **repo root** (where `.thesmos/config.json` lives), not from inside
+  `thesmos/`. From the built binary: `node thesmos/dist/cli.js <cmd>` (e.g. `scan`, `validate`,
+  `health`, `doctor`); from source use the root `thesmos:*` scripts (tsx). There is no
+  `--version` flag; run a bare `thesmos` to list commands.
+- `thesmos scan` rewrites the tracked file `.thesmos/report.json`; builds rewrite the tracked
+  `dist/` bundles in `actions/pr-review` and `extensions/vscode`. Revert these generated
+  artifacts (`git checkout --`) if you don't intend to commit them.
+- The `.githooks/pre-push` hook only fires an optional Google Drive backup when pushing `main`;
+  it is a background no-op otherwise and is not installed by default.
+
 
 <!-- THESMOS:GENERATED START rules -->
 <!-- THESMOS:META {"version":"2.0.0","target":"agents","ruleCount":1137} -->
