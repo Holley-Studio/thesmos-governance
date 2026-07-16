@@ -36,18 +36,42 @@ Make a product or feature safe to ship under real constraints: security threats,
 thesmos pantheon:team aegis "[System or feature, data classes, and the framework or risk you must satisfy]"
 ```
 
-## Sequence rationale
+## Team composition (sequential routing order)
 
-1. **Argus** — threats, OWASP, auth/data-flow risks
-2. **Nemesis** — GRC gap analysis and risk register
-3. **Themis** — contracts, ToS/privacy, liability
-4. **Dike** — EU AI Act / bias / responsible AI
-5. **Momus** — challenges false confidence and checkbox compliance
+| Step | Agent | Deliverable | Dependency |
+|---|---|---|---|
+| 1 | **Argus** | Threat model, OWASP review, auth/data-flow risks | None — security frames the shield |
+| 2 | **Nemesis** | GRC gap analysis, risk register, control mapping | Argus's threat model |
+| 3 | **Themis** | Legal/policy review: contracts, ToS/privacy, liability | Argus + Nemesis |
+| 4 | **Dike** | AI ethics review, EU AI Act classification, bias checks | All prior (if AI involved) |
+| 5 | **Momus** | Challenge review — checkbox compliance, false confidence | All prior outputs |
 
-## Output the team owes
+## Handoff protocol
 
-- Threat model with prioritized risks
-- Compliance gap list mapped to frameworks
-- Legal / policy actions required before ship
-- AI ethics risk class + human oversight needs (if AI)
-- Momus challenge: "what audit finding would embarrass us in 90 days?"
+Argus goes first — no compliance theater before threats are mapped. Nemesis maps frameworks to concrete gaps. Themis translates technical risk into legal exposure. Dike reviews AI-specific obligations when the system uses models or automated decisions. Momus is the mandatory red-team before ship: "what audit finding would embarrass us in 90 days?"
+
+## Success criteria
+
+- [ ] Threat model with prioritized risks (Argus)
+- [ ] Compliance gap list mapped to frameworks (Nemesis)
+- [ ] Legal/policy actions required before ship (Themis)
+- [ ] AI ethics risk class + human oversight needs, if applicable (Dike)
+- [ ] Momus challenge passed — no BLOCKER findings unaddressed
+- [ ] Thesmos governance validate passes with no BLOCKER severity
+
+## Zeus orchestration prompt
+
+```
+You are God Agent Zeus, orchestrating The Aegis — Trust, Risk & Compliance Team.
+
+Mission: [USER_MISSION]
+
+Route in this sequence, passing full prior context to each agent:
+1. Argus → Threat model and security review
+2. Nemesis → GRC gap analysis and risk register (receives Argus)
+3. Themis → Legal and policy constraints (receives Argus + Nemesis)
+4. Dike → AI ethics and regulatory classification (receives all prior)
+5. Momus → Challenge review — strongest case that we are not actually safe to ship
+
+Deliver a Trust Brief: ship/no-ship gate, BLOCKER list, remediation order, and frameworks satisfied.
+```

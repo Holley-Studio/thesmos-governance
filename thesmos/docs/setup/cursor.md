@@ -66,12 +66,15 @@ Agent rules use `alwaysApply: false` so they do not flood every chat. Zeus routi
 | Creative Atelier | `creative-atelier` | Brand + design + motion + photo/video + copy |
 | Caduceus | `caduceus` | Full marketing / GTM system |
 | Bronze Guard | `bronze-guard` | Web feature shipping (app layer) |
-| The Forge | `forge` | Full eng launch incl. DevOps |
+| The Forge | `forge` | Full engineering launch (product → ship) |
 | The Phalanx | `phalanx` | Sales deal + pipeline motion |
 | The Muses | `muses` | Content factory |
-| Olympian Council | `olympian-council` | Irreversible strategy decisions |
+| Olympian Council | `olympian-council` or `council` | Irreversible strategy decisions |
 | The Furies | `furies` | Revenue rescue |
 | The Argonauts | `argonauts` | Full product launch |
+| Figma Team | `figma-team` | Figma design-system workflow |
+| Harvest | `harvest` | Customer success & retention |
+| Aegis | `aegis` | Compliance & legal guard |
 
 List teams: `thesmos pantheon:team`
 

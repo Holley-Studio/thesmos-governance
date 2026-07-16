@@ -45,9 +45,9 @@ describe('extension savings ledger', () => {
     expect(monthSavingsUsd(root, new Date('2026-07-09T00:00:00Z'))).toBe(3);
   });
 
-  it('estimates tier savings vs flagship baseline', () => {
-    expect(estimateTierSaving('claude-sonnet-4-6', 0.05)).toBeCloseTo(0.2);
-    expect(estimateTierSaving('claude-haiku-4-5', 0.01)).toBeCloseTo(0.24);
+  it('estimates tier savings vs flagship baseline using real price ratios', () => {
+    expect(estimateTierSaving('claude-sonnet-4-6', 0.05)).toBeCloseTo(0.05 * (2 / 3));
+    expect(estimateTierSaving('claude-haiku-4-5', 0.01)).toBeCloseTo(0.04);
     expect(estimateTierSaving('claude-opus-4-8', 0.5)).toBeUndefined();
     expect(estimateTierSaving('claude-fable-5', 0.5)).toBeUndefined();
     expect(estimateTierSaving('glm-4.7', 0.5)).toBeUndefined();

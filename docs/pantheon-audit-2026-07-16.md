@@ -69,6 +69,29 @@ Existing teams retained: Olympian Council, Muses, Forge, Argonauts, Furies, Figm
 - Cursor export now includes `globs` + emoji description
 - `pantheon:install --cursor` writes `.cursor/rules/<id>.mdc`
 
+## Pass 2 — teams, extensions, stress test (same day)
+
+| Fix | Impact |
+|---|---|
+| `pantheon:team` aliases (`council`, `olympian` → `olympian-council`) | Users invoke councils naturally |
+| Zeus prompt extraction tolerates prose before fence; `[USER_BRIEF]` + `[USER_MISSION]` | Figma team + legacy prompts work |
+| Unknown agent ID warnings in team CLI | Broken sequences surface before ship |
+| `teams.test.ts` — all 12 team slugs must have Zeus prompts | CI gate on team catalog |
+| `export-agents.ts` → `pantheon-sidebar.ts` (68 agents) | VS Code Agents panel matches catalog |
+| `agentsPanel.ts` uses generated sidebar (not stale hardcoded list) | No more missing gods in UI |
+| `thesmos:audit` root script | Doctor 26/26 passes |
+| VS Code extension tests in CI | 64 tests on every PR |
+| Team markdown upgrades (argonauts, olympian-council, figma-team, harvest, aegis) | World-class orchestration copy |
+
+**Stress test (automated):** `teams.test` 14/14 · VS Code 64/64 · `doctor` 26/26 · `validate` 0 BLOCKER/HIGH · `typecheck` clean · `build` clean · all 12 teams `unknownAgents: []` + `zeusPromptPresent: true`.
+
+**Remaining friction (planned, not alarming):**
+
+1. Pantheon Chat webview — unit-tested; no automated GUI smoke in CI (manual verify in VS Code).
+2. Batch agent quality — many gods still below 12/16 rubric; Hermes/Aphrodite remain references.
+3. Large-file TECH_DEBT — `chatViewProvider.ts`, `chat.ts`, `extension.ts` (split later, not user-blocking).
+4. `pantheon:install` Claude frontmatter warnings — adapter noise, not runtime failure.
+
 ## Recommended next upgrades (not all done here)
 
 1. Bring every Pantheon god to ≥12/16 on the quality rubric (batch upgrade script).
@@ -76,7 +99,7 @@ Existing teams retained: Olympian Council, Muses, Forge, Argonauts, Furies, Figm
 3. Add eval harness: fixed prompts → score output-contract compliance.
 4. Progressive disclosure: move long methodology into `catalog/skills/` loaded on trigger.
 5. Cursor "Skills" / AGENTS native format when Cursor's agent schema stabilizes further.
-6. Wire VS Code extension division chips to new `team` fields in `divisions.json`.
+6. Pantheon Chat Playwright smoke test in CI (webview + permission bridge E2E).
 
 ## How to use after merge
 

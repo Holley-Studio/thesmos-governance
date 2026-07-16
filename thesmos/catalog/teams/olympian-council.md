@@ -6,7 +6,7 @@ version: 1.0.0
 owner: thesmos-pantheon
 mythology: "The twelve Olympians governed together from Mount Olympus — each a sovereign of their domain, but bound by Zeus's authority when matters required collective decision. The Council was not a committee: it was a structured deliberation with a single decisive voice at the end."
 mission: Executive strategy — high-stakes decisions, strategic planning, cross-functional alignment, and irreversible commitments
-invocation: thesmos pantheon:team council "[Strategic question or decision]"
+invocation: thesmos pantheon:team olympian-council "[Strategic question or decision]"
 enabled: true
 sequence:
   - athena-strategy-agent
@@ -36,8 +36,10 @@ Provide structured strategic deliberation for high-stakes decisions. The Council
 ## Invocation
 
 ```
-thesmos pantheon:team council "[Strategic question or decision requiring cross-functional input]"
+thesmos pantheon:team olympian-council "[Strategic question or decision requiring cross-functional input]"
 ```
+
+Alias: `thesmos pantheon:team council "[...]"` resolves to the same team.
 
 ## Team composition (sequential routing order)
 

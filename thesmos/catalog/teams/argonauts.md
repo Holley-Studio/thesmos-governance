@@ -85,8 +85,6 @@ V1 uses sequential routing — Zeus activates each agent one at a time, collects
 
 ## Zeus orchestration prompt
 
-When `thesmos pantheon:team argonauts` is invoked, Zeus receives this composite prompt:
-
 ```
 You are God Agent Zeus, orchestrating The Argonauts team for a product launch.
 

@@ -1,6 +1,6 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * Agents sidebar panel — lists all 40 Pantheon agents grouped by domain.
+ * Agents sidebar panel — lists Pantheon agents grouped by division.
  *
  * Shows:
  *   ● Strategy
@@ -17,7 +17,7 @@ import * as vscode from 'vscode';
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { modelFor } from './generated/pantheon-models';
+import { PANTHEON_SIDEBAR_AGENTS } from './generated/pantheon-sidebar';
 
 // ── Agent catalog ─────────────────────────────────────────────────────────────
 
@@ -29,52 +29,8 @@ interface AgentEntry {
   model: string;
 }
 
-// id/name/domain/role are curated here; `model` is resolved from the catalog
-// (generated PANTHEON_MODELS map) so it never drifts from platforms.claude_model.
-const AGENTS_RAW: Omit<AgentEntry, 'model'>[] = [
-  { id: 'zeus-executive-agent',       name: 'Zeus',        domain: 'Executive',      role: 'Executive Orchestration' },
-  { id: 'athena-strategy-agent',      name: 'Athena',      domain: 'Strategy',       role: 'Business Strategy & GTM' },
-  { id: 'hermes-marketing-agent',     name: 'Hermes',      domain: 'Marketing',      role: 'Marketing Strategy & Growth' },
-  { id: 'argus-security-agent',       name: 'Argus',       domain: 'Security',       role: 'Security & Threat Modeling' },
-  { id: 'ares-sales-agent',           name: 'Ares',        domain: 'Sales',          role: 'Sales Strategy & Closing' },
-  { id: 'aphrodite-creative-agent',   name: 'Aphrodite',   domain: 'Creative',       role: 'Creative Direction & Brand' },
-  { id: 'hephaestus-design-agent',    name: 'Hephaestus',  domain: 'Design',         role: 'UI/UX & Design Systems' },
-  { id: 'themis-legal-agent',         name: 'Themis',      domain: 'Legal',          role: 'Legal Strategy & Contracts' },
-  { id: 'tyche-analytics-agent',      name: 'Tyche',       domain: 'Analytics',      role: 'Analytics & KPIs' },
-  { id: 'plutus-finance-agent',       name: 'Plutus',      domain: 'Finance',        role: 'Finance, Pricing & Unit Econ' },
-  { id: 'pheme-pr-agent',             name: 'Pheme',       domain: 'PR',             role: 'PR & Communications' },
-  { id: 'apollo-content-agent',       name: 'Apollo',      domain: 'Content',        role: 'Content & Copywriting' },
-  { id: 'daedalus-product-agent',     name: 'Daedalus',    domain: 'Product',        role: 'Product Management' },
-  { id: 'hera-operations-agent',      name: 'Hera',        domain: 'Operations',     role: 'Operations & HR' },
-  { id: 'nike-leadgen-agent',         name: 'Nike',        domain: 'Lead Gen',       role: 'Lead Generation & Pipeline' },
-  { id: 'heracles-bd-agent',          name: 'Heracles',    domain: 'Biz Dev',        role: 'Business Dev & Partnerships' },
-  { id: 'mnemosyne-knowledge-agent',  name: 'Mnemosyne',   domain: 'Knowledge',      role: 'Knowledge Management' },
-  { id: 'hestia-cx-agent',            name: 'Hestia',      domain: 'Customer Exp',   role: 'Customer Experience' },
-  { id: 'demeter-cs-agent',           name: 'Demeter',     domain: 'Customer Succ',  role: 'Customer Success' },
-  { id: 'psyche-research-agent',      name: 'Psyche',      domain: 'Research',       role: 'UX Research & Insights' },
-  { id: 'nemesis-compliance-agent',   name: 'Nemesis',     domain: 'Compliance',     role: 'Compliance & GRC' },
-  { id: 'pythia-data-agent',          name: 'Pythia',      domain: 'Data',           role: 'Data & Business Intelligence' },
-  { id: 'dionysus-video-agent',       name: 'Dionysus',    domain: 'Video',          role: 'Video Production' },
-  { id: 'morpheus-animation-agent',   name: 'Morpheus',    domain: 'Animation',      role: 'Animation & Motion' },
-  { id: 'artemis-photography-agent',  name: 'Artemis',     domain: 'Photography',    role: 'Photography & Art Direction' },
-  { id: 'dike-ethics-agent',          name: 'Dike',        domain: 'Ethics',         role: 'Ethics & AI Responsibility' },
-  { id: 'aether-ai-strategy-agent',   name: 'Aether',      domain: 'AI Strategy',    role: 'AI Strategy & Implementation' },
-  { id: 'calliope-email-agent',       name: 'Calliope',    domain: 'Email',          role: 'Email & Newsletter' },
-  { id: 'cassandra-qa-agent',         name: 'Cassandra',   domain: 'QA',             role: 'QA & Testing' },
-  { id: 'chiron-architecture-agent',  name: 'Chiron',      domain: 'Architecture',   role: 'Software Architecture' },
-  { id: 'clio-case-study-agent',      name: 'Clio',        domain: 'Case Studies',   role: 'Case Studies & Social Proof' },
-  { id: 'eos-automation-agent',       name: 'Eos',         domain: 'Automation',     role: 'Automation & Workflows' },
-  { id: 'erato-brand-voice-agent',    name: 'Erato',       domain: 'Brand Voice',    role: 'Brand Voice & Tone' },
-  { id: 'kratos-devops-agent',        name: 'Kratos',      domain: 'DevOps',         role: 'DevOps & Infrastructure' },
-  { id: 'metis-pm-agent',             name: 'Metis',       domain: 'Proj Mgmt',      role: 'Project Management' },
-  { id: 'momus-challenger-agent',     name: 'Momus',       domain: 'Challenger',     role: "Devil's Advocate & Critique" },
-  { id: 'polyhymnia-docs-agent',      name: 'Polyhymnia',  domain: 'Docs',           role: 'Documentation & Technical Docs' },
-  { id: 'proteus-drift-agent',        name: 'Proteus',     domain: 'Drift',          role: 'Scope Drift Detection' },
-  { id: 'talos-web-dev-agent',        name: 'Talos',       domain: 'Web Dev',        role: 'Web Development' },
-  { id: 'coeus-ideation-agent',       name: 'Coeus',       domain: 'Ideation',       role: 'Ideation & Brainstorming' },
-];
-
-const AGENTS: AgentEntry[] = AGENTS_RAW.map((a) => ({ ...a, model: modelFor(a.id) }));
+/** Catalog-driven from thesmos/catalog via export-agents.ts — never hand-edit the list. */
+const AGENTS: AgentEntry[] = PANTHEON_SIDEBAR_AGENTS;
 
 // ── Tree items ────────────────────────────────────────────────────────────────
 

@@ -16,6 +16,16 @@ import { parseArgs, flag } from '../lib/args.ts';
 // ── Team loader ───────────────────────────────────────────────────────────────
 
 const TEAMS_DIR = join(import.meta.dirname, '../../catalog/teams');
+const AGENTS_DIR = join(import.meta.dirname, '../../catalog/agents');
+
+/** Friendly aliases → canonical team slug (file basename without .md). */
+const TEAM_ALIASES: Record<string, string> = {
+  council: 'olympian-council',
+  'olympian-council': 'olympian-council',
+  olympian: 'olympian-council',
+};
+
+const MISSION_PLACEHOLDERS = ['[USER_MISSION]', '[USER_BRIEF]'] as const;
 
 interface TeamFrontmatter {
   id: string;
@@ -66,6 +76,50 @@ function parseTeamFile(filePath: string): { frontmatter: TeamFrontmatter; body: 
   }
 }
 
+function resolveTeamSlug(input: string): string {
+  return TEAM_ALIASES[input] ?? input;
+}
+
+function listKnownAgentIds(): Set<string> {
+  const ids = new Set<string>();
+  if (!existsSync(AGENTS_DIR)) return ids;
+
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!entry.name.endsWith('.md')) continue;
+      const idLine = readFileSync(full, 'utf8').match(/^id:\s*(.+)$/m);
+      if (idLine?.[1]) ids.add(idLine[1].trim());
+    }
+  };
+  walk(AGENTS_DIR);
+  return ids;
+}
+
+function validateTeamSequence(sequence: string[]): string[] {
+  const known = listKnownAgentIds();
+  if (known.size === 0) return [];
+  return sequence.filter((id) => !known.has(id));
+}
+
+/** Extract fenced Zeus prompt — allows optional prose between heading and opening fence. */
+export function extractZeusPrompt(body: string): string {
+  const section = body.match(/## Zeus orchestration prompt[\s\S]*?```\n([\s\S]*?)```/);
+  return section?.[1]?.trim() ?? '';
+}
+
+export function applyMissionToPrompt(prompt: string, mission: string): string {
+  let out = prompt;
+  for (const token of MISSION_PLACEHOLDERS) {
+    out = out.split(token).join(mission);
+  }
+  return out;
+}
+
 function listTeams(): Array<{ slug: string; frontmatter: TeamFrontmatter }> {
   if (!existsSync(TEAMS_DIR)) return [];
   return readdirSync(TEAMS_DIR)
@@ -108,10 +162,15 @@ function cmdTeamList(json: boolean): void {
 // ── pantheon:team <slug> ──────────────────────────────────────────────────────
 
 function cmdTeamShow(slug: string, mission: string | undefined, json: boolean): void {
-  const teamFile = join(TEAMS_DIR, `${slug}.md`);
+  const canonical = resolveTeamSlug(slug);
+  const teamFile = join(TEAMS_DIR, `${canonical}.md`);
   if (!existsSync(teamFile)) {
+    const aliases = Object.entries(TEAM_ALIASES)
+      .filter(([, target]) => target === canonical)
+      .map(([alias]) => alias);
+    const hint = aliases.length > 0 ? ` (aliases: ${aliases.join(', ')})` : '';
     process.stderr.write(
-      `  Team "${slug}" not found.\n  Available teams: ${listTeams().map((t) => t.slug).join(', ')}\n`,
+      `  Team "${slug}" not found${hint}.\n  Available teams: ${listTeams().map((t) => t.slug).join(', ')}\n`,
     );
     process.exit(1);
   }
@@ -123,15 +182,19 @@ function cmdTeamShow(slug: string, mission: string | undefined, json: boolean): 
   }
 
   const { frontmatter: fm, body } = parsed;
+  const unknownAgents = validateTeamSequence(fm.sequence);
 
   if (json) {
     process.stdout.write(JSON.stringify({
       id: fm.id,
+      slug: canonical,
       name: fm.name,
       mission: fm.mission,
       mythology: fm.mythology,
       sequence: fm.sequence,
       agentCount: fm.sequence.length,
+      unknownAgents,
+      zeusPromptPresent: extractZeusPrompt(body).length > 0,
     }, null, 2) + '\n');
     return;
   }
@@ -139,17 +202,29 @@ function cmdTeamShow(slug: string, mission: string | undefined, json: boolean): 
   console.log(`\n── ${fm.name} ─────────────────────────────────────────`);
   console.log(`\n  ${fm.mythology}\n`);
   console.log(`  Mission : ${fm.mission}`);
+  if (canonical !== slug) {
+    console.log(`  Slug    : ${canonical} (invoked as "${slug}")`);
+  }
   console.log(`\n  Sequence (${fm.sequence.length} agents):`);
   fm.sequence.forEach((agent, i) => {
     const name = agent.split('-')[0]!;
     console.log(`    ${String(i + 1).padStart(2)}. ${name.charAt(0).toUpperCase() + name.slice(1)}`);
   });
 
+  if (unknownAgents.length > 0) {
+    console.log(`\n  ⚠ Unknown agent IDs in sequence: ${unknownAgents.join(', ')}`);
+  }
+
   if (mission) {
-    // Extract Zeus orchestration prompt from body
-    const promptMatch = body.match(/## Zeus orchestration prompt\n+```\n([\s\S]*?)```/);
-    const rawPrompt = promptMatch ? promptMatch[1] ?? '' : '';
-    const prompt = rawPrompt.replace('[USER_MISSION]', mission);
+    const rawPrompt = extractZeusPrompt(body);
+    if (!rawPrompt) {
+      process.stderr.write(
+        `  Team "${canonical}" has no Zeus orchestration prompt block.\n` +
+        `  Add "## Zeus orchestration prompt" followed by a fenced code block in ${teamFile}\n`,
+      );
+      process.exit(1);
+    }
+    const prompt = applyMissionToPrompt(rawPrompt, mission);
 
     console.log(`\n── Zeus Orchestration Prompt ─────────────────────────────────────`);
     console.log(`\n  Copy this prompt to invoke Zeus in Claude Code or Cursor:\n`);
@@ -161,7 +236,7 @@ function cmdTeamShow(slug: string, mission: string | undefined, json: boolean): 
     console.log(`    thesmos pantheon:orchestrate "${mission.slice(0, 60)}..."\n`);
   } else {
     console.log(`\n  To generate the Zeus prompt for a specific mission:`);
-    console.log(`    thesmos pantheon:team ${slug} "[your mission here]"\n`);
+    console.log(`    thesmos pantheon:team ${canonical} "[your mission here]"\n`);
   }
 }
 
@@ -179,5 +254,5 @@ export async function cmdTeams(argv: string[]): Promise<void> {
     return;
   }
 
-  cmdTeamShow(slug, mission, json);
+  cmdTeamShow(resolveTeamSlug(slug), mission, json);
 }
