@@ -6,6 +6,39 @@
 
 ---
 
+## Cursor Cloud specific instructions
+
+This is an **npm workspaces monorepo** (root `package-lock.json`). All commands run from the
+repo root; the workspaces are `thesmos` (core CLI/npm package — the main product),
+`actions/pr-review` (GitHub Action), and `extensions/vscode` (VS Code extension). `website/` is
+static HTML with no build step. Standard commands live in `package.json` scripts, `CONTRIBUTING.md`,
+and `.github/workflows/ci.yml`.
+
+Non-obvious gotchas for building/testing/running:
+
+- **Build order matters.** `actions/pr-review` depends on `thesmos` via `file:../../thesmos` and
+  its typecheck resolves against `thesmos/dist`. You must build `thesmos` before typechecking
+  pr-review, or `tsc` resolves to the ESM source and fails with `import.meta` (TS1343) errors.
+  The CI order is: typecheck core → typecheck vscode → build thesmos → typecheck pr-review → test →
+  build vscode → test pr-review → build pr-review. Reproduce CI locally with those steps in order.
+- **Committed `dist/` artifacts.** `actions/pr-review/dist/` and `extensions/vscode/dist/` are
+  intentionally committed (see `.gitignore` note). Running their builds regenerates these files;
+  do NOT commit the regenerated output as part of unrelated changes — `git checkout --` them.
+  `thesmos/dist/` is gitignored.
+- **Running the CLI (the product).** Dev mode: from `thesmos/`, `npx tsx bin/cli.ts <command>`
+  (e.g. `scan`, `health`, `doctor`, `review`, `validate`). Built binary: `node thesmos/dist/cli.js
+  <command>` after `npm run build --workspace=thesmos`. `thesmos scan` writes `.thesmos/report.json`
+  (gitignored).
+- **`thesmos doctor`/`health` are cwd-sensitive.** They analyze the current working directory, so
+  results differ when run from `thesmos/` vs. the repo root (root picks up `AGENTS.md`, `.cursor/`,
+  etc.). Run from the repo root to govern the whole repo.
+- There is no separate lint step; CI treats `tsc --noEmit` (typecheck) as the lint gate, plus the
+  repo's own governance scan (`npm run thesmos:validate`).
+- The repo ships a `pre-push` hook (`.githooks/pre-push`) that only fires a Google Drive backup on
+  pushes to `main`; it is not needed for development and is not installed by default.
+
+---
+
 ## Available agents (43)
 
 ### Aphrodite — Creative Direction & Brand
