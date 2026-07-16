@@ -29,7 +29,7 @@
       "hera-operations-agent",
       "dike-ethics-agent",
       "demeter-cs-agent",
-      "eidos-figma-agent",
+      "eidos-figma-orchestrator",
       "proteus-drift-agent",
       "pythia-data-agent"
     ]
@@ -39,12 +39,14 @@
     "label": "Sales",
     "icon": "⚔️",
     "color": "#10B981",
-    "description": "Ares sales cluster — orchestrator plus three motion specialists",
+    "description": "Ares sales cluster — orchestrator plus three motion specialists — invoke team: phalanx",
+    "team": "phalanx",
     "agents": [
       "ares-sales-agent",
       "ares-discovery-agent",
       "ares-deal-strategy-agent",
-      "ares-pipeline-agent"
+      "ares-pipeline-agent",
+      "nike-leadgen-agent"
     ]
   },
   {
@@ -52,17 +54,19 @@
     "label": "Figma",
     "icon": "🎭",
     "color": "#EC4899",
-    "description": "9-agent Figma design system cluster orchestrated by Eidos",
+    "description": "Figma design system cluster orchestrated by Eidos",
+    "team": "figma-team",
     "agents": [
-      "eidos-figma-agent",
-      "mnemon-figma-agent",
-      "techne-figma-agent",
-      "ergon-figma-agent",
-      "harmonia-figma-agent",
-      "kairos-figma-agent",
-      "morphe-figma-agent",
-      "stoa-figma-agent",
-      "zephyros-figma-agent"
+      "eidos-figma-orchestrator",
+      "mnemon-context-librarian",
+      "techne-design-system",
+      "ergon-code-layers",
+      "kairos-prototype-engineer",
+      "morphe-weave-workflow",
+      "praxis-figma-make",
+      "kinesis-motion-systems",
+      "logos-ux-research",
+      "hyle-shader-material"
     ]
   },
   {
@@ -70,7 +74,8 @@
     "label": "Creative",
     "icon": "🎨",
     "color": "#8B5CF6",
-    "description": "Brand voice, content, animation, photography, video, and 3D specialists",
+    "description": "Brand voice, content, animation, photography, video, and 3D specialists — invoke team: creative-atelier",
+    "team": "creative-atelier",
     "agents": [
       "apollo-content-agent",
       "aphrodite-creative-agent",
@@ -80,7 +85,44 @@
       "helios-keyshot-agent",
       "dionysus-video-agent",
       "artemis-photography-agent",
-      "calliope-email-agent"
+      "calliope-email-agent",
+      "hephaestus-design-agent"
+    ]
+  },
+  {
+    "id": "marketing",
+    "label": "Marketing",
+    "icon": "🚀",
+    "color": "#06B6D4",
+    "description": "GTM, content, email, SEO, social, PR, and measurement — invoke team: caduceus",
+    "team": "caduceus",
+    "agents": [
+      "hermes-marketing-agent",
+      "nike-leadgen-agent",
+      "apollo-content-agent",
+      "erato-brand-voice-agent",
+      "calliope-email-agent",
+      "psyche-seo-agent",
+      "nike-social-agent",
+      "pheme-pr-agent",
+      "tyche-analytics-agent"
+    ]
+  },
+  {
+    "id": "web",
+    "label": "Web Development",
+    "icon": "⚙️",
+    "color": "#64748B",
+    "description": "Product, architecture, UI, Next.js/React implementation, QA, security — invoke team: bronze-guard",
+    "team": "bronze-guard",
+    "agents": [
+      "daedalus-product-agent",
+      "chiron-architecture-agent",
+      "hephaestus-design-agent",
+      "talos-web-dev-agent",
+      "cassandra-qa-agent",
+      "argus-security-agent",
+      "polyhymnia-docs-agent"
     ]
   },
   {
@@ -88,14 +130,15 @@
     "label": "Platform",
     "icon": "🏗️",
     "color": "#F59E0B",
-    "description": "Infrastructure, development, DevOps, QA, and platform integrations",
+    "description": "Infrastructure, development, DevOps, QA, and platform integrations — invoke team: forge for full launch",
+    "team": "forge",
     "agents": [
       "talos-web-dev-agent",
       "chiron-architecture-agent",
       "kratos-devops-agent",
       "cassandra-qa-agent",
       "eos-automation-agent",
-      "aether-ai-agent",
+      "aether-ai-strategy-agent",
       "polyhymnia-docs-agent"
     ]
   },
@@ -107,7 +150,7 @@
     "description": "Documentation, case studies, institutional memory, and drift detection",
     "agents": [
       "mnemosyne-knowledge-agent",
-      "clio-casestudy-agent",
+      "clio-case-study-agent",
       "polyhymnia-docs-agent",
       "proteus-drift-agent"
     ]
@@ -117,13 +160,29 @@
     "label": "Compliance",
     "icon": "⚖️",
     "color": "#EF4444",
-    "description": "Legal, ethics, GRC, finance, and regulatory governance",
+    "description": "Legal, ethics, GRC, and regulatory governance — invoke team: aegis",
+    "team": "aegis",
     "agents": [
+      "argus-security-agent",
+      "nemesis-compliance-agent",
       "themis-legal-agent",
       "dike-ethics-agent",
-      "nemesis-compliance-agent",
-      "plutus-finance-agent",
-      "psyche-research-agent"
+      "plutus-finance-agent"
+    ]
+  },
+  {
+    "id": "customer-success",
+    "label": "Customer Success",
+    "icon": "🌾",
+    "color": "#84CC16",
+    "description": "Retention, CX, support, and expansion economics — invoke team: harvest",
+    "team": "harvest",
+    "agents": [
+      "demeter-cs-agent",
+      "hestia-cx-agent",
+      "hebe-support-agent",
+      "tyche-analytics-agent",
+      "plutus-finance-agent"
     ]
   }
 ]

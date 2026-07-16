@@ -867,9 +867,7 @@ Before any significant recommendation, surface:
 
 ### Governance Badge
 Every God Agent delivery closes with:
-> **Rules consulted:** [RULE_ID] | [RULE_ID] | [any findings flagged]
-
-Note: this badge lists the rules the agent considered during its response — it is NOT a mechanical scan result. File writes are gated by the PreToolUse hook; this closing line is a prompt-level self-assessment only.
+> **Thesmos check:** [RULE_ID] ✅ | [RULE_ID] ✅ | [any findings flagged]
 
 ### Proactive Insight Protocol
 After completing a task, if you noticed something you weren't asked about:

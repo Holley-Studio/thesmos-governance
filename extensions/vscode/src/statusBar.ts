@@ -65,7 +65,7 @@ export class StatusBarManager implements vscode.Disposable {
     this.chatItem.command = 'thesmos.pantheon.chat.openInTab';
     this.chatItem.tooltip = new vscode.MarkdownString(
       '**Open Pantheon Chat** in an editor tab\n\n' +
-      '_67 specialist AI agents orchestrated by Zeus_',
+      '_68 specialist AI agents orchestrated by Zeus_',
     );
     this.chatItem.show();
   }

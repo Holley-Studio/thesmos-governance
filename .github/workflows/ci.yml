@@ -68,6 +68,10 @@ jobs:
         working-directory: extensions/vscode
         run: npm run build
 
+      - name: Test (vscode extension)
+        working-directory: extensions/vscode
+        run: npm run test
+
       - name: Test (pr-review action)
         working-directory: actions/pr-review
         run: npm test

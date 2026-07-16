@@ -32,6 +32,22 @@ describe('parseArgs', () => {
     expect(r.flags['base']).toBe('main');
     expect(r.positionals).toEqual(['src/foo.ts']);
   });
+
+  it('parses space-separated value flags when declared', () => {
+    const r = parseArgs(['--target', 'cursor', '--agent', 'zeus', '--all'], {
+      valueFlags: ['target', 'agent'],
+    });
+    expect(r.flags['target']).toBe('cursor');
+    expect(r.flags['agent']).toBe('zeus');
+    expect(r.flags['all']).toBe(true);
+    expect(r.positionals).toEqual([]);
+  });
+
+  it('keeps unknown bare flags boolean so positionals stay positionals', () => {
+    const r = parseArgs(['--write', 'zeus-executive-agent']);
+    expect(r.flags['write']).toBe(true);
+    expect(r.positionals).toEqual(['zeus-executive-agent']);
+  });
 });
 
 describe('flag', () => {

@@ -121,6 +121,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'pantheon:memory':      (argv) => cmdPantheon(['memory', ...argv]),
   'pantheon:upgrade':     (argv) => cmdPantheon(['upgrade', ...argv]),
   'pantheon:remove':      (argv) => cmdPantheon(['remove', ...argv]),
+  'pantheon:mode':        (argv) => cmdPantheon(['mode', ...argv]),
   fix: cmdFix,
   savings: cmdSavings,
   report: cmdReport,
@@ -426,6 +427,9 @@ THESMOS PANTHEON  (governed AI business team — 40 agents, 6 platforms)
   pantheon:upgrade                    Check for newer agent versions
   pantheon:remove --all               Remove all agents from registry
   pantheon:remove <id> [id...]        Remove specific agents
+  pantheon:mode                       Show current Pantheon power mode
+  pantheon:mode normal                Conservative, token-saving mode (power: lean)
+  pantheon:mode god                   Full "feel of the gods" ceremony mode (power: god)
 
 AI CODE FINGERPRINTING
   ai:fingerprint           Detect AI-generated files using git co-author markers and

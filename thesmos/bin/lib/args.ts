@@ -11,21 +11,39 @@ export interface ParsedArgs {
   positionals: string[];
 }
 
+export interface ParseArgsOptions {
+  /**
+   * Flag names that take a following value when written as `--name value`
+   * (in addition to `--name=value`). Boolean flags like `--all` must NOT be listed.
+   */
+  valueFlags?: readonly string[];
+}
+
 /**
  * Parse an argv slice that has already had the command name stripped.
  * e.g. parseArgs(['--json', '--base=main', 'file.ts'])
+ * e.g. parseArgs(['--target', 'cursor'], { valueFlags: ['target'] })
  */
-export function parseArgs(argv: string[]): ParsedArgs {
+export function parseArgs(argv: string[], opts: ParseArgsOptions = {}): ParsedArgs {
+  const valueFlags = new Set(opts.valueFlags ?? []);
   const flags: Record<string, string | boolean> = {};
   const positionals: string[] = [];
 
-  for (const arg of argv) {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
     if (arg.startsWith('--')) {
       const eqIdx = arg.indexOf('=');
       if (eqIdx !== -1) {
         flags[arg.slice(2, eqIdx)] = arg.slice(eqIdx + 1);
       } else {
-        flags[arg.slice(2)] = true;
+        const key = arg.slice(2);
+        const next = argv[i + 1];
+        if (valueFlags.has(key) && next !== undefined && !next.startsWith('--')) {
+          flags[key] = next;
+          i++;
+        } else {
+          flags[key] = true;
+        }
       }
     } else {
       positionals.push(arg);

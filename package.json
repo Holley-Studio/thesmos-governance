@@ -15,6 +15,7 @@
     "thesmos:review": "tsx thesmos/bin/cli.ts review",
     "thesmos:validate": "tsx thesmos/bin/cli.ts validate",
     "thesmos:doctor": "tsx thesmos/bin/cli.ts doctor",
+    "thesmos:audit": "tsx thesmos/bin/cli.ts audit",
     "thesmos:adapters": "tsx thesmos/bin/cli.ts adapters",
     "changeset": "changeset",
     "version": "changeset version",

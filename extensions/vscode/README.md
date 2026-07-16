@@ -10,10 +10,12 @@
 
 ## What It Does
 
-Thesmos Governance enforces 1,075+ AI-coding rules across your repo — catching security risks, stale adapters, context drift, and bad AI patterns before they land in production. The extension surfaces findings inline in VS Code and keeps your AI assistant configurations in sync automatically.
+Thesmos Governance enforces 1,137+ AI-coding rules across your repo — catching security risks, stale adapters, context drift, and bad AI patterns before they land in production. The extension surfaces findings inline in VS Code and keeps your AI assistant configurations in sync automatically.
 
 **Key capabilities:**
 
+- **Pantheon Chat** — Zeus-orchestrated council chamber in the sidebar or editor tab, with god routing banners, permission gates for tool use, and workspace checkpoints
+- **Pantheon Agents panel** — browse 65+ specialist gods grouped by division; copy Claude Code invocations in one click
 - **Live Findings Panel** — governance violations surface as you code, with severity badges (BLOCKER / HIGH / MEDIUM / LOW)
 - **Health Score** — a single 0–100 grade for your repo's governance state, visible in the status bar
 - **AI Adapter Sync** — regenerate Claude, Cursor, Copilot, and Gemini config files from one command
@@ -75,6 +77,7 @@ Access all commands via the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and
 
 | Command | Description |
 |---------|-------------|
+| `Thesmos: Open Pantheon Chat in Editor Tab` | Full-screen council chamber with Zeus routing |
 | `Thesmos: Scan Repository` | Run a full governance scan |
 | `Thesmos: Review Current File` | Check the active file against all rules |
 | `Thesmos: Show Health Score` | View the 0–100 governance grade |

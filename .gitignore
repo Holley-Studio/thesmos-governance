@@ -99,11 +99,29 @@ pantheon/exports/**
 !pantheon/exports/cursor/argus-security-agent.mdc
 !pantheon/exports/cursor/apollo-content-agent.mdc
 !pantheon/exports/cursor/hephaestus-design-agent.mdc
+!pantheon/exports/cursor/hebe-support-agent.mdc
 !pantheon/exports/gemini/zeus-executive-agent-gemini.txt
 !pantheon/exports/gemini/athena-strategy-agent-gemini.txt
 !pantheon/exports/gemini/argus-security-agent-gemini.txt
 !pantheon/exports/gemini/apollo-content-agent-gemini.txt
 !pantheon/exports/gemini/hephaestus-design-agent-gemini.txt
+
+# Installed Pantheon agent bodies (written by pantheon:install --write).
+# Catalog source of truth is thesmos/catalog/agents/; do not commit paid
+# agent text into the public dogfood tree.
+.thesmos/agents/*
+!.thesmos/agents/README.md
+
+# Cursor God Agent rules — free starters are force-tracked; paid stay local.
+# (Also covers Figma specialists that do not use the *-agent.mdc suffix.)
+.cursor/rules/*.mdc
+!.cursor/rules/thesmos.mdc
+!.cursor/rules/zeus-executive-agent.mdc
+!.cursor/rules/athena-strategy-agent.mdc
+!.cursor/rules/argus-security-agent.mdc
+!.cursor/rules/apollo-content-agent.mdc
+!.cursor/rules/hephaestus-design-agent.mdc
+!.cursor/rules/hebe-support-agent.mdc
 
 # Google Drive backup — rclone config lives outside the repo by design
 # (~/.config/rclone/rclone.conf), never inside it. These entries are
