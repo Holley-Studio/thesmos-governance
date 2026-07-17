@@ -251,6 +251,39 @@
           "examples": [[0, 0.1, 0.25, 0.5, 0.75, 0.9, 1]]
         }
       }
+    },
+    "autoMode": {
+      "type": "object",
+      "description": "Real-time Claude Code / Auto Mode governance settings",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether Thesmos actively governs Auto Mode sessions when hooks are installed"
+        },
+        "strictMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reserved — affects governance status reporting"
+        },
+        "blockOn": {
+          "type": "string",
+          "enum": ["BLOCKER", "HIGH", "MEDIUM"],
+          "default": "BLOCKER",
+          "description": "Minimum severity that blocks a Write/Edit during Auto Mode"
+        },
+        "notifyOnBlock": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a VS Code notification when a write is blocked"
+        },
+        "failClosed": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true (default), guard infrastructure failures (malformed hook input, unreadable config, internal exceptions) block the tool call. Set false only as an explicit opt-out — never auto-disabled on Windows."
+        }
+      }
     }
   },
   "definitions": {

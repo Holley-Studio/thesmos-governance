@@ -70,10 +70,13 @@
     "./config.schema.json": "./config.schema.json"
   },
   "bin": {
-    "thesmos": "dist/cli.js"
+    "thesmos": "dist/cli.js",
+    "thesmos-guard": "dist/thesmos-guard.js"
   },
   "files": [
     "dist/",
+    "bin/thesmos-guard.sh",
+    "bin/thesmos-guard.cmd",
     "catalog/agents/reviewers/",
     "catalog/agents/pantheon/zeus-executive-agent.md",
     "catalog/agents/pantheon/zeus-executive-agent-README.md",

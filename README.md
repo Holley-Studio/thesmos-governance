@@ -99,7 +99,7 @@ Install directly inside Claude Code — no separate `npm install` step:
 /plugin install thesmos-governance
 ```
 
-Ships the MCP server, the `scan` / `review` / `advise` skills, and the same PreToolUse/PostToolUse/Stop governance hooks the CLI's `claude:govern install` writes — enabled per-project, off by default.
+Ships the MCP server, the `scan` / `review` / `advise` skills, and the same PreToolUse/PostToolUse/Stop governance hooks the CLI's `claude:govern install` writes (Node `thesmos-guard` entry, fail-closed by default) — enabled per-project, off by default.
 
 ---
 
@@ -256,7 +256,7 @@ thesmos-governance/
 │   └── vscode/          VS Code extension
 ├── .claude-plugin/       Claude Code plugin manifest + marketplace listing
 ├── skills/               Plugin skills (scan, review, advise)
-├── hooks/                Plugin governance hooks (mirrors claude:govern install)
+├── hooks/                Plugin governance hooks (Node thesmos-guard; mirrors claude:govern install)
 └── .github/workflows/    CI + release pipeline
 ```
 

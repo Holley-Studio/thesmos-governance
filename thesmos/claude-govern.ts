@@ -22,12 +22,18 @@ import {
 import { join, dirname, extname } from 'node:path';
 import { activeRulesForTier } from './rules/registry.js';
 import { categoryLabel } from './rule-labels.js';
-import { loadConfig, CONFIG_DEFAULTS } from './config.js';
+import { loadConfig, CONFIG_DEFAULTS, ConfigLoadError } from './config.js';
 import { classifySeverity, SEVERITY_ORDER } from './severity.js';
 import { extractSuppressions, applySuppressions } from './suppress.js';
 import { extractInstallPackages, quickPhantomCheck } from './import-scan.js';
 import { checkScope } from './scope.js';
 import { runPostToolBudgetCheck, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
+import {
+  buildGuardInvocation,
+  isThesmosGuardHookCommand,
+  writeFailClosedDiagnostic,
+  type GuardResolveFailureCategory,
+} from './guard-resolve.js';
 import type { ScanResult, DetectInput, Finding, Severity, ThesmosConfig } from './types.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -35,36 +41,53 @@ import type { ScanResult, DetectInput, Finding, Severity, ThesmosConfig } from '
 export const GOVERNANCE_VERSION = '1.0.0';
 const GOVERNANCE_MARKER = '_thesmos_governance';
 
-const HOOK_COMMAND_CHECK  = 'npx --no-install thesmos claude:govern check';
-const HOOK_COMMAND_BUDGET = 'npx --no-install thesmos claude:govern budget-check';
-const HOOK_COMMAND_DRIFT  = 'npx --no-install thesmos drift --quiet 2>&1 || true';
+type HookCommandEntry = { type: 'command'; command: string; args?: string[] };
+type PreToolUseEntry = { matcher: string; hooks: HookCommandEntry[] };
+type SimpleHookEntry = { hooks: HookCommandEntry[] };
+type HookRef = { command?: string; args?: string[]; type?: string };
 
-const GOVERNANCE_HOOKS = {
-  PreToolUse: [
-    {
-      matcher: 'Write',
-      hooks: [{ type: 'command', command: HOOK_COMMAND_CHECK }],
-    },
-    {
-      matcher: 'Edit',
-      hooks: [{ type: 'command', command: HOOK_COMMAND_CHECK }],
-    },
-    {
-      matcher: 'Bash',
-      hooks: [{ type: 'command', command: HOOK_COMMAND_CHECK }],
-    },
-  ],
-  PostToolUse: [
-    {
-      hooks: [{ type: 'command', command: HOOK_COMMAND_BUDGET }],
-    },
-  ],
-  Stop: [
-    {
-      hooks: [{ type: 'command', command: HOOK_COMMAND_DRIFT }],
-    },
-  ],
-};
+function hookMatches(h: HookRef | undefined, kind: 'check' | 'budget-check' | 'drift'): boolean {
+  return isThesmosGuardHookCommand(h?.command, kind, h?.args);
+}
+
+/** Resolve Node-direct hook command strings (absolute paths, no shell metacharacters). */
+export function governanceHookCommands(): {
+  check: string;
+  budget: string;
+  drift: string;
+} {
+  return {
+    check: buildGuardInvocation('check').command,
+    budget: buildGuardInvocation('budget-check').command,
+    drift: buildGuardInvocation('drift', ['--quiet']).command,
+  };
+}
+
+function getGovernanceHooks(cmds = governanceHookCommands()): {
+  PreToolUse: PreToolUseEntry[];
+  PostToolUse: SimpleHookEntry[];
+  Stop: SimpleHookEntry[];
+} {
+  return {
+    PreToolUse: [
+      { matcher: 'Write', hooks: [{ type: 'command', command: cmds.check }] },
+      { matcher: 'Edit', hooks: [{ type: 'command', command: cmds.check }] },
+      { matcher: 'Bash', hooks: [{ type: 'command', command: cmds.check }] },
+    ],
+    PostToolUse: [{ hooks: [{ type: 'command', command: cmds.budget }] }],
+    Stop: [{ hooks: [{ type: 'command', command: cmds.drift }] }],
+  };
+}
+
+function refreshHookCommands(
+  hooks: HookRef[] | undefined,
+  kind: 'check' | 'budget-check' | 'drift',
+  nextCommand: string,
+): HookRef[] {
+  return (hooks ?? []).map((h) =>
+    hookMatches(h, kind) ? { type: 'command', command: nextCommand } : h,
+  );
+}
 
 // Read-only tool patterns that are safe to auto-approve in any repo.
 // Installed alongside governance hooks so every project gets prompt-free
@@ -130,8 +153,8 @@ export function uninstallGovernanceHooks(root: string): void {
   // Remove only the thesmos entries from PreToolUse
   if (Array.isArray(hooks['PreToolUse'])) {
     hooks['PreToolUse'] = (hooks['PreToolUse'] as unknown[]).filter((entry) => {
-      const e = entry as { hooks?: Array<{ command?: string }> };
-      return !e.hooks?.some((h) => h.command === HOOK_COMMAND_CHECK);
+      const e = entry as { hooks?: HookRef[] };
+      return !e.hooks?.some((h) => hookMatches(h, 'check'));
     });
     if (hooks['PreToolUse'].length === 0) delete hooks['PreToolUse'];
   }
@@ -139,8 +162,8 @@ export function uninstallGovernanceHooks(root: string): void {
   // Remove only the thesmos budget entry from PostToolUse
   if (Array.isArray(hooks['PostToolUse'])) {
     hooks['PostToolUse'] = (hooks['PostToolUse'] as unknown[]).filter((entry) => {
-      const e = entry as { hooks?: Array<{ command?: string }> };
-      return !e.hooks?.some((h) => h.command === HOOK_COMMAND_BUDGET);
+      const e = entry as { hooks?: HookRef[] };
+      return !e.hooks?.some((h) => hookMatches(h, 'budget-check'));
     });
     if (hooks['PostToolUse'].length === 0) delete hooks['PostToolUse'];
   }
@@ -148,8 +171,8 @@ export function uninstallGovernanceHooks(root: string): void {
   // Remove only the thesmos drift entry from Stop
   if (Array.isArray(hooks['Stop'])) {
     hooks['Stop'] = (hooks['Stop'] as unknown[]).filter((entry) => {
-      const e = entry as { hooks?: Array<{ command?: string }> };
-      return !e.hooks?.some((h) => h.command === HOOK_COMMAND_DRIFT);
+      const e = entry as { hooks?: HookRef[] };
+      return !e.hooks?.some((h) => hookMatches(h, 'drift'));
     });
     if (hooks['Stop'].length === 0) delete hooks['Stop'];
   }
@@ -183,15 +206,21 @@ export function getGovernanceHooksStatus(root: string): GovernanceHookStatus {
     ? settings[GOVERNANCE_MARKER] as string
     : null;
 
-  const preToolUse  = (hooks?.['PreToolUse']  ?? []) as Array<{ matcher?: string; hooks?: Array<{ command?: string }> }>;
-  const postToolUse = (hooks?.['PostToolUse'] ?? []) as Array<{ hooks?: Array<{ command?: string }> }>;
-  const stop        = (hooks?.['Stop']        ?? []) as Array<{ hooks?: Array<{ command?: string }> }>;
+  const preToolUse  = (hooks?.['PreToolUse']  ?? []) as Array<{ matcher?: string; hooks?: HookRef[] }>;
+  const postToolUse = (hooks?.['PostToolUse'] ?? []) as Array<{ hooks?: HookRef[] }>;
+  const stop        = (hooks?.['Stop']        ?? []) as Array<{ hooks?: HookRef[] }>;
 
   const hasCheck = (matcher: string) =>
-    preToolUse.some((e) => e.matcher === matcher && e.hooks?.some((h) => h.command === HOOK_COMMAND_CHECK));
+    preToolUse.some(
+      (e) => e.matcher === matcher && e.hooks?.some((h) => hookMatches(h, 'check')),
+    );
 
-  const hasPostBudget = postToolUse.some((e) => e.hooks?.some((h) => h.command === HOOK_COMMAND_BUDGET));
-  const hasStopDrift  = stop.some((e) => e.hooks?.some((h) => h.command === HOOK_COMMAND_DRIFT));
+  const hasPostBudget = postToolUse.some((e) =>
+    e.hooks?.some((h) => hookMatches(h, 'budget-check')),
+  );
+  const hasStopDrift = stop.some((e) =>
+    e.hooks?.some((h) => hookMatches(h, 'drift')),
+  );
 
   const installed = hasCheck('Write') && hasCheck('Edit') && hasCheck('Bash') && hasStopDrift;
 
@@ -253,33 +282,62 @@ export function mergeGovernanceHooks(
   const result = { ...settings };
   const existing = (result['hooks'] as Record<string, unknown[]> | undefined) ?? {};
   const merged: Record<string, unknown[]> = { ...existing };
+  const cmds = governanceHookCommands();
+  const governanceHooks = getGovernanceHooks(cmds);
 
-  // Merge PreToolUse — deduplicate by matcher + command
-  const existingPre = (merged['PreToolUse'] ?? []) as Array<{ matcher?: string; hooks?: unknown[] }>;
-  for (const entry of GOVERNANCE_HOOKS.PreToolUse) {
-    const alreadyPresent = existingPre.some(
+  // Merge PreToolUse — refresh legacy npx commands to Node-direct; dedupe by matcher
+  const existingPre = (merged['PreToolUse'] ?? []) as Array<{
+    matcher?: string;
+    hooks?: HookRef[];
+  }>;
+  for (const entry of governanceHooks.PreToolUse) {
+    const idx = existingPre.findIndex(
       (e) =>
         e.matcher === entry.matcher &&
-        (e.hooks as Array<{ command?: string }>).some((h) => h.command === HOOK_COMMAND_CHECK),
+        e.hooks?.some((h) => hookMatches(h, 'check')),
     );
-    if (!alreadyPresent) existingPre.push(entry);
+    if (idx >= 0) {
+      existingPre[idx]!.hooks = refreshHookCommands(existingPre[idx]!.hooks, 'check', cmds.check);
+    } else {
+      existingPre.push(entry);
+    }
   }
   merged['PreToolUse'] = existingPre;
 
-  // Merge PostToolUse — deduplicate by command
-  const existingPost = (merged['PostToolUse'] ?? []) as Array<{ hooks?: Array<{ command?: string }> }>;
-  const postAlreadyPresent = existingPost.some((e) =>
-    e.hooks?.some((h) => h.command === HOOK_COMMAND_BUDGET),
+  // Merge PostToolUse — refresh or append budget hook
+  const existingPost = (merged['PostToolUse'] ?? []) as Array<{
+    hooks?: HookRef[];
+  }>;
+  const postIdx = existingPost.findIndex((e) =>
+    e.hooks?.some((h) => hookMatches(h, 'budget-check')),
   );
-  if (!postAlreadyPresent) existingPost.push(...GOVERNANCE_HOOKS.PostToolUse);
+  if (postIdx >= 0) {
+    existingPost[postIdx]!.hooks = refreshHookCommands(
+      existingPost[postIdx]!.hooks,
+      'budget-check',
+      cmds.budget,
+    );
+  } else {
+    existingPost.push(...governanceHooks.PostToolUse);
+  }
   merged['PostToolUse'] = existingPost;
 
-  // Merge Stop — deduplicate by command
-  const existingStop = (merged['Stop'] ?? []) as Array<{ hooks?: Array<{ command?: string }> }>;
-  const stopAlreadyPresent = existingStop.some((e) =>
-    e.hooks?.some((h) => h.command === HOOK_COMMAND_DRIFT),
+  // Merge Stop — refresh or append drift hook (no 2>&1 || true)
+  const existingStop = (merged['Stop'] ?? []) as Array<{
+    hooks?: HookRef[];
+  }>;
+  const stopIdx = existingStop.findIndex((e) =>
+    e.hooks?.some((h) => hookMatches(h, 'drift')),
   );
-  if (!stopAlreadyPresent) existingStop.push(...GOVERNANCE_HOOKS.Stop);
+  if (stopIdx >= 0) {
+    existingStop[stopIdx]!.hooks = refreshHookCommands(
+      existingStop[stopIdx]!.hooks,
+      'drift',
+      cmds.drift,
+    );
+  } else {
+    existingStop.push(...governanceHooks.Stop);
+  }
   merged['Stop'] = existingStop;
 
   result['hooks'] = merged;
@@ -307,14 +365,14 @@ export function extractGovernanceHooks(
   const hooks = settings['hooks'] as Record<string, unknown[]> | undefined;
   if (!hooks) return null;
 
-  const preToolUse = ((hooks['PreToolUse'] ?? []) as Array<{ hooks?: Array<{ command?: string }> }>).filter((e) =>
-    e.hooks?.some((h) => h.command === HOOK_COMMAND_CHECK),
+  const preToolUse = ((hooks['PreToolUse'] ?? []) as Array<{ hooks?: HookRef[] }>).filter((e) =>
+    e.hooks?.some((h) => hookMatches(h, 'check')),
   );
-  const postToolUse = ((hooks['PostToolUse'] ?? []) as Array<{ hooks?: Array<{ command?: string }> }>).filter((e) =>
-    e.hooks?.some((h) => h.command === HOOK_COMMAND_BUDGET),
+  const postToolUse = ((hooks['PostToolUse'] ?? []) as Array<{ hooks?: HookRef[] }>).filter((e) =>
+    e.hooks?.some((h) => hookMatches(h, 'budget-check')),
   );
-  const stop = ((hooks['Stop'] ?? []) as Array<{ hooks?: Array<{ command?: string }> }>).filter((e) =>
-    e.hooks?.some((h) => h.command === HOOK_COMMAND_DRIFT),
+  const stop = ((hooks['Stop'] ?? []) as Array<{ hooks?: HookRef[] }>).filter((e) =>
+    e.hooks?.some((h) => hookMatches(h, 'drift')),
   );
 
   if (preToolUse.length === 0 && postToolUse.length === 0 && stop.length === 0) return null;
@@ -405,131 +463,188 @@ export function evaluateGovernFindings(input: {
   return applySuppressions(blocking, suppressions, new Date()).activeFindings;
 }
 
+/** True when autoMode.failClosed is enabled (default). Explicit false opts out. */
+export function isFailClosed(config: ThesmosConfig = CONFIG_DEFAULTS): boolean {
+  return config.autoMode?.failClosed !== false;
+}
+
+/**
+ * Load project config for guard paths. Malformed config always blocks (cannot
+ * trust an opt-out written in a broken file). Missing config → defaults.
+ */
+function loadGuardConfig(root: string): ThesmosConfig {
+  return loadConfig(root, undefined, { strict: true });
+}
+
+function exitInfraFailure(
+  what: string,
+  category: GuardResolveFailureCategory,
+  failClosed: boolean,
+  guardPath?: string,
+): never {
+  if (failClosed) {
+    writeFailClosedDiagnostic({ what, category, guardPath });
+    process.exit(2);
+  }
+  process.exit(0);
+}
+
 /**
  * Run by Claude Code as a PreToolUse hook.
  * Reads tool input from stdin, scans file content for BLOCKER violations.
  * Exits 2 (block) if any found; exits 0 (allow) otherwise.
- * Exits 0 on any error — never block due to internal failure.
+ * Infrastructure failures exit 2 when autoMode.failClosed is true (default).
  */
 export async function runPreToolCheck(root: string): Promise<void> {
-  let raw = '';
+  let failClosed = isFailClosed(CONFIG_DEFAULTS);
+  let config = CONFIG_DEFAULTS;
   try {
-    raw = await readStdin();
-  } catch {
-    process.exit(0); // no stdin — allow
-  }
+    // Load config early so failClosed:false can opt out of infra blocks
+    // (malformed stdin, etc.). Broken config always blocks — cannot trust opt-out.
+    try {
+      config = loadGuardConfig(root);
+      failClosed = isFailClosed(config);
+    } catch (err) {
+      if (err instanceof ConfigLoadError) {
+        exitInfraFailure(
+          `Config unreadable or malformed: ${err.configPath}`,
+          'internal',
+          true,
+        );
+      }
+      exitInfraFailure(
+        `Config load failed: ${err instanceof Error ? err.message : String(err)}`,
+        'internal',
+        failClosed,
+      );
+    }
 
-  if (!raw.trim()) process.exit(0);
+    let raw = '';
+    try {
+      raw = await readStdin();
+    } catch (err) {
+      exitInfraFailure(
+        `Could not read hook stdin: ${err instanceof Error ? err.message : String(err)}`,
+        'internal',
+        failClosed,
+      );
+    }
 
-  let input: { tool_name?: string; tool_input?: Record<string, unknown> };
-  try {
-    input = JSON.parse(raw) as typeof input;
-  } catch {
-    process.exit(0); // malformed JSON — allow
-  }
+    // Empty / TTY stdin: no tool payload — allow (not an infrastructure failure)
+    if (!raw.trim()) process.exit(0);
 
-  const toolName = input.tool_name;
-  const toolInput = input.tool_input ?? {};
+    let input: { tool_name?: string; tool_input?: Record<string, unknown> };
+    try {
+      input = JSON.parse(raw) as typeof input;
+    } catch {
+      exitInfraFailure(
+        'Hook stdin was not valid JSON (unparseable PreToolUse payload)',
+        'internal',
+        failClosed,
+      );
+    }
 
-  // ── Bash hook: scope check + phantom package detection ──────────────────────
-  if (toolName === 'Bash') {
-    const command = typeof toolInput['command'] === 'string' ? toolInput['command'] : '';
-    if (!command.trim()) process.exit(0);
+    const toolName = input.tool_name;
+    const toolInput = input.tool_input ?? {};
 
-    // Scope enforcement first
-    const scopeViolation = checkScope({ toolName: 'Bash', command, root });
-    if (scopeViolation) {
-      const prefix = scopeViolation.type === 'requires_confirmation' ? '⚠️' : '🛑';
-      const lines: string[] = [`${prefix} Thesmos scope violation:\n`];
-      lines.push(`  ${scopeViolation.message}`);
-      lines.push(`  → ${scopeViolation.suggestion}`);
-      // Claude Code only surfaces stderr for blocking hooks (exit 2)
+    // ── Bash hook: scope check + phantom package detection ──────────────────────
+    if (toolName === 'Bash') {
+      const command = typeof toolInput['command'] === 'string' ? toolInput['command'] : '';
+      if (!command.trim()) process.exit(0);
+
+      // Scope enforcement first
+      const scopeViolation = checkScope({ toolName: 'Bash', command, root });
+      if (scopeViolation) {
+        const prefix = scopeViolation.type === 'requires_confirmation' ? '⚠️' : '🛑';
+        const lines: string[] = [`${prefix} Thesmos scope violation:\n`];
+        lines.push(`  ${scopeViolation.message}`);
+        lines.push(`  → ${scopeViolation.suggestion}`);
+        // Claude Code only surfaces stderr for blocking hooks (exit 2)
+        process.stderr.write(lines.join('\n') + '\n');
+        process.exit(2);
+      }
+
+      // Phantom package check for npm/pip installs
+      const packages = extractInstallPackages(command);
+      if (packages.length > 0) {
+        const phantomFindings = quickPhantomCheck(packages);
+        if (phantomFindings.length > 0) {
+          const lines: string[] = ['🚫 Thesmos blocked this install — phantom package detected:\n'];
+          for (const f of phantomFindings) {
+            lines.push(`  [${f.severity}] ${f.reason}`);
+            lines.push(`  Fix:  ${f.suggestion}`);
+            lines.push('');
+          }
+          lines.push('Run `thesmos import:scan` to validate all package imports.');
+          process.stderr.write(lines.join('\n'));
+          process.exit(2);
+        }
+      }
+
+      process.exit(0);
+    }
+
+    // Unknown tool names are not infrastructure failures — allow
+    if (toolName !== 'Write' && toolName !== 'Edit') process.exit(0);
+
+    const filePath = typeof toolInput['file_path'] === 'string' ? toolInput['file_path'] : '';
+    if (!filePath) process.exit(0);
+
+    // Scope enforcement for Write/Edit
+    const writeScopeViolation = checkScope({ toolName, filePath, root });
+    if (writeScopeViolation) {
+      const lines: string[] = ['🛑 Thesmos scope violation:\n'];
+      lines.push(`  ${writeScopeViolation.message}`);
+      lines.push(`  → ${writeScopeViolation.suggestion}`);
       process.stderr.write(lines.join('\n') + '\n');
       process.exit(2);
     }
 
-    // Phantom package check for npm/pip installs
-    const packages = extractInstallPackages(command);
-    if (packages.length > 0) {
-      const phantomFindings = quickPhantomCheck(packages);
-      if (phantomFindings.length > 0) {
-        const lines: string[] = ['🚫 Thesmos blocked this install — phantom package detected:\n'];
-        for (const f of phantomFindings) {
-          lines.push(`  [${f.severity}] ${f.reason}`);
-          lines.push(`  Fix:  ${f.suggestion}`);
-          lines.push('');
-        }
-        lines.push('Run `thesmos import:scan` to validate all package imports.');
-        process.stderr.write(lines.join('\n'));
-        process.exit(2);
-      }
+    // For Write: scan full content. For Edit: scan only the new_string being introduced.
+    const content =
+      toolName === 'Write'
+        ? (typeof toolInput['content'] === 'string' ? toolInput['content'] : '')
+        : (typeof toolInput['new_string'] === 'string' ? toolInput['new_string'] : '');
+
+    if (!content.trim()) process.exit(0);
+
+    // Ignore unrecognized file types (binary, lock files, etc.)
+    const ext = extname(filePath).toLowerCase();
+    const KNOWN_EXTS = new Set([
+      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+      '.py', '.go', '.rb', '.rs', '.java', '.kt', '.swift',
+      '.graphql', '.gql', '.tf', '.tfvars',
+      '.vue', '.svelte', '.astro',
+      '.json', '.yaml', '.yml', '.toml',
+      '.sh', '.bash', '.zsh',
+      '.env', '.env.local', '.env.production',
+    ]);
+    if (ext && !KNOWN_EXTS.has(ext)) process.exit(0);
+
+    const findings = evaluateGovernFindings({ filePath, content, config });
+
+    if (findings.length === 0) process.exit(0);
+
+    // Format block message for Claude Code to show to the user
+    const lines: string[] = ['🚫 Thesmos blocked this write — BLOCKER violation(s) found:\n'];
+    for (const f of findings) {
+      lines.push(`  [${categoryLabel(f.category)}]`);
+      lines.push(`  ${f.message}`);
+      if (f.line) lines.push(`  File: ${f.file}:${f.line}`);
+      if (f.suggestion) lines.push(`  Fix:  ${f.suggestion}`);
+      lines.push('');
     }
+    lines.push('Resolve the violation(s) above before writing this file.');
 
-    process.exit(0);
-  }
-
-  // ── Write/Edit hook: scope check + BLOCKER rule scan ─────────────────────
-  if (toolName !== 'Write' && toolName !== 'Edit') process.exit(0);
-
-  const filePath = typeof toolInput['file_path'] === 'string' ? toolInput['file_path'] : '';
-  if (!filePath) process.exit(0);
-
-  // Scope enforcement for Write/Edit
-  const writeScopeViolation = checkScope({ toolName, filePath, root });
-  if (writeScopeViolation) {
-    const lines: string[] = ['🛑 Thesmos scope violation:\n'];
-    lines.push(`  ${writeScopeViolation.message}`);
-    lines.push(`  → ${writeScopeViolation.suggestion}`);
-    process.stderr.write(lines.join('\n') + '\n');
+    process.stderr.write(lines.join('\n'));
     process.exit(2);
+  } catch (err) {
+    exitInfraFailure(
+      `Internal guard exception: ${err instanceof Error ? err.message : String(err)}`,
+      'internal',
+      failClosed,
+    );
   }
-
-  // For Write: scan full content. For Edit: scan only the new_string being introduced.
-  const content =
-    toolName === 'Write'
-      ? (typeof toolInput['content'] === 'string' ? toolInput['content'] : '')
-      : (typeof toolInput['new_string'] === 'string' ? toolInput['new_string'] : '');
-
-  if (!content.trim()) process.exit(0);
-
-  // Ignore unrecognized file types (binary, lock files, etc.)
-  const ext = extname(filePath).toLowerCase();
-  const KNOWN_EXTS = new Set([
-    '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-    '.py', '.go', '.rb', '.rs', '.java', '.kt', '.swift',
-    '.graphql', '.gql', '.tf', '.tfvars',
-    '.vue', '.svelte', '.astro',
-    '.json', '.yaml', '.yml', '.toml',
-    '.sh', '.bash', '.zsh',
-    '.env', '.env.local', '.env.production',
-  ]);
-  if (ext && !KNOWN_EXTS.has(ext)) process.exit(0);
-
-  // Load config (graceful fallback to defaults if not in a thesmos project)
-  let config = CONFIG_DEFAULTS;
-  try {
-    config = loadConfig(root);
-  } catch {
-    // not a thesmos project — use defaults
-  }
-
-  const findings = evaluateGovernFindings({ filePath, content, config });
-
-  if (findings.length === 0) process.exit(0);
-
-  // Format block message for Claude Code to show to the user
-  const lines: string[] = ['🚫 Thesmos blocked this write — BLOCKER violation(s) found:\n'];
-  for (const f of findings) {
-    lines.push(`  [${categoryLabel(f.category)}]`);
-    lines.push(`  ${f.message}`);
-    if (f.line) lines.push(`  File: ${f.file}:${f.line}`);
-    if (f.suggestion) lines.push(`  Fix:  ${f.suggestion}`);
-    lines.push('');
-  }
-  lines.push('Resolve the violation(s) above before writing this file.');
-
-  process.stderr.write(lines.join('\n'));
-  process.exit(2);
 }
 
 // ── PostToolUse hook: token budget enforcement ────────────────────────────────
@@ -538,21 +653,41 @@ export async function runPreToolCheck(root: string): Promise<void> {
  * Run by Claude Code as a PostToolUse hook.
  * Reads tool response from stdin, logs token usage, checks budgets.
  * Exits 2 (hard stop) when any budget is exhausted.
- * Exits 0 on any error — never block due to internal failure.
+ * Infrastructure failures exit 2 when autoMode.failClosed is true (default).
  */
 export async function runPostToolBudgetHook(root: string): Promise<void> {
-  let config = TOKEN_BUDGET_DEFAULTS;
-  try {
-    const projectConfig = loadConfig(root);
-    if (projectConfig.tokenBudget) {
-      config = { ...TOKEN_BUDGET_DEFAULTS, ...projectConfig.tokenBudget };
-    }
-  } catch { /* use defaults */ }
+  let failClosed = isFailClosed(CONFIG_DEFAULTS);
+  let budgetConfig = TOKEN_BUDGET_DEFAULTS;
 
   try {
-    await runPostToolBudgetCheck(root, config);
-  } catch {
-    process.exit(0);
+    try {
+      const projectConfig = loadGuardConfig(root);
+      failClosed = isFailClosed(projectConfig);
+      if (projectConfig.tokenBudget) {
+        budgetConfig = { ...TOKEN_BUDGET_DEFAULTS, ...projectConfig.tokenBudget };
+      }
+    } catch (err) {
+      if (err instanceof ConfigLoadError) {
+        exitInfraFailure(
+          `Config unreadable or malformed: ${err.configPath}`,
+          'internal',
+          true,
+        );
+      }
+      exitInfraFailure(
+        `Config load failed: ${err instanceof Error ? err.message : String(err)}`,
+        'internal',
+        failClosed,
+      );
+    }
+
+    await runPostToolBudgetCheck(root, budgetConfig);
+  } catch (err) {
+    exitInfraFailure(
+      `Budget gate failed: ${err instanceof Error ? err.message : String(err)}`,
+      'internal',
+      failClosed,
+    );
   }
 }
 

@@ -15,7 +15,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx --no-install thesmos claude:govern check"
+            "command": "node",
+            "args": ["thesmos/dist/thesmos-guard.js", "check"]
           }
         ]
       },
@@ -24,7 +25,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx --no-install thesmos claude:govern check"
+            "command": "node",
+            "args": ["thesmos/dist/thesmos-guard.js", "check"]
           }
         ]
       },
@@ -33,7 +35,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx --no-install thesmos claude:govern check"
+            "command": "node",
+            "args": ["thesmos/dist/thesmos-guard.js", "check"]
           }
         ]
       }
@@ -52,7 +55,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx --no-install thesmos claude:govern budget-check"
+            "command": "node",
+            "args": ["thesmos/dist/thesmos-guard.js", "budget-check"]
           }
         ]
       }
@@ -62,7 +66,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx --no-install thesmos drift --quiet 2>&1 || true"
+            "command": "node",
+            "args": ["thesmos/dist/thesmos-guard.js", "drift", "--quiet"]
           }
         ]
       }

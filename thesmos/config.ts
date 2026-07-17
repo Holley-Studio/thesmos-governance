@@ -84,6 +84,8 @@ export const CONFIG_DEFAULTS: ThesmosConfig = {
     // write by default. Projects opt into stricter gating via autoMode.blockOn.
     blockOn: 'BLOCKER' as const,
     notifyOnBlock: true,
+    // Secure default: infrastructure / parse failures block the protected operation.
+    failClosed: true,
   },
 
   routing: {
@@ -138,13 +140,30 @@ function countSilencedBlockers(userRules: SeverityRule[]): number {
   ).length;
 }
 
+/** Thrown when `.thesmos/config.json` exists but cannot be parsed (strict loaders). */
+export class ConfigLoadError extends Error {
+  readonly configPath: string;
+  constructor(configPath: string, cause?: unknown) {
+    super(`Could not parse ${configPath}`);
+    this.name = 'ConfigLoadError';
+    this.configPath = configPath;
+    if (cause !== undefined) {
+      (this as Error & { cause?: unknown }).cause = cause;
+    }
+  }
+}
+
 /**
  * Load and merge config.json with defaults.
  * Accepts an optional pre-parsed object (for tests that bypass fs).
+ *
+ * When `opts.strict` is true and a config file exists but is malformed, throws
+ * {@link ConfigLoadError} instead of falling back to defaults.
  */
 export function loadConfig(
   root: string,
-  _preloaded?: Record<string, unknown>
+  _preloaded?: Record<string, unknown>,
+  opts?: { strict?: boolean },
 ): ThesmosConfig {
   let raw: Record<string, unknown> = {};
 
@@ -155,7 +174,10 @@ export function loadConfig(
     if (existsSync(configPath)) {
       try {
         raw = JSON.parse(readFileSync(configPath, 'utf8'));
-      } catch {
+      } catch (err) {
+        if (opts?.strict) {
+          throw new ConfigLoadError(configPath, err);
+        }
         console.warn('[thesmos] Warning: could not parse .thesmos/config.json — using defaults');
       }
     }
@@ -175,6 +197,10 @@ export function loadConfig(
     doctor: {
       ...CONFIG_DEFAULTS.doctor,
       ...(typeof raw.doctor === 'object' && raw.doctor !== null ? raw.doctor as object : {}),
+    },
+    autoMode: {
+      ...CONFIG_DEFAULTS.autoMode,
+      ...(typeof raw.autoMode === 'object' && raw.autoMode !== null ? raw.autoMode as object : {}),
     },
     // Always normalize arrays — cast from JSON so they're definitely arrays
     failOnSeverity: Array.isArray(raw.failOnSeverity)

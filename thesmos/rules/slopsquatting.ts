@@ -97,7 +97,7 @@ const TOP_PACKAGES = [
   'express', 'fastify', 'koa', 'hapi', 'hono',
   'react', 'react-dom', 'vue', 'svelte', 'angular',
   'next', 'nuxt', 'gatsby', 'remix', 'astro',
-  'typescript', 'tsx', 'esbuild', 'vite', 'webpack', 'rollup', 'parcel',
+  'typescript', 'tsx', 'tsup', 'esbuild', 'vite', 'webpack', 'rollup', 'parcel',
   'jest', 'vitest', 'mocha', 'jasmine', 'ava',
   'eslint', 'prettier', 'biome',
   'prisma', 'mongoose', 'sequelize', 'typeorm', 'knex', 'drizzle-orm',

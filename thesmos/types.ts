@@ -244,6 +244,12 @@ export interface ThesmosConfig {
     blockOn?: 'BLOCKER' | 'HIGH' | 'MEDIUM';
     /** Show a VS Code notification when a write is blocked during Auto Mode (default: true). */
     notifyOnBlock?: boolean;
+    /**
+     * When true (default), guard infrastructure failures (malformed hook input,
+     * unreadable config, internal exceptions) block the tool call. Set false
+     * only as an explicit opt-out — never platform-auto-enabled.
+     */
+    failClosed?: boolean;
   };
 }
 
