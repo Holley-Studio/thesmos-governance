@@ -1,0 +1,5 @@
+# Shell scripts must use LF so shebangs and POSIX sh work after checkout on Windows.
+*.sh text eol=lf
+
+# Windows cmd wrappers keep CRLF for cmd.exe compatibility.
+*.cmd text eol=crlf

@@ -44,4 +44,21 @@ export default defineConfig([
       js: '#!/usr/bin/env node',
     },
   },
+  {
+    // ── Cross-platform guard binary ───────────────────────────────────────────
+    // Claude Code hooks invoke this via Node directly (or thin .sh/.cmd wrappers).
+    // Single bundled entry — no duplicated rule logic in shell.
+    entry: { 'thesmos-guard': 'bin/thesmos-guard.ts' },
+    format: ['esm'],
+    dts: false,
+    sourcemap: false,
+    clean: false,
+    target: 'node20',
+    outDir: 'dist',
+    tsconfig: 'tsconfig.build.json',
+    platform: 'node',
+    banner: {
+      js: '#!/usr/bin/env node',
+    },
+  },
 ]);

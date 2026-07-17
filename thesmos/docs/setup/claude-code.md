@@ -145,6 +145,32 @@ npm run agents:install:local -- --dry-run
 
 ---
 
+## Governance hooks (cross-platform guard)
+
+```bash
+thesmos claude:govern install
+thesmos claude:govern status
+```
+
+**Source of truth:** `node dist/thesmos-guard.js <check|budget-check|drift>`. Install writes Node-direct commands (quoted `process.execPath` + absolute entry). Thin wrappers `thesmos/bin/thesmos-guard.sh` / `.cmd` only forward to that entry — optional for manual invoke.
+
+| Platform | Needs Bash / WSL? | How hooks run |
+|---|---|---|
+| Windows | No | Node-direct (or `.cmd` wrapper) |
+| macOS / Linux | No for guard | Node-direct (or `.sh` wrapper) |
+
+**`autoMode.failClosed` (default `true`):** malformed hook stdin, unreadable/malformed `.thesmos/config.json`, or internal guard exceptions exit `2` and block the tool call. Diagnose from stderr (resolved path, category, checklist). Explicit opt-out only:
+
+```json
+{ "autoMode": { "failClosed": false } }
+```
+
+Legitimate allows (not infrastructure failures): unknown tool names, empty file content, ignored extensions, empty Bash command, clean findings.
+
+**Statusline** (`.claude/statusline-pantheon.sh`) still requires Bash — it is not on the PreToolUse critical path.
+
+---
+
 ## Tips
 
 - Install or enable Zeus for orchestration; he can route to Pantheon and external agents

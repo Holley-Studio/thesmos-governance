@@ -26,10 +26,14 @@ Run the built-in install command — it writes to `.claude/settings.json` automa
 npx thesmos claude:govern install
 ```
 
+Hooks invoke the cross-platform Node guard (`dist/thesmos-guard.js`) directly — no Bash, WSL, or Git Bash required on Windows. Infrastructure failures block by default (`autoMode.failClosed: true`).
+
 To verify:
 ```bash
 npx thesmos claude:govern status
 ```
+
+See [Claude Code setup](./setup/claude-code.md#governance-hooks-cross-platform-guard) for failClosed diagnostics and wrapper details.
 
 ### Claude Desktop
 

@@ -3,25 +3,55 @@
     "PreToolUse": [
       {
         "matcher": "Write",
-        "hooks": [{ "type": "command", "command": "npx thesmos-governance claude:govern check" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/thesmos/dist/thesmos-guard.js", "check"]
+          }
+        ]
       },
       {
         "matcher": "Edit",
-        "hooks": [{ "type": "command", "command": "npx thesmos-governance claude:govern check" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/thesmos/dist/thesmos-guard.js", "check"]
+          }
+        ]
       },
       {
         "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "npx thesmos-governance claude:govern check" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/thesmos/dist/thesmos-guard.js", "check"]
+          }
+        ]
       }
     ],
     "PostToolUse": [
       {
-        "hooks": [{ "type": "command", "command": "npx thesmos-governance claude:govern budget-check" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/thesmos/dist/thesmos-guard.js", "budget-check"]
+          }
+        ]
       }
     ],
     "Stop": [
       {
-        "hooks": [{ "type": "command", "command": "npx thesmos-governance drift --quiet 2>&1 || true" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/thesmos/dist/thesmos-guard.js", "drift", "--quiet"]
+          }
+        ]
       }
     ]
   }
