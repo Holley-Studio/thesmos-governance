@@ -18,6 +18,10 @@ tags:
   - ux
   - design-system
   - accessibility
+skills:
+  - design-token-audit
+  - a11y-audit
+  - component-audit
 enabled: true
 governance:
   rules:

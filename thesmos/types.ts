@@ -367,6 +367,13 @@ export interface ChangedFile {
   content: string;
   /** Raw diff/patch text — when provided, secret-scan runs against the diff. */
   diff?: string;
+  /**
+   * Changed line ranges (1-based, inclusive) in the NEW version of the file,
+   * parsed from diff hunks. When present, line-numbered findings outside these
+   * ranges (±grace margin) are dropped — --base mode reviews the change, not
+   * the whole file. Absent for full-repo scans and explicit file arguments.
+   */
+  changedRanges?: Array<{ start: number; end: number }>;
 }
 
 export interface DetectInput {

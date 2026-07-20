@@ -172,9 +172,15 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
           `or run \`thesmos agent:release <agent-id>\` to stop managing this file before editing it directly.`,
       };
     }
-    // Unmanaged / external agent path — allow even when `.claude/` is blocked
-    // and even when allowedPaths would otherwise exclude it.
-    return null;
+    // Unmanaged / external agent path: allow unless .claude/ or .claude/agents/ is explicitly blocked.
+    // When blocked, fall through so the blocked-paths loop can surface an agent:install suggestion.
+    const isAgentSurfaceBlocked = config.workspace.blockedPaths.some((b) => {
+      const p = b.replace(/\./g, '\\.').replace(/\*/g, '.*');
+      const r = new RegExp(`^${p}`);
+      return r.test(relPath) || r.test(filePath) || r.test(relNorm);
+    });
+    if (!isAgentSurfaceBlocked) return null;
+    // Fall through to the blocked-paths loop for a targeted suggestion.
   }
 
   // Check blocked paths (glob-style prefix matching)
@@ -183,13 +189,19 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
     const re = new RegExp(`^${pattern}`);
     if (re.test(relPath) || re.test(filePath) || re.test(relNorm)) {
       // Provide targeted, path-specific guidance for each canonical authoring surface.
+      const AGENT_SURFACE   = '.claude/agents/';
       const SKILL_SURFACE   = '.claude/skills/';
       const COMMAND_SURFACE = '.claude/commands/';
+      const isAgentPath   = relNorm.startsWith(AGENT_SURFACE)   || filePath.includes(AGENT_SURFACE);
       const isSkillPath   = relNorm.startsWith(SKILL_SURFACE)   || filePath.includes(SKILL_SURFACE);
       const isCommandPath = relNorm.startsWith(COMMAND_SURFACE) || filePath.includes(COMMAND_SURFACE);
 
       let suggestion: string;
-      if (isSkillPath) {
+      if (isAgentPath) {
+        suggestion =
+          `Author the agent spec under .thesmos/agents/ and run \`thesmos agent:install\` ` +
+          `to register and install it to .claude/agents/.`;
+      } else if (isSkillPath) {
         suggestion =
           `Author the skill outside .claude/skills/ and run \`thesmos skill:create\` ` +
           `or \`thesmos adapters\` to synchronize platform skill files.`;

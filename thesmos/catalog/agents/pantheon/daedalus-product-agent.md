@@ -18,6 +18,10 @@ tags:
   - roadmap
   - user-stories
   - product-management
+skills:
+  - feature-flag-audit
+  - documentation-audit
+  - api-deprecation-review
 enabled: true
 governance:
   rules:

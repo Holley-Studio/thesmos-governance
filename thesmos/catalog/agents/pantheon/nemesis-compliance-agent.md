@@ -17,6 +17,10 @@ tags:
   - grc
   - risk
   - governance
+skills:
+  - dependency-audit
+  - rate-limit-audit
+  - validate-rules
 enabled: true
 governance:
   rules:

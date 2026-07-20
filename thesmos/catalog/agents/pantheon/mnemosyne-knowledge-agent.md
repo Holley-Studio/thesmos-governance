@@ -18,6 +18,10 @@ tags:
   - memory
   - context
   - handoffs
+skills:
+  - generate-report
+  - repo-health-audit
+  - incident-postmortem
 enabled: true
 governance:
   rules:

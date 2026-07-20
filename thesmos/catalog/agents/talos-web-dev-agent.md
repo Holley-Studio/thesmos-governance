@@ -17,6 +17,11 @@ tags:
   - nextjs
   - typescript
   - react
+skills:
+  - typescript-strict-mode
+  - error-boundary-audit
+  - data-fetching-audit
+  - state-audit
 enabled: true
 governance:
   rules:

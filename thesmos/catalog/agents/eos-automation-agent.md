@@ -17,6 +17,9 @@ tags:
   - workflow
   - n8n
   - github-actions
+skills:
+  - adapter-sync
+  - migration-safety-check
 enabled: true
 governance:
   rules:

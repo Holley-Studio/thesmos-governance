@@ -1,75 +1,56 @@
-67 specialist AI agents. 10 platforms. One orchestrated system — with theatrical presence you can feel.
+**Thesmos Full Pantheon — 68 Specialist Agents + 53 Workflow Skills**
+
+You've seen the six free gods. This is the other 61.
+
+Each file is a fully-written agent system prompt — role definition, domain methodology, output contract, starter prompts, and the Thesmos governance rules relevant to that specialist. Drop them into Claude Code, Cursor, Windsurf, or any LLM editor that supports agent persona files. Your LLM starts thinking like a specialist in that domain immediately.
 
 ---
 
-## What is the Thesmos Pantheon?
+**What's in the zip:**
 
-The Pantheon is a complete team of AI specialists — each with a defined identity, methodology, and voice. Tell **Zeus** what you need. He reads the task, announces the routing, and dispatches the right god:
+- 68 `.md` agent files + 53 workflow skills, ready to install
+- Compatible with Claude Code, Cursor, Windsurf, VS Code, and any editor that accepts agent/persona files
+- Instant install via CLI: `thesmos pantheon:install --pack ~/Downloads/thesmos-pantheon-agents.zip`
+- Or use the GUI: VS Code → "Install Pantheon Pack…" → pick the file → done
+- No license key. No activation server. No account required. The files are yours.
+- Lifetime updates: re-download from Gumroad whenever new gods are added to the pack.
+
+**Workflow Skills (53 included):**
+- `security-scan`, `secret-scan`, `auth-flow-review`, `rls-policy-audit` — Argus's security arsenal
+- `e2e-test-review`, `integration-test-review`, `add-tests`, `test-coverage-report` — Cassandra's QA suite
+- `api-design-review`, `database-schema-review`, `graphql-schema-review` — Chiron's architecture review
+- `ci-pipeline-audit`, `build-optimization`, `env-variable-audit` — Kratos's DevOps toolkit
+- `a11y-audit`, `design-token-audit`, `component-audit` — Hephaestus's design system checks
+- …and 38 more covering analytics, compliance, docs, automation, and web engineering
+
+---
+
+**A sample of what you're getting beyond the six free gods:**
+
+- **Ares** — sales and pipeline (MEDDPICC, discovery, objection handling, closing)
+- **Hermes** — marketing strategy, growth, channel planning, CAC/LTV frameworks
+- **Daedalus** — product management, PRDs, RICE scoring, sprint planning
+- **Tyche** — analytics, KPI dashboards, cohort analysis, attribution
+- **Plutus** — financial modeling, pricing strategy, unit economics, P&L
+- **Kratos** — DevOps, infrastructure, CI/CD, incident response
+- **Nemesis** — compliance, GRC, risk frameworks, audit prep
+- **Chiron** — software architecture, system design, ADRs
+- **Cassandra** — QA, test strategy, edge case enumeration
+- **Dionysus** — video production and direction
+- **Morpheus** — motion design and animation briefs
+- **Artemis** — photography and visual direction
+- **Pheme** — PR, press releases, crisis comms
+- **Nike** — lead generation, outbound, cold email
+- Plus 53 more specialists covering legal, CX, operations, 3D, partnerships, and documentation.
+
+---
+
+**What you're actually buying:**
+
+The writing and the specificity. Each god took real work to define — the right frameworks, the right output contracts, the right governance hooks for their domain. You could write these yourself. This saves you the week it would take to do it well.
+
+$24, one-time. No subscription.
 
 ```
-⚡ ZEUS — ROUTING
-Security detected · dispatching 👁 Argus
-────────────────────────────────────────
+thesmos pantheon:install --pack ~/Downloads/thesmos-pantheon-agents.zip
 ```
-
-Every god announces itself, works in its own expert voice, and signs its findings. You always know who's working for you.
-
----
-
-## What's inside
-
-⚡ **Zeus — Executive Orchestration** — routes every task automatically. Start here.
-👁 **Argus — Security** — OWASP, CVSS scoring, STRIDE threat models.
-🦉 **Athena — Strategy** — GTM, competitive positioning, OKRs.
-⚔️ **Ares — Sales** — discovery, MEDDPICC deal strategy, pipeline forecasting.
-✍️ **Apollo — Content & Copy** — landing pages, email sequences, SEO, brand voice.
-🔨 **Hephaestus — UI/UX** — components, tokens, WCAG, design systems.
-💰 **Plutus — Finance** — pricing, unit economics, P&L modeling.
-🗿 **Pygmalion & ☀️ Helios — 3D & Rendering** — Blender and KeyShot direction.
-
-*+ 57 more specialists across legal, ops, analytics, PR, video, animation, DevOps, QA, and a full 10-god Figma design squad.*
-
----
-
-## 10 platforms, one download
-
-| Folder | Platform |
-|---|---|
-| for-claude/ | Claude Code (+ live VS Code god-activity feed) |
-| for-claude-ai/ | Claude.ai Projects (incl. 3 curated Council bundles) |
-| for-chatgpt/ | ChatGPT Custom GPTs (incl. Zeus Orchestrator + 13 knowledge clusters) |
-| for-codex/ | OpenAI Codex (AGENTS.md convention) |
-| for-openai-api/ | OpenAI Assistants API (.json definitions) |
-| for-gemini/ | Gemini Gems (incl. Zeus Receptionist) |
-| for-cursor/ | Cursor rules |
-| for-copilot/ | GitHub Copilot |
-| for-figma/ | Figma AI prompt cards |
-| for-vscode/ | VS Code extension (.vsix) — live agent activity panel |
-
-Each folder includes step-by-step INSTALL.md. Setup takes under 5 minutes.
-
----
-
-## Own it once. Every rule free, or add all 67 agents for $24.
-
-Thesmos ships free, forever: the governance CLI with the **complete 1,137-rule engine** (every framework, every compliance pack) and **6 starter agents** — Zeus, Athena, Argus, Apollo, Hephaestus, and Hebe for support — across 9 platforms, no account required.
-
-The **Full Pantheon** is a single one-time payment: **$24** — all **67 agents**, all 10 platforms, the VS Code extension, all 13 ChatGPT knowledge clusters, all 3 Claude.ai council bundles, and lifetime updates. No subscription. No recurring charge. Ever.
-
-Want to feel it work before you spend anything? Download the free **Essentials** agent pack — 6 agents across 9 platforms — at [holley.studio](https://holley.studio).
-
----
-
-## Built for the newest models
-
-Every agent is tuned for the Claude 5 family (Fable 5, Sonnet 5) and GPT-5.5 — with an Anti-Drift Protocol that keeps each god in character from message 1 to message 50, and honest governance badges on every delivery.
-
-## Lifetime updates
-
-The Pantheon grows. New gods, new platforms, and model updates ship regularly — buy once, keep every update, forever. Check the public changelog anytime.
-
-*Keep your Custom GPTs private — the knowledge files are your paid content.*
-
----
-
-*Just want to try it first? Download the free 5-agent Essentials pack at [holley.studio](https://holley.studio)*

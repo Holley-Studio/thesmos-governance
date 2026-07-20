@@ -17,6 +17,9 @@ tags:
   - technical-writing
   - readme
   - api-reference
+skills:
+  - documentation-audit
+  - onboarding-audit
 enabled: true
 governance:
   rules:

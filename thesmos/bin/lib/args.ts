@@ -11,38 +11,83 @@ export interface ParsedArgs {
   positionals: string[];
 }
 
-export interface ParseArgsOptions {
-  /**
-   * Flag names that take a following value when written as `--name value`
-   * (in addition to `--name=value`). Boolean flags like `--all` must NOT be listed.
-   */
-  valueFlags?: readonly string[];
-}
+/**
+ * Flags that take a value. For these, a bare `--flag` followed by a
+ * non-flag token consumes that token as its value (`--pack /p.zip`).
+ * Boolean flags (--write, --all, --json, …) are deliberately NOT listed:
+ * they must never swallow a following positional (`--write ares`).
+ * Built from every `flagVal(flags, 'x')` / `flags['x'] as string` usage.
+ */
+const VALUE_FLAGS = new Set([
+  'access',
+  'agent',
+  'author',
+  'base',
+  'baseline',
+  'blockers',
+  'categories',
+  'debounce',
+  'expires',
+  'fail-on',
+  'findings',
+  'format',
+  'health-threshold',
+  'history',
+  'limit',
+  'max',
+  'min',
+  'next',
+  'note',
+  'on',
+  'out',
+  'owner',
+  'pack',
+  'pr',
+  'profile',
+  'provider',
+  'reason',
+  'repo',
+  'report',
+  'rule',
+  'session',
+  'severity',
+  'severity-filter',
+  'since',
+  'status',
+  'summary',
+  'tag',
+  'target',
+  'targets',
+  'text',
+  'threshold',
+  'token',
+  'verbosity',
+  'webhook',
+]);
 
 /**
  * Parse an argv slice that has already had the command name stripped.
  * e.g. parseArgs(['--json', '--base=main', 'file.ts'])
- * e.g. parseArgs(['--target', 'cursor'], { valueFlags: ['target'] })
+ * Value-taking flags accept both `--flag=value` and `--flag value`.
  */
-export function parseArgs(argv: string[], opts: ParseArgsOptions = {}): ParsedArgs {
-  const valueFlags = new Set(opts.valueFlags ?? []);
+export function parseArgs(argv: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
   const positionals: string[] = [];
 
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i]!;
+    const arg = argv[i];
     if (arg.startsWith('--')) {
       const eqIdx = arg.indexOf('=');
       if (eqIdx !== -1) {
         flags[arg.slice(2, eqIdx)] = arg.slice(eqIdx + 1);
       } else {
-        const key = arg.slice(2);
+        const name = arg.slice(2);
         const next = argv[i + 1];
-        if (valueFlags.has(key) && next !== undefined && !next.startsWith('--')) {
-          flags[key] = next;
-          i++;
+        if (VALUE_FLAGS.has(name) && next !== undefined && !next.startsWith('-')) {
+          flags[name] = next;
+          i++; // consume the value token
         } else {
-          flags[key] = true;
+          flags[name] = true;
         }
       }
     } else {

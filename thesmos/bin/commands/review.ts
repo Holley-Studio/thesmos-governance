@@ -55,7 +55,7 @@ export async function cmdReview(argv: string[]): Promise<void> {
   // undefined → scan-based checks only (no file content)
 
   const registry = await getActiveRules(root);
-  const allFindings = coreRunReview({ scan, config, changedFiles }, registry);
+  const allFindings = coreRunReview({ scan, config, changedFiles, root }, registry);
 
   // Auto-load baseline if present (suppresses known/accepted debt from the default view)
   const baseline = noBaseline ? null : loadBaseline(root);

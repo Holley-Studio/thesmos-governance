@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { installFromPack } from './pantheon.ts';
+
+// installFromPack now returns { installed, skipped, errors, skillsInstalled }
+type InstallResult = { installed: number; skipped: number; errors: string[]; skillsInstalled: number };
 
 const AGENT = (id: string) => `---
 name: ${id}
@@ -72,10 +75,160 @@ describe('installFromPack', () => {
     expect(() => installFromPack(pack, root)).toThrow(/no agent/i);
   });
 
+  it('does not follow a symlinked for-claude/ directory pointing outside the pack', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'thesmos-pack-outside-'));
+    try {
+      writeFileSync(join(outside, 'stolen-agent.md'), AGENT('stolen-agent'));
+      symlinkSync(outside, join(pack, 'for-claude'), 'dir');
+
+      expect(() => installFromPack(pack, root)).toThrow(/no agent/i);
+      expect(existsSync(join(root, '.thesmos', 'agents', 'stolen-agent.md'))).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('skips symlinked .md entries pointing to files outside the pack', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'thesmos-pack-outside-'));
+    try {
+      writeFileSync(join(outside, 'secret.md'), AGENT('stolen-agent'));
+      const dir = join(pack, 'for-claude');
+      mkdirSync(dir);
+      writeFileSync(join(dir, 'ares-sales-agent.md'), AGENT('ares-sales-agent'));
+      symlinkSync(join(outside, 'secret.md'), join(dir, 'stolen-agent.md'), 'file');
+
+      const result = installFromPack(pack, root);
+
+      expect(result.errors).toEqual([]);
+      expect(result.installed).toBe(1);
+      expect(existsSync(join(root, '.thesmos', 'agents', 'ares-sales-agent.md'))).toBe(true);
+      expect(existsSync(join(root, '.thesmos', 'agents', 'stolen-agent.md'))).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
   it('registers installed agents in registry.json', () => {
     writeFileSync(join(pack, 'ares-sales-agent.md'), AGENT('ares-sales-agent'));
     installFromPack(pack, root);
     const reg = JSON.parse(readFileSync(join(root, '.thesmos', 'registry.json'), 'utf8')) as { agents?: string[] };
     expect(reg.agents).toContain('ares-sales-agent');
+  });
+
+  it('installs skills from for-claude/skills/ when present', () => {
+    const dir = join(pack, 'for-claude');
+    mkdirSync(dir);
+    writeFileSync(join(dir, 'ares-sales-agent.md'), AGENT('ares-sales-agent'));
+    // Create a skills directory with one skill
+    const skillsDir = join(dir, 'skills', 'security-scan');
+    mkdirSync(skillsDir, { recursive: true });
+    writeFileSync(join(skillsDir, 'SKILL.md'), '---\nname: security-scan\ndescription: Security sweep.\n---\n\nBody.\n');
+
+    const result = installFromPack(pack, root) as InstallResult;
+
+    expect(result.errors).toEqual([]);
+    expect(result.installed).toBe(1);
+    expect(result.skillsInstalled).toBe(1);
+    expect(existsSync(join(root, '.claude', 'skills', 'security-scan', 'SKILL.md'))).toBe(true);
+  });
+
+  it('skips skill dirs that lack a SKILL.md', () => {
+    const dir = join(pack, 'for-claude');
+    mkdirSync(dir);
+    writeFileSync(join(dir, 'ares-sales-agent.md'), AGENT('ares-sales-agent'));
+    // Skill dir with no SKILL.md inside
+    mkdirSync(join(dir, 'skills', 'empty-skill'), { recursive: true });
+
+    const result = installFromPack(pack, root) as InstallResult;
+
+    expect(result.skillsInstalled).toBe(0);
+    expect(existsSync(join(root, '.claude', 'skills', 'empty-skill'))).toBe(false);
+  });
+
+  it('does not follow symlinked skill dirs', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'thesmos-skill-outside-'));
+    try {
+      mkdirSync(join(outside, 'SKILL.md'), { recursive: true }); // not a file but directory — should be skipped
+      const dir = join(pack, 'for-claude');
+      mkdirSync(dir);
+      writeFileSync(join(dir, 'ares-sales-agent.md'), AGENT('ares-sales-agent'));
+      mkdirSync(join(dir, 'skills'), { recursive: true });
+      symlinkSync(outside, join(dir, 'skills', 'evil-skill'), 'dir');
+
+      const result = installFromPack(pack, root) as InstallResult;
+
+      expect(result.skillsInstalled).toBe(0);
+      expect(existsSync(join(root, '.claude', 'skills', 'evil-skill'))).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('skips skill dirs containing a symlinked SKILL.md', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'thesmos-skillmd-outside-'));
+    try {
+      const secret = join(outside, 'secret.txt');
+      writeFileSync(secret, 'sensitive content');
+      const dir = join(pack, 'for-claude');
+      mkdirSync(dir);
+      writeFileSync(join(dir, 'ares-sales-agent.md'), AGENT('ares-sales-agent'));
+      // Real skill dir, but SKILL.md is a symlink to an external file
+      const skillDir = join(dir, 'skills', 'evil-skill');
+      mkdirSync(skillDir, { recursive: true });
+      symlinkSync(secret, join(skillDir, 'SKILL.md'), 'file');
+
+      const result = installFromPack(pack, root) as InstallResult;
+
+      expect(result.skillsInstalled).toBe(0);
+      expect(existsSync(join(root, '.claude', 'skills', 'evil-skill', 'SKILL.md'))).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('exportClaudeCode skill section', () => {
+  it('includes ## Skills section when agent has skillIds', async () => {
+    const { exportClaudeCodeForTest } = await import('./pantheon.ts');
+    const agent = {
+      id: 'argus-security-agent',
+      name: 'God Agent Argus — Security Agent',
+      god: 'Argus',
+      role: 'Security & Threat Modeling',
+      emoji: '👁',
+      mythology: 'All-seeing giant.',
+      color: '#27AE60',
+      avatar: 'argus.svg',
+      version: '1.0.0',
+      tags: ['security'],
+      governanceRules: ['SEC_001'],
+      skillIds: ['security-scan', 'secret-scan'],
+      body: '## Identity\nArgus body here.',
+    };
+    const output = exportClaudeCodeForTest(agent);
+    expect(output).toContain('## Skills');
+    expect(output).toContain('`/security-scan`');
+    expect(output).toContain('`/secret-scan`');
+  });
+
+  it('omits ## Skills section when agent has no skillIds', async () => {
+    const { exportClaudeCodeForTest } = await import('./pantheon.ts');
+    const agent = {
+      id: 'zeus-executive-agent',
+      name: 'God Agent Zeus — Executive Agent',
+      god: 'Zeus',
+      role: 'Executive Orchestration',
+      emoji: '⚡',
+      mythology: 'King of gods.',
+      color: '#F1C40F',
+      avatar: 'zeus.svg',
+      version: '1.0.0',
+      tags: ['executive'],
+      governanceRules: [],
+      skillIds: [],
+      body: '## Identity\nZeus body here.',
+    };
+    const output = exportClaudeCodeForTest(agent);
+    expect(output).not.toContain('## Skills');
   });
 });
