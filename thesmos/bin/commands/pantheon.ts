@@ -661,6 +661,7 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
 
     let written = 0;
     let skipped = 0;
+    let skillsWritten = 0;
     const errors: string[] = [];
 
     for (const id of toInstall) {
@@ -675,18 +676,12 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
       } catch (err) {
         errors.push(`${id}: ${err instanceof Error ? err.message : String(err)}`);
       }
+      skillsWritten += installLinkedSkills(agent.skillIds, root);
     }
 
     if (errors.length > 0) {
       console.error(`\n  ✗ ${errors.length} error(s) during install:\n`);
       for (const e of errors) console.error(`    ${e}`);
-    }
-
-    // Install skills linked to the installed agents
-    let skillsWritten = 0;
-    for (const id of toInstall) {
-      const agent = agents.find(a => a.id === id)!;
-      skillsWritten += installLinkedSkills(agent.skillIds, root);
     }
 
     if (written + skipped > 0) {

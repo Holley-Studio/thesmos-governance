@@ -163,6 +163,28 @@ describe('installFromPack', () => {
       rmSync(outside, { recursive: true, force: true });
     }
   });
+
+  it('skips skill dirs containing a symlinked SKILL.md', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'thesmos-skillmd-outside-'));
+    try {
+      const secret = join(outside, 'secret.txt');
+      writeFileSync(secret, 'sensitive content');
+      const dir = join(pack, 'for-claude');
+      mkdirSync(dir);
+      writeFileSync(join(dir, 'ares-sales-agent.md'), AGENT('ares-sales-agent'));
+      // Real skill dir, but SKILL.md is a symlink to an external file
+      const skillDir = join(dir, 'skills', 'evil-skill');
+      mkdirSync(skillDir, { recursive: true });
+      symlinkSync(secret, join(skillDir, 'SKILL.md'), 'file');
+
+      const result = installFromPack(pack, root) as InstallResult;
+
+      expect(result.skillsInstalled).toBe(0);
+      expect(existsSync(join(root, '.claude', 'skills', 'evil-skill', 'SKILL.md'))).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('exportClaudeCode skill section', () => {
