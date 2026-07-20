@@ -11,7 +11,7 @@
  * thesmos pantheon:mode        — set/get power mode (normal vs god power)
  */
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, lstatSync, mkdtempSync, rmSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { tmpdir, homedir } from 'node:os';
@@ -608,6 +608,36 @@ function installSkillsFromPackDir(skillsPackDir: string, root: string): number {
 }
 
 /** Resolve the agents directory inside an extracted pack (for-claude/ preferred). Symlinked dirs are ignored. */
+/**
+ * F7 fix: Post-extraction containment check.
+ * Walks every real file under dir and asserts its resolved path starts with
+ * the canonical prefix of dir. Throws if any file escapes — covers hosts where
+ * the system `unzip` does not sanitise `../` entries (busybox, older builds).
+ */
+function assertContainedInDir(dir: string): void {
+  const canonicalBase = resolve(dir) + sep;
+  const stack: string[] = [resolve(dir)];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    for (const entry of readdirSync(current)) {
+      const abs = join(current, entry);
+      // Use lstat so symlinks are never followed — same policy as the symlink filter below.
+      const st = lstatSync(abs, { throwIfNoEntry: false });
+      if (!st) continue;
+      const canonicalAbs = resolve(abs);
+      if (!canonicalAbs.startsWith(canonicalBase) && canonicalAbs !== resolve(dir)) {
+        throw new Error(
+          `Pack extraction escape detected: "${abs}" resolves outside extraction directory.\n` +
+          `This pack may be malicious. Aborting install.`,
+        );
+      }
+      if (st.isDirectory() && !st.isSymbolicLink()) {
+        stack.push(abs);
+      }
+    }
+  }
+}
+
 function resolvePackAgentsDir(packDir: string): string {
   const direct = join(packDir, 'for-claude');
   if (isRealDirectory(direct)) return direct;
@@ -639,8 +669,13 @@ export function installFromPack(packPath: string, root: string): { installed: nu
     tempDir = mkdtempSync(join(tmpdir(), 'thesmos-pack-'));
     try {
       execFileSync('unzip', ['-o', '-q', packPath, '-d', tempDir]);
-    } catch {
+      // F7 fix: assert every extracted file is inside tempDir regardless of
+      // the host's unzip behaviour — some builds honour `../` traversal entries.
+      assertContainedInDir(tempDir);
+    } catch (err) {
       rmSync(tempDir, { recursive: true, force: true });
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('escape detected')) throw err;
       throw new Error(
         `Could not extract ${packPath} automatically (is \`unzip\` installed?).\n` +
         `Extract it manually, then run: thesmos pantheon:install --pack <extracted-folder>`,

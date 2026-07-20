@@ -788,17 +788,48 @@ export const SLOPSQUATTING_RULES: ThesmosRule[] = [
           if (NODE_BUILTINS.has(pkg)) continue;
           if (installed.has(pkg)) continue;
           if (KNOWN_PHANTOMS.has(pkg)) continue;
-          if (pkg.startsWith('@')) continue;
           if (pkg.length < 4) continue; // too short to meaningfully check
+
+          // F9 fix (a): BLOCKER for non-ASCII bare package names (homoglyph attack).
+          // Legitimate npm bare package names consist of [a-z0-9._\-] only.
+          // Any non-ASCII codepoint is a confusable-character typosquat signal.
+          // Note: @-scoped names may have non-ASCII orgs — only check bare names.
+          if (!pkg.startsWith('@') && /[^\x00-\x7F]/.test(pkg)) {
+            findings.push({
+              severity: 'BLOCKER',
+              category: 'slop_typosquat_candidate',
+              file: path, line,
+              message: `"${pkg}" contains non-ASCII characters — likely a homoglyph/confusable-character typosquat (e.g. Cyrillic 'а' instead of ASCII 'a').`,
+              suggestion: `Inspect "${pkg}" character-by-character. npm package names must be ASCII-only. Remove or replace this import.`,
+            });
+            continue;
+          }
+
+          // F9 fix (b): NFKC-normalise the package name before edit-distance
+          // comparison so visually-identical unicode sequences are canonicalized.
+          // Also apply edit-distance to the scope-stripped name for @-scoped packages.
+          const bareForDistance = pkg.startsWith('@')
+            ? (pkg.split('/')[1] ?? pkg) // e.g. @types/lodahs → lodahs
+            : pkg;
+          const normalised = bareForDistance.normalize('NFKC');
+
+          if (pkg.startsWith('@')) {
+            // F9 fix (c): apply typosquat check to scope-stripped name of scoped packages.
+            // Original code skipped all @-scoped packages unconditionally.
+            const stripped = pkg.split('/')[1] ?? '';
+            if (!stripped || stripped.length < 4) continue;
+          }
+
           // A well-known package is never a typosquat of another well-known
           // package (tsup vs tsx, got vs go, ora vs or) — only unknown names
           // within edit distance of a popular package are candidates.
-          if (KNOWN_LEGIT_PACKAGES.has(pkg)) continue;
+          if (!pkg.startsWith('@') && KNOWN_LEGIT_PACKAGES.has(pkg)) continue;
+
           let minDist = 99;
           let closest = '';
           for (const popular of TOP_PACKAGES) {
-            if (popular === pkg) { minDist = 0; break; }
-            const d = editDistance(pkg, popular);
+            if (popular === normalised) { minDist = 0; break; }
+            const d = editDistance(normalised, popular);
             if (d < minDist) { minDist = d; closest = popular; }
           }
           if (minDist > 0 && minDist <= 2) {

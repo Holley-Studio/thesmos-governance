@@ -275,12 +275,66 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
 
 // ── Command checking ──────────────────────────────────────────────────────────
 
+/**
+ * F10 fix: strip quoted strings and shell comments from a command before
+ * pattern matching to prevent false-positives on commands that merely
+ * *mention* a destructive pattern in a commit message, argument string, or comment.
+ *
+ * git commit -m "removes rm -rf usage"  → safe, rm -rf is inside a quoted string
+ * echo "rm -rf"                          → safe, argument is quoted
+ * rm -rf ./dist                          → blocked, bare token
+ *
+ * Strategy: remove all single/double-quoted spans and # comments, then
+ * test the remaining token stream.
+ */
+function stripQuotedAndComments(cmd: string): string {
+  let out = '';
+  let i = 0;
+  while (i < cmd.length) {
+    const ch = cmd[i];
+    if (ch === '#') break; // rest is a comment
+    if (ch === '"' || ch === "'") {
+      const q = ch;
+      i++;
+      // Skip past the closing quote (or end-of-string)
+      while (i < cmd.length && cmd[i] !== q) {
+        if (cmd[i] === '\\') i++; // skip escaped char
+        i++;
+      }
+      i++; // skip closing quote
+      out += ' '; // replace quoted span with a space so adjacent tokens don't merge
+    } else {
+      out += ch;
+      i++;
+    }
+  }
+  return out;
+}
+
+/**
+ * SECURITY NOTE — Residual Risk (F4, from Argus red-team 2026-07-20):
+ * This function blocks a known set of destructive patterns. It does NOT claim
+ * to block all destructive commands. Equivalent operations via inline interpreters
+ * (node -e 'fs.rmSync(…)', python -c 'shutil.rmtree(…)', perl unlink, find -delete,
+ * rimraf, etc.) are not fully covered. This is an inherent limitation of denylist
+ * matching — no string-based approach can enumerate all equivalent expressions.
+ *
+ * Correct posture: "Thesmos blocks a known set of destructive shell patterns."
+ * NOT: "Thesmos prevents all destructive commands."
+ *
+ * Architectural path to eliminate this: move Bash to a binary allowlist model
+ * (permit only whitelisted command words, deny-by-default on unknown commands).
+ * Until then, this gate provides meaningful friction, not a hard guarantee.
+ */
 function checkCommand(command: string, config: ScopeConfig): ScopeViolation | null {
   const cmd = command.trim().toLowerCase();
+  // F10 fix: match patterns against the unquoted token stream to avoid blocking
+  // commands that only mention a destructive pattern in a string literal or comment.
+  const unquoted = stripQuotedAndComments(cmd);
 
   // Check destructive patterns
   for (const pattern of config.destructivePatterns) {
-    if (cmd.includes(pattern.toLowerCase())) {
+    if (unquoted.includes(pattern.toLowerCase())) {
       return {
         type: 'destructive_command',
         message: `Command contains a destructive pattern "${pattern}".`,
@@ -289,11 +343,10 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
     }
   }
 
-  // Check delete operations
+  // Check delete operations (F10 fix: test unquoted stream)
   if (!config.operations.allowDelete) {
-    if (/\brm\s+(?:-[a-z]*f[a-z]*\s+)?\S/.test(cmd) && !/\brm\s+--/.test(cmd)) {
-      // Allow `rm --help` style, block actual deletion
-      const isHelp = cmd.includes('--help') || cmd.includes('-h');
+    if (/\brm\s+(?:-[a-z]*f[a-z]*\s+)?\S/.test(unquoted) && !/\brm\s+--/.test(unquoted)) {
+      const isHelp = unquoted.includes('--help') || unquoted.includes('-h');
       if (!isHelp) {
         return {
           type: 'destructive_command',
@@ -304,8 +357,8 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
     }
   }
 
-  // Check git push
-  if (!config.operations.allowGitPush && /\bgit\s+push\b/.test(cmd)) {
+  // Check git push (F10 fix: test unquoted stream)
+  if (!config.operations.allowGitPush && /\bgit\s+push\b/.test(unquoted)) {
     return {
       type: 'destructive_command',
       message: 'git push is not allowed in the current scope.',

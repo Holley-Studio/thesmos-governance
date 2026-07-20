@@ -235,6 +235,23 @@ describe('checkScope — command enforcement', () => {
     expect(checkScope({ toolName: 'Bash', command: 'ls -la', root })).toBeNull();
     expect(checkScope({ toolName: 'Bash', command: 'cat package.json', root })).toBeNull();
   });
+
+  it('F10 — allows git commit -m "removes rm -rf usage" (rm -rf in commit message)', () => {
+    // F10 fix: pattern matched inside quoted strings was a false-positive.
+    const v = checkScope({ toolName: 'Bash', command: 'git commit -m "removes rm -rf usage"', root });
+    expect(v).toBeNull();
+  });
+
+  it('F10 — still blocks bare rm -rf ./dist (not quoted)', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'rm -rf ./dist', root });
+    expect(v).not.toBeNull();
+    expect(v!.type).toBe('destructive_command');
+  });
+
+  it('F10 — allows echo "rm -rf" (rm -rf in a single-quoted string)', () => {
+    const v = checkScope({ toolName: 'Bash', command: "echo 'rm -rf /tmp'", root });
+    expect(v).toBeNull();
+  });
 });
 
 describe('getScopeStatus', () => {
