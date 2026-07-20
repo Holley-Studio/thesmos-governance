@@ -14,7 +14,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, resolve, relative, isAbsolute } from 'node:path';
+import { join, resolve, relative, isAbsolute, basename } from 'node:path';
 import {
   isClaudeAgentsPath,
   isManagedPath,
@@ -94,6 +94,19 @@ export const SCOPE_DEFAULTS: ScopeConfig = {
 
 const SCOPE_FILE = '.thesmos/scope.json';
 
+/**
+ * Governance files that a governed agent must never be able to rewrite.
+ * Checked unconditionally BEFORE any config-driven allow/block logic (F1 fix).
+ * These paths are relative to the project root (relNorm form).
+ */
+const GOVERNANCE_PROTECTED = new Set([
+  '.thesmos/scope.json',
+  '.thesmos/managed-agents.json',
+  '.thesmos/config.json',
+  '.claude/settings.json',
+  '.claude/settings.local.json',
+]);
+
 // ── Load / save ───────────────────────────────────────────────────────────────
 
 export function loadScopeConfig(root: string): ScopeConfig | null {
@@ -135,11 +148,26 @@ export function saveScopeConfig(root: string, config: ScopeConfig): void {
 // ── Path matching ─────────────────────────────────────────────────────────────
 
 function isPathAllowed(filePath: string, root: string, config: ScopeConfig): ScopeViolation | null {
-  const absPath = isAbsolute(filePath) ? filePath : resolve(root, filePath);
+  // F2 fix: always resolve() to canonicalise ../ sequences before any comparison.
+  // resolve() collapses traversal components without requiring the file to exist
+  // (safe for Write targets that don't yet exist on disk).
+  const absPath = resolve(isAbsolute(filePath) ? filePath : join(root, filePath));
   const relPath = relative(root, absPath);
   const relNorm = normalizeRelPath(relPath.replace(/\\/g, '/'));
 
-  // Check absolute block paths first (always blocked, regardless of allow list)
+  // F1 fix: governance files are immutable from inside a governed session.
+  // Enforced BEFORE any config-driven allow/block logic so scope.json cannot
+  // neuter itself in a single Write call.
+  if (GOVERNANCE_PROTECTED.has(relNorm)) {
+    return {
+      type: 'blocked_path',
+      message: `"${filePath}" is a Thesmos governance file — a governed agent may not modify it.`,
+      suggestion: 'Edit governance config manually outside the agent session.',
+    };
+  }
+
+  // F2 fix (cont.): compare the resolved absolute path against absoluteBlockPaths.
+  // Previously absPath was unresolved when given as absolute, allowing /tmp/../etc/shadow to pass.
   for (const blocked of config.workspace.absoluteBlockPaths) {
     if (absPath.startsWith(blocked) || absPath === blocked) {
       return {
@@ -183,11 +211,15 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
     // Fall through to the blocked-paths loop for a targeted suggestion.
   }
 
-  // Check blocked paths (glob-style prefix matching)
+  // F3 fix: segment-aware blocked-path matching.
+  // Original anchored `^pattern` only matched root-level names; src/.env bypassed.
+  // Now we test the pattern against: (a) the full relative path [root-level matches],
+  // (b) the basename [nested matches], and (c) the original relPath [compat].
+  const fileBasename = basename(relNorm);
   for (const blocked of config.workspace.blockedPaths) {
     const pattern = blocked.replace(/\./g, '\\.').replace(/\*/g, '.*');
     const re = new RegExp(`^${pattern}`);
-    if (re.test(relPath) || re.test(filePath) || re.test(relNorm)) {
+    if (re.test(relNorm) || re.test(fileBasename) || re.test(relPath) || re.test(filePath)) {
       // Provide targeted, path-specific guidance for each canonical authoring surface.
       const AGENT_SURFACE   = '.claude/agents/';
       const SKILL_SURFACE   = '.claude/skills/';
@@ -318,6 +350,11 @@ export interface ScopeCheckInput {
   root: string;
 }
 
+/** Tools that write or modify files. */
+const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
+/** Tools that read file content — scoped against blockedPaths (F8 fix). */
+const READ_TOOLS = new Set(['Read', 'Grep', 'Glob']);
+
 export function checkScope(input: ScopeCheckInput): ScopeViolation | null {
   const { toolName, filePath, command, root } = input;
   const config = loadScopeConfig(root);
@@ -325,12 +362,11 @@ export function checkScope(input: ScopeCheckInput): ScopeViolation | null {
   // No scope config = allow all (safe default)
   if (!config) return null;
 
-  if ((toolName === 'Write' || toolName === 'Edit') && filePath) {
+  if ((WRITE_TOOLS.has(toolName) || READ_TOOLS.has(toolName)) && filePath) {
     return isPathAllowed(filePath, root, config);
   }
 
   if (toolName === 'Bash' && command) {
-    // Check path-based concerns in command (heuristic: look for file paths)
     const pathViolation = checkCommand(command, config);
     return pathViolation;
   }
