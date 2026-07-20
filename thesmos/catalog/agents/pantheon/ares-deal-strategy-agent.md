@@ -17,6 +17,8 @@ tags:
   - deal-strategy
   - meddpicc
   - competitive-intel
+skills:
+  - discovery-call-prep
 enabled: true
 governance:
   rules:

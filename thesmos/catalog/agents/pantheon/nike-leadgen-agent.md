@@ -18,6 +18,8 @@ tags:
   - pipeline
   - icp
   - gdpr-aware
+skills:
+  - seo-audit
 enabled: true
 governance:
   rules:

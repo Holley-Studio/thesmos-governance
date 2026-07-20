@@ -17,6 +17,10 @@ tags:
   - execution
   - planning
   - critical-path
+skills:
+  - pr-review
+  - release-checklist
+  - repo-health-audit
 enabled: true
 governance:
   rules:

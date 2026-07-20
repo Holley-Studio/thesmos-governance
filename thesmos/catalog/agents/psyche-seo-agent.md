@@ -18,6 +18,8 @@ tags:
   - keyword-research
   - technical-seo
   - content-seo
+skills:
+  - seo-audit
 enabled: true
 governance:
   rules:

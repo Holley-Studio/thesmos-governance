@@ -17,6 +17,9 @@ tags:
   - messaging
   - positioning
   - copywriting
+skills:
+  - brand-audit
+  - content-brief-review
 enabled: true
 governance:
   rules:

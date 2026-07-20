@@ -17,6 +17,11 @@ tags:
   - diagnostics
   - root-cause
   - incident
+skills:
+  - error-boundary-audit
+  - performance-profile
+  - logging-audit
+  - observability-review
 enabled: true
 governance:
   rules:

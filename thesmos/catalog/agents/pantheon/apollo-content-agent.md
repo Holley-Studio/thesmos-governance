@@ -18,6 +18,10 @@ tags:
   - seo
   - email
   - social
+skills:
+  - seo-audit
+  - documentation-audit
+  - content-brief-review
 enabled: true
 governance:
   rules:

@@ -18,6 +18,8 @@ tags:
   - closing
   - pitch
   - proposals
+skills:
+  - discovery-call-prep
 enabled: true
 governance:
   rules:

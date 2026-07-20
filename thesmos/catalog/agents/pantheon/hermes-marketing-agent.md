@@ -17,6 +17,9 @@ tags:
   - growth
   - campaigns
   - gdpr-aware
+skills:
+  - analytics-compliance
+  - seo-audit
 enabled: true
 governance:
   rules:

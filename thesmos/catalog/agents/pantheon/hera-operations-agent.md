@@ -19,6 +19,10 @@ tags:
   - sop
   - hiring
   - okr
+skills:
+  - onboarding-audit
+  - documentation-audit
+  - incident-postmortem
 enabled: true
 governance:
   rules:

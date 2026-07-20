@@ -17,6 +17,10 @@ tags:
   - analytics
   - sql
   - business-intelligence
+skills:
+  - generate-report
+  - analytics-compliance
+  - observability-review
 enabled: true
 governance:
   rules:

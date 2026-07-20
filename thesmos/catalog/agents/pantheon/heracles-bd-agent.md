@@ -17,6 +17,8 @@ tags:
   - partnerships
   - channel-sales
   - business-development
+skills:
+  - partnership-brief
 enabled: true
 governance:
   rules:

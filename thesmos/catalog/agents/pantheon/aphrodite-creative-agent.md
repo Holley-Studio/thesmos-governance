@@ -17,6 +17,8 @@ tags:
   - brand
   - design-direction
   - visual-identity
+skills:
+  - brand-audit
 enabled: true
 governance:
   rules:

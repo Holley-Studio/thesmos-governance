@@ -18,6 +18,11 @@ tags:
   - edge-functions
   - deployment
   - cdn
+skills:
+  - env-variable-audit
+  - performance-profile
+  - build-optimization
+  - infrastructure-security-review
 enabled: true
 governance:
   rules:

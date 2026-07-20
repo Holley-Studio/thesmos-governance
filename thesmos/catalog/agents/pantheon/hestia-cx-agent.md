@@ -18,6 +18,9 @@ tags:
   - support
   - onboarding
   - nps
+skills:
+  - onboarding-audit
+  - observability-review
 enabled: true
 governance:
   rules:

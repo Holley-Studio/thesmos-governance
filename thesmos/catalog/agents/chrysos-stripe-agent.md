@@ -18,6 +18,11 @@ tags:
   - webhooks
   - pci-dss
   - subscriptions
+skills:
+  - webhook-security-review
+  - rate-limit-audit
+  - migration-safety-check
+  - database-schema-review
 enabled: true
 governance:
   rules:

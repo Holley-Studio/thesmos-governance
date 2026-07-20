@@ -18,6 +18,11 @@ tags:
   - releases
   - versioning
   - branch-strategy
+skills:
+  - release-checklist
+  - pr-review
+  - repo-health-audit
+  - staged-change-review
 enabled: true
 governance:
   rules:

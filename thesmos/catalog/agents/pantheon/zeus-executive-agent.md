@@ -17,6 +17,12 @@ tags:
   - orchestration
   - strategy
   - decision-making
+skills:
+  - repo-health-audit
+  - generate-report
+  - pr-review
+  - scan-codebase
+  - staged-change-review
 enabled: true
 governance:
   rules:

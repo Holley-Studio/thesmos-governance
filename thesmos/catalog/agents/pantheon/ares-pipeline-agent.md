@@ -18,6 +18,8 @@ tags:
   - forecast
   - crm-hygiene
   - analytics
+skills:
+  - discovery-call-prep
 enabled: true
 governance:
   rules:

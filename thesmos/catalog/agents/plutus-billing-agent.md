@@ -19,6 +19,10 @@ tags:
   - payments
   - revenue-collection
   - stripe
+skills:
+  - unit-economics-review
+  - rate-limit-audit
+  - migration-safety-check
 enabled: true
 governance:
   rules:

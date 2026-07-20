@@ -17,6 +17,9 @@ tags:
   - account-management
   - retention
   - expansion
+skills:
+  - onboarding-audit
+  - documentation-audit
 enabled: true
 governance:
   rules:

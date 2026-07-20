@@ -18,6 +18,9 @@ tags:
   - documentation
   - faq
   - free
+skills:
+  - onboarding-audit
+  - documentation-audit
 enabled: true
 governance:
   rules:

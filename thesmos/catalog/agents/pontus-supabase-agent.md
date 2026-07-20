@@ -18,6 +18,11 @@ tags:
   - rls
   - edge-functions
   - realtime
+skills:
+  - rls-policy-audit
+  - database-schema-review
+  - migration-safety-check
+  - auth-flow-review
 enabled: true
 governance:
   rules:

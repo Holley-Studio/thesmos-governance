@@ -18,6 +18,10 @@ tags:
   - integration
   - multi-repo
   - governance
+skills:
+  - integration-test-review
+  - api-design-review
+  - migration-safety-check
 enabled: true
 governance:
   rules:

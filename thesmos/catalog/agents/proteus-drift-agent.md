@@ -17,6 +17,10 @@ tags:
   - alignment
   - scope-creep
   - monitoring
+skills:
+  - adapter-sync
+  - validate-rules
+  - repo-health-audit
 enabled: true
 governance:
   rules:

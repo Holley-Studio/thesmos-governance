@@ -19,6 +19,9 @@ tags:
   - linkedin
   - twitter
   - instagram
+skills:
+  - content-brief-review
+  - seo-audit
 enabled: true
 governance:
   rules:

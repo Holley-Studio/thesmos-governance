@@ -18,6 +18,8 @@ tags:
   - press
   - crisis
   - thought-leadership
+skills:
+  - press-release-review
 enabled: true
 governance:
   rules:

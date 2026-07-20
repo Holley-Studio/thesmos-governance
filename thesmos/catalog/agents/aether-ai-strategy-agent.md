@@ -17,6 +17,10 @@ tags:
   - llm
   - prompt-engineering
   - rag
+skills:
+  - ai-prompt-review
+  - feature-flag-audit
+  - init-governance
 enabled: true
 governance:
   rules:

@@ -17,6 +17,8 @@ tags:
   - production
   - script
   - storytelling
+skills:
+  - video-brief-review
 enabled: true
 governance:
   rules:

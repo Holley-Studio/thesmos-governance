@@ -18,6 +18,8 @@ tags:
   - compliance
   - tos
   - nda
+skills:
+  - analytics-compliance
 enabled: true
 governance:
   rules:

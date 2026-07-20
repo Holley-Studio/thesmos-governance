@@ -18,6 +18,9 @@ tags:
   - compliance
   - bias
   - responsible-ai
+skills:
+  - ai-prompt-review
+  - analytics-compliance
 enabled: true
 governance:
   rules:

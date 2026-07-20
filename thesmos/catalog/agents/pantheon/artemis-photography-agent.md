@@ -17,6 +17,8 @@ tags:
   - art-direction
   - visual-storytelling
   - shot-list
+skills:
+  - shot-list-review
 enabled: true
 governance:
   rules:

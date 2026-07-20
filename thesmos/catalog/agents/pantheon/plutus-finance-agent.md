@@ -18,6 +18,8 @@ tags:
   - unit-economics
   - cfo
   - budget
+skills:
+  - unit-economics-review
 enabled: true
 governance:
   rules:

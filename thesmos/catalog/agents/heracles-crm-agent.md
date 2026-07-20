@@ -18,6 +18,9 @@ tags:
   - hubspot
   - pipeline
   - sales-ops
+skills:
+  - analytics-compliance
+  - observability-review
 enabled: true
 governance:
   rules:

@@ -18,6 +18,8 @@ tags:
   - qualification
   - icp
   - spin-selling
+skills:
+  - discovery-call-prep
 enabled: true
 governance:
   rules:

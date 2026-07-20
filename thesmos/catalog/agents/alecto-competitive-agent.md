@@ -16,6 +16,8 @@ tags:
   - competitive-intelligence
   - market-research
   - monitoring
+skills:
+  - competitive-landscape-analysis
 enabled: true
 governance:
   rules:

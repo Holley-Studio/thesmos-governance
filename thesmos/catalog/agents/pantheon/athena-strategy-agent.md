@@ -17,6 +17,9 @@ tags:
   - gtm
   - competitive-intelligence
   - okr
+skills:
+  - competitive-landscape-analysis
+  - okr-health-check
 enabled: true
 governance:
   rules:

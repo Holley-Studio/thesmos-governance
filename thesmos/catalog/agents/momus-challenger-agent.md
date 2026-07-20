@@ -17,6 +17,10 @@ tags:
   - clarity
   - devil-advocate
   - pre-mortem
+skills:
+  - pr-review
+  - final-hardening-pass
+  - refactor-impact-analysis
 enabled: true
 governance:
   rules:

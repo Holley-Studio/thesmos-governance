@@ -17,6 +17,9 @@ tags:
   - user-insights
   - interviews
   - usability
+skills:
+  - a11y-audit
+  - onboarding-audit
 enabled: true
 governance:
   rules:
