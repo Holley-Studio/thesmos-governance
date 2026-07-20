@@ -15,7 +15,8 @@ import { join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { tmpdir, homedir } from 'node:os';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { platform } from 'node:os';
 import { createContext } from '../lib/context.ts';
 import { parseArgs, flag, flagVal } from '../lib/args.ts';
 import { logAgentSpawn } from '../../agent-activity.ts';
@@ -607,7 +608,27 @@ function installSkillsFromPackDir(skillsPackDir: string, root: string): number {
   return installed;
 }
 
-/** Resolve the agents directory inside an extracted pack (for-claude/ preferred). Symlinked dirs are ignored. */
+/**
+ * Cross-platform zip extraction.
+ * - macOS/Linux: uses system `unzip` (fast, available everywhere)
+ * - Windows: falls back to PowerShell Expand-Archive (no extra deps)
+ * Throws on failure so the caller can clean up tempDir.
+ */
+function extractZip(zipPath: string, destDir: string): void {
+  if (platform() === 'win32') {
+    const result = spawnSync(
+      'powershell.exe',
+      ['-NoProfile', '-Command', `Expand-Archive -Force -LiteralPath '${zipPath}' -DestinationPath '${destDir}'`],
+      { encoding: 'utf8' },
+    );
+    if (result.status !== 0) {
+      throw new Error(result.stderr || result.stdout || 'PowerShell Expand-Archive failed');
+    }
+  } else {
+    execFileSync('unzip', ['-o', '-q', zipPath, '-d', destDir]);
+  }
+}
+
 /**
  * F7 fix: Post-extraction containment check.
  * Walks every real file under dir and asserts its resolved path starts with
@@ -668,7 +689,7 @@ export function installFromPack(packPath: string, root: string): { installed: nu
   if (statSync(packPath).isFile() && packPath.endsWith('.zip')) {
     tempDir = mkdtempSync(join(tmpdir(), 'thesmos-pack-'));
     try {
-      execFileSync('unzip', ['-o', '-q', packPath, '-d', tempDir]);
+      extractZip(packPath, tempDir);
       // F7 fix: assert every extracted file is inside tempDir regardless of
       // the host's unzip behaviour — some builds honour `../` traversal entries.
       assertContainedInDir(tempDir);
@@ -677,7 +698,7 @@ export function installFromPack(packPath: string, root: string): { installed: nu
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('escape detected')) throw err;
       throw new Error(
-        `Could not extract ${packPath} automatically (is \`unzip\` installed?).\n` +
+        `Could not extract ${packPath}.\n` +
         `Extract it manually, then run: thesmos pantheon:install --pack <extracted-folder>`,
       );
     }

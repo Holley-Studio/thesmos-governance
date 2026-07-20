@@ -144,10 +144,14 @@ describe('checkScope — path enforcement', () => {
     expect(v!.type).toBe('blocked_path');
   });
 
-  it('F1 — blocks Write to .claude/settings.json', () => {
+  it('F1 — does NOT treat .claude/settings.json as a governance file', () => {
+    // .claude/settings.json is intentionally NOT governance-protected — users must be
+    // able to ask Claude to edit their own Claude Code settings.
     const v = checkScope({ toolName: 'Write', filePath: '.claude/settings.json', root });
-    expect(v).not.toBeNull();
-    expect(v!.type).toBe('blocked_path');
+    // May be blocked by allowedPaths (outside src/), but the message must NOT say "governance file"
+    if (v !== null) {
+      expect(v.message).not.toContain('governance file');
+    }
   });
 
   it('F2 — blocks traversal path /tmp/../etc/shadow', () => {

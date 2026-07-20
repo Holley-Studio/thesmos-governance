@@ -103,8 +103,8 @@ const GOVERNANCE_PROTECTED = new Set([
   '.thesmos/scope.json',
   '.thesmos/managed-agents.json',
   '.thesmos/config.json',
-  '.claude/settings.json',
-  '.claude/settings.local.json',
+  // .claude/settings.json is intentionally NOT here — users must be able to
+  // ask Claude to update their own Claude Code settings freely.
 ]);
 
 // ── Load / save ───────────────────────────────────────────────────────────────
