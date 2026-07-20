@@ -466,6 +466,16 @@ function toClaudeCodeAgent(agent: AgentMeta): string {
   const description = `${domain}. Invoke for ${triggers || domain.toLowerCase()} tasks. Responds in character as ${name} of the Thesmos Pantheon.`
   const body = agent.body.replace(/^# .+\r?\n+/, '')
 
+  const skillLines = agent.skillIds.length > 0
+    ? [
+        '',
+        '## Skills',
+        '',
+        'Use these Thesmos skills for structured workflow execution:',
+        ...agent.skillIds.map(id => `- \`/${id}\` — run the ${id.replace(/-/g, ' ')} workflow`),
+      ].join('\n')
+    : ''
+
   return [
     '---',
     `name: ${godEmoji(agent)} ${name} — ${agent.name.replace(/^God Agent \w+ — /, '')}`,
@@ -479,7 +489,7 @@ function toClaudeCodeAgent(agent: AgentMeta): string {
     '',
     `# ${godEmoji(agent)} ${name} — ${domain}`,
     '',
-    body,
+    body + skillLines,
   ].join('\n')
 }
 

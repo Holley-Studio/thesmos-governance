@@ -112,3 +112,49 @@ describe('installFromPack', () => {
     expect(reg.agents).toContain('ares-sales-agent');
   });
 });
+
+describe('exportClaudeCode skill section', () => {
+  it('includes ## Skills section when agent has skillIds', async () => {
+    const { exportClaudeCodeForTest } = await import('./pantheon.ts');
+    const agent = {
+      id: 'argus-security-agent',
+      name: 'God Agent Argus — Security Agent',
+      god: 'Argus',
+      role: 'Security & Threat Modeling',
+      emoji: '👁',
+      mythology: 'All-seeing giant.',
+      color: '#27AE60',
+      avatar: 'argus.svg',
+      version: '1.0.0',
+      tags: ['security'],
+      governanceRules: ['SEC_001'],
+      skillIds: ['security-scan', 'secret-scan'],
+      body: '## Identity\nArgus body here.',
+    };
+    const output = exportClaudeCodeForTest(agent);
+    expect(output).toContain('## Skills');
+    expect(output).toContain('`/security-scan`');
+    expect(output).toContain('`/secret-scan`');
+  });
+
+  it('omits ## Skills section when agent has no skillIds', async () => {
+    const { exportClaudeCodeForTest } = await import('./pantheon.ts');
+    const agent = {
+      id: 'zeus-executive-agent',
+      name: 'God Agent Zeus — Executive Agent',
+      god: 'Zeus',
+      role: 'Executive Orchestration',
+      emoji: '⚡',
+      mythology: 'King of gods.',
+      color: '#F1C40F',
+      avatar: 'zeus.svg',
+      version: '1.0.0',
+      tags: ['executive'],
+      governanceRules: [],
+      skillIds: [],
+      body: '## Identity\nZeus body here.',
+    };
+    const output = exportClaudeCodeForTest(agent);
+    expect(output).not.toContain('## Skills');
+  });
+});

@@ -284,6 +284,19 @@ function writeRegistry(root: string, data: Record<string, unknown>): void {
 
 // ── Export generators ──────────────────────────────────────────────────────────
 
+/** Builds the ## Skills section for agents with bound skills. Returns '' when skillIds is empty. */
+function skillsSection(skillIds: string[]): string {
+  if (skillIds.length === 0) return '';
+  const lines = skillIds.map(id => `- \`/${id}\` — run the ${id.replace(/-/g, ' ')} workflow`);
+  return [
+    '',
+    '## Skills',
+    '',
+    'Use these Thesmos skills for structured workflow execution:',
+    ...lines,
+  ].join('\n');
+}
+
 function exportClaudeCode(agent: PantheonAgent): string {
   const tools = ['Read', 'Write', 'Bash'];
   // Model comes from the catalog (via the generated PANTHEON_MODELS map) so it
@@ -301,8 +314,13 @@ tools:
 ${tools.map(t => `  - ${t}`).join('\n')}
 ---
 
-${agent.body}
+${agent.body}${skillsSection(agent.skillIds)}
 `;
+}
+
+/** Exported for tests only — not part of the public CLI API. */
+export function exportClaudeCodeForTest(agent: PantheonAgent): string {
+  return exportClaudeCode(agent);
 }
 
 function exportChatGPT(agent: PantheonAgent): string {
