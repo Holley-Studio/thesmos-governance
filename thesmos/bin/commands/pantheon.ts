@@ -616,9 +616,11 @@ function installSkillsFromPackDir(skillsPackDir: string, root: string): number {
  */
 function extractZip(zipPath: string, destDir: string): void {
   if (platform() === 'win32') {
+    // Pass paths as separate argv elements bound to PowerShell params — never
+    // interpolated into the command string, so paths with quotes/$ can't inject.
     const result = spawnSync(
       'powershell.exe',
-      ['-NoProfile', '-Command', `Expand-Archive -Force -LiteralPath '${zipPath}' -DestinationPath '${destDir}'`],
+      ['-NoProfile', '-Command', '& { param($src, $dst) Expand-Archive -Force -LiteralPath $src -DestinationPath $dst }', '--', zipPath, destDir],
       { encoding: 'utf8' },
     );
     if (result.status !== 0) {
