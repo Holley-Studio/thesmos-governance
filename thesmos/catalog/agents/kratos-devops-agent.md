@@ -17,6 +17,12 @@ tags:
   - infrastructure
   - kubernetes
   - terraform
+skills:
+  - ci-pipeline-audit
+  - build-optimization
+  - env-variable-audit
+  - performance-profile
+  - migration-safety-check
 enabled: true
 governance:
   rules:

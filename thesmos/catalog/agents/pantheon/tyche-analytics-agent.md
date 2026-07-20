@@ -18,6 +18,10 @@ tags:
   - metrics
   - dashboard
   - gdpr-aware
+skills:
+  - analytics-compliance
+  - observability-review
+  - logging-audit
 enabled: true
 governance:
   rules:

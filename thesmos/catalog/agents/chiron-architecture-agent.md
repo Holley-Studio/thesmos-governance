@@ -17,6 +17,11 @@ tags:
   - system-design
   - adr
   - engineering
+skills:
+  - api-design-review
+  - database-schema-review
+  - graphql-schema-review
+  - refactor-impact-analysis
 enabled: true
 governance:
   rules:

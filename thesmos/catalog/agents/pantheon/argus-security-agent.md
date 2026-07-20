@@ -18,6 +18,15 @@ tags:
   - owasp
   - compliance
   - audit
+skills:
+  - security-scan
+  - secret-scan
+  - auth-flow-review
+  - rls-policy-audit
+  - cors-audit
+  - csp-audit
+  - infrastructure-security-review
+  - webhook-security-review
 enabled: true
 governance:
   rules:

@@ -17,6 +17,11 @@ tags:
   - testing
   - test-strategy
   - playwright
+skills:
+  - e2e-test-review
+  - integration-test-review
+  - add-tests
+  - test-coverage-report
 enabled: true
 governance:
   rules:
