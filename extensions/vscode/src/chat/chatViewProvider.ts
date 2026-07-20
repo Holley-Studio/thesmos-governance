@@ -10,7 +10,7 @@
 
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ClaudeSession, type SessionEvent, type PermissionMode } from './claudeSession.js';
@@ -120,6 +120,18 @@ function workspaceKey(root: string): string {
   return root.replace(/[^a-zA-Z0-9]/g, '-').slice(-80);
 }
 
+/** Read sessionMaxCostUSD from .thesmos/config.json → tokenBudget, returning undefined if absent. */
+function readSessionBudget(workspaceRoot: string): number | undefined {
+  try {
+    const raw = JSON.parse(readFileSync(join(workspaceRoot, '.thesmos', 'config.json'), 'utf-8')) as Record<string, unknown>;
+    const tb = raw['tokenBudget'] as Record<string, unknown> | undefined;
+    const v = Number(tb?.['sessionMaxCostUSD']);
+    return isFinite(v) && v > 0 ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Read `model:` pinned in agent definition frontmatter (.claude/agents/*.md,
  * project then user scope) keyed by the god's lowercase first name — so god
@@ -208,6 +220,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private savedUsdSession = 0;
   private savingsCacheAt: number | undefined;
   private savingsCacheVal = 0;
+  /** Session cost ceiling from .thesmos/config.json tokenBudget.sessionMaxCostUSD. */
+  private readonly sessionBudgetUsd: number | undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -220,6 +234,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       workspaceRoot,
       vscode.Uri.joinPath(this.context.globalStorageUri, 'checkpoints', workspaceKey(workspaceRoot)).fsPath,
     );
+    this.sessionBudgetUsd = readSessionBudget(workspaceRoot);
     this.restore();
   }
 
@@ -521,6 +536,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           case 'exportRecord':
             void this.exportCouncilRecord();
             break;
+          case 'openBudgetConfig':
+            void vscode.workspace.openTextDocument(
+              vscode.Uri.file(join(this.workspaceRoot, '.thesmos', 'config.json'))
+            ).then((doc) => vscode.window.showTextDocument(doc));
+            break;
           case 'pasteImage':
             if (typeof msg.data === 'string' && msg.data.length > 0) {
               this.savePastedImage(webview, msg.data, msg.mime ?? 'image/png');
@@ -571,6 +591,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       <button id="export-record" title="Export this session as a Council Record (markdown)">📤</button>
       <button id="open-tab" title="Open in editor tab">↗️</button>
       <button id="new-session" title="New session">⟳ New</button>
+    </div>
+    <div id="budget-bar-wrap" title="Session cost — click to edit budget in .thesmos/config.json">
+      <span id="budget-cost">$0.0000</span>
+      <div id="budget-bar"><div id="budget-fill"></div></div>
+      <span id="budget-ceiling"></span>
     </div>
     <div id="log"></div>
     <div id="empty">
@@ -1386,13 +1411,14 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   private broadcast(message: unknown): void {
-    // Credit Guardian: every status update carries the savings figures so the
-    // header stays current without threading them through ten call sites.
+    // Credit Guardian: every status update carries the savings figures and session budget
+    // so the header bar stays current without threading them through ten call sites.
     if (typeof message === 'object' && message !== null && (message as { type?: string }).type === 'status') {
       message = {
         ...message,
         savedUsdSession: this.savedUsdSession,
         savedUsdMonth: this.monthSavings(),
+        sessionBudgetUsd: this.sessionBudgetUsd,
       };
     }
     for (const webview of this.webviews) this.post(webview, message);

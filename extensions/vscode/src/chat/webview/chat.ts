@@ -50,7 +50,7 @@ type InboundMessage =
   | { type: 'delta'; text: string }
   | { type: 'deltaDone' }
   | { type: 'godComplete'; toolUseId: string; summary: string; isError: boolean; durationMs: number }
-  | { type: 'status'; running: boolean; model?: string; sessionId?: string; permissionMode?: string; totalCostUsd?: number; savedUsdSession?: number; savedUsdMonth?: number }
+  | { type: 'status'; running: boolean; model?: string; sessionId?: string; permissionMode?: string; totalCostUsd?: number; savedUsdSession?: number; savedUsdMonth?: number; sessionBudgetUsd?: number }
   | { type: 'providerInfo'; label: string; models: Array<{ id: string; label: string }>; currentModel: string }
   | { type: 'activity'; text: string | null }
   | { type: 'phase'; text: string | null }
@@ -79,8 +79,39 @@ const providerBtn = document.getElementById('provider-btn') as HTMLButtonElement
 const attachBtn = document.getElementById('attach') as HTMLButtonElement;
 const mentionPopup = document.getElementById('mention-popup') as HTMLDivElement;
 const attachmentsRow = document.getElementById('attachments') as HTMLDivElement;
+const budgetBarWrap = document.getElementById('budget-bar-wrap') as HTMLDivElement;
+const budgetCostEl = document.getElementById('budget-cost') as HTMLSpanElement;
+const budgetFill = document.getElementById('budget-fill') as HTMLDivElement;
+const budgetCeilingEl = document.getElementById('budget-ceiling') as HTMLSpanElement;
 
 let pendingAttachments: string[] = [];
+/** Session cost ceiling from .thesmos/config.json — undefined means no limit configured. */
+let sessionBudgetUsd: number | undefined;
+
+/**
+ * Update the always-visible header budget bar.
+ * States: no-limit (bar hidden), healthy (green), warn (amber ≥60%), crit (red ≥85%).
+ */
+function updateBudgetBar(costUsd: number): void {
+  if (!budgetBarWrap) return;
+  if (!sessionBudgetUsd) {
+    // No budget configured — show cost only, no fill bar
+    budgetBarWrap.classList.add('no-limit');
+    budgetCostEl.textContent = `$${costUsd.toFixed(4)}`;
+    budgetCeilingEl.textContent = '';
+    return;
+  }
+  budgetBarWrap.classList.remove('no-limit');
+  const pct = Math.min(100, (costUsd / sessionBudgetUsd) * 100);
+  budgetFill.style.width = `${pct}%`;
+  budgetFill.classList.toggle('warn', pct >= 60 && pct < 85);
+  budgetFill.classList.toggle('crit', pct >= 85);
+  budgetBarWrap.classList.toggle('pulsing', pct >= 100);
+  budgetCostEl.textContent = `$${costUsd.toFixed(4)}`;
+  budgetCeilingEl.textContent = `/ $${sessionBudgetUsd.toFixed(2)}`;
+  const pctLabel = Math.round(pct);
+  budgetBarWrap.title = `Session cost: $${costUsd.toFixed(4)} of $${sessionBudgetUsd.toFixed(2)} budget (${pctLabel}%) — click to edit .thesmos/config.json`;
+}
 
 // ── Thinking indicator ────────────────────────────────────────────────────────
 // Shown instantly on send and whenever the turn is running but nothing has
@@ -722,6 +753,7 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       // While a turn runs, Send becomes Queue — messages wait their turn.
       sendBtn.textContent = msg.running ? 'Queue' : 'Send';
       sendBtn.title = msg.running ? 'Queue for when the current turn finishes' : 'Send (Enter)';
+      if (msg.sessionBudgetUsd !== undefined) sessionBudgetUsd = msg.sessionBudgetUsd;
       if (msg.model || msg.sessionId || msg.totalCostUsd !== undefined) {
         meta.textContent = [
           msg.model,
@@ -731,6 +763,7 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
           .filter(Boolean)
           .join(' · ');
       }
+      if (msg.totalCostUsd !== undefined) updateBudgetBar(msg.totalCostUsd);
       if (msg.permissionMode) modeSelect.value = msg.permissionMode;
       break;
     case 'providerInfo': {
@@ -821,6 +854,7 @@ empty.addEventListener('click', (e) => {
 });
 stopBtn.addEventListener('click', () => vscode.postMessage({ type: 'stop' }));
 newBtn.addEventListener('click', () => vscode.postMessage({ type: 'newSession' }));
+if (budgetBarWrap) budgetBarWrap.addEventListener('click', () => vscode.postMessage({ type: 'openBudgetConfig' }));
 attachBtn.addEventListener('click', () => vscode.postMessage({ type: 'pickImage' }));
 modeSelect.addEventListener('change', () =>
   vscode.postMessage({ type: 'setPermissionMode', mode: modeSelect.value }),

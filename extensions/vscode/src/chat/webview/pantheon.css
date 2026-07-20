@@ -80,6 +80,64 @@ html, body {
   color: var(--pc-gold-bright);
 }
 
+/* ── Session budget bar (always-visible header band) ── */
+#budget-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(212, 169, 65, 0.04);
+  border-bottom: 1px solid var(--pc-border);
+  flex: none;
+  cursor: pointer;
+  user-select: none;
+  min-height: 22px;
+}
+#budget-bar-wrap:hover { background: rgba(212, 169, 65, 0.09); }
+#budget-cost {
+  font-size: 0.78em;
+  color: var(--pc-dim);
+  white-space: nowrap;
+  min-width: 52px;
+  text-align: right;
+}
+#budget-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+#budget-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  background: #22c55e;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+#budget-fill.warn { background: #f59e0b; }
+#budget-fill.crit { background: #ef4444; }
+#budget-ceiling {
+  font-size: 0.78em;
+  color: var(--pc-dim);
+  white-space: nowrap;
+  min-width: 44px;
+}
+/* When no budget is configured, hide the fill bar and show cost-only */
+#budget-bar-wrap.no-limit #budget-bar { display: none; }
+#budget-bar-wrap.no-limit #budget-ceiling { display: none; }
+#budget-bar-wrap.no-limit #budget-cost { min-width: auto; color: var(--pc-dim); }
+/* Over-budget pulsing glow */
+@keyframes budget-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  50% { box-shadow: 0 0 6px 2px rgba(239,68,68,0.4); }
+}
+#budget-bar-wrap.pulsing #budget-bar { animation: budget-pulse 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  #budget-fill { transition: none; }
+  #budget-bar-wrap.pulsing #budget-bar { animation: none; }
+}
+
 /* ── Message log ── */
 #log {
   flex: 1;
