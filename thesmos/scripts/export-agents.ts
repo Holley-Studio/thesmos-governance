@@ -71,6 +71,7 @@ interface AgentMeta {
   tags: string[]
   /** Rule IDs from the agent's governance.rules frontmatter (e.g. AGNT_001). */
   governanceRules: string[]
+  skillIds: string[]
   enabled: boolean
   rawContent: string
   body: string
@@ -191,6 +192,7 @@ function extractMeta(source: string): AgentMeta {
     openaiModel: (platforms['openai_model'] ?? 'gpt-5.5').replace(/\[1m\]/g, ''),
     tags: Array.isArray(meta['tags']) ? (meta['tags'] as string[]) : [],
     governanceRules: extractGovernanceRules(source),
+    skillIds: Array.isArray(meta['skills']) ? (meta['skills'] as string[]) : [],
     enabled: meta['enabled'] !== false,
     rawContent: source,
     body,

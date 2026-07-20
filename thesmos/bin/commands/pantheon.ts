@@ -90,6 +90,7 @@ interface PantheonAgent {
   version: string;
   tags: string[];
   governanceRules: string[];
+  skillIds: string[];
   body: string;
 }
 
@@ -159,6 +160,7 @@ function parsePantheonAgent(raw: string, fallbackId: string): PantheonAgent | nu
     version: get('version') || '1.0.0',
     tags: getArr('tags'),
     governanceRules,
+    skillIds: getArr('skills'),
     body: body.includes('## Operating Doctrine')
       ? body
       : `${body}\n\n${buildOperatingDoctrine(god, role, emoji, governanceRules)}`,
