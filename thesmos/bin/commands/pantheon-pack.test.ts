@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { installFromPack } from './pantheon.ts';
 
+// installFromPack now returns { installed, skipped, errors, skillsInstalled }
+type InstallResult = { installed: number; skipped: number; errors: string[]; skillsInstalled: number };
+
 const AGENT = (id: string) => `---
 name: ${id}
 description: Test agent ${id} for pack install
@@ -110,6 +113,55 @@ describe('installFromPack', () => {
     installFromPack(pack, root);
     const reg = JSON.parse(readFileSync(join(root, '.thesmos', 'registry.json'), 'utf8')) as { agents?: string[] };
     expect(reg.agents).toContain('ares-sales-agent');
+  });
+
+  it('installs skills from for-claude/skills/ when present', () => {
+    const dir = join(pack, 'for-claude');
+    mkdirSync(dir);
+    writeFileSync(join(dir, 'ares-sales-agent.md'), AGENT('ares-sales-agent'));
+    // Create a skills directory with one skill
+    const skillsDir = join(dir, 'skills', 'security-scan');
+    mkdirSync(skillsDir, { recursive: true });
+    writeFileSync(join(skillsDir, 'SKILL.md'), '---\nname: security-scan\ndescription: Security sweep.\n---\n\nBody.\n');
+
+    const result = installFromPack(pack, root) as InstallResult;
+
+    expect(result.errors).toEqual([]);
+    expect(result.installed).toBe(1);
+    expect(result.skillsInstalled).toBe(1);
+    expect(existsSync(join(root, '.claude', 'skills', 'security-scan', 'SKILL.md'))).toBe(true);
+  });
+
+  it('skips skill dirs that lack a SKILL.md', () => {
+    const dir = join(pack, 'for-claude');
+    mkdirSync(dir);
+    writeFileSync(join(dir, 'ares-sales-agent.md'), AGENT('ares-sales-agent'));
+    // Skill dir with no SKILL.md inside
+    mkdirSync(join(dir, 'skills', 'empty-skill'), { recursive: true });
+
+    const result = installFromPack(pack, root) as InstallResult;
+
+    expect(result.skillsInstalled).toBe(0);
+    expect(existsSync(join(root, '.claude', 'skills', 'empty-skill'))).toBe(false);
+  });
+
+  it('does not follow symlinked skill dirs', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'thesmos-skill-outside-'));
+    try {
+      mkdirSync(join(outside, 'SKILL.md'), { recursive: true }); // not a file but directory — should be skipped
+      const dir = join(pack, 'for-claude');
+      mkdirSync(dir);
+      writeFileSync(join(dir, 'ares-sales-agent.md'), AGENT('ares-sales-agent'));
+      mkdirSync(join(dir, 'skills'), { recursive: true });
+      symlinkSync(outside, join(dir, 'skills', 'evil-skill'), 'dir');
+
+      const result = installFromPack(pack, root) as InstallResult;
+
+      expect(result.skillsInstalled).toBe(0);
+      expect(existsSync(join(root, '.claude', 'skills', 'evil-skill'))).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 });
 

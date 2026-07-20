@@ -447,6 +447,34 @@ function isRealDirectory(path: string): boolean {
   return st.isDirectory() && !st.isSymbolicLink();
 }
 
+/**
+ * Copy skills from a pack's `for-claude/skills/` directory to `.claude/skills/` in the project root.
+ * Each skill is a subdirectory containing a SKILL.md file.
+ * Skips symlinks and dirs without a SKILL.md (guards against malicious or malformed packs).
+ */
+function installSkillsFromPackDir(skillsPackDir: string, root: string): number {
+  if (!existsSync(skillsPackDir)) return 0;
+
+  const targetBase = join(root, '.claude', 'skills');
+  mkdirSync(targetBase, { recursive: true });
+
+  let installed = 0;
+  for (const entry of readdirSync(skillsPackDir)) {
+    const srcDir = join(skillsPackDir, entry);
+    // Never follow symlinks — same policy as agent install
+    if (lstatSync(srcDir).isSymbolicLink()) continue;
+    if (!statSync(srcDir).isDirectory()) continue;
+    const skillMdSrc = join(srcDir, 'SKILL.md');
+    if (!existsSync(skillMdSrc)) continue;
+
+    const destDir = join(targetBase, entry);
+    mkdirSync(destDir, { recursive: true });
+    writeFileSync(join(destDir, 'SKILL.md'), readFileSync(skillMdSrc, 'utf8'), 'utf8');
+    installed++;
+  }
+  return installed;
+}
+
 /** Resolve the agents directory inside an extracted pack (for-claude/ preferred). Symlinked dirs are ignored. */
 function resolvePackAgentsDir(packDir: string): string {
   const direct = join(packDir, 'for-claude');
@@ -467,7 +495,7 @@ function resolvePackAgentsDir(packDir: string): string {
  * or .zip). Exported for tests. Throws on missing path / empty pack; individual
  * agent failures are collected, not fatal.
  */
-export function installFromPack(packPath: string, root: string): { installed: number; skipped: number; errors: string[] } {
+export function installFromPack(packPath: string, root: string): { installed: number; skipped: number; errors: string[]; skillsInstalled: number } {
   if (!existsSync(packPath)) {
     throw new Error(`Pack not found: ${packPath}\nDownload it from your Gumroad library, then re-run with the correct path.`);
   }
@@ -525,6 +553,10 @@ export function installFromPack(packPath: string, root: string): { installed: nu
       }
     }
 
+    // Install skills from for-claude/skills/ if present
+    const skillsPackDir = join(agentsDir, 'skills');
+    const skillsInstalled = installSkillsFromPackDir(skillsPackDir, root);
+
     if (installed + skipped > 0) {
       syncAdapters(root);
       // Skip writing the home-dir purchase marker during test runs — prevents
@@ -540,7 +572,7 @@ export function installFromPack(packPath: string, root: string): { installed: nu
       }
     }
 
-    return { installed, skipped, errors };
+    return { installed, skipped, errors, skillsInstalled };
   } finally {
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   }
@@ -556,12 +588,12 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
   const packPath = flags['pack'] as string | undefined;
   if (packPath) {
     try {
-      const { installed, skipped, errors } = installFromPack(packPath, root);
+      const { installed, skipped, errors, skillsInstalled } = installFromPack(packPath, root);
       if (errors.length > 0) {
         console.error(`\n  ✗ ${errors.length} agent(s) failed:\n`);
         for (const e of errors) console.error(`    ${e}`);
       }
-      console.log(`\n  ⚡ Full Pantheon installed: ${installed} new, ${skipped} updated.`);
+      console.log(`\n  ⚡ Full Pantheon installed: ${installed} new, ${skipped} updated${skillsInstalled > 0 ? `, ${skillsInstalled} skills` : ''}.`);
       console.log('  Adapters regenerated. The gods are at your service.\n');
       if (errors.length > 0 && installed + skipped === 0) process.exit(1);
     } catch (err) {
