@@ -465,7 +465,9 @@ function installSkillsFromPackDir(skillsPackDir: string, root: string): number {
     if (lstatSync(srcDir).isSymbolicLink()) continue;
     if (!statSync(srcDir).isDirectory()) continue;
     const skillMdSrc = join(srcDir, 'SKILL.md');
-    if (!existsSync(skillMdSrc)) continue;
+    // lstat (not stat) so a symlinked SKILL.md is rejected — prevents path-traversal reads via crafted packs
+    const skillMdStat = lstatSync(skillMdSrc, { throwIfNoEntry: false });
+    if (!skillMdStat?.isFile()) continue;
 
     const destDir = join(targetBase, entry);
     mkdirSync(destDir, { recursive: true });
