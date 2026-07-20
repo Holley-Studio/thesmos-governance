@@ -28,6 +28,15 @@ const _agentsDirCandidates = [
   join(__dirname, '../catalog/agents'),    // bundle: dist/ → thesmos/
 ];
 const AGENTS_DIR = _agentsDirCandidates.find(p => existsSync(p)) ?? _agentsDirCandidates[0];
+
+// pantheon/exports/skills/ — pre-built skill exports, one dir per skill.
+// Skills bundled in the $24 pack live here; --write copies them alongside agents.
+const _skillsExportDirCandidates = [
+  join(__dirname, '../../../pantheon/exports/skills'), // dev: bin/commands/ → repo root
+  join(__dirname, '../../pantheon/exports/skills'),    // bundle: dist/ → thesmos/
+];
+const SKILLS_EXPORT_DIR = _skillsExportDirCandidates.find(p => existsSync(p)) ?? _skillsExportDirCandidates[0];
+
 const PANTHEON_DIR = join(AGENTS_DIR, 'pantheon');
 const FIGMA_DIR = join(AGENTS_DIR, 'figma');
 const MEMORY_DIR_REL = '.thesmos/pantheon/memory';
@@ -64,6 +73,31 @@ function upsellLine(installedGodCount: number): string | null {
   return `  ${installedGodCount} of ${m.pantheonTotal} gods installed. The full Pantheon — ` +
     `${m.pantheonTotal} specialists orchestrated by Zeus — is $${m.priceUsd} (one-time):\n` +
     `  ${m.storeUrl}\n`;
+}
+
+/**
+ * Copy skills linked by an agent (via skillIds) from the pre-built export dir
+ * to .claude/skills/ in the project root. Returns count of skills copied.
+ * Skips skills whose export dir doesn't exist (graceful: future skill IDs, dev envs).
+ */
+function installLinkedSkills(skillIds: string[], root: string): number {
+  if (skillIds.length === 0 || !existsSync(SKILLS_EXPORT_DIR)) return 0;
+
+  const targetBase = join(root, '.claude', 'skills');
+  mkdirSync(targetBase, { recursive: true });
+
+  let copied = 0;
+  for (const id of skillIds) {
+    const srcDir = join(SKILLS_EXPORT_DIR, id);
+    const skillMd = join(srcDir, 'SKILL.md');
+    if (!existsSync(skillMd)) continue; // skill not yet exported — skip silently
+
+    const destDir = join(targetBase, id);
+    mkdirSync(destDir, { recursive: true });
+    writeFileSync(join(destDir, 'SKILL.md'), readFileSync(skillMd, 'utf8'), 'utf8');
+    copied++;
+  }
+  return copied;
 }
 
 // Slugs of agent .md files directly in a directory (non-recursive), excluding
@@ -648,9 +682,17 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
       for (const e of errors) console.error(`    ${e}`);
     }
 
+    // Install skills linked to the installed agents
+    let skillsWritten = 0;
+    for (const id of toInstall) {
+      const agent = agents.find(a => a.id === id)!;
+      skillsWritten += installLinkedSkills(agent.skillIds, root);
+    }
+
     if (written + skipped > 0) {
       console.log(`\n  ✓ ${written} agent(s) written to .thesmos/agents/`);
       if (skipped > 0) console.log(`    ${skipped} already present — skipped`);
+      if (skillsWritten > 0) console.log(`  ✓ ${skillsWritten} linked skill(s) written to .claude/skills/`);
 
       try {
         const synced = syncAdapters(root);
