@@ -652,7 +652,7 @@ function buildDispatchOrderCard(item: Extract<UiItem, { kind: 'dispatchOrder' }>
 
   if (item.budgetLine) {
     const budget = div('dispatch-order-budget');
-    budget.textContent = `~${item.budgetLine} (estimates vs flagship baseline)`;
+    budget.textContent = `${item.budgetLine} (estimates vs flagship baseline)`;
     card.appendChild(budget);
   }
 
