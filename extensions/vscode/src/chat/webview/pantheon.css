@@ -934,3 +934,63 @@ body.running #send {
   .drop-icon { animation: none; }
   #drop-overlay { transition: none; }
 }
+
+/* ── Dispatch Order — the pre-execution approval gate ─────────────────── */
+.dispatch-order {
+  border: 1px solid var(--pc-gold);
+  border-radius: 6px;
+  background: linear-gradient(160deg, rgba(255, 215, 0, 0.08), rgba(255, 215, 0, 0.02));
+  padding: 12px 14px;
+  margin: 8px 0;
+}
+.dispatch-order-title {
+  font-weight: 600;
+  color: var(--pc-gold-bright);
+  margin-bottom: 6px;
+}
+.dispatch-order-god {
+  padding: 2px 0 2px 8px;
+  opacity: 0.95;
+}
+.dispatch-order-model {
+  margin-top: 8px;
+  font-weight: 500;
+}
+.dispatch-order-rationale {
+  font-size: 0.9em;
+  color: var(--pc-dim);
+  margin-top: 2px;
+}
+.dispatch-order-budget {
+  font-size: 0.85em;
+  color: var(--pc-dim);
+  margin-top: 6px;
+}
+.dispatch-order-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.dispatch-order-actions button {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+.dispatch-approve {
+  background: var(--pc-gold-bright);
+  color: #1a1a1a;
+}
+.dispatch-approve:hover {
+  filter: brightness(1.1);
+}
+.dispatch-skip {
+  background: transparent;
+  color: inherit;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+.dispatch-order-status {
+  color: var(--pc-dim);
+  font-size: 0.9em;
+}

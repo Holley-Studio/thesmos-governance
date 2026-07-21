@@ -26,6 +26,7 @@ type UiItem =
   | { kind: 'permission'; requestId: string; toolName: string; label: string; status: 'pending' | 'allowed' | 'denied' }
   | { kind: 'todo'; id: string; todos: TodoEntry[] }
   | { kind: 'governance'; findings: GovernanceFinding[]; fileCount: number }
+  | { kind: 'dispatchOrder'; orderId: string; advice: DispatchAdviceUi; budgetLine: string | null; status: 'pending' | 'approved' | 'skipped' | 'dismissed' }
   | { kind: 'error'; text: string }
   | { kind: 'turnFooter'; text: string };
 
@@ -35,6 +36,12 @@ interface GovernanceFinding {
   file: string;
   line?: number;
   message: string;
+}
+
+interface DispatchAdviceUi {
+  classification: { mechanicalPct: number; creativePct: number; architecturePct: number; bulkPct: number };
+  recommendation: { model: string; claudeModel: string; costMultiple: string; rationale: string };
+  agents: Array<{ emoji: string; name: string; domain: string }>;
 }
 
 interface TodoEntry {
@@ -59,6 +66,7 @@ type InboundMessage =
   | { type: 'removeLive' }
   | { type: 'attachments'; paths: string[] }
   | { type: 'permissionResolved'; requestId: string; status: 'allowed' | 'denied' }
+  | { type: 'dispatchResolved'; orderId: string; status: 'approved' | 'skipped' | 'dismissed' }
   | { type: 'todoUpdate'; id: string; todos: TodoEntry[] }
   | { type: 'fileList'; paths: string[] };
 
@@ -464,6 +472,10 @@ function renderItem(item: UiItem): void {
       append(buildGovernanceCard(item));
       break;
     }
+    case 'dispatchOrder': {
+      append(buildDispatchOrderCard(item));
+      break;
+    }
     case 'error': {
       const el = div('msg error-note');
       el.textContent = item.text;
@@ -614,6 +626,62 @@ function buildGovernanceCard(item: Extract<UiItem, { kind: 'governance' }>): HTM
     });
   }
   return el;
+}
+
+function buildDispatchOrderCard(item: Extract<UiItem, { kind: 'dispatchOrder' }>): HTMLDivElement {
+  const card = div('dispatch-order');
+  card.dataset.orderId = item.orderId;
+
+  const title = div('dispatch-order-title');
+  title.textContent = `⚡ Dispatch Order — ${item.advice.agents.length || 'no'} specialist${item.advice.agents.length === 1 ? '' : 's'} matched`;
+  card.appendChild(title);
+
+  for (const god of item.advice.agents) {
+    const row = div('dispatch-order-god');
+    row.textContent = `${god.emoji} ${god.name} — ${god.domain}`;
+    card.appendChild(row);
+  }
+
+  const model = div('dispatch-order-model');
+  model.textContent = `Recommended: ${item.advice.recommendation.model} (${item.advice.recommendation.claudeModel}) · ${item.advice.recommendation.costMultiple}`;
+  card.appendChild(model);
+
+  const why = div('dispatch-order-rationale');
+  why.textContent = item.advice.recommendation.rationale;
+  card.appendChild(why);
+
+  if (item.budgetLine) {
+    const budget = div('dispatch-order-budget');
+    budget.textContent = `~${item.budgetLine} (estimates vs flagship baseline)`;
+    card.appendChild(budget);
+  }
+
+  const actions = div('dispatch-order-actions');
+  if (item.status === 'pending') {
+    const approve = document.createElement('button');
+    approve.className = 'dispatch-approve';
+    approve.textContent = '⚡ Approve & Execute';
+    approve.addEventListener('click', () => {
+      vscode.postMessage({ type: 'dispatchApprove', orderId: item.orderId });
+    });
+    const skip = document.createElement('button');
+    skip.className = 'dispatch-skip';
+    skip.textContent = 'Send as-is';
+    skip.addEventListener('click', () => {
+      vscode.postMessage({ type: 'dispatchSkip', orderId: item.orderId });
+    });
+    actions.appendChild(approve);
+    actions.appendChild(skip);
+  } else {
+    const done = div('dispatch-order-status');
+    done.textContent =
+      item.status === 'approved' ? '✓ Approved — council dispatched'
+      : item.status === 'skipped' ? '→ Sent as-is'
+      : '· Superseded';
+    actions.appendChild(done);
+  }
+  card.appendChild(actions);
+  return card;
 }
 
 // ── Streaming ─────────────────────────────────────────────────────────────
@@ -794,6 +862,24 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       const resolved = div('perm-resolved');
       resolved.textContent = msg.status === 'allowed' ? '✓ Approved' : '✕ Denied';
       el.appendChild(resolved);
+      break;
+    }
+    case 'dispatchResolved': {
+      const el = document.querySelector<HTMLDivElement>(
+        `.dispatch-order[data-order-id="${msg.orderId}"]`,
+      );
+      if (el) {
+        const actions = el.querySelector('.dispatch-order-actions');
+        if (actions) {
+          actions.innerHTML = '';
+          const done = div('dispatch-order-status');
+          done.textContent =
+            msg.status === 'approved' ? '✓ Approved — council dispatched'
+            : msg.status === 'skipped' ? '→ Sent as-is'
+            : '· Superseded';
+          actions.appendChild(done);
+        }
+      }
       break;
     }
     case 'todoUpdate': {
