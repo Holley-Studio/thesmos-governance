@@ -703,7 +703,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       this.pendingDispatch = { orderId, text, attachments, advice };
       const budgetLine =
         budget !== undefined
-          ? `$${this.totalCostUsd.toFixed(2)} of $${budget.toFixed(2)} session budget used`
+          ? `~$${this.totalCostUsd.toFixed(2)} of ~$${budget.toFixed(2)} session budget used`
           : null;
       this.pushItem({ kind: 'dispatchOrder', orderId, advice, budgetLine, status: 'pending' });
       return;
