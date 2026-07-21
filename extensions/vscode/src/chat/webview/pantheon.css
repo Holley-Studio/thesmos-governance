@@ -937,6 +937,7 @@ body.running #send {
 
 /* ── Dispatch Order — the pre-execution approval gate ─────────────────── */
 .dispatch-order {
+  max-width: 92%;
   border: 1px solid var(--pc-gold);
   border-radius: var(--pc-radius);
   background: linear-gradient(160deg, rgba(255, 215, 0, 0.08), rgba(255, 215, 0, 0.02));

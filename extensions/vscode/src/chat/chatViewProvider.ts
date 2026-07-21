@@ -680,7 +680,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       this.pushItem({
         kind: 'error',
         text:
-          `⛔ Session budget reached (~$${this.totalCostUsd.toFixed(2)} of $${budget!.toFixed(2)}). ` +
+          `⛔ Session budget reached (~$${this.totalCostUsd.toFixed(2)} of ~$${budget!.toFixed(2)}). ` +
           `Raise tokenBudget.sessionMaxCostUSD in .thesmos/config.json (click the budget bar) or start a new session.`,
       });
       return;
@@ -1371,25 +1371,28 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
             this.budgetWarned = true;
             this.pushItem({
               kind: 'turnFooter',
-              text: `— ⚠️ ~$${this.totalCostUsd.toFixed(2)} of $${budget!.toFixed(2)} session budget used —`,
+              text: `— ⚠️ ~$${this.totalCostUsd.toFixed(2)} of ~$${budget!.toFixed(2)} session budget used —`,
             });
           } else if (state === 'exceeded') {
             this.pushItem({
               kind: 'error',
               text:
-                `⛔ Session budget reached (~$${this.totalCostUsd.toFixed(2)} of $${budget!.toFixed(2)}). ` +
+                `⛔ Session budget reached (~$${this.totalCostUsd.toFixed(2)} of ~$${budget!.toFixed(2)}). ` +
                 `New prompts are blocked until you raise tokenBudget.sessionMaxCostUSD or start a new session.`,
             });
             try {
               appendSavings(this.workspaceRoot, {
                 ts: new Date().toISOString(),
                 type: 'budget_stop',
-                detail: `session stopped at $${this.totalCostUsd.toFixed(2)} (ceiling $${budget!.toFixed(2)})`,
+                detail: `session stopped at ~$${this.totalCostUsd.toFixed(2)} (ceiling ~$${budget!.toFixed(2)})`,
                 costUsd: this.totalCostUsd,
               });
             } catch {
               // Ledger write is best-effort — never break a turn over it.
             }
+          } else if (state === 'ok' && this.budgetWarned) {
+            // Ceiling was raised mid-session — re-arm the 80% warning.
+            this.budgetWarned = false;
           }
         }
         this.setActivity(null);
