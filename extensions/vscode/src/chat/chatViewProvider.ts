@@ -23,6 +23,7 @@ import { listSessions, loadTranscript } from './sessionHistory.js';
 import { appendSavings, estimateTierSaving, monthSavingsUsd } from './savingsLedger.js';
 import { runReview, ThesmosNotFoundError } from '../runner.js';
 import type { Finding } from '../types.js';
+import { runAdvise, shouldGate, budgetState, type DispatchAdvice } from './dispatchAdvisor.js';
 
 interface GodUiInfo extends GodEntry {}
 
@@ -39,6 +40,7 @@ type UiItem =
   | { kind: 'permission'; requestId: string; toolName: string; label: string; status: 'pending' | 'allowed' | 'denied' }
   | { kind: 'todo'; id: string; todos: TodoEntry[] }
   | { kind: 'governance'; findings: GovernanceFinding[]; fileCount: number }
+  | { kind: 'dispatchOrder'; orderId: string; advice: DispatchAdvice; budgetLine: string | null; status: 'pending' | 'approved' | 'skipped' | 'dismissed' }
   | { kind: 'error'; text: string }
   | { kind: 'turnFooter'; text: string };
 
@@ -205,6 +207,12 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private currentTodoId: string | undefined;
   private readonly promptQueue: Array<{ text: string; attachments: string[] }> = [];
   private turnRunning = false;
+  /** Prompt held while its Dispatch Order card awaits approval. */
+  private pendingDispatch:
+    | { orderId: string; text: string; attachments: string[]; advice: DispatchAdvice }
+    | undefined;
+  /** True once an 80% budget warning has been shown this session. */
+  private budgetWarned = false;
   private readonly turnChangedFiles = new Set<string>();
   private governanceUnavailable = false;
   private agentModels: Map<string, string> = new Map();
@@ -477,6 +485,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         alwaysAllow?: boolean;
         checkpointId?: string;
         model?: string;
+        orderId?: string;
       }) => {
         switch (msg.type) {
           case 'ready':
@@ -520,6 +529,12 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
             if (typeof msg.requestId === 'string' && (msg.decision === 'allow' || msg.decision === 'deny')) {
               this.resolvePermission(msg.requestId, msg.decision, msg.alwaysAllow === true);
             }
+            break;
+          case 'dispatchApprove':
+            if (typeof msg.orderId === 'string') this.resolveDispatch(msg.orderId, 'approved');
+            break;
+          case 'dispatchSkip':
+            if (typeof msg.orderId === 'string') this.resolveDispatch(msg.orderId, 'skipped');
             break;
           case 'pickImage':
             void this.pickImages(webview);
@@ -658,13 +673,76 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   private async sendPrompt(text: string, attachments: string[] = []): Promise<void> {
+    // Budget enforcement (fail-closed): re-read the ceiling each send so the
+    // user can raise it in .thesmos/config.json and immediately continue.
+    const budget = readSessionBudget(this.workspaceRoot);
+    if (budgetState(this.totalCostUsd, budget) === 'exceeded') {
+      this.pushItem({
+        kind: 'error',
+        text:
+          `⛔ Session budget reached (~$${this.totalCostUsd.toFixed(2)} of $${budget!.toFixed(2)}). ` +
+          `Raise tokenBudget.sessionMaxCostUSD in .thesmos/config.json (click the budget bar) or start a new session.`,
+      });
+      return;
+    }
+
     if (this.turnRunning) {
       // A turn is live — queue this prompt and dispatch it when the turn ends.
       this.promptQueue.push({ text, attachments });
       this.pushItem({ kind: 'user', text: this.userDisplayText(text, attachments), queued: true });
       return;
     }
+
+    // A newer prompt supersedes any card still awaiting approval.
+    if (this.pendingDispatch) this.resolveDispatch(this.pendingDispatch.orderId, 'dismissed');
+
+    // Dispatch Order gate — deterministic advise heuristic, $0, fail-open.
+    const advice = await runAdvise(this.workspaceRoot, text);
+    if (advice && shouldGate(advice, this.permissionMode)) {
+      const orderId = `do-${Date.now().toString(36)}`;
+      this.pendingDispatch = { orderId, text, attachments, advice };
+      const budgetLine =
+        budget !== undefined
+          ? `$${this.totalCostUsd.toFixed(2)} of $${budget.toFixed(2)} session budget used`
+          : null;
+      this.pushItem({ kind: 'dispatchOrder', orderId, advice, budgetLine, status: 'pending' });
+      return;
+    }
+
     await this.dispatchPrompt(text, attachments, false);
+  }
+
+  /** Resolve a pending Dispatch Order card: approve routes + dispatches, skip dispatches as-is. */
+  private resolveDispatch(orderId: string, status: 'approved' | 'skipped' | 'dismissed'): void {
+    const card = this.history.find(
+      (i): i is Extract<UiItem, { kind: 'dispatchOrder' }> =>
+        i.kind === 'dispatchOrder' && i.orderId === orderId,
+    );
+    if (card && card.status === 'pending') {
+      card.status = status;
+      this.broadcast({ type: 'dispatchResolved', orderId, status });
+      this.schedulePersist();
+    }
+    const pending = this.pendingDispatch;
+    if (!pending || pending.orderId !== orderId) return;
+    this.pendingDispatch = undefined;
+    if (status === 'dismissed') return;
+
+    let prompt = pending.text;
+    if (status === 'approved') {
+      // Approval steers routing: name the approved gods so Zeus dispatches them,
+      // and apply the recommended model tier (AGNT_031) for the whole turn.
+      if (pending.advice.agents.length > 0) {
+        const roster = pending.advice.agents.map((a) => `${a.emoji} ${a.name} (${a.domain})`).join(', ');
+        prompt += `\n\n⚡ Approved dispatch order: engage ${roster} as subagents for their domains.`;
+      }
+      const rec = pending.advice.recommendation.claudeModel;
+      if (rec && rec !== this.modelId && this.providers.active.id === 'anthropic') {
+        void this.setModel(rec).then(() => this.dispatchPrompt(prompt, pending.attachments, false));
+        return;
+      }
+    }
+    void this.dispatchPrompt(prompt, pending.attachments, false);
   }
 
   private async dispatchPrompt(text: string, attachments: string[], dequeued: boolean): Promise<void> {
@@ -926,6 +1004,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   stop(): void {
+    if (this.pendingDispatch) this.resolveDispatch(this.pendingDispatch.orderId, 'dismissed');
     this.session?.stop();
     this.turnRunning = false;
     this.setActivity(null);
@@ -1076,6 +1155,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   newSession(): void {
+    if (this.pendingDispatch) this.resolveDispatch(this.pendingDispatch.orderId, 'dismissed');
+    this.budgetWarned = false;
     this.session?.dispose();
     this.session = undefined;
     this.model = undefined;
@@ -1281,6 +1362,36 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           }
         }
         if (event.costUsd !== undefined) this.totalCostUsd = event.costUsd; // CLI reports cumulative session cost
+        // Budget guardian: warn once at 80%, hard-notify at 100%. Enforcement
+        // (blocking the next send) happens in sendPrompt, fail-closed.
+        {
+          const budget = readSessionBudget(this.workspaceRoot);
+          const state = budgetState(this.totalCostUsd, budget);
+          if (state === 'warn' && !this.budgetWarned) {
+            this.budgetWarned = true;
+            this.pushItem({
+              kind: 'turnFooter',
+              text: `— ⚠️ ~$${this.totalCostUsd.toFixed(2)} of $${budget!.toFixed(2)} session budget used —`,
+            });
+          } else if (state === 'exceeded') {
+            this.pushItem({
+              kind: 'error',
+              text:
+                `⛔ Session budget reached (~$${this.totalCostUsd.toFixed(2)} of $${budget!.toFixed(2)}). ` +
+                `New prompts are blocked until you raise tokenBudget.sessionMaxCostUSD or start a new session.`,
+            });
+            try {
+              appendSavings(this.workspaceRoot, {
+                ts: new Date().toISOString(),
+                type: 'budget_stop',
+                detail: `session stopped at $${this.totalCostUsd.toFixed(2)} (ceiling $${budget!.toFixed(2)})`,
+                costUsd: this.totalCostUsd,
+              });
+            } catch {
+              // Ledger write is best-effort — never break a turn over it.
+            }
+          }
+        }
         this.setActivity(null);
         this.setPhase(null);
         const fmtTok = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
