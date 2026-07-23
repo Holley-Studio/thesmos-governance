@@ -41,6 +41,7 @@ type UiItem =
   | { kind: 'todo'; id: string; todos: TodoEntry[] }
   | { kind: 'governance'; findings: GovernanceFinding[]; fileCount: number }
   | { kind: 'dispatchOrder'; orderId: string; advice: DispatchAdvice; budgetLine: string | null; status: 'pending' | 'approved' | 'skipped' | 'dismissed' }
+  | { kind: 'turnSummary'; turnId: string; gods: Array<{ emoji: string; name: string }>; model: string; costDeltaUsd: number }
   | { kind: 'error'; text: string }
   | { kind: 'turnFooter'; text: string };
 
@@ -213,6 +214,10 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     | undefined;
   /** True once an 80% budget warning has been shown this session. */
   private budgetWarned = false;
+  /** Advice from the last approved dispatch order — used to build the post-turn summary card. */
+  private lastApprovedAdvice: DispatchAdvice | undefined;
+  /** Session cost at the start of the current turn — used to compute per-turn cost delta. */
+  private turnStartCostUsd = 0;
   private readonly turnChangedFiles = new Set<string>();
   private governanceUnavailable = false;
   private agentModels: Map<string, string> = new Map();
@@ -726,6 +731,9 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     const pending = this.pendingDispatch;
     if (!pending || pending.orderId !== orderId) return;
     this.pendingDispatch = undefined;
+    if (status === 'approved') {
+      this.lastApprovedAdvice = pending.advice;
+    }
     if (status === 'dismissed') return;
 
     let prompt = pending.text;
@@ -752,6 +760,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       if (!this.session) return;
     }
     this.turnRunning = true;
+    this.turnStartCostUsd = this.totalCostUsd;
     this.turnChangedFiles.clear();
 
     const checkpointId = await this.checkpoints.snapshot(text.slice(0, 72));
@@ -905,6 +914,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         this.lastSessionId = undefined;
         this.totalCostUsd = 0;
     this.savedUsdSession = 0;
+        this.lastApprovedAdvice = undefined;
         this.currentTodoId = undefined;
         this.pushItem({ kind: 'turnFooter', text: '— ⟲ Kronos restored the workspace and opened a fresh chapter —' });
         this.broadcast({ type: 'history', items: this.history });
@@ -1005,6 +1015,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
 
   stop(): void {
     if (this.pendingDispatch) this.resolveDispatch(this.pendingDispatch.orderId, 'dismissed');
+    this.lastApprovedAdvice = undefined;
     this.session?.stop();
     this.turnRunning = false;
     this.setActivity(null);
@@ -1089,6 +1100,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           lines.push('');
           break;
         }
+        case 'turnSummary': {
+          const godList = item.gods.map((g) => `${g.emoji} ${g.name}`).join(' · ');
+          lines.push(`_⚡ ${godList} · \`${item.model}\` · ~$${item.costDeltaUsd.toFixed(4)}_`, '');
+          break;
+        }
         case 'turnFooter':
           lines.push(`_${item.text}_`, '');
           break;
@@ -1136,6 +1152,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.lastSessionId = picked.sessionId;
     this.totalCostUsd = 0;
     this.savedUsdSession = 0;
+    this.lastApprovedAdvice = undefined;
     this.currentTodoId = undefined;
     this.godStart.clear();
     this.history.length = 0;
@@ -1157,6 +1174,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   newSession(): void {
     if (this.pendingDispatch) this.resolveDispatch(this.pendingDispatch.orderId, 'dismissed');
     this.budgetWarned = false;
+    this.lastApprovedAdvice = undefined;
     this.session?.dispose();
     this.session = undefined;
     this.model = undefined;
@@ -1408,6 +1426,18 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           parts.push(`⚡ ${fmtTok(event.cacheReadTokens)} from cache`);
         }
         if (parts.length > 0) this.pushItem({ kind: 'turnFooter', text: `— ${parts.join(' · ')} —` });
+        // Council summary card — appears after approved-dispatch turns only.
+        if (this.lastApprovedAdvice) {
+          const costDeltaUsd = Math.max(0, this.totalCostUsd - this.turnStartCostUsd);
+          this.pushItem({
+            kind: 'turnSummary',
+            turnId: `ts-${Date.now().toString(36)}`,
+            gods: this.lastApprovedAdvice.agents.map((a) => ({ emoji: a.emoji, name: a.name })),
+            model: this.lastApprovedAdvice.recommendation.claudeModel,
+            costDeltaUsd,
+          });
+          this.lastApprovedAdvice = undefined;
+        }
         this.broadcast({
           type: 'status',
           running: false,
