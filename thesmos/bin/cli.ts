@@ -109,6 +109,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'ci:github-security': cmdCiGithubSecurity,
   'certificate:generate': cmdCertificate,
   'certificate:verify': (argv) => cmdCertificate(['--verify', ...argv]),
+  'mcp': (argv) => cmdMcp(['serve', ...argv.filter(a => a !== '--stdio')]),
   'mcp:serve': (argv) => cmdMcp(['serve', ...argv]),
   'mcp:install': (argv) => cmdMcp(['install', ...argv]),
   'mcp:uninstall': (argv) => cmdMcp(['uninstall', ...argv]),
