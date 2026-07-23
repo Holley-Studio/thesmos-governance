@@ -21,7 +21,7 @@
 | 1 | Eliminate false assurance (compliance / CI / MCP / facts) | **COMPLETE** | Trust + Release |
 | 2 | Make Claude execution safe | **COMPLETE** | Runtime |
 | 3 | Real Pantheon runtime (registry / router / DAG) | **COMPLETE** | Runtime |
-| 4 | Repair builders | PENDING | Lead |
+| 4 | Repair builders | **COMPLETE** | Lead |
 | 5 | Observability + evaluations | PENDING | Runtime |
 | 6 | Release engineering | PENDING | Release |
 
@@ -36,6 +36,8 @@
 | 2026-07-23 | Claude `--dangerously-skip-permissions` default-off; opt-in via `autopilot.dangerouslySkipPermissions` | P0-15 — permission profile + govern hooks are the safe unattended path |
 | 2026-07-23 | Orchestrate default brief-only; `--execute` opt-in via adapters | P0-13 — no invented agent:run; reuse createAdapter |
 | 2026-07-23 | Autopilot Depends on: gated at runtime (block if unmet) | P0-14 — parser already validates order; executor must enforce |
+| 2026-07-23 | `agent:run` resolves local/catalog agents via createAdapter | P0-16 — builders advertised a missing command |
+| 2026-07-23 | RAG scaffold: real OpenAI/Cohere/local embed + BYOK completeWithContext; no Anthropic embeddings option | P0-17 — Anthropic has no public embeddings API |
 
 ## Phase 0 evidence summary
 
@@ -154,10 +156,26 @@ None for Phase 1. ProductFacts license resolved as **FSL-1.1-MIT** (from `packag
 - [x] Default remains brief-only (honest UX)
 - [x] Update pantheon README
 
+## Phase 4 workstreams
+
+### 4A — agent:run (P0-16)
+
+- [x] `thesmos/bin/commands/agent-run.ts` — resolve + `--dry-run` + adapter execute
+- [x] Register `agent:run` in CLI command map
+- [x] Tests for path resolution + prompt construction
+
+### 4B — RAG generator (P0-17)
+
+- [x] Remove fake Anthropic embeddings wizard option
+- [x] Real OpenAI / Cohere / local embed scaffolds in generated retriever
+- [x] `completeWithContext` BYOK completion in generated pipeline
+- [x] Plan checklist no longer claims ANTHROPIC_API_KEY for embeddings
+- [x] Generator tests assert no TODO / not-implemented stubs
+
 ## Remaining work
 
-Phases 4–6 per master prompt (builders → observability → release).
+Phases 5–6 per master prompt (observability → release).
 
 ## Next exact action
 
-Begin Phase 4 — repair builders (P0-16 agent:run / P0-17 RAG).
+Begin Phase 5 — observability + evaluations.

@@ -17,6 +17,7 @@ import { cmdCiCheck } from './commands/ci-check.ts';
 import { cmdCatalog } from './commands/catalog.ts';
 import { cmdAgentCreate } from './commands/agent-create.ts';
 import { cmdAgentInstall } from './commands/agent-install.ts';
+import { cmdAgentRun } from './commands/agent-run.ts';
 import {
   cmdAgentAdopt,
   cmdAgentRelease,
@@ -158,6 +159,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'catalog:profiles': (argv) => cmdCatalog(['profiles', ...argv]),
   'agent:create': cmdAgentCreate,
   'agent:install': cmdAgentInstall,
+  'agent:run': cmdAgentRun,
   'agent:adopt': cmdAgentAdopt,
   'agent:release': cmdAgentRelease,
   'agents': cmdAgents,

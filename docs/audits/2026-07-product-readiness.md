@@ -85,7 +85,7 @@ Artifacts under `/tmp/thesmos-p0/` (session-local).
 | P0-10–12 | 1C MCP + 1D Facts | **DONE** (2026-07-23) |
 | P0-15 | 2 Execution safety | **DONE** (2026-07-23) — default-off; opt-in `autopilot.dangerouslySkipPermissions` |
 | P0-13–14 | 3 Pantheon runtime | **DONE** (2026-07-23) — `--execute` opt-in; dependsOn gated at runtime |
-| P0-16–17 | 4 Builders | TODO |
+| P0-16–17 | 4 Builders | **DONE** (2026-07-23) — `agent:run` + RAG embed/complete scaffolds |
 | P0-20 | 6 Release / deps | TODO |
 
 ---
@@ -100,4 +100,4 @@ At baseline commit, none of the master-prompt acceptance gates 14–27 passed. P
 
 ## Next remediation step
 
-Phase 4: repair builders — agent:run / RAG generator (P0-16, P0-17).
+Phase 5: observability + evaluations.
