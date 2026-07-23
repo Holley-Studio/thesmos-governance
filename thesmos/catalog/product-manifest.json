@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-07-23T04:51:52.448Z",
+  "release": {
+    "version": "5.0.0",
+    "vscodeExtensionVersion": "4.10.0",
+    "prReviewActionVersion": "1.0.0"
+  },
+  "catalog": {
+    "publishedAgentCount": 67,
+    "installedAgentCount": 127,
+    "freeAgentCount": 6,
+    "freeAgentIds": [
+      "zeus-executive-agent",
+      "athena-strategy-agent",
+      "argus-security-agent",
+      "apollo-content-agent",
+      "hephaestus-design-agent",
+      "hebe-support-agent"
+    ]
+  },
+  "governance": {
+    "ruleCount": 1137
+  }
+}
