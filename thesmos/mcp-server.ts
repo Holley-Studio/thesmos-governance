@@ -29,6 +29,7 @@ import { runReview } from './review.js';
 import { findRule } from './explain.js';
 import { computeHealthForRoot } from './health.js';
 import { loadConfig, CONFIG_DEFAULTS } from './config.js';
+import { loadReport } from './report.js';
 import { COMMIT_RULES } from './rules/commits.js';
 import type { Finding, ScanResult, DetectInput } from './types.js';
 import { modelFor } from './generated/pantheon-models.js';
@@ -514,6 +515,19 @@ function handleResourceRead(root: string, uri: string): unknown {
   return null;
 }
 
+/**
+ * Load the cached report.json for the workspace. Returns null if absent or unparseable.
+ * Compliance tools use this so they report NOT_ASSESSED instead of silently passing
+ * on empty evidence.
+ */
+function getRealScanOrNull(root: string): ScanResult | null {
+  try {
+    return loadReport(root);
+  } catch {
+    return null;
+  }
+}
+
 function handleGetComplianceStatus(root: string, params: { framework: string }): unknown {
   const config = (() => { try { return loadConfig(root); } catch { return CONFIG_DEFAULTS; } })();
   const { framework } = params;
@@ -523,7 +537,16 @@ function handleGetComplianceStatus(root: string, params: { framework: string }):
     r.frameworks?.includes(framework) || r.id.startsWith(framework.toUpperCase().replace(/-/g, '_') + '_'),
   );
 
-  const { findings: allFindings } = runReview({ scan: makeEmptyScan(), config, changedFiles: [] });
+  const scan = getRealScanOrNull(root);
+  if (scan === null) {
+    return {
+      framework,
+      status: 'NOT_ASSESSED',
+      reason: 'No scan data available. Run: thesmos scan',
+    };
+  }
+
+  const { findings: allFindings } = runReview({ scan, config, changedFiles: [] });
   const frameworkFindings = allFindings.filter((f) =>
     frameworkRules.some((r) => r.category === f.category),
   );
@@ -556,7 +579,17 @@ function handleCheckFrameworkCoverage(root: string, params: { framework: string 
   const { framework } = params;
 
   const frameworkRules = THESMOS_RULES.filter((r) => r.frameworks?.includes(framework));
-  const { findings: allFindings } = runReview({ scan: makeEmptyScan(), config, changedFiles: [] });
+
+  const scan = getRealScanOrNull(root);
+  if (scan === null) {
+    return {
+      framework,
+      status: 'NOT_ASSESSED',
+      reason: 'No scan data available. Run: thesmos scan',
+    };
+  }
+
+  const { findings: allFindings } = runReview({ scan, config, changedFiles: [] });
 
   const coverage = frameworkRules.map((r) => {
     const ruleFinding = allFindings.find((f) => f.category === r.category);
