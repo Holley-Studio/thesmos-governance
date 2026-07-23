@@ -49,7 +49,7 @@ export async function cmdValidate(argv: string[]): Promise<void> {
   }
 
   const registry = await getActiveRules(root);
-  const allFindings = runReview({ scan, config, changedFiles }, registry);
+  const { findings: allFindings } = runReview({ scan, config, changedFiles }, registry);
 
   // Auto-load baseline if present (suppresses known debt from CI exit code)
   const baseline = noBaseline ? null : loadBaseline(root);

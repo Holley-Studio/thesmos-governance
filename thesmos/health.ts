@@ -337,7 +337,7 @@ export function computeHealthForRoot(root: string, config: ThesmosConfig): Healt
   } catch {
     scan = loadReport(root);
   }
-  const findings = scan ? runReview({ scan, config }) : [];
+  const findings = scan ? runReview({ scan, config }).findings : [];
   const baseline = loadBaseline(root);
   const driftFindings = runDriftForRoot(root, config);
 

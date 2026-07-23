@@ -102,7 +102,7 @@ export async function cmdExplain(argv: string[]): Promise<void> {
   // Load live violations from current scan (best-effort — no failure if no report)
   const scan = loadReport(root);
   const liveViolations = scan
-    ? runReview({ scan, config }).filter(
+    ? runReview({ scan, config }).findings.filter(
         (f) => f.category === rule.category || f.category === rule.id
       )
     : null;
@@ -119,7 +119,7 @@ function loadAndReview(
     process.stderr.write('thesmos explain: .thesmos/report.json not found — run thesmos scan first\n');
     process.exit(1);
   }
-  return runReview({ scan, config });
+  return runReview({ scan, config }).findings;
 }
 
 import type { Finding } from '../../types.ts';

@@ -213,7 +213,7 @@ function generateGdprReport(root: string): string {
   const config = loadConfig(root);
   const scan = loadScanResult(root);
 
-  const allFindings = runReview({ scan, config, changedFiles: undefined });
+  const { findings: allFindings } = runReview({ scan, config, changedFiles: undefined });
   const gdprFindings = allFindings.filter((f) => f.category.startsWith('gdpr_'));
 
   const gdprRules = THESMOS_RULES.filter((r) => r.id.startsWith('GDPR_'));
@@ -395,7 +395,7 @@ function generateFrameworkReport(
 ): string {
   const config = loadConfig(root);
   const scan = loadScanResult(root);
-  const allFindings = runReview({ scan, config, changedFiles: undefined });
+  const { findings: allFindings } = runReview({ scan, config, changedFiles: undefined });
   const findings = allFindings.filter((f) => f.category.startsWith(categoryPrefix));
   const rules = THESMOS_RULES.filter((r) => r.id.startsWith(idPrefix));
   const passedRules = rules.filter((r) => !findings.some((f) => f.category === r.category));
@@ -558,7 +558,7 @@ function generateSoc2Report(root: string): string {
   // SOC 2 maps relevant existing rules (SEC_, AUTH_, LOG_) to Trust Criteria
   const config = loadConfig(root);
   const scan = loadScanResult(root);
-  const allFindings = runReview({ scan, config, changedFiles: undefined });
+  const { findings: allFindings } = runReview({ scan, config, changedFiles: undefined });
   const soc2Findings = allFindings.filter((f) => Object.hasOwn(SOC2_CRITERIA_MAP, f.category));
   const soc2Rules = THESMOS_RULES.filter((r) => Object.hasOwn(SOC2_CRITERIA_MAP, r.category));
   return buildSoc2NistReport(root, 'soc2', soc2Rules, soc2Findings, SOC2_CRITERIA_MAP);
@@ -567,7 +567,7 @@ function generateSoc2Report(root: string): string {
 function generateNistAiRmfReport(root: string): string {
   const config = loadConfig(root);
   const scan = loadScanResult(root);
-  const allFindings = runReview({ scan, config, changedFiles: undefined });
+  const { findings: allFindings } = runReview({ scan, config, changedFiles: undefined });
   const nistFindings = allFindings.filter((f) => Object.hasOwn(NIST_FUNCTION_MAP, f.category));
   const nistRules = THESMOS_RULES.filter((r) => Object.hasOwn(NIST_FUNCTION_MAP, r.category));
   return buildSoc2NistReport(root, 'nist-ai-rmf', nistRules, nistFindings, NIST_FUNCTION_MAP);
@@ -577,7 +577,7 @@ function buildSoc2NistReport(
   root: string,
   standard: Standard,
   rules: typeof THESMOS_RULES,
-  findings: ReturnType<typeof runReview>,
+  findings: import('../../types.js').Finding[],
   articleMap: Record<string, string>,
 ): string {
   const config = loadConfig(root);
