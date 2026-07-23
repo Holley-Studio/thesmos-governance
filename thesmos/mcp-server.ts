@@ -56,6 +56,9 @@ interface JsonRpcResponse {
   error?: { code: number; message: string; data?: unknown };
 }
 
+// Maximum age of a scan before compliance status is NOT_ASSESSED.
+const MAX_SCAN_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 // ── MCP Protocol constants ────────────────────────────────────────────────────
 
 const SERVER_INFO = {
@@ -521,7 +524,6 @@ function handleGetComplianceStatus(root: string, params: { framework: string }):
   const config = (() => { try { return loadConfig(root); } catch { return CONFIG_DEFAULTS; } })();
   const { framework } = params;
 
-  // Determine which rules belong to this framework
   const frameworkRules = THESMOS_RULES.filter((r) =>
     r.frameworks?.includes(framework) || r.id.startsWith(framework.toUpperCase().replace(/-/g, '_') + '_'),
   );
@@ -535,6 +537,28 @@ function handleGetComplianceStatus(root: string, params: { framework: string }):
     };
   }
 
+  // Reject stale scans — compliance evidence must be fresh.
+  const scanAge = Date.now() - new Date(scan.generatedAt).getTime();
+  if (scanAge > MAX_SCAN_AGE_MS) {
+    const ageHours = Math.round(scanAge / (60 * 60 * 1000));
+    return {
+      framework,
+      status: 'NOT_ASSESSED',
+      reason: `Scan data is stale (${ageHours}h old). Run: thesmos scan`,
+      scanGeneratedAt: scan.generatedAt,
+      scanAgeHours: ageHours,
+    };
+  }
+
+  if (frameworkRules.length === 0) {
+    return {
+      framework,
+      status: 'NOT_ASSESSED',
+      reason: `No rules found for framework '${framework}'. Check the framework identifier.`,
+      scanGeneratedAt: scan.generatedAt,
+    };
+  }
+
   const { findings: allFindings } = runReview({ scan, config, changedFiles: [] });
   const frameworkFindings = allFindings.filter((f) =>
     frameworkRules.some((r) => r.category === f.category),
@@ -542,14 +566,15 @@ function handleGetComplianceStatus(root: string, params: { framework: string }):
 
   const passed = frameworkRules.filter((r) => !frameworkFindings.some((f) => f.category === r.category)).length;
   const total = frameworkRules.length;
-  const complianceScore = total > 0 ? Math.round((passed / total) * 100) : 100;
+  const complianceScore = Math.round((passed / total) * 100);
 
   const blockers = frameworkFindings.filter((f) => f.severity === 'BLOCKER');
   const highs = frameworkFindings.filter((f) => f.severity === 'HIGH');
+  const isCompliant = frameworkFindings.length === 0;
 
   return {
     framework,
-    pass: frameworkFindings.length === 0,
+    status: isCompliant ? 'COMPLIANT' : 'NON_COMPLIANT',
     complianceScore,
     rulesEvaluated: total,
     rulesPassed: passed,
@@ -557,7 +582,8 @@ function handleGetComplianceStatus(root: string, params: { framework: string }):
     findings: frameworkFindings,
     topBlockers: blockers.slice(0, 5).map((f) => ({ category: f.category, file: f.file, message: f.message })),
     topHighs: highs.slice(0, 5).map((f) => ({ category: f.category, file: f.file, message: f.message })),
-    summary: frameworkFindings.length === 0
+    scanGeneratedAt: scan.generatedAt,
+    summary: isCompliant
       ? `✅ ${framework} compliance: ${complianceScore}% (${passed}/${total} rules passed — no violations detected)`
       : `⚠️ ${framework} compliance: ${complianceScore}% (${passed}/${total} rules passed, ${blockers.length} blockers, ${highs.length} highs)`,
   };
