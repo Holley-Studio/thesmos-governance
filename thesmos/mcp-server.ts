@@ -293,7 +293,7 @@ function handleScanFile(
     { path: params.path, content: params.content },
   ];
 
-  const findings = runReview({ scan: makeEmptyScan(), config, changedFiles });
+  const { findings } = runReview({ scan: makeEmptyScan(), config, changedFiles });
   const blockers = findings.filter((f) => f.severity === 'BLOCKER').length;
   const highs = findings.filter((f) => f.severity === 'HIGH').length;
 
@@ -523,7 +523,7 @@ function handleGetComplianceStatus(root: string, params: { framework: string }):
     r.frameworks?.includes(framework) || r.id.startsWith(framework.toUpperCase().replace(/-/g, '_') + '_'),
   );
 
-  const allFindings = runReview({ scan: makeEmptyScan(), config, changedFiles: [] });
+  const { findings: allFindings } = runReview({ scan: makeEmptyScan(), config, changedFiles: [] });
   const frameworkFindings = allFindings.filter((f) =>
     frameworkRules.some((r) => r.category === f.category),
   );
@@ -556,7 +556,7 @@ function handleCheckFrameworkCoverage(root: string, params: { framework: string 
   const { framework } = params;
 
   const frameworkRules = THESMOS_RULES.filter((r) => r.frameworks?.includes(framework));
-  const allFindings = runReview({ scan: makeEmptyScan(), config, changedFiles: [] });
+  const { findings: allFindings } = runReview({ scan: makeEmptyScan(), config, changedFiles: [] });
 
   const coverage = frameworkRules.map((r) => {
     const ruleFinding = allFindings.find((f) => f.category === r.category);

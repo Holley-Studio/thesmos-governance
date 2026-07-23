@@ -80,7 +80,7 @@ export type ReviewCategory = string;
 export function runReview(
   input: ReviewInput,
   registry?: ThesmosRule[]
-): Finding[] {
+): ReviewResult {
   // Tier gate: when no explicit registry is injected (tests), the free tier runs
   // only the Essentials set. loadConfig has already resolved input.config.tier.
   const tierRegistry = registry ?? activeRulesForTier(input.config);
@@ -94,7 +94,7 @@ export function runReview(
       );
 
   const findings: Finding[] = [];
-  let rulesSkipped = 0;
+  const engineErrors: EngineError[] = [];
   const scanStart = Date.now();
 
   for (const rule of activeRules) {
@@ -109,11 +109,14 @@ export function runReview(
       const elapsed = Date.now() - t0;
       if (elapsed > 100) log.warn('slow rule', { rule: rule.id, durationMs: elapsed });
     } catch (e) {
-      rulesSkipped++;
+      engineErrors.push({
+        ruleId: rule.id,
+        error: e instanceof Error ? e.message : String(e),
+        stack: e instanceof Error ? e.stack : undefined,
+      });
       log.error('rule detect() threw', {
         rule: rule.id,
         error: e instanceof Error ? e.message : String(e),
-        stack: e instanceof Error ? e.stack : undefined,
       });
     }
   }
@@ -135,13 +138,18 @@ export function runReview(
   log.info('scan complete', {
     files: input.changedFiles?.length ?? 0,
     findings: active.length,
+    engineErrors: engineErrors.length,
     outsideHunks: findings.length - scoped.length,
     suppressed: scoped.length - active.length,
-    rulesSkipped,
+    rulesSkipped: engineErrors.length,
     durationMs: Date.now() - scanStart,
   });
 
-  return sortFindings(active);
+  return {
+    findings: sortFindings(active),
+    engineErrors,
+    skippedRuleIds: engineErrors.map((e) => e.ruleId),
+  };
 }
 
 // ── Output formatters ──────────────────────────────────────────────────────────

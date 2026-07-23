@@ -20,7 +20,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import type { Finding, ThesmosConfig, ScanResult, ChangedFile } from './types.js';
+import type { Finding, ThesmosConfig, ScanResult, ChangedFile, ReviewResult } from './types.js';
 import { THESMOS_RULES } from './rules/registry.js';
 import { makeLogger } from './logger.js';
 
@@ -127,7 +127,7 @@ export interface CachedReviewOptions {
  * Drop-in replacement for runReview() that uses the incremental cache.
  * Files whose content hasn't changed since the last scan return cached findings.
  */
-export function runReviewCached(opts: CachedReviewOptions): Finding[] {
+export function runReviewCached(opts: CachedReviewOptions): ReviewResult {
   const { scan, config, changedFiles = [], root, noCache = false } = opts;
   const version = opts.rulesVersion ?? THESMOS_RULES.length.toString();
 
@@ -138,6 +138,7 @@ export function runReviewCached(opts: CachedReviewOptions): Finding[] {
 
   const cache = loadCache(root);
   const allFindings: Finding[] = [];
+  const allEngineErrors: import('./types.js').EngineError[] = [];
   const uncachedFiles: ChangedFile[] = [];
 
   for (const file of changedFiles) {
@@ -151,11 +152,11 @@ export function runReviewCached(opts: CachedReviewOptions): Finding[] {
 
   if (uncachedFiles.length > 0) {
     const { runReview } = require('./review.js') as typeof import('./review.js');
-    const freshFindings = runReview({ scan, config, changedFiles: uncachedFiles });
+    const freshResult = runReview({ scan, config, changedFiles: uncachedFiles });
 
     // Group fresh findings back by file so we can cache per-file
     const byFile = new Map<string, Finding[]>();
-    for (const f of freshFindings) {
+    for (const f of freshResult.findings) {
       const list = byFile.get(f.file) ?? [];
       list.push(f);
       byFile.set(f.file, list);
@@ -167,8 +168,13 @@ export function runReviewCached(opts: CachedReviewOptions): Finding[] {
       allFindings.push(...fileFindings);
     }
 
+    allEngineErrors.push(...freshResult.engineErrors);
     saveCache(root, cache);
   }
 
-  return allFindings;
+  return {
+    findings: allFindings,
+    engineErrors: allEngineErrors,
+    skippedRuleIds: allEngineErrors.map((e) => e.ruleId),
+  };
 }

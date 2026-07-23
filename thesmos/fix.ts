@@ -1143,8 +1143,8 @@ export function verifyFix(
       Math.abs((f.line ?? 0) - (originalFinding.line ?? 0)) <= 2,
   );
 
-  const beforeAll = runReview({ scan, config, changedFiles: [{ path: filePath, content: beforeContent }] });
-  const afterAll = runReview({ scan, config, changedFiles: [{ path: filePath, content: afterContent }] });
+  const { findings: beforeAll } = runReview({ scan, config, changedFiles: [{ path: filePath, content: beforeContent }] });
+  const { findings: afterAll } = runReview({ scan, config, changedFiles: [{ path: filePath, content: afterContent }] });
   const newFindingsIntroduced = afterAll.filter(
     (af) => !beforeAll.some(
       (bf) => bf.category === af.category && Math.abs((bf.line ?? 0) - (af.line ?? 0)) <= 2,
