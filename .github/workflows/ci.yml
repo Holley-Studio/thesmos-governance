@@ -83,7 +83,22 @@ jobs:
       - name: Governance SARIF scan
         if: matrix.node-version == '22.x'
         working-directory: thesmos
-        run: node dist/bin/cli.js validate --sarif > ../governance.sarif 2>/dev/null || true
+        run: node dist/bin/cli.js validate --sarif > ../governance.sarif
+
+      - name: Validate SARIF schema
+        if: matrix.node-version == '22.x'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const sarif = JSON.parse(fs.readFileSync('governance.sarif', 'utf8'));
+            if (!sarif.version || !Array.isArray(sarif.runs) || sarif.runs.length === 0) {
+              console.error('Invalid SARIF: missing version or runs');
+              process.exit(1);
+            }
+            const size = fs.statSync('governance.sarif').size;
+            if (size < 10) { console.error('SARIF file is empty'); process.exit(1); }
+            console.log('SARIF valid, size=' + size + ' bytes');
+          "
 
       - name: Upload SARIF to GitHub Security tab
         if: matrix.node-version == '22.x'
@@ -91,7 +106,7 @@ jobs:
         with:
           sarif_file: governance.sarif
           category: thesmos-governance
-        continue-on-error: true
+        continue-on-error: true   # upload service may be unavailable; generation is required above
 
       - name: Upload coverage to Codecov
         if: matrix.node-version == '22.x'
