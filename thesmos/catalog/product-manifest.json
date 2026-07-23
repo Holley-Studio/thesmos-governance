@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-07-23T04:56:36.039Z",
+  "generatedAt": "2026-07-23T20:02:59.739Z",
   "release": {
     "version": "5.0.0",
     "vscodeExtensionVersion": "4.10.0",
@@ -21,6 +21,23 @@
   },
   "governance": {
     "ruleCount": 1137,
-    "blockerRuleCount": null
+    "blockerRuleCount": 219,
+    "toolCount": 13
+  },
+  "pricing": {
+    "tiers": [
+      {
+        "id": "essentials",
+        "name": "Essentials",
+        "priceUsd": 0,
+        "model": "free"
+      },
+      {
+        "id": "full-pantheon",
+        "name": "Full Pantheon",
+        "priceUsd": 24,
+        "model": "one-time"
+      }
+    ]
   }
 }

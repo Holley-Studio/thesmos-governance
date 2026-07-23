@@ -32,4 +32,27 @@ describe('product manifest drift', () => {
     expect(Number.isInteger(manifest.governance.ruleCount)).toBe(true);
     expect(manifest.governance.ruleCount).toBeGreaterThan(100);
   });
+
+  it('manifest.governance.blockerRuleCount matches actual BLOCKER rules in registry', async () => {
+    const { THESMOS_RULES } = await import('./rules/registry.js');
+    const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'));
+    const actualBlockers = (THESMOS_RULES as Array<{ severity: string }>).filter(r => r.severity === 'BLOCKER').length;
+    expect(Number.isInteger(manifest.governance.blockerRuleCount)).toBe(true);
+    expect(manifest.governance.blockerRuleCount).toBeGreaterThan(0);
+    expect(manifest.governance.blockerRuleCount).toBe(actualBlockers);
+  });
+
+  it('manifest.governance.toolCount is 13 (MCP tool definitions)', () => {
+    const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'));
+    expect(manifest.governance.toolCount).toBe(13);
+  });
+
+  it('manifest.pricing.tiers has essentials (free) and full-pantheon ($24)', () => {
+    const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'));
+    expect(Array.isArray(manifest.pricing?.tiers)).toBe(true);
+    const essentials = manifest.pricing.tiers.find((t: { id: string }) => t.id === 'essentials');
+    const fullPantheon = manifest.pricing.tiers.find((t: { id: string }) => t.id === 'full-pantheon');
+    expect(essentials?.priceUsd).toBe(0);
+    expect(fullPantheon?.priceUsd).toBe(24);
+  });
 });

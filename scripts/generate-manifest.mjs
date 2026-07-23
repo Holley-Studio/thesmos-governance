@@ -47,6 +47,33 @@ function countRules() {
 
 const pkgRoot = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8'));
 const freeAgents = JSON.parse(readFileSync(resolve(ROOT, 'thesmos/catalog/free-agents.json'), 'utf8'));
+const pricingJson = JSON.parse(readFileSync(resolve(ROOT, 'thesmos/catalog/pricing.json'), 'utf8'));
+
+function countBlockerRules() {
+  try {
+    const require = createRequire(import.meta.url);
+    const { THESMOS_RULES } = require(resolve(ROOT, 'thesmos/dist/index.js'));
+    if (Array.isArray(THESMOS_RULES)) {
+      return THESMOS_RULES.filter(r => r.severity === 'BLOCKER').length;
+    }
+    return 0;
+  } catch {
+    // Fallback: scan rule source files for severity: 'BLOCKER'
+    try {
+      const rulesDir = resolve(ROOT, 'thesmos/rules');
+      const files = readdirSync(rulesDir).filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts'));
+      let count = 0;
+      for (const file of files) {
+        const content = readFileSync(resolve(rulesDir, file), 'utf8');
+        const matches = content.match(/severity:\s*'BLOCKER'/g) || [];
+        count += matches.length;
+      }
+      return count;
+    } catch {
+      return 0;
+    }
+  }
+}
 
 const pantheonDir = resolve(ROOT, 'thesmos/catalog/agents/pantheon');
 const figmaDir = resolve(ROOT, 'thesmos/catalog/agents/figma');
@@ -59,6 +86,10 @@ const reviewersDir = resolve(ROOT, 'thesmos/catalog/agents/reviewers');
 const installedCount = countMdFiles(pantheonDir) + countMdFiles(figmaDir) + countMdFiles(reviewersDir);
 const publishedCount = freeAgents.pantheonTotal;
 const ruleCount = countRules();
+const blockerRuleCount = countBlockerRules();
+// MCP tool count: number of tools in TOOL_DEFINITIONS array in mcp-server.ts.
+// Update this when adding or removing MCP tools.
+const MCP_TOOL_COUNT = 13;
 
 // Read workspace package versions
 const vscodePkg = JSON.parse(readFileSync(resolve(ROOT, 'extensions/vscode/package.json'), 'utf8'));
@@ -81,7 +112,16 @@ const manifest = {
   },
   governance: {
     ruleCount,
-    blockerRuleCount: null, // populated by thesmos:scan at build time
+    blockerRuleCount,
+    toolCount: MCP_TOOL_COUNT,
+  },
+  pricing: {
+    tiers: pricingJson.tiers.map(t => ({
+      id: t.id,
+      name: t.name,
+      priceUsd: t.priceUsd,
+      model: t.model,
+    })),
   },
 };
 
@@ -95,6 +135,8 @@ console.log(`  publishedAgentCount: ${manifest.catalog.publishedAgentCount}`);
 console.log(`  installedAgentCount: ${manifest.catalog.installedAgentCount}`);
 console.log(`  freeAgentCount:      ${manifest.catalog.freeAgentCount}`);
 console.log(`  governance.ruleCount: ${manifest.governance.ruleCount}`);
+console.log(`  governance.blockerRuleCount: ${manifest.governance.blockerRuleCount}`);
+console.log(`  governance.toolCount: ${manifest.governance.toolCount}`);
 
 if (manifest.catalog.publishedAgentCount !== manifest.catalog.installedAgentCount) {
   console.warn(
