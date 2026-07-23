@@ -34,7 +34,7 @@ import { COMMIT_RULES } from './rules/commits.js';
 import type { Finding, ScanResult, DetectInput } from './types.js';
 import { modelFor } from './generated/pantheon-models.js';
 import { makeLogger } from './logger.js';
-import { buildBudgetReport, calcCost, getCurrentSessionId, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
+import { buildBudgetReport, getCurrentSessionId, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
 import { logMcpBlock, logMcpPass, logRuleFire } from './governance-log.js';
 import { getAutoModeGovernanceInfo } from './claude-govern.js';
 
@@ -405,23 +405,12 @@ function handleGetTokenBudget(root: string): unknown {
   return { text: lines.join('\n'), report };
 }
 
-function handleCheckModelCost(params: { tokens: number }): unknown {
-  const t = Math.max(0, params.tokens);
-  const half = Math.round(t / 2);
-  const models = [
-    { name: 'Haiku (claude-haiku-4-5-20251001)', input: 0.25, output: 1.25 },
-    { name: 'Sonnet (claude-sonnet-4-6)', input: 3.00, output: 15.00 },
-    { name: 'Opus (claude-opus-4-8)', input: 15.00, output: 75.00 },
-  ];
-  const rows = models.map((m) => {
-    const cost = calcCost(m.name.split(' ')[0].toLowerCase(), half, half, {
-      haiku:  { inputPer1M: 0.25, outputPer1M: 1.25 },
-      sonnet: { inputPer1M: 3.00, outputPer1M: 15.00 },
-      opus:   { inputPer1M: 15.00, outputPer1M: 75.00 },
-    }) || (half * m.input + half * m.output) / 1_000_000;
-    return `${m.name.padEnd(42)} $${cost.toFixed(4)}`;
-  });
-  return { text: [`Estimated cost for ${t.toLocaleString()} tokens:`, ...rows].join('\n') };
+function handleCheckModelCost(_params: { tokens: number }): unknown {
+  return {
+    status: 'pricing_not_available',
+    message: 'Hardcoded pricing has been removed. Use the Anthropic pricing page for current rates.',
+    learnMoreUrl: 'https://www.anthropic.com/pricing',
+  };
 }
 
 // ── Pantheon agent catalog ────────────────────────────────────────────────────

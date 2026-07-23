@@ -7,6 +7,7 @@ import {
   generateOperationName,
   assignPhases,
   formatKickoffPrompt,
+  DEFAULT_MODEL_IDS,
 } from './advise.ts';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -128,8 +129,8 @@ describe('recommendModel', () => {
   });
 
   it('resolves mid tier to sonnet and fast tier to haiku', () => {
-    expect(recommendModel({ mechanicalPct: 70, creativePct: 10, architecturePct: 10, bulkPct: 10 }).claudeModel).toBe('claude-sonnet-5');
-    expect(recommendModel({ mechanicalPct: 10, creativePct: 5, architecturePct: 5, bulkPct: 80 }).claudeModel).toBe('claude-haiku-4-5');
+    expect(recommendModel({ mechanicalPct: 70, creativePct: 10, architecturePct: 10, bulkPct: 10 }).claudeModel).toBe(DEFAULT_MODEL_IDS.mid);
+    expect(recommendModel({ mechanicalPct: 10, creativePct: 5, architecturePct: 5, bulkPct: 80 }).claudeModel).toBe(DEFAULT_MODEL_IDS.fast);
   });
 
   it('recommends haiku for bulk-dominant work with low judgment content', () => {
@@ -232,7 +233,7 @@ describe('assignPhases', () => {
     expect(phases[0].model.model).toBe('fable');
     expect(phases[0].model.claudeModel).toBe('claude-opus-4-8');
     expect(phases[1].model.model).toBe('sonnet');
-    expect(phases[1].model.claudeModel).toBe('claude-sonnet-5');
+    expect(phases[1].model.claudeModel).toBe(DEFAULT_MODEL_IDS.mid);
   });
 });
 
@@ -278,7 +279,7 @@ describe('formatKickoffPrompt (v2)', () => {
     const advisory = buildAdvisory(MIXED_TIER_PLAN, PANTHEON_MAP);
     const p = formatKickoffPrompt('/tmp/plan.md', advisory, MIXED_TIER_PLAN, PANTHEON_MAP);
     expect(p).toContain('[claude-opus-4-8]');
-    expect(p).toContain('[claude-sonnet-5]');
+    expect(p).toContain(`[${DEFAULT_MODEL_IDS.mid}]`);
     expect(p).toContain('spans model tiers');
   });
 

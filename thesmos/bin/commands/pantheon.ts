@@ -350,6 +350,7 @@ function writeRegistry(root: string, data: Record<string, unknown>): void {
 
 interface ThesmosConfig {
   power?: string;
+  catalogUrl?: string;
   [key: string]: unknown;
 }
 
@@ -1337,14 +1338,33 @@ function cmdRemove(agents: PantheonAgent[], argv: string[], root: string): void 
 
 // ── pantheon:upgrade ───────────────────────────────────────────────────────────
 
-function cmdUpgrade(agents: PantheonAgent[]): void {
-  console.log('\n  Checking Pantheon agent versions...\n');
-  for (const a of agents) {
-    console.log(`  ✓ [${a.id}] v${a.version} — up to date`);
+async function checkUpgrade(config: ThesmosConfig): Promise<{ status: string; message: string }> {
+  const catalogUrl = config.catalogUrl ?? process.env['THESMOS_CATALOG_URL'];
+  if (!catalogUrl) {
+    return {
+      status: 'not_configured',
+      message: 'No catalog URL configured. Set catalogUrl in .thesmos/config.json or THESMOS_CATALOG_URL env var to enable upgrade checks.',
+    };
   }
-  console.log(`\n  All ${agents.length} agents are at the latest version.\n`);
-  console.log('  To update: npm update -g thesmos-governance\n');
+  return {
+    status: 'not_configured',
+    message: `Catalog URL configured (${catalogUrl}) but remote check is not yet implemented. Run 'npm update thesmos-governance' to update manually.`,
+  };
 }
+
+async function cmdUpgrade(agents: PantheonAgent[], root: string): Promise<void> {
+  const config = readConfig(root);
+  const result = await checkUpgrade(config);
+
+  console.log('\n  Pantheon upgrade check\n');
+  console.log(`  Status:  ${result.status}`);
+  console.log(`  Message: ${result.message}`);
+  console.log(`\n  Installed: ${agents.length} agent(s)`);
+  console.log('  To update: npm update thesmos-governance\n');
+}
+
+/** Exported for tests. */
+export { checkUpgrade };
 
 // ── pantheon:mode ─────────────────────────────────────────────────────────────
 
@@ -1413,7 +1433,7 @@ export async function cmdPantheon(argv: string[]): Promise<void> {
       cmdRemove(agents, rest, root);
       break;
     case 'upgrade':
-      cmdUpgrade(agents);
+      await cmdUpgrade(agents, root);
       break;
     case 'mode':
       cmdMode(rest, root);

@@ -43,6 +43,17 @@ interface GodEntry {
   domain: string;
 }
 
+// ── Configurable model IDs ───────────────────────────────────────────────────
+// Defaults are current as of the release date; override via env vars when
+// Anthropic publishes new model IDs — no code change required.
+// NOTE: do not add more hardcoded IDs here. The Model Steward (Phase C) will
+// replace this with a provider-neutral catalog.
+export const DEFAULT_MODEL_IDS = {
+  fast: process.env['THESMOS_MODEL_FAST'] ?? 'claude-haiku-4-5-20251001',
+  mid:  process.env['THESMOS_MODEL_MID']  ?? 'claude-sonnet-4-6',
+  top:  process.env['THESMOS_MODEL_TOP']  ?? 'claude-opus-4-8',
+} as const;
+
 // ── Work-type keyword buckets ────────────────────────────────────────────────
 
 const MECHANICAL_KEYWORDS = [
@@ -108,7 +119,7 @@ export function recommendModel(c: Classification): ModelRecommendation {
   if (c.bulkPct >= 40 && c.architecturePct < 20 && c.creativePct < 20) {
     return {
       model: 'haiku',
-      claudeModel: 'claude-haiku-4-5',
+      claudeModel: DEFAULT_MODEL_IDS.fast,
       codexModel: 'gpt-5.5-instant',
       costMultiple: '~5x cheaper than Sonnet, ~10x cheaper than the top tier',
       rationale: `${c.bulkPct}% bulk/repetitive work with little architectural or creative judgment — Haiku handles high-volume mechanical passes at a fraction of the cost.`,
@@ -117,24 +128,24 @@ export function recommendModel(c: Classification): ModelRecommendation {
 
   if (c.architecturePct >= 30 || c.creativePct >= 30) {
     // Top cost tier — but the concrete flagship depends on WHY it was chosen.
-    // Architecture/orchestration wants the reasoning flagship (claude-opus-4-8,
+    // Architecture/orchestration wants the reasoning flagship (DEFAULT_MODEL_IDS.top,
     // the model the Pantheon's Zeus/Argus/Athena actually run on); creative or
     // customer-facing work wants the creative flagship (claude-fable-5).
     const architectureLed = c.architecturePct >= c.creativePct;
     return {
       model: 'fable',
-      claudeModel: architectureLed ? 'claude-opus-4-8' : 'claude-fable-5',
+      claudeModel: architectureLed ? DEFAULT_MODEL_IDS.top : 'claude-fable-5',
       codexModel: 'gpt-5.5-pro',
       costMultiple: '~5x the cost of Sonnet',
       rationale: architectureLed
-        ? `${c.architecturePct}% architecture/orchestration work — this is where the reasoning flagship (claude-opus-4-8, what the orchestration gods run on) earns its cost. Delegate mechanical cleanup elsewhere.`
+        ? `${c.architecturePct}% architecture/orchestration work — this is where the reasoning flagship (${DEFAULT_MODEL_IDS.top}, what the orchestration gods run on) earns its cost. Delegate mechanical cleanup elsewhere.`
         : `${c.creativePct}% creative/customer-facing work — claude-fable-5's generative range earns its cost here. Delegate mechanical cleanup elsewhere.`,
     };
   }
 
   return {
     model: 'sonnet',
-    claudeModel: 'claude-sonnet-5',
+    claudeModel: DEFAULT_MODEL_IDS.mid,
     codexModel: 'gpt-5.5',
     costMultiple: 'baseline (~5x cheaper than the top tier)',
     rationale: `${c.mechanicalPct}% mechanical execution — file edits, config changes, regenerations. Sonnet handles this reliably; a top-tier model's extra reasoning depth wouldn't improve find/replace accuracy.`,
