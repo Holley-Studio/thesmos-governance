@@ -3,12 +3,8 @@
  * AI adapter interface and implementations.
  * Adapters execute a task prompt and return a structured result.
  *
- * Claude adapter: calls `claude -p <prompt> --dangerously-skip-permissions`
+ * Claude adapter: calls `claude -p <prompt>` (non-interactive)
  * HTTP adapter:   POSTs to a configurable endpoint (generic/custom LLM servers)
- *
- * The --dangerously-skip-permissions flag bypasses Claude Code's own permission
- * prompts inside the subprocess — separate from Thesmos's permission profile
- * which handles the parent VSCode extension's permission system.
  */
 import { spawn } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync } from 'node:fs';
@@ -71,7 +67,7 @@ export class ClaudeAdapter implements Adapter {
 
       const child = spawn(
         'claude',
-        ['-p', prompt, '--dangerously-skip-permissions'],
+        ['-p', prompt],
         {
           stdio: ['ignore', 'pipe', 'pipe'],
           env: { ...process.env },
