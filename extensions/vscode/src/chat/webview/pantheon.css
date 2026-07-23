@@ -935,6 +935,63 @@ body.running #send {
   #drop-overlay { transition: none; }
 }
 
+/* ── God bubble shimmer during an active turn ────────────────────────── */
+@keyframes god-shimmer {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 169, 65, 0); }
+  50% { box-shadow: 0 0 10px 3px rgba(212, 169, 65, 0.25); }
+}
+body.running .msg.god:not(.done):not(.error) {
+  animation: god-shimmer 2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  body.running .msg.god:not(.done):not(.error) { animation: none; }
+}
+
+/* ── Turn summary card — compact council report after approved dispatches ── */
+.turn-summary {
+  align-self: stretch;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--pc-border);
+  border-left: 2px solid var(--pc-gold);
+  border-radius: 6px;
+  background: rgba(212, 169, 65, 0.03);
+  font-size: 0.82em;
+  animation: pc-rise 0.22s ease-out;
+}
+.turn-summary-gods {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.turn-summary-chip {
+  color: var(--pc-gold);
+  background: rgba(212, 169, 65, 0.1);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.turn-summary-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pc-dim);
+  white-space: nowrap;
+}
+.turn-summary-model {
+  font-family: var(--pc-font-mono);
+}
+.turn-summary-cost {
+  font-family: var(--pc-font-mono);
+}
+@media (prefers-reduced-motion: reduce) {
+  .turn-summary { animation: none; }
+}
+
 /* ── Dispatch Order — the pre-execution approval gate ─────────────────── */
 .dispatch-order {
   max-width: 92%;

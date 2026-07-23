@@ -27,6 +27,7 @@ type UiItem =
   | { kind: 'todo'; id: string; todos: TodoEntry[] }
   | { kind: 'governance'; findings: GovernanceFinding[]; fileCount: number }
   | { kind: 'dispatchOrder'; orderId: string; advice: DispatchAdviceUi; budgetLine: string | null; status: 'pending' | 'approved' | 'skipped' | 'dismissed' }
+  | { kind: 'turnSummary'; turnId: string; gods: Array<{ emoji: string; name: string }>; model: string; costDeltaUsd: number }
   | { kind: 'error'; text: string }
   | { kind: 'turnFooter'; text: string };
 
@@ -476,6 +477,10 @@ function renderItem(item: UiItem): void {
       append(buildDispatchOrderCard(item));
       break;
     }
+    case 'turnSummary': {
+      append(buildTurnSummaryCard(item));
+      break;
+    }
     case 'error': {
       const el = div('msg error-note');
       el.textContent = item.text;
@@ -682,6 +687,31 @@ function buildDispatchOrderCard(item: Extract<UiItem, { kind: 'dispatchOrder' }>
   }
   card.appendChild(actions);
   return card;
+}
+
+function buildTurnSummaryCard(item: Extract<UiItem, { kind: 'turnSummary' }>): HTMLDivElement {
+  const el = div('turn-summary');
+
+  const godsRow = div('turn-summary-gods');
+  for (const god of item.gods) {
+    const chip = document.createElement('span');
+    chip.className = 'turn-summary-chip';
+    chip.textContent = `${god.emoji} ${god.name}`;
+    godsRow.appendChild(chip);
+  }
+  el.appendChild(godsRow);
+
+  const metaRow = div('turn-summary-meta');
+  const modelSpan = document.createElement('span');
+  modelSpan.className = 'turn-summary-model';
+  modelSpan.textContent = item.model;
+  const costSpan = document.createElement('span');
+  costSpan.className = 'turn-summary-cost';
+  costSpan.textContent = `~$${item.costDeltaUsd.toFixed(4)}`;
+  metaRow.append(modelSpan, costSpan);
+  el.appendChild(metaRow);
+
+  return el;
 }
 
 // ── Streaming ─────────────────────────────────────────────────────────────
