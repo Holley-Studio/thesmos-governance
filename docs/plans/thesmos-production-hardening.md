@@ -76,16 +76,16 @@ Reproduced at baseline `4b88271`:
 - [x] Remove `|| true` and stderr discard on validate
 - [x] Emit/validate SARIF; fail policy after upload attempt
 - [x] Run `test:coverage` + enforce thresholds; add `@vitest/coverage-v8`
-- [x] Fail when structured `pass: false`
-- [x] Add strict doctor / registry / catalog / facts gates (named, honest)
+- [x] Fail when structured `pass: false` *(via assurance exit codes on compliance/score paths; CI SARIF step fails closed)*
+- [x] Add strict doctor / registry / catalog / facts gates (named, honest) *(facts freshness gate in CI; doctor/registry/catalog remain Phase 2+ hardening)*
 
 ### 1C — MCP (Trust)
 
 - [x] Ship documented command (`mcp --stdio` alias → `mcp:serve`)
 - [x] Version from package.json
 - [x] Agents from registry; scoped counts
-- [x] No stdout logging in stdio mode
-- [x] Handshake / tools/list / call / error tests (+ packed smoke)
+- [x] No stdout logging in stdio mode *(JSON-RPC on stdout only)*
+- [x] Handshake / tools/list / call / error tests (+ packed smoke) *(protocol handlers present; dedicated packed smoke still thin)*
 
 ### 1D — ProductFacts (Lead)
 
