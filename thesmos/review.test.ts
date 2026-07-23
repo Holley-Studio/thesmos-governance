@@ -648,3 +648,30 @@ describe('runReview — engine error handling', () => {
     expect(result.skippedRuleIds).toEqual(['TEST_THROW_002']);
   });
 });
+
+// ── validate gate — fail closed on crashing BLOCKER ───────────────────────────
+
+describe('validate command — fail closed on engine error', () => {
+  it('engineErrors are populated for crashing BLOCKER so gate can exit 2 (not 0)', () => {
+    const throwingRule: ThesmosRule = {
+      id: 'TEST_CRASH_001',
+      category: 'test_crash',
+      severity: 'BLOCKER',
+      title: 'Throws',
+      summary: 'Throws',
+      detect: () => { throw new Error('crash'); },
+    };
+
+    const result = runReview(
+      { scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: [] },
+      [throwingRule]
+    );
+
+    const hasCrashedBlocker = result.engineErrors.some((e) =>
+      throwingRule.severity === 'BLOCKER' && e.ruleId === throwingRule.id
+    );
+    expect(hasCrashedBlocker).toBe(true);
+    expect(result.findings).toHaveLength(0);
+    expect(result.engineErrors).toHaveLength(1);
+  });
+});

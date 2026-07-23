@@ -49,7 +49,18 @@ export async function cmdValidate(argv: string[]): Promise<void> {
   }
 
   const registry = await getActiveRules(root);
-  const { findings: allFindings } = runReview({ scan, config, changedFiles }, registry);
+  const reviewResult = runReview({ scan, config, changedFiles }, registry);
+  const allFindings = reviewResult.findings;
+
+  if (reviewResult.engineErrors.length > 0) {
+    const ids = reviewResult.engineErrors.map((e) => e.ruleId).join(', ');
+    process.stderr.write(
+      `\nerror: ${reviewResult.engineErrors.length} rule(s) crashed during detect() and could not be evaluated: ${ids}\n` +
+      `These rules are ENABLED in your config. Failing closed to prevent silent security gaps.\n` +
+      `Fix the rule implementation or disable the rule explicitly to continue.\n`
+    );
+    process.exit(2);
+  }
 
   // Auto-load baseline if present (suppresses known debt from CI exit code)
   const baseline = noBaseline ? null : loadBaseline(root);
