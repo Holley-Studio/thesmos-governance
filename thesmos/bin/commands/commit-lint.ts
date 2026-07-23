@@ -7,6 +7,7 @@
  *   thesmos commit:lint <msg-file>       # Used by commit-msg hook (pass $1)
  *   thesmos commit:lint --last           # Lint the last git commit
  *   thesmos commit:lint --message "..."  # Lint an inline string
+ *   thesmos commit:lint -m "..."         # Same as --message
  *   thesmos commit:lint --json           # JSON output
  *   thesmos commit:create                # Interactive wizard
  */
@@ -78,8 +79,8 @@ export async function cmdCommitLint(argv: string[]): Promise<void> {
 
   let message: string | null = null;
 
-  // --message "..." inline
-  const msgIdx = argv.indexOf('--message');
+  // --message / -m "..." inline
+  const msgIdx = Math.max(argv.indexOf('--message'), argv.indexOf('-m'));
   if (msgIdx !== -1 && argv[msgIdx + 1]) {
     message = argv[msgIdx + 1]!;
   }
@@ -104,11 +105,12 @@ export async function cmdCommitLint(argv: string[]): Promise<void> {
 
   if (!message) {
     process.stderr.write(
-      'commit:lint: provide a message file, --message "...", or --last\n\n' +
+      'commit:lint: provide a message file, --message/-m "...", or --last\n\n' +
       'Examples:\n' +
       '  thesmos commit:lint "$1"          # from commit-msg hook\n' +
       '  thesmos commit:lint --last        # lint most recent commit\n' +
-      '  thesmos commit:lint --message "feat: add login"\n'
+      '  thesmos commit:lint --message "feat: add login"\n' +
+      '  thesmos commit:lint -m "fix: typo"\n'
     );
     process.exit(1);
   }

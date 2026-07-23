@@ -794,20 +794,24 @@ export const NODE_RULES: ThesmosRule[] = [
     },
     detect({ config, changedFiles = [] }: DetectInput): Finding[] {
       const severity = classifySeverity('unhandled_promise_rejection', config.severityRules);
+      // Same shape as TS_010 — require an async-looking callee. Do NOT flag every
+      // bare call merely because the enclosing file contains `async function`
+      // (that produced mass false positives on sync helpers like logReviewFindings).
+      const FLOATING_RE = /^\s*(?!(?:return|await|const|let|var|export|throw|void)\b)[a-zA-Z_$][a-zA-Z0-9_$.]*\s*\([^)]*\)\s*;/;
+      const ASYNC_HINT =
+        /(?:Async|async|Email|Notify|Send|emit|publish|enqueue|dispatch|track)[A-Z]|log(?:Event|Metric|Async|Span|Trace)\b|[A-Za-z$]+Async\b/;
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
-        if (!SOURCE_EXT.test(path)) continue;
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]!;
           if (isCommentLine(line)) continue;
-          if (/^\s+(?!await\s|return\s|const\s|let\s|var\s|\w+\s*=)\w+(?:Async)?\(/.test(line) && !line.includes('.catch(') && !line.includes('void ')) {
-            const next2 = lines.slice(i + 1, Math.min(lines.length, i + 3)).join('\n');
-            if (/^\s+\.catch\(/.test(next2) || /^\s+\)/.test(next2)) continue;
-            if (/Promise\.|\.then\(|async\s+function/.test(content.slice(0, content.indexOf(line)))) {
-              findings.push({ severity, category: 'unhandled_promise_rejection', file: path, line: i + 1, message: 'Async function called without await or .catch() — unhandled rejection may crash Node.js.', suggestion: 'Await the call, or chain .catch(err => logger.error(err)) to handle rejections.' });
-            }
-          }
+          if (!FLOATING_RE.test(line) || !ASYNC_HINT.test(line)) continue;
+          if (/.catch\(|void /.test(line)) continue;
+          const next2 = lines.slice(i + 1, Math.min(lines.length, i + 3)).join('\n');
+          if (/^\s+\.catch\(/.test(next2)) continue;
+          findings.push({ severity, category: 'unhandled_promise_rejection', file: path, line: i + 1, message: 'Async function called without await or .catch() — unhandled rejection may crash Node.js.', suggestion: 'Await the call, or chain .catch(err => logger.error(err)) to handle rejections.' });
         }
       }
       return findings;

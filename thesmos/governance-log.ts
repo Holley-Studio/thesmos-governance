@@ -134,7 +134,8 @@ export function outcomeFromSeverity(
   severity: string,
 ): GovernanceOutcome {
   if (severity === 'BLOCKER') return 'BLOCKED';
-  if (severity === 'HIGH') return 'WARN';
+  // HIGH and TECH_DEBT dilute compliance (weighted WARN) — never pretend debt is clean PASS.
+  if (severity === 'HIGH' || severity === 'TECH_DEBT') return 'WARN';
   return 'PASS';
 }
 
@@ -269,10 +270,11 @@ export function summariseGovernanceLog(events: GovernanceEvent[]): GovernanceSum
   const bypassed = events.filter((e) => e.outcome === 'BYPASSED');
 
   const enforced = blocked.length + passed.length + bypassed.length + warned.length;
-  const compliant = passed.length + warned.length;
+  // WARN (HIGH / TECH_DEBT) counts half — maturity cannot hit 100% while debt remains.
+  const compliantWeight = passed.length + warned.length * 0.5;
   // Empty log → INCOMPLETE (null score), never a fake 100%.
   const complianceScore =
-    enforced === 0 ? null : Math.round((compliant / enforced) * 1000) / 10;
+    enforced === 0 ? null : Math.round((compliantWeight / enforced) * 1000) / 10;
   const assuranceState: GovernanceSummary['assuranceState'] =
     enforced === 0 ? 'INCOMPLETE' : blocked.length + bypassed.length > 0 ? 'FAIL' : 'PASS';
 

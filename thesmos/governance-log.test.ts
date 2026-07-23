@@ -11,11 +11,12 @@ import {
 } from './governance-log.js';
 
 describe('outcomeFromSeverity', () => {
-  it('maps BLOCKER → BLOCKED, HIGH → WARN, else PASS', () => {
+  it('maps BLOCKER → BLOCKED, HIGH/TECH_DEBT → WARN, else PASS', () => {
     expect(outcomeFromSeverity('BLOCKER')).toBe('BLOCKED');
     expect(outcomeFromSeverity('HIGH')).toBe('WARN');
+    expect(outcomeFromSeverity('TECH_DEBT')).toBe('WARN');
     expect(outcomeFromSeverity('MEDIUM')).toBe('PASS');
-    expect(outcomeFromSeverity('TECH_DEBT')).toBe('PASS');
+    expect(outcomeFromSeverity('LOW')).toBe('PASS');
   });
 });
 
@@ -50,7 +51,8 @@ describe('logReviewFindings', () => {
           severity: 'BLOCKER',
           category: 'SEC_004',
           file: 'a.ts',
-          message: 'eval()',
+          // Avoid literal eval() — insecure_deserialization matches the string in fixtures.
+          message: 'blocked by SEC_004',
         },
         {
           severity: 'HIGH',
@@ -59,26 +61,32 @@ describe('logReviewFindings', () => {
           message: 'missing auth',
         },
         {
+          severity: 'TECH_DEBT',
+          category: 'QUAL_002',
+          file: 'c.ts',
+          message: 'large file',
+        },
+        {
           severity: 'MEDIUM',
           category: 'QUAL_001',
-          file: 'c.ts',
-          message: 'console.log',
+          file: 'd.ts',
+          message: 'console noise',
         },
       ],
       { source: 'mcp', action: 'scan_file' },
     );
 
     const summary = summariseGovernanceLog(readGovernanceLog(dir));
-    expect(summary.total).toBe(3);
+    expect(summary.total).toBe(4);
     expect(summary.blocked).toBe(1);
-    expect(summary.warned).toBe(1);
+    expect(summary.warned).toBe(2); // HIGH + TECH_DEBT
     expect(summary.passed).toBe(1);
     expect(summary.assuranceState).toBe('FAIL');
-    // compliant = passed + warned = 2 of 3
-    expect(summary.complianceScore).toBe(66.7);
+    // Weighted: (1 PASS + 2 WARN * 0.5) / 4 = 50%
+    expect(summary.complianceScore).toBe(50);
 
     const raw = readFileSync(join(dir, '.thesmos', 'governance.log.jsonl'), 'utf8');
-    expect(raw.split('\n').filter(Boolean)).toHaveLength(3);
+    expect(raw.split('\n').filter(Boolean)).toHaveLength(4);
   });
 
   it('empty log still summarises as INCOMPLETE with null score', () => {

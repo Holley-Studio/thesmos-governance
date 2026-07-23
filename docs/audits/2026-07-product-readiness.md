@@ -118,11 +118,11 @@ At baseline commit, none of the master-prompt acceptance gates 14–27 passed. P
 | `agents:doctor --strict` | **exit 0** after catalog-backed skip (was exit 2 / 68 false warns) |
 | `health --json` | 100 / A+ |
 | `ci --health-threshold=90` | pass:true |
-| `score` (after review) | 100 / A · compliance 100 · PASS |
+| `score` (after review) | weighted compliance (TECH_DEBT→WARN @ 0.5); clean tree can still be 100 |
 | `mcp --stdio` initialize | version **5.1.0** |
 | `self:check` / `context:health` | all passed / 100 A |
 | `npm audit --omit=dev` | **0** vulns |
-| `npm audit` (incl. dev) | **2** — js-yaml HIGH, esbuild LOW |
+| `npm audit` (incl. dev) | **0** (js-yaml→4.3.0; esbuild overridden to 0.28.1) |
 
 ### Attention backlog (not release-blocking for 5.1.0)
 
@@ -130,16 +130,17 @@ At baseline commit, none of the master-prompt acceptance gates 14–27 passed. P
 |----|---------|----------|-----------------|
 | S1 | `agents:doctor` treated catalog agents as missing local files | HIGH | **FIXED** this PR (align with drift) |
 | S2 | Version bump without regenerating `catalog/product-facts.json` fails CI | HIGH | **FIXED** this PR; add generate step to release checklist |
-| S3 | DevDependency `js-yaml` HIGH (GHSA-52cp-r559-cp3m) | HIGH (dev) | Release — `npm audit fix` / pin |
-| S4 | DevDependency `esbuild` LOW (Windows dev-server read) | LOW (dev) | Release — via tsup |
-| S5 | 7× TECH_DEBT `large_file` (VS Code chat + others); 50 TECH_DEBT w/ `--no-baseline` | MEDIUM | Tech debt / Hephaestus |
-| S6 | Score maps TECH_DEBT→PASS so maturity can hit 100 with known debt | MEDIUM | Trust — consider WARN for TECH_DEBT or separate debt component |
-| S7 | Runtime receipts/metrics still 0 in dogfood unless autopilot/`agent:run` used | MEDIUM | Runtime — CI smoke receipt optional |
-| S8 | `commit:lint -m "…"` treats `-m` as a file path | LOW | CLI UX |
+| S3 | DevDependency `js-yaml` HIGH (GHSA-52cp-r559-cp3m) | HIGH (dev) | **FIXED** — `npm audit fix` → 4.3.0 |
+| S4 | DevDependency `esbuild` LOW (Windows dev-server read) | LOW (dev) | **FIXED** — root `overrides.esbuild: 0.28.1` (tsup nested) |
+| S5 | 7× TECH_DEBT `large_file` (VS Code chat + others); 50 TECH_DEBT w/ `--no-baseline` | MEDIUM | **Deferred** — honest baseline debt; do not fake-clear. Split VS Code chat modules in a dedicated PR |
+| S6 | Score maps TECH_DEBT→PASS so maturity can hit 100 with known debt | MEDIUM | **FIXED** — TECH_DEBT→WARN; compliance = (PASS + 0.5×WARN) / enforced |
+| S7 | Runtime receipts/metrics still 0 in dogfood unless autopilot/`agent:run` used | MEDIUM | **FIXED** — `thesmos ci` writes a hashed smoke receipt (`source: 'ci'`) |
+| S8 | `commit:lint -m "…"` treats `-m` as a file path | LOW | **FIXED** — `-m` alias for `--message` |
 | S9 | `pack:validate` no-op when no packs present (OK; document) | LOW | Docs |
+| S10 | CI false positives: `eval()` in fixtures, `logReviewFindings` floating-promise, vitest “undeclared” | HIGH | **FIXED** — fixture wording; ASYNC_HINT / NODE_022 tightened; SLOP workspace-aware |
 
 ---
 
 ## Next remediation step
 
-Open PR for Phase 8 + 5.1.0 release prep. Human decides publish. Tackle S3–S7 after merge as needed.
+Human review/merge of PR #112; optional publish of 5.1.0. Remaining elevation: S5 large-file splits (Hephaestus), S9 pack docs.

@@ -30,8 +30,15 @@ import { exitCodeFor, shouldWarn, SEVERITY_EMOJI } from '../../severity.ts';
 import { loadBaseline, partitionFindings } from '../../baseline.ts';
 import { runDriftForRoot } from '../../drift.ts';
 import { computeHealthForRoot } from '../../health.ts';
+import {
+  createReceipt,
+  hashPayload,
+  newTaskId,
+  writeExecutionReceipt,
+} from '../../execution-receipt.ts';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { extractSuppressions, auditSuppressions } from '../../suppress.ts';
 
 const SOURCE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
@@ -102,6 +109,32 @@ export async function cmdCiGate(argv: string[]): Promise<void> {
   const supBlocks = false; // suppression issues are advisory in CI by default
   const healthBlocks = healthThreshold !== null && health.score < healthThreshold;
   const overallFail = validateFails || driftBlocks || healthBlocks;
+
+  // Smoke receipt so score/eval coverage can see runtime evidence from CI dogfood
+  // (hashes only — no finding payloads or secrets).
+  try {
+    writeExecutionReceipt(
+      root,
+      createReceipt({
+        runId: `ci-${randomUUID()}`,
+        taskId: newTaskId(),
+        source: 'ci',
+        routing: { kind: 'ci-gate', detail: base ?? 'full-tree' },
+        terminalStatus: overallFail ? 'blocked' : 'complete',
+        resultHash: hashPayload(
+          JSON.stringify({
+            findings: findings.length,
+            drift: driftFindings.length,
+            health: health.score,
+            pass: !overallFail,
+          }),
+        ),
+        blockReason: overallFail ? 'ci-gate-failed' : undefined,
+      }),
+    );
+  } catch {
+    // Receipt I/O must never fail the gate itself.
+  }
 
   if (json) {
     process.stdout.write(

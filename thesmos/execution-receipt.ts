@@ -25,7 +25,7 @@ export interface ExecutionReceipt {
   runId: string;
   taskId: string;
   requestId?: string;
-  source: 'autopilot' | 'agent-run' | 'pantheon-orchestrate';
+  source: 'autopilot' | 'agent-run' | 'pantheon-orchestrate' | 'ci';
   agentId?: string;
   adapter?: string;
   routing?: { kind: string; detail?: string };
