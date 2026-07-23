@@ -138,6 +138,7 @@ At baseline commit, none of the master-prompt acceptance gates 14–27 passed. P
 | S8 | `commit:lint -m "…"` treats `-m` as a file path | LOW | **FIXED** — `-m` alias for `--message` |
 | S9 | `pack:validate` no-op when no packs present (OK; document) | LOW | Docs |
 | S10 | CI false positives: `eval()` in fixtures, `logReviewFindings` floating-promise, vitest “undeclared” | HIGH | **FIXED** — fixture wording; ASYNC_HINT / NODE_022 tightened; SLOP workspace-aware |
+| S11 | Validate CI BLOCKER: `commit:create` used `execSync(\`git commit -F "…"\`)` | BLOCKER | **FIXED** — `execFileSync('git', ['commit', '-F', tmpFile])` (no shell) |
 
 ---
 

@@ -278,6 +278,7 @@ See `docs/audits/2026-07-product-readiness.md` § Stress test.
 - [x] Score honesty: TECH_DEBT→WARN + 0.5 weight in compliance (S6)
 - [x] `thesmos ci` smoke receipt (S7)
 - [x] `commit:lint -m` alias (S8)
+- [x] `commit:create` argv-safe git commit (S11 — clears validate BLOCKER)
 - [ ] S5 large_file splits (deferred — keep baseline honest)
 - [ ] S9 pack:validate docs
 
@@ -287,4 +288,4 @@ Phases 0–8 + elevate + release prep on PR #112. **No npm publish** without app
 
 ## Next exact action
 
-Human review/merge of PR #112; optional publish of 5.1.0; then S5 large-file split PR.
+Human review/merge of PR #112 after Thesmos Review validate goes green; optional publish of 5.1.0; then S5 large-file split PR.

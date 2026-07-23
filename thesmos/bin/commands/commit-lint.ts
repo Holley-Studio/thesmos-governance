@@ -14,7 +14,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { COMMIT_RULES } from '../../rules/commits.js';
 import type { DetectInput, Finding, ScanResult } from '../../types.js';
@@ -261,7 +261,8 @@ export async function cmdCommitCreate(argv: string[]): Promise<void> {
         try {
           const tmpFile = join(root, '.git', 'COMMIT_EDITMSG.thesmos-wizard');
           writeFileSync(tmpFile, commitMsg);
-          execSync(`git commit -F "${tmpFile}"`, { stdio: 'inherit' });
+          // argv form — no shell, so path cannot inject via quoting (SEC_016 / NODE_005)
+          execFileSync('git', ['commit', '-F', tmpFile], { stdio: 'inherit' });
         } catch {
           process.stderr.write('commit:create: git commit failed.\n');
           process.exit(1);
