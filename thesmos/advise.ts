@@ -52,6 +52,7 @@ export const DEFAULT_MODEL_IDS = {
   fast: process.env['THESMOS_MODEL_FAST'] ?? 'claude-haiku-4-5-20251001',
   mid:  process.env['THESMOS_MODEL_MID']  ?? 'claude-sonnet-4-6',
   top:  process.env['THESMOS_MODEL_TOP']  ?? 'claude-opus-4-8',
+  creative: process.env['THESMOS_MODEL_CREATIVE'] ?? 'claude-fable-5',
 } as const;
 
 // ── Work-type keyword buckets ────────────────────────────────────────────────
@@ -134,12 +135,12 @@ export function recommendModel(c: Classification): ModelRecommendation {
     const architectureLed = c.architecturePct >= c.creativePct;
     return {
       model: 'fable',
-      claudeModel: architectureLed ? DEFAULT_MODEL_IDS.top : 'claude-fable-5',
+      claudeModel: architectureLed ? DEFAULT_MODEL_IDS.top : DEFAULT_MODEL_IDS.creative,
       codexModel: 'gpt-5.5-pro',
       costMultiple: '~5x the cost of Sonnet',
       rationale: architectureLed
         ? `${c.architecturePct}% architecture/orchestration work — this is where the reasoning flagship (${DEFAULT_MODEL_IDS.top}, what the orchestration gods run on) earns its cost. Delegate mechanical cleanup elsewhere.`
-        : `${c.creativePct}% creative/customer-facing work — claude-fable-5's generative range earns its cost here. Delegate mechanical cleanup elsewhere.`,
+        : `${c.creativePct}% creative/customer-facing work — ${DEFAULT_MODEL_IDS.creative}'s generative range earns its cost here. Delegate mechanical cleanup elsewhere.`,
     };
   }
 
