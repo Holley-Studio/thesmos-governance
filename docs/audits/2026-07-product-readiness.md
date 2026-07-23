@@ -7,6 +7,10 @@
 **Honest readiness score at baseline:** **3 / 10**  
 (Not production-ready. Core tests pass, but compliance, CI governance, MCP packaging, and orchestration claims are not evidence-backed.)
 
+### Phase 1 remediation (2026-07-23)
+
+False-assurance blockers for compliance / score / MCP / CI path are fixed on this branch (`feat/trust-execution-hardening`): shared `assurance.ts` (empty/missing evidence → `INCOMPLETE`, never 100), `compliance:report` reads `.thesmos/report.json`, CI uses `dist/cli.js` with SARIF fail-closed policy + `test:coverage`, `mcp --stdio` alias + version/agent counts from `catalog/product-facts.json` (license **FSL-1.1-MIT**, no pricing invented). See `docs/plans/thesmos-production-hardening.md` Phase 1.
+
 ---
 
 ## Method
@@ -76,9 +80,9 @@ Artifacts under `/tmp/thesmos-p0/` (session-local).
 
 | ID | Phase | Status |
 |----|-------|--------|
-| P0-01–05, P0-18–19 | 1A Assurance | TODO |
-| P0-06–09 | 1B CI | TODO |
-| P0-10–12 | 1C MCP + 1D Facts | TODO |
+| P0-01–05, P0-18–19 | 1A Assurance | **DONE** (2026-07-23) |
+| P0-06–09 | 1B CI | **DONE** (2026-07-23) |
+| P0-10–12 | 1C MCP + 1D Facts | **DONE** (2026-07-23) |
 | P0-15 | 2 Execution safety | TODO |
 | P0-13–14 | 3 Pantheon runtime | TODO |
 | P0-16–17 | 4 Builders | TODO |
@@ -88,7 +92,7 @@ Artifacts under `/tmp/thesmos-p0/` (session-local).
 
 ## Acceptance vs baseline
 
-None of the master-prompt acceptance gates 14–27 (honest CI, health ≥90/A, compliance INCOMPLETE without evidence, MCP docs/command parity, no dangerously-skip-permissions default, etc.) pass at baseline.
+At baseline commit, none of the master-prompt acceptance gates 14–27 passed. Phase 1 remediates false-assurance gates for compliance/CI/MCP/facts on this branch; remaining gates (health ≥90/A, Claude execution safety, Pantheon runtime, builders, etc.) remain open.
 
 **Do not claim production-ready, fully compliant, or 10/10.**
 
@@ -96,4 +100,4 @@ None of the master-prompt acceptance gates 14–27 (honest CI, health ≥90/A, c
 
 ## Next remediation step
 
-Phase 1A: introduce shared `AssuranceState` model; force compliance CLI/MCP/eval to load real evidence or return `INCOMPLETE` (never 100% on empty).
+Phase 2: make Claude execution safe — remove or default-off `--dangerously-skip-permissions` in autopilot adapters.

@@ -18,7 +18,7 @@
 | Phase | Name | Status | Owner |
 |-------|------|--------|-------|
 | 0 | Reproduce baseline + blocker table | **COMPLETE** | Lead |
-| 1 | Eliminate false assurance (compliance / CI / MCP / facts) | **IN PROGRESS** | Trust + Release |
+| 1 | Eliminate false assurance (compliance / CI / MCP / facts) | **COMPLETE** | Trust + Release |
 | 2 | Make Claude execution safe | PENDING | Runtime |
 | 3 | Real Pantheon runtime (registry / router / DAG) | PENDING | Runtime |
 | 4 | Repair builders | PENDING | Lead |
@@ -63,42 +63,43 @@ Reproduced at baseline `4b88271`:
 
 ### 1A — Assurance model (Trust)
 
-- [ ] Add `thesmos/assurance.ts` shared result model (`PASS|FAIL|INCOMPLETE|ERROR`)
-- [ ] Wire CLI `compliance:report` to load `.thesmos/report.json` (not wrong `scan-cache.json`)
-- [ ] Remove empty-scan → 100% paths in CLI + MCP + eval
-- [ ] Zero evaluated rules → `INCOMPLETE`, never PASS/100
-- [ ] Strict/CI exit nonzero for FAIL/INCOMPLETE/ERROR
-- [ ] Tests: missing/empty/pass/fail/partial/stale/malformed/zero-rules/parity
+- [x] Add `thesmos/assurance.ts` shared result model (`PASS|FAIL|INCOMPLETE|ERROR`)
+- [x] Wire CLI `compliance:report` to load `.thesmos/report.json` (not wrong `scan-cache.json`)
+- [x] Remove empty-scan → 100% paths in CLI + MCP + eval
+- [x] Zero evaluated rules → `INCOMPLETE`, never PASS/100
+- [x] Strict/CI exit nonzero for FAIL/INCOMPLETE/ERROR
+- [x] Tests: missing/empty/pass/fail/partial/stale/malformed/zero-rules/parity
 
 ### 1B — CI enforcement (Release)
 
-- [ ] Fix CLI path to `dist/cli.js`
-- [ ] Remove `|| true` and stderr discard on validate
-- [ ] Emit/validate SARIF; fail policy after upload attempt
-- [ ] Run `test:coverage` + enforce thresholds; add `@vitest/coverage-v8`
-- [ ] Fail when structured `pass: false`
-- [ ] Add strict doctor / registry / catalog / facts gates (named, honest)
+- [x] Fix CLI path to `dist/cli.js`
+- [x] Remove `|| true` and stderr discard on validate
+- [x] Emit/validate SARIF; fail policy after upload attempt
+- [x] Run `test:coverage` + enforce thresholds; add `@vitest/coverage-v8`
+- [x] Fail when structured `pass: false`
+- [x] Add strict doctor / registry / catalog / facts gates (named, honest)
 
 ### 1C — MCP (Trust)
 
-- [ ] Ship documented command (`mcp --stdio` alias → `mcp:serve`)
-- [ ] Version from package.json
-- [ ] Agents from registry; scoped counts
-- [ ] No stdout logging in stdio mode
-- [ ] Handshake / tools/list / call / error tests (+ packed smoke)
+- [x] Ship documented command (`mcp --stdio` alias → `mcp:serve`)
+- [x] Version from package.json
+- [x] Agents from registry; scoped counts
+- [x] No stdout logging in stdio mode
+- [x] Handshake / tools/list / call / error tests (+ packed smoke)
 
 ### 1D — ProductFacts (Lead)
 
-- [ ] Generated versioned facts artifact
-- [ ] Consumers: CLI help, MCP, score, docs generators
-- [ ] CI freshness check
-- [ ] **STOP** if pricing/licensing conflict needs product decision
+- [x] Generated versioned facts artifact (`catalog/product-facts.json`)
+- [x] Consumers: CLI help, MCP, score, docs generators
+- [x] CI freshness check
+- [x] Licensing/pricing: no conflict — license is **FSL-1.1-MIT** from `package.json`; no pricing invented
 
 ## Files changed (cumulative)
 
 | Phase | Files |
 |-------|-------|
 | 0 | `docs/plans/thesmos-production-hardening.md`, `docs/audits/2026-07-product-readiness.md` |
+| 1 | `thesmos/assurance.ts`, `thesmos/assurance.test.ts`, `thesmos/compliance-assurance.test.ts`, `thesmos/bin/commands/compliance.ts`, `thesmos/bin/commands/eval.ts`, `thesmos/bin/commands/score.ts`, `thesmos/bin/commands/mcp.ts`, `thesmos/bin/cli.ts`, `thesmos/governance-log.ts`, `thesmos/mcp-server.ts`, `thesmos/index.ts`, `thesmos/package.json`, `thesmos/product-facts.ts`, `thesmos/product-facts.test.ts`, `thesmos/scripts/generate-product-facts.ts`, `thesmos/catalog/product-facts.json`, `.github/workflows/ci.yml`, `docs/plans/thesmos-production-hardening.md`, `docs/audits/2026-07-product-readiness.md` |
 
 ## Commands executed (Phase 0)
 
@@ -120,12 +121,12 @@ git diff --exit-code after build                → 0
 
 ## Known blockers requiring user decision
 
-None yet for Phase 1 code. Pricing/licensing canonical source TBD when ProductFacts hits contradictions.
+None for Phase 1. ProductFacts license resolved as **FSL-1.1-MIT** (from `package.json`); no pricing fields invented.
 
 ## Remaining work
 
-Phases 1–6 per master prompt. Next exact action: implement `assurance.ts` + compliance CLI/MCP wiring + failing tests that prove empty evidence ≠ PASS.
+Phases 2–6 per master prompt (Claude execution safety → Pantheon runtime → builders → observability → release).
 
 ## Next exact action
 
-Implement Phase 1A shared assurance model and fix compliance false-green paths; update this plan after the first green assurance test suite.
+Begin Phase 2 — make Claude execution safe (remove/default-off `--dangerously-skip-permissions`; harden autopilot adapters).
