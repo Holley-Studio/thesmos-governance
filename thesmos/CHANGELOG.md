@@ -13,6 +13,8 @@
   - `agent:run`, RAG scaffolds (OpenAI/Cohere/local embed), versioned receipts, `eval` runtime section.
   - Catalog loads reviewers + pantheon + figma + root; doctor/catalog:validate honest exits; CI `--health-threshold=90`.
   - **Phase 8:** `review` / `validate` / `ci` / MCP `scan_file` append enforcement events (`review.clean` on empty); score tip when INCOMPLETE.
+  - `agents:doctor`: skip false `registry_inconsistency` when the agent is catalog-backed (matches drift).
+  - Regenerate `catalog/product-facts.json` with the 5.1.0 version bump.
   - Supply chain: brace-expansion 5.0.8; Actions SHA-pinned; `npm publish --provenance` unchanged (no auto-publish).
 
 - **Cross-platform Thesmos guard (Operation Aegis):** Claude Code hooks no longer depend on Unix shell (`npx … 2>&1 || true`, Bash wrappers) for governance.
