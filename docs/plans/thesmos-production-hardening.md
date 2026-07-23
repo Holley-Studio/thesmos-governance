@@ -22,7 +22,7 @@
 | 2 | Make Claude execution safe | **COMPLETE** | Runtime |
 | 3 | Real Pantheon runtime (registry / router / DAG) | **COMPLETE** | Runtime |
 | 4 | Repair builders | **COMPLETE** | Lead |
-| 5 | Observability + evaluations | PENDING | Runtime |
+| 5 | Observability + evaluations | **COMPLETE** | Runtime |
 | 6 | Release engineering | PENDING | Release |
 
 ## Decisions log
@@ -38,6 +38,8 @@
 | 2026-07-23 | Autopilot Depends on: gated at runtime (block if unmet) | P0-14 — parser already validates order; executor must enforce |
 | 2026-07-23 | `agent:run` resolves local/catalog agents via createAdapter | P0-16 — builders advertised a missing command |
 | 2026-07-23 | RAG scaffold: real OpenAI/Cohere/local embed + BYOK completeWithContext; no Anthropic embeddings option | P0-17 — Anthropic has no public embeddings API |
+| 2026-07-23 | Versioned execution receipts + local metrics-export (no Datadog fantasy) | Phase 5 — hashed I/O only; AGNT_020 local-jsonl |
+| 2026-07-23 | Score coverage counts receipts/activity/metrics as evidence | Gate 16 honesty — still 0 when empty |
 
 ## Phase 0 evidence summary
 
@@ -172,10 +174,29 @@ None for Phase 1. ProductFacts license resolved as **FSL-1.1-MIT** (from `packag
 - [x] Plan checklist no longer claims ANTHROPIC_API_KEY for embeddings
 - [x] Generator tests assert no TODO / not-implemented stubs
 
+## Phase 5 workstreams
+
+### 5A — Execution receipts
+
+- [x] `execution-receipt.ts` schema (hashed I/O, terminal status, deps, retries)
+- [x] Wire autopilot / agent:run / pantheon orchestrate writers
+- [x] Autopilot → agent-activity spawn/complete/error
+
+### 5B — Metrics + score + eval UX
+
+- [x] `MetricsConfig` + `metrics-export.ts` (`exportTo: local-jsonl`)
+- [x] AGNT_020 goodExample → local-jsonl (not Datadog)
+- [x] Score coverage: governance log **or** receipts/activity/metrics
+- [x] `thesmos eval` runtime observability section (honest scope)
+
+### 5C — Behavioral eval suites
+
+- [x] `eval/suites.test.ts` index covering skip-permissions / dependsOn / routing
+
 ## Remaining work
 
-Phases 5–6 per master prompt (observability → release).
+Phase 6 — release engineering (P0-20 brace-expansion / audit, Action pins, provenance).
 
 ## Next exact action
 
-Begin Phase 5 — observability + evaluations.
+Begin Phase 6 — release engineering.

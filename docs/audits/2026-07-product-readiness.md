@@ -101,4 +101,4 @@ At baseline commit, none of the master-prompt acceptance gates 14–27 passed. P
 
 ## Next remediation step
 
-Phase 5: observability + evaluations.
+Phase 6: release engineering (P0-20 brace-expansion / supply-chain).
