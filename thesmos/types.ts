@@ -42,6 +42,15 @@ export interface AutopilotConfig {
   dangerouslySkipPermissions?: boolean;
 }
 
+/** Local-first cost/token observability (AGNT_020). */
+export interface MetricsConfig {
+  enabled: boolean;
+  /** Destination for session/task cost snapshots. Default: local-jsonl. */
+  exportTo?: 'local-jsonl';
+  /** Optional alert threshold in USD (advisory — recorded in export events). */
+  costAlertThresholdUSD?: number;
+}
+
 export type DoneCriterionType = 'file_exists' | 'command_passes' | 'grep_matches' | 'grep_not_matches';
 
 export interface DoneCriterion {
@@ -183,6 +192,12 @@ export interface ThesmosConfig {
 
   // Autopilot autonomous build mode
   autopilot?: AutopilotConfig;
+
+  /**
+   * Cost/token metric export (AGNT_020).
+   * Prefer `exportTo: "local-jsonl"` — writes `.thesmos/metrics-export.jsonl`.
+   */
+  metrics?: MetricsConfig;
 
   // Pantheon agent routing doctrine (AGNT_032/033)
   routing?: {

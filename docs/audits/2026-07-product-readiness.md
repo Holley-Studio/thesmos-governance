@@ -86,6 +86,7 @@ Artifacts under `/tmp/thesmos-p0/` (session-local).
 | P0-15 | 2 Execution safety | **DONE** (2026-07-23) — default-off; opt-in `autopilot.dangerouslySkipPermissions` |
 | P0-13–14 | 3 Pantheon runtime | **DONE** (2026-07-23) — `--execute` opt-in; dependsOn gated at runtime |
 | P0-16–17 | 4 Builders | **DONE** (2026-07-23) — `agent:run` + RAG embed/complete scaffolds |
+| Phase 5 | Observability / evals | **DONE** (2026-07-23) — receipts, activity wire-up, local metrics, suites |
 | P0-20 | 6 Release / deps | TODO |
 
 ---

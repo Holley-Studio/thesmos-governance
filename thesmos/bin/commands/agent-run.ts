@@ -20,6 +20,11 @@ import { createContext } from '../lib/context.ts';
 import { parseArgs, flag, flagVal } from '../lib/args.ts';
 import { createAdapter } from '../../autopilot/adapters.ts';
 import { logAgentComplete, logAgentError, logAgentSpawn } from '../../agent-activity.ts';
+import {
+  createReceipt,
+  hashPayload,
+  writeExecutionReceipt,
+} from '../../execution-receipt.ts';
 import { randomUUID } from 'node:crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -146,6 +151,29 @@ export async function cmdAgentRun(argv: string[]): Promise<void> {
   });
 
   const durationMs = Date.now() - started;
+  const terminal = result.success ? 'complete' : result.timedOut ? 'timed_out' : 'error';
+  writeExecutionReceipt(
+    root,
+    createReceipt({
+      runId: sessionId,
+      taskId: invocationId,
+      source: 'agent-run',
+      agentId: invocationId,
+      adapter: adapter.name,
+      routing: { kind: 'agent-run', detail: name },
+      durationMs,
+      promptHash: hashPayload(prompt),
+      resultHash: hashPayload(result.summary),
+      artifacts: [logPath],
+      terminalStatus: terminal,
+      blockReason: result.success
+        ? undefined
+        : result.timedOut
+          ? 'timed out'
+          : `exit ${result.exitCode}`,
+    }),
+  );
+
   if (result.success) {
     logAgentComplete(root, {
       sessionId,

@@ -1,9 +1,11 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * thesmos eval — governance visibility report
+ * thesmos eval — governance + runtime observability report
  *
- * Reads .thesmos/governance.log.jsonl + .thesmos/report.json and produces
- * a human-readable (or machine-readable) governance evaluation report.
+ * Primary: reads .thesmos/governance.log.jsonl (enforcement events).
+ * Secondary: summarises execution receipts / agent-activity / metrics-export
+ * when present. This is NOT a Pantheon behavioral test runner — those live
+ * in Vitest (`thesmos/eval/suites.test.ts` and unit suites).
  *
  * Usage:
  *   thesmos eval                  Current session (last 24h)
@@ -22,6 +24,28 @@ import {
   summariseGovernanceLog,
   type GovernanceSummary,
 } from '../../governance-log.ts';
+import { readAgentActivityLog } from '../../agent-activity.ts';
+import { readExecutionReceipts } from '../../execution-receipt.ts';
+import { readMetricsExport } from '../../metrics-export.ts';
+
+interface RuntimeObservability {
+  receipts: number;
+  activityEvents: number;
+  metricsEvents: number;
+  lastReceiptStatus?: string;
+}
+
+function summariseRuntime(root: string): RuntimeObservability {
+  const receipts = readExecutionReceipts(root, undefined, 10_000);
+  const activity = readAgentActivityLog(root, 10_000);
+  const metrics = readMetricsExport(root, 10_000);
+  return {
+    receipts: receipts.length,
+    activityEvents: activity.length,
+    metricsEvents: metrics.length,
+    lastReceiptStatus: receipts.at(-1)?.terminalStatus,
+  };
+}
 
 // ── Duration parser ───────────────────────────────────────────────────────────
 
@@ -124,6 +148,25 @@ function formatConsole(summary: GovernanceSummary, projectName: string, period: 
   return lines.join('\n');
 }
 
+function formatRuntimeConsole(runtime: RuntimeObservability): string {
+  const lines = [
+    '  Runtime observability',
+    `  ${'─'.repeat(64)}`,
+    `  Execution receipts  ${String(runtime.receipts).padStart(6)}`,
+    `  Agent activity      ${String(runtime.activityEvents).padStart(6)}`,
+    `  Metrics export      ${String(runtime.metricsEvents).padStart(6)}`,
+  ];
+  if (runtime.lastReceiptStatus) {
+    lines.push(`  Last receipt        ${runtime.lastReceiptStatus}`);
+  }
+  if (runtime.receipts === 0 && runtime.activityEvents === 0 && runtime.metricsEvents === 0) {
+    lines.push('');
+    lines.push('  No runtime receipts yet. Run autopilot, agent:run, or pantheon:orchestrate --execute.');
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
 function formatMarkdown(summary: GovernanceSummary, projectName: string, period: string): string {
   const lines: string[] = [];
 
@@ -223,13 +266,22 @@ export async function cmdEval(argv: string[]): Promise<void> {
   }
 
   const summary = summariseGovernanceLog(events);
+  const runtime = summariseRuntime(root);
 
   if (json) {
-    process.stdout.write(formatJson(summary, projectName, period) + '\n');
+    const payload = JSON.parse(formatJson(summary, projectName, period)) as Record<string, unknown>;
+    payload.runtime = runtime;
+    process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
   } else if (markdown) {
     process.stdout.write(formatMarkdown(summary, projectName, period) + '\n');
+    process.stdout.write(`### Runtime observability\n\n`);
+    process.stdout.write(`| Metric | Value |\n|---|---|\n`);
+    process.stdout.write(`| Execution receipts | ${runtime.receipts} |\n`);
+    process.stdout.write(`| Agent activity | ${runtime.activityEvents} |\n`);
+    process.stdout.write(`| Metrics export | ${runtime.metricsEvents} |\n\n`);
   } else {
     process.stdout.write(formatConsole(summary, projectName, period) + '\n');
+    process.stdout.write(formatRuntimeConsole(runtime) + '\n');
   }
 
   if (

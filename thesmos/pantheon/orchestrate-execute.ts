@@ -7,6 +7,11 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { logAgentComplete, logAgentError, logAgentSpawn } from '../agent-activity.js';
+import {
+  createReceipt,
+  hashPayload,
+  writeExecutionReceipt,
+} from '../execution-receipt.js';
 import { createAdapter } from '../autopilot/adapters.js';
 import { randomUUID } from 'node:crypto';
 
@@ -105,6 +110,26 @@ export async function executeOrchestration(
       });
 
       const durationMs = Date.now() - started;
+      writeExecutionReceipt(
+        options.root,
+        createReceipt({
+          runId: options.sessionId,
+          taskId: invocationId,
+          source: 'pantheon-orchestrate',
+          agentId: id,
+          adapter: adapter.name,
+          routing: { kind: 'pantheon', detail: agent.god },
+          durationMs,
+          promptHash: hashPayload(prompt),
+          resultHash: hashPayload(result.summary),
+          terminalStatus: result.success ? 'complete' : result.timedOut ? 'timed_out' : 'error',
+          blockReason: result.success
+            ? undefined
+            : result.timedOut
+              ? 'timed out'
+              : `exit ${result.exitCode}`,
+        }),
+      );
       if (result.success) {
         logAgentComplete(options.root, {
           sessionId: options.sessionId,
@@ -130,10 +155,27 @@ export async function executeOrchestration(
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      const durationMs = Date.now() - started;
+      writeExecutionReceipt(
+        options.root,
+        createReceipt({
+          runId: options.sessionId,
+          taskId: invocationId,
+          source: 'pantheon-orchestrate',
+          agentId: id,
+          adapter: adapter.name,
+          routing: { kind: 'pantheon', detail: agent.god },
+          durationMs,
+          promptHash: hashPayload(prompt),
+          resultHash: hashPayload(msg),
+          terminalStatus: 'error',
+          blockReason: msg.slice(0, 200),
+        }),
+      );
       logAgentError(options.root, {
         sessionId: options.sessionId,
         agentId: invocationId,
-        durationMs: Date.now() - started,
+        durationMs,
         resultSummary: msg.slice(0, 200),
       });
       results.push({
