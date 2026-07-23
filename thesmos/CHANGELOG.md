@@ -15,7 +15,7 @@
   - **Phase 8:** `review` / `validate` / `ci` / MCP `scan_file` append enforcement events (`review.clean` on empty); score tip when INCOMPLETE.
   - `agents:doctor`: skip false `registry_inconsistency` when the agent is catalog-backed (matches drift).
   - Regenerate `catalog/product-facts.json` with the 5.1.0 version bump.
-  - **Elevate (stress follow-up):** TECH_DEBT→WARN with weighted compliance; NODE_022/TS_010 async-hint precision; SLOP_002 workspace-aware deps; `ci` smoke receipts; `commit:lint -m`; js-yaml 4.3.0 + esbuild 0.28.1 override.
+  - **Elevate (stress follow-up):** TECH_DEBT→WARN with weighted compliance; NODE_022/TS_010 async-hint precision; SLOP_002 workspace-aware deps; `ci` smoke receipts; `commit:lint -m`; `commit:create` uses `execFileSync` (no shell); js-yaml 4.3.0 + esbuild 0.28.1 override.
   - Supply chain: brace-expansion 5.0.8; Actions SHA-pinned; `npm publish --provenance` unchanged (no auto-publish).
 
 - **Cross-platform Thesmos guard (Operation Aegis):** Claude Code hooks no longer depend on Unix shell (`npx … 2>&1 || true`, Bash wrappers) for governance.
