@@ -212,8 +212,8 @@ None for Phase 1. ProductFacts license resolved as **FSL-1.1-MIT** (from `packag
 
 ## Remaining work
 
-Phases 0–6 are implemented and pushed (draft PR #111). Follow-up: keep CI green on #111 (coverage resolution + validate BLOCKER fixes landed). Do **not** merge/publish/claim production-ready without approval.
+Phases 0–6 are implemented and pushed (draft PR #111). CI is green after coverage/SARIF/validate follow-ups. Do **not** merge/publish/claim production-ready without approval.
 
 ## Next exact action
 
-Land CI-green on draft PR #111; then await human review/merge approval.
+Await human review/merge approval on draft PR #111.
