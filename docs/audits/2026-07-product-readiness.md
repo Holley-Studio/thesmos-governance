@@ -87,7 +87,7 @@ Artifacts under `/tmp/thesmos-p0/` (session-local).
 | P0-13–14 | 3 Pantheon runtime | **DONE** (2026-07-23) — `--execute` opt-in; dependsOn gated at runtime |
 | P0-16–17 | 4 Builders | **DONE** (2026-07-23) — `agent:run` + RAG embed/complete scaffolds |
 | Phase 5 | Observability / evals | **DONE** (2026-07-23) — receipts, activity wire-up, local metrics, suites |
-| P0-20 | 6 Release / deps | TODO |
+| P0-20 | 6 Release / deps | **DONE** (2026-07-23) — brace-expansion 5.0.8; Actions SHA-pinned |
 
 ---
 
@@ -101,4 +101,4 @@ At baseline commit, none of the master-prompt acceptance gates 14–27 passed. P
 
 ## Next remediation step
 
-Phase 6: release engineering (P0-20 brace-expansion / supply-chain).
+Phases 0–6 complete on `feat/trust-execution-hardening` (local commits only). Await approval to push / open PR.

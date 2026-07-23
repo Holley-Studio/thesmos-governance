@@ -23,7 +23,7 @@
 | 3 | Real Pantheon runtime (registry / router / DAG) | **COMPLETE** | Runtime |
 | 4 | Repair builders | **COMPLETE** | Lead |
 | 5 | Observability + evaluations | **COMPLETE** | Runtime |
-| 6 | Release engineering | PENDING | Release |
+| 6 | Release engineering | **COMPLETE** | Release |
 
 ## Decisions log
 
@@ -40,6 +40,7 @@
 | 2026-07-23 | RAG scaffold: real OpenAI/Cohere/local embed + BYOK completeWithContext; no Anthropic embeddings option | P0-17 — Anthropic has no public embeddings API |
 | 2026-07-23 | Versioned execution receipts + local metrics-export (no Datadog fantasy) | Phase 5 — hashed I/O only; AGNT_020 local-jsonl |
 | 2026-07-23 | Score coverage counts receipts/activity/metrics as evidence | Gate 16 honesty — still 0 when empty |
+| 2026-07-23 | Bump brace-expansion → 5.0.8 (P0-20); pin Actions to SHAs; keep npm publish --provenance | Phase 6 release engineering |
 
 ## Phase 0 evidence summary
 
@@ -193,10 +194,25 @@ None for Phase 1. ProductFacts license resolved as **FSL-1.1-MIT** (from `packag
 
 - [x] `eval/suites.test.ts` index covering skip-permissions / dependsOn / routing
 
+## Phase 6 workstreams
+
+### 6A — Supply chain (P0-20)
+
+- [x] `npm audit fix --omit=dev` → brace-expansion **5.0.8** (0 prod vulns)
+- [x] Confirm `thesmos` package audit clean with `--omit=dev`
+
+### 6B — CI Action pins (GHA_004)
+
+- [x] Pin checkout / setup-node / upload-artifact / codeql / codecov / create-pull-request to full SHAs
+
+### 6C — Publish provenance
+
+- [x] Verified `npm publish --provenance` already present in release.yml (no change)
+
 ## Remaining work
 
-Phase 6 — release engineering (P0-20 brace-expansion / audit, Action pins, provenance).
+None for the Trust Execution Hardening plan phases 0–6. Do **not** push/PR/publish until user approves.
 
 ## Next exact action
 
-Begin Phase 6 — release engineering.
+Await user approval to push `feat/trust-execution-hardening` and open a PR.
