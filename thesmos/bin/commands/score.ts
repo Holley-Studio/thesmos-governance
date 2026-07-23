@@ -5,7 +5,8 @@
  * Produces a numeric score (0–100) representing governance coverage:
  *   - Health score (from existing health engine)    weight 40%
  *   - Compliance score (from governance.log.jsonl)  weight 40%
- *   - Eval coverage (log non-empty)                 weight 20%
+ *   - Observability coverage (governance log, receipts,
+ *     agent-activity, or metrics-export evidence)   weight 20%
  *
  * Generates a shields.io badge URL for README embedding.
  *
@@ -21,6 +22,9 @@ import { parseArgs, flag } from '../lib/args.ts';
 import { loadConfig, CONFIG_DEFAULTS } from '../../config.js';
 import { computeHealthForRoot } from '../../health.js';
 import { readGovernanceLog, summariseGovernanceLog } from '../../governance-log.js';
+import { readAgentActivityLog } from '../../agent-activity.js';
+import { countExecutionReceipts } from '../../execution-receipt.js';
+import { countMetricsExport } from '../../metrics-export.js';
 
 // ── Score computation ──────────────────────────────────────────────────────────
 
@@ -31,6 +35,7 @@ interface ThesmosScore {
     health: number;
     compliance: number;
     coverage: number;
+    assuranceState: 'PASS' | 'FAIL' | 'INCOMPLETE' | 'ERROR';
   };
   badgeUrl: string;
   badgeMarkdown: string;
@@ -60,9 +65,16 @@ function computeScore(root: string): ThesmosScore {
 
   const events = readGovernanceLog(root, 10000);
   const summary = summariseGovernanceLog(events);
-  const complianceScore = summary.complianceScore;
+  // Empty governance log → 0 contribution (not a fake 100%).
+  const complianceScore = summary.complianceScore ?? 0;
 
-  const coverageScore = events.length > 0 ? 100 : 0;
+  // Coverage is nonzero when ANY real observability evidence exists.
+  // Do not invent events — empty still means 0.
+  const hasGovernance = events.length > 0;
+  const hasReceipts = countExecutionReceipts(root) > 0;
+  const hasActivity = readAgentActivityLog(root, 1).length > 0;
+  const hasMetrics = countMetricsExport(root) > 0;
+  const coverageScore = hasGovernance || hasReceipts || hasActivity || hasMetrics ? 100 : 0;
 
   const score = Math.round(
     healthScore * 0.4 +
@@ -81,7 +93,12 @@ function computeScore(root: string): ThesmosScore {
   return {
     score,
     grade,
-    components: { health: healthScore, compliance: complianceScore, coverage: coverageScore },
+    components: {
+      health: healthScore,
+      compliance: complianceScore,
+      coverage: coverageScore,
+      assuranceState: summary.assuranceState,
+    },
     badgeUrl,
     badgeMarkdown,
   };

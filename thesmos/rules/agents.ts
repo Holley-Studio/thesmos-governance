@@ -732,7 +732,8 @@ const AGNT_020: ThesmosRule = {
       '.thesmos/config.json with no metrics or observability section',
       'Agent framework with no token usage callback or cost tracking',
     ],
-    goodExample: '{"metrics":{"enabled":true,"exportTo":"datadog","costAlertThresholdUSD":10}}',
+    goodExample:
+      '{"metrics":{"enabled":true,"exportTo":"local-jsonl","costAlertThresholdUSD":10}}',
     badExample: '{}  // no metrics — spend is invisible',
   },
   detect(input: DetectInput): Finding[] {
@@ -746,7 +747,7 @@ const AGNT_020: ThesmosRule = {
     if (hasMetrics) return [];
     return [f('agent_no_cost_metrics', 'MEDIUM',
       'Autopilot enabled but no metrics/observability configured — agent spend is invisible.',
-      'Add a "metrics" section to track token and cost usage per session.',
+      'Add metrics: { enabled: true, exportTo: "local-jsonl" } to write .thesmos/metrics-export.jsonl.',
       '.thesmos/config.json')];
   },
 };

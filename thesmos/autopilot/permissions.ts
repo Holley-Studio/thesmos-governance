@@ -4,7 +4,9 @@
  *
  * When autopilot starts, it writes a temporary .claude/settings.json that
  * auto-approves all operations needed during the session (Bash, Read, Write, Edit).
- * This eliminates permission prompts while Claude Code is running unattended.
+ * This is the preferred path for unattended runs — do NOT enable
+ * autopilot.dangerouslySkipPermissions unless you explicitly need the Claude CLI
+ * nuclear option (`--dangerously-skip-permissions`), which is default-off.
  *
  * On session end (normal, cancel, or crash), the original settings are restored.
  * Crash recovery: if _autopilot_restore is present in settings.json on next run,

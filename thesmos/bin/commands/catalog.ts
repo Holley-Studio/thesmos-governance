@@ -14,6 +14,9 @@ import {
   loadBuiltInProfiles,
   loadUserCatalog,
   validateCatalog,
+  collectCatalogLoadErrors,
+  builtInAgentCatalogDirs,
+  findCatalogDir,
   type CatalogEntry,
 } from '../../catalog.ts';
 import { REGISTRY_PATH } from '../../registry.ts';
@@ -111,20 +114,40 @@ export async function cmdCatalog(argv: string[]): Promise<void> {
     const builtin = loadBuiltInCatalog();
     const user = loadUserCatalog(root);
 
-    const agentResult = validateCatalog([...builtin.agents, ...user.agents]);
-    const skillResult = validateCatalog([...builtin.skills, ...user.skills]);
+    // User copies of built-in agents (materialized under .thesmos/agents/) share
+    // ids — merge by id (user wins) before uniqueness validation.
+    const agentsById = new Map<string, CatalogEntry>();
+    for (const a of builtin.agents) agentsById.set(a.frontmatter.id, a);
+    for (const a of user.agents) agentsById.set(a.frontmatter.id, a);
+    const skillsById = new Map<string, CatalogEntry>();
+    for (const s of builtin.skills) skillsById.set(s.frontmatter.id, s);
+    for (const s of user.skills) skillsById.set(s.frontmatter.id, s);
 
-    const allValid = agentResult.valid && skillResult.valid;
-    const errors = [...agentResult.errors, ...skillResult.errors];
+    const mergedAgents = [...agentsById.values()];
+    const mergedSkills = [...skillsById.values()];
+    const agentResult = validateCatalog(mergedAgents);
+    const skillResult = validateCatalog(mergedSkills);
+
+    // Soft-null loads must not report OK — scan dirs for frontmatter failures.
+    const loadErrors = [
+      ...builtInAgentCatalogDirs().flatMap((d) => collectCatalogLoadErrors(d)),
+      ...collectCatalogLoadErrors(join(findCatalogDir(), 'skills')),
+      ...collectCatalogLoadErrors(join(root, '.thesmos', 'agents')),
+      ...collectCatalogLoadErrors(join(root, '.thesmos', 'skills')),
+    ];
+
+    const allValid = agentResult.valid && skillResult.valid && loadErrors.length === 0;
+    const errors = [...agentResult.errors, ...skillResult.errors, ...loadErrors];
 
     if (json) {
       process.stdout.write(JSON.stringify({ valid: allValid, errors }, null, 2) + '\n');
+      if (!allValid) process.exit(1);
       return;
     }
 
     if (allValid) {
       console.log(
-        `catalog:validate — OK (${builtin.agents.length + user.agents.length} agents, ${builtin.skills.length + user.skills.length} skills)`
+        `catalog:validate — OK (${mergedAgents.length} agents, ${mergedSkills.length} skills)`
       );
     } else {
       console.error(`catalog:validate — FAILED (${errors.length} error${errors.length > 1 ? 's' : ''})`);

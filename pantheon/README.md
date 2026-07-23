@@ -107,6 +107,7 @@ $ thesmos pantheon:orchestrate "launch our new developer tool to CTOs at fintech
 
 # Zeus Orchestration Brief
 Task: launch our new developer tool to CTOs at fintech companies
+Mode: brief only (no LLM)
 
 ## Athena — Strategy Agent
 Sub-task: Define GTM positioning and competitive differentiation for fintech CTO audience...
@@ -118,7 +119,13 @@ Sub-task: Campaign strategy and channel mix for reaching fintech CTOs...
 Sub-task: Landing page copy and email sequence targeting fintech CTOs...
 ```
 
-No LLM call. No API cost. Static routing in under 500ms.
+Default is brief-only: static keyword routing, no LLM call, no API cost.
+
+Opt-in execution runs each routed agent via the configured autopilot adapter:
+
+```
+$ thesmos pantheon:orchestrate "threat model this auth flow" --execute
+```
 
 ---
 

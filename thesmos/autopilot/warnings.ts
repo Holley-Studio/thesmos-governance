@@ -7,7 +7,7 @@
  * Every circumstance that could interrupt an unattended session is documented here.
  */
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
-import { statfsSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync, statfsSync } from 'node:fs';
 import * as readline from 'node:readline';
 import type { AutopilotPlan } from '../types.js';
 import { detectPreCommitHooks } from './git-ops.js';
@@ -80,7 +80,8 @@ export function checkBattery(requirePluggedIn: boolean): CheckResult {
     if (process.platform === 'linux') {
       const acPath = '/sys/class/power_supply/AC/online';
       if (existsSync(acPath)) {
-        const plugged = execSync(`cat ${acPath}`, { encoding: 'utf8' }).trim() === '1';
+        // Read sysfs directly — no shell (SEC_016 / NODE_005).
+        const plugged = readFileSync(acPath, 'utf8').trim() === '1';
         return {
           label: 'Battery',
           passed: plugged,
@@ -192,11 +193,17 @@ function tick(passed: boolean): string {
   return passed ? '✓' : '✗';
 }
 
+export interface WarningScreenOptions {
+  /** When true, surface an elevated warning that Claude skip-permissions is enabled. */
+  dangerouslySkipPermissions?: boolean;
+}
+
 export function displayWarningScreen(
   root: string,
   plan: AutopilotPlan,
   maxCostUSD: number | undefined,
   requirePluggedIn: boolean,
+  options: WarningScreenOptions = {},
 ): { checks: CheckResult[]; canProceed: boolean } {
   const diskCheck = checkDiskSpace(root);
   const batteryCheck = checkBattery(requirePluggedIn);
@@ -205,6 +212,7 @@ export function displayWarningScreen(
   const sleepCheck = checkSystemSleep();
   const costCheck = checkCostCeiling(maxCostUSD);
   const hooks = detectPreCommitHooks(root);
+  const skipPermissions = options.dangerouslySkipPermissions === true;
 
   process.stdout.write('\n' + DIVIDER + '\n');
   process.stdout.write('  ⚠  THESMOS AUTOPILOT — PRE-FLIGHT WARNING\n');
@@ -239,6 +247,19 @@ export function displayWarningScreen(
   }
 
   const warnings = [
+    ...(skipPermissions
+      ? [
+          {
+            title: 'DANGEROUSLY SKIP PERMISSIONS (ENABLED)',
+            body: [
+              'autopilot.dangerouslySkipPermissions=true — Claude CLI will run with',
+              '--dangerously-skip-permissions, bypassing Claude Code permission prompts.',
+              'Prefer the Thesmos permission profile + claude:govern hooks (default).',
+              '→ Set dangerouslySkipPermissions to false (or omit it) unless you accept this risk.',
+            ],
+          },
+        ]
+      : []),
     {
       title: 'API CREDITS',
       body: [

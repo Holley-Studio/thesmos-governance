@@ -479,6 +479,18 @@ describe('checkRegistryFiles — registry.agent-file-missing / registry.skill-fi
 
     expect(findings).toHaveLength(0);
   });
+
+  it('does not flag agent-file-missing when the agent is in the built-in catalog', () => {
+    // Paid/pantheon bodies are gitignored under .thesmos/agents/; catalog is SoT.
+    const findings = runDrift(
+      makeCleanInput({
+        registryAgentIds: ['apollo-content-agent'],
+        knownAgentIds: new Set(['apollo-content-agent']),
+      })
+    ).filter((f) => f.type === 'registry.agent-file-missing');
+
+    expect(findings).toHaveLength(0);
+  });
 });
 
 // ── checkCatalogConsistency ───────────────────────────────────────────────────
@@ -557,6 +569,8 @@ describe('checkProfileArtifacts', () => {
       makeCleanInput({
         registryProfileIds: ['base'],
         profileExpected,
+        // Empty known set → treat as custom agent requiring a local file.
+        knownAgentIds: new Set(),
       })
     ).filter((f) => f.type === 'profile.missing-artifact');
 
@@ -564,6 +578,22 @@ describe('checkProfileArtifacts', () => {
     expect(findings[0].file).toBe('.thesmos/agents/security-reviewer.md');
     expect(findings[0].severity).toBe('MEDIUM');
     expect(findings[0].message).toMatch('base');
+  });
+
+  it('does not flag profile.missing-artifact when agent is catalog-backed', () => {
+    const profileExpected = new Map([
+      ['base', { agents: ['security-reviewer'], skills: [] }],
+    ]);
+
+    const findings = runDrift(
+      makeCleanInput({
+        registryProfileIds: ['base'],
+        profileExpected,
+        knownAgentIds: new Set(['security-reviewer']),
+      })
+    ).filter((f) => f.type === 'profile.missing-artifact');
+
+    expect(findings).toHaveLength(0);
   });
 
   it('flags profile.missing-artifact when profile skill file is absent', () => {

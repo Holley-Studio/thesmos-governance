@@ -318,27 +318,31 @@ function checkRegistryFiles(input: DriftInput): DriftFinding[] {
   const findings: DriftFinding[] = [];
 
   for (const id of input.registryAgentIds) {
+    // Built-in / user catalog is the source of truth for shipped agents.
+    // Local copies under .thesmos/agents/ are optional (and gitignored for paid packs).
+    if (input.knownAgentIds.has(id)) continue;
     const relPath = `.thesmos/agents/${id}.md`;
     if (!input.fileExists(relPath)) {
       findings.push({
         type: 'registry.agent-file-missing',
         severity: 'HIGH',
         file: relPath,
-        message: `Agent "${id}" is enabled in registry.json but ${relPath} does not exist`,
-        fixSuggestion: `Run thesmos agent:create "${id}" or thesmos catalog:enable ${id} agent to install the file`,
+        message: `Agent "${id}" is enabled in registry.json but is not in any catalog and ${relPath} does not exist`,
+        fixSuggestion: `Add a catalog entry or run thesmos agent:create "${id}" / pantheon:install ${id} --write`,
       });
     }
   }
 
   for (const id of input.registrySkillIds) {
+    if (input.knownSkillIds.has(id)) continue;
     const relPath = `.thesmos/skills/${id}.md`;
     if (!input.fileExists(relPath)) {
       findings.push({
         type: 'registry.skill-file-missing',
         severity: 'HIGH',
         file: relPath,
-        message: `Skill "${id}" is enabled in registry.json but ${relPath} does not exist`,
-        fixSuggestion: `Run thesmos skill:create "${id}" or thesmos catalog:enable ${id} skill to install the file`,
+        message: `Skill "${id}" is enabled in registry.json but is not in any catalog and ${relPath} does not exist`,
+        fixSuggestion: `Add a catalog entry or run thesmos skill:create "${id}"`,
       });
     }
   }
@@ -396,6 +400,8 @@ function checkProfileArtifacts(input: DriftInput): DriftFinding[] {
     }
 
     for (const agentId of expected.agents) {
+      // Catalog-backed agents satisfy the profile without a local copy.
+      if (input.knownAgentIds.has(agentId)) continue;
       const relPath = `.thesmos/agents/${agentId}.md`;
       if (!input.fileExists(relPath)) {
         findings.push({
@@ -409,6 +415,7 @@ function checkProfileArtifacts(input: DriftInput): DriftFinding[] {
     }
 
     for (const skillId of expected.skills) {
+      if (input.knownSkillIds.has(skillId)) continue;
       const relPath = `.thesmos/skills/${skillId}.md`;
       if (!input.fileExists(relPath)) {
         findings.push({

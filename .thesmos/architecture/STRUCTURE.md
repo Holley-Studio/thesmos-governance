@@ -17,18 +17,18 @@
 | API convention | `unknown` |
 
 **Components:** 0
-**Test files:** 73
+**Test files:** 120
 **Store files:** 1
 
 **Large files (above threshold):**
 - `thesmos/rules/python.ts` — 1737 lines
-- `thesmos/rules/security.ts` — 1698 lines
-- `thesmos/rules/ai.ts` — 1672 lines
-- `thesmos/rules/nextjs.ts` — 1606 lines
-- `thesmos/fix.ts` — 1440 lines
-- `thesmos/rules/agents.ts` — 1421 lines
-- `thesmos/rules/vibe-coding.ts` — 1403 lines
+- `thesmos/rules/security.ts` — 1705 lines
+- `thesmos/rules/ai.ts` — 1675 lines
+- `thesmos/rules/nextjs.ts` — 1610 lines
+- `thesmos/rules/agents.ts` — 1450 lines
+- `extensions/vscode/src/chat/chatViewProvider.ts` — 1427 lines
+- `thesmos/fix.ts` — 1425 lines
+- `thesmos/rules/vibe-coding.ts` — 1418 lines
 - `thesmos/rules/database.ts` — 1350 lines
-- `thesmos/rules/typescript.ts` — 1220 lines
-- `thesmos/fix.test.ts` — 1187 lines
+- `thesmos/bin/commands/pantheon.ts` — 1261 lines
 <!-- THESMOS:GENERATED END detected -->

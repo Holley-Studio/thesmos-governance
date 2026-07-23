@@ -52,7 +52,7 @@ export async function cmdMcp(argv: string[]): Promise<void> {
 
       mcpServers[SERVER_NAME] = {
         command: bin,
-        args: ['mcp:serve'],
+        args: ['mcp', '--stdio'],
         env: {},
       };
 
@@ -61,7 +61,7 @@ export async function cmdMcp(argv: string[]): Promise<void> {
 
       process.stdout.write(`\nThesmos MCP Server installed\n\n`);
       process.stdout.write(`  Config:  ${GLOBAL_SETTINGS}\n`);
-      process.stdout.write(`  Command: ${bin} mcp:serve\n\n`);
+      process.stdout.write(`  Command: ${bin} mcp --stdio\n\n`);
       process.stdout.write(`Claude Code will now call scan_file() before writing or editing files.\n`);
       process.stdout.write(`Restart Claude Code to activate.\n\n`);
       process.stdout.write(`Available MCP tools:\n`);

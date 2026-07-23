@@ -6,7 +6,7 @@
 
 | ID | Category | Severity | Description |
 |---|---|---|---|
-| ENV_001 | `direct_env_access` | 🔴 BLOCKER | Use bracket-notation env access — process['env' as 'env']['VAR'] — never process.env.VAR dot notation. |
+| ENV_001 | `direct_env_access` | 🔵 LOW | Read environment variables through one central, validated env module (e.g. env.ts with a schema) instead of scattering process.env.VAR reads across the codebase. |
 | SEC_001 | `admin_client_in_browser` | 🔴 BLOCKER | Never import the Supabase admin client in 'use client' files. Admin clients expose service-role keys to the browser. |
 | SEC_002 | `rls_disabled` | 🔴 BLOCKER | Never disable Row Level Security. All Supabase tables must have RLS enabled with explicit policies. |
 | SEC_003 | `secret_in_diff` | 🔴 BLOCKER | Never commit secrets, API keys, or private key material in code or config files. |
@@ -958,7 +958,7 @@
 | AGNT_034 | `agent_planning_execution_split_missing` | 🟡 MEDIUM | Governance docs do not document the planning-vs-execution model split — deep models produce specs, fast models produce changes. |
 | AGNT_035 | `agent_bulk_on_premium_model` | 🟡 MEDIUM | Batch/bulk processing code pins a premium reasoning model — throughput work belongs on fast models. |
 | AGNT_036 | `agent_output_no_ownership` | 🟡 MEDIUM | Agent definition missing identity/ownership protocol — every agent must declare who speaks, its scope, and its signature. |
-| AGNT_037 | `agent_context_1m_unguarded` | 🟠 HIGH | 1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; cost runaway risk. |
+| AGNT_037 | `agent_context_1m_unguarded` | 🔴 BLOCKER | 1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; use only when explicitly requested. |
 | DEP_001 | `dep_critical_cve` | 🔴 BLOCKER | Dependency has a CRITICAL CVE — immediate upgrade required. |
 | DEP_002 | `dep_high_cve` | 🟠 HIGH | Dependency has a HIGH severity CVE. |
 | DEP_003 | `dep_medium_cve` | 🟡 MEDIUM | Dependency has a MEDIUM severity CVE. |
@@ -1147,15 +1147,6 @@
 ---
 
 ## BLOCKER
-
-**[ENV_001] `direct_env_access`** — 🔴 BLOCKER
-
-Use bracket-notation env access — process['env' as 'env']['VAR'] — never process.env.VAR dot notation.
-
-```ts
-// BAD:  const url = process.env.MY_VAR;
-// GOOD: const url = process['env' as 'env']['MY_VAR'];
-```
 
 **[SEC_001] `admin_client_in_browser`** — 🔴 BLOCKER
 
@@ -1880,6 +1871,10 @@ Agent autopilot config has no maxIterationsPerTask — tasks can loop indefinite
 **[AGNT_023] `agent_privilege_over_grant`** — 🔴 BLOCKER
 
 Agent bash/edit tool granted without path restrictions — full filesystem access.
+
+**[AGNT_037] `agent_context_1m_unguarded`** — 🔴 BLOCKER
+
+1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; use only when explicitly requested.
 
 **[DEP_001] `dep_critical_cve`** — 🔴 BLOCKER
 
@@ -3451,10 +3446,6 @@ No .thesmos/model-card.md found — EU AI Act Art. 13 transparency requirement.
 
 Sub-agent spawned without forwarding parent session token — auth gap in agent chain.
 
-**[AGNT_037] `agent_context_1m_unguarded`** — 🟠 HIGH
-
-1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; cost runaway risk.
-
 **[DEP_002] `dep_high_cve`** — 🟠 HIGH
 
 Dependency has a HIGH severity CVE.
@@ -3820,6 +3811,15 @@ Ollama response returned to users with no content moderation check — no built-
 Ollama JSON response used in structured logic without schema validation — crashes when model format drifts.
 
 ## MEDIUM / LOW / TECH_DEBT
+
+**[ENV_001] `direct_env_access`** — 🔵 LOW
+
+Read environment variables through one central, validated env module (e.g. env.ts with a schema) instead of scattering process.env.VAR reads across the codebase.
+
+```ts
+// BAD:  const url = process.env.DATABASE_URL; // scattered, unvalidated
+// GOOD: import { env } from '@/env'; const url = env.DATABASE_URL; // central + schema-validated
+```
 
 **[TS_001] `any_type_no_comment`** — 🟡 MEDIUM
 

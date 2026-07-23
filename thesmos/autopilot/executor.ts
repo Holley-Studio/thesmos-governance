@@ -17,9 +17,18 @@
  * 12. After max retries: mark BLOCKED, pop stash, continue
  */
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AutopilotPlan, AutopilotSession, AutopilotTask } from '../types.js';
+import { logAgentComplete, logAgentError, logAgentSpawn } from '../agent-activity.js';
+import {
+  createReceipt,
+  hashPayload,
+  writeExecutionReceipt,
+} from '../execution-receipt.js';
+import { appendMetricsExport, isLocalMetricsEnabled } from '../metrics-export.js';
+import { loadConfig } from '../config.js';
 import {
   stashPreTask,
   popStash,
@@ -47,6 +56,7 @@ import {
   getTaskLogPath,
 } from './session.js';
 import { createAdapter } from './adapters.js';
+import { dependencyBlockReason } from './dependency-gate.js';
 import {
   loadConventions,
   buildConventionContext,
@@ -249,6 +259,9 @@ export interface ExecutorOptions {
   dryRun: boolean;
   verbose: boolean;
   reconnaissance: boolean;
+  /** Opt-in: pass through to Claude adapter. Default false. */
+  dangerouslySkipPermissions?: boolean;
+  httpAdapterUrl?: string;
 }
 
 export async function executeSession(
@@ -257,7 +270,10 @@ export async function executeSession(
   session: AutopilotSession,
   options: ExecutorOptions,
 ): Promise<void> {
-  const adapter = createAdapter(plan.adapter);
+  const adapter = createAdapter(plan.adapter, {
+    httpUrl: options.httpAdapterUrl,
+    dangerouslySkipPermissions: options.dangerouslySkipPermissions === true,
+  });
   const timeoutMs = 30 * 60 * 1000; // 30 minutes per task
 
   // Load per-repo conventions (empty on first session, richer on repeat runs)
@@ -279,6 +295,44 @@ export async function executeSession(
     // Skip already-completed tasks (for --resume)
     if (isTaskCompleted(session, task.index)) {
       process.stdout.write(`  [skip] Task ${task.index + 1}: ${task.title} (already complete)\n`);
+      continue;
+    }
+
+    // Runtime dependency gate (Depends on: N) — do not run until deps complete
+    const depReason = dependencyBlockReason(task, session);
+    if (depReason) {
+      process.stdout.write(`  [blocked] Task ${task.index + 1}: ${task.title} — ${depReason}\n`);
+      if (!options.dryRun) {
+        markTaskBlocked(session, task.index, depReason);
+        saveSession(root, session);
+        appendTaskEntry(session.journalPath, {
+          index: task.index,
+          title: task.title,
+          status: 'blocked',
+          filesChanged: [],
+          gateResults: [],
+          doneCriteriaResults: [],
+          scopeAudit: { outOfScopeFiles: [], unauthorizedPackages: [] },
+          retries: 0,
+          blockReason: depReason,
+          startedAt: formatTimestamp(),
+          completedAt: formatTimestamp(),
+        });
+        writeExecutionReceipt(
+          root,
+          createReceipt({
+            runId: session.id,
+            taskId: `task-${task.index}`,
+            source: 'autopilot',
+            adapter: plan.adapter,
+            routing: { kind: 'autopilot-plan', detail: plan.project },
+            dependsOn: task.dependsOn,
+            dependencyTransition: 'blocked',
+            terminalStatus: 'blocked',
+            blockReason: depReason,
+          }),
+        );
+      }
       continue;
     }
 
@@ -324,11 +378,21 @@ export async function executeSession(
     }
 
     const startedAt = formatTimestamp();
+    const taskStartedMs = Date.now();
+    const invocationId = randomUUID();
+    logAgentSpawn(root, {
+      sessionId: session.id,
+      agentId: invocationId,
+      description: `Autopilot task ${task.index + 1}: ${task.title}`,
+      subagentType: `autopilot:${plan.adapter}`,
+    });
     const retryState: RetryState = { previousGateOutput: '', previousChangedFiles: [], loopCount: 0 };
     let succeeded = false;
     let finalEntry: JournalTaskEntry | null = null;
     let retries = 0;
     let lastSummary: string | undefined;
+    let lastPromptHash: string | undefined;
+    let lastLoopDetected = false;
 
     for (let attempt = 0; attempt <= plan.maxRetries; attempt++) {
       if (attempt > 0) {
@@ -363,6 +427,8 @@ export async function executeSession(
             }
           : undefined,
       );
+      lastPromptHash = hashPayload(prompt);
+      lastLoopDetected = loopDetected;
 
       process.stdout.write(`  Executing via ${adapter.name}...\n`);
       const logPath = getTaskLogPath(root, session.id, task.index);
@@ -514,6 +580,50 @@ export async function executeSession(
 
     if (finalEntry) {
       appendTaskEntry(session.journalPath, finalEntry);
+      const durationMs = Date.now() - taskStartedMs;
+      const terminal =
+        finalEntry.status === 'complete'
+          ? 'complete'
+          : finalEntry.status === 'timed_out'
+            ? 'timed_out'
+            : 'blocked';
+      if (terminal === 'complete') {
+        logAgentComplete(root, {
+          sessionId: session.id,
+          agentId: invocationId,
+          durationMs,
+          resultSummary: (finalEntry.aiSummary ?? 'ok').slice(0, 200),
+        });
+      } else {
+        logAgentError(root, {
+          sessionId: session.id,
+          agentId: invocationId,
+          durationMs,
+          resultSummary: (finalEntry.blockReason ?? terminal).slice(0, 200),
+        });
+      }
+      writeExecutionReceipt(
+        root,
+        createReceipt({
+          runId: session.id,
+          taskId: `task-${task.index}`,
+          source: 'autopilot',
+          agentId: invocationId,
+          adapter: plan.adapter,
+          routing: { kind: 'autopilot-plan', detail: plan.project },
+          dependsOn: task.dependsOn,
+          dependencyTransition: 'allowed',
+          retries: finalEntry.retries,
+          loopDetected: lastLoopDetected,
+          durationMs,
+          promptHash: lastPromptHash,
+          resultHash: hashPayload(finalEntry.aiSummary ?? finalEntry.blockReason),
+          commitHash: finalEntry.commitHash,
+          artifacts: finalEntry.filesChanged?.slice(0, 50),
+          terminalStatus: terminal,
+          blockReason: finalEntry.blockReason,
+        }),
+      );
     }
 
     if (!succeeded && !session.timedOutTaskIndexes.includes(task.index)) {
@@ -533,4 +643,25 @@ export async function executeSession(
     newDecisions: sessionNewDecisions,
     changedFiles: [],
   });
+
+  // Local metrics export when configured (AGNT_020)
+  try {
+    const cfg = loadConfig(root);
+    if (isLocalMetricsEnabled(cfg.metrics)) {
+      appendMetricsExport(root, {
+        ts: new Date().toISOString(),
+        kind: 'session',
+        runId: session.id,
+        source: 'autopilot',
+        adapter: plan.adapter,
+        taskCount: plan.tasks.filter((t) => !t.isCheckpoint).length,
+        completed: session.completedTaskIndexes.length,
+        blocked: session.blockedTasks.length,
+        timedOut: session.timedOutTaskIndexes.length,
+        llmCalls: sessionLlmCalls,
+      });
+    }
+  } catch {
+    // config load failures must not break the session
+  }
 }
