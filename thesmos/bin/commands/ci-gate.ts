@@ -38,7 +38,6 @@ import {
 } from '../../execution-receipt.ts';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { extractSuppressions, auditSuppressions } from '../../suppress.ts';
 
 const SOURCE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
@@ -116,7 +115,7 @@ export async function cmdCiGate(argv: string[]): Promise<void> {
     writeExecutionReceipt(
       root,
       createReceipt({
-        runId: `ci-${randomUUID()}`,
+        runId: `ci-${newTaskId()}`,
         taskId: newTaskId(),
         source: 'ci',
         routing: { kind: 'ci-gate', detail: base ?? 'full-tree' },
