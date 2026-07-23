@@ -316,6 +316,25 @@ export type {
 
 export { loadReport } from './report.js';
 
+// ── Assurance + product facts ─────────────────────────────────────────────────
+
+export {
+  assuranceFromRuleCounts,
+  assuranceFromEnforcedEvents,
+  exitCodeForAssurance,
+  formatAssuranceScore,
+} from './assurance.js';
+
+export type { AssuranceState, AssuranceResult } from './assurance.js';
+
+export {
+  loadProductFacts,
+  deriveProductFacts,
+  productFactsAreFresh,
+} from './product-facts.js';
+
+export type { ProductFacts } from './product-facts.js';
+
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 
 export {

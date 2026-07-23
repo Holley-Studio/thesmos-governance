@@ -31,6 +31,7 @@ interface ThesmosScore {
     health: number;
     compliance: number;
     coverage: number;
+    assuranceState: 'PASS' | 'FAIL' | 'INCOMPLETE' | 'ERROR';
   };
   badgeUrl: string;
   badgeMarkdown: string;
@@ -60,7 +61,8 @@ function computeScore(root: string): ThesmosScore {
 
   const events = readGovernanceLog(root, 10000);
   const summary = summariseGovernanceLog(events);
-  const complianceScore = summary.complianceScore;
+  // Empty governance log → 0 contribution (not a fake 100%).
+  const complianceScore = summary.complianceScore ?? 0;
 
   const coverageScore = events.length > 0 ? 100 : 0;
 
@@ -81,7 +83,12 @@ function computeScore(root: string): ThesmosScore {
   return {
     score,
     grade,
-    components: { health: healthScore, compliance: complianceScore, coverage: coverageScore },
+    components: {
+      health: healthScore,
+      compliance: complianceScore,
+      coverage: coverageScore,
+      assuranceState: summary.assuranceState,
+    },
     badgeUrl,
     badgeMarkdown,
   };

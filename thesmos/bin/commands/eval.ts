@@ -40,13 +40,16 @@ function parseSince(val: string): Date {
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
-function scoreBar(score: number): string {
+function scoreBar(score: number | null): string {
+  if (score === null) return '░'.repeat(20);
   const filled = Math.round(score / 5);
   const empty = 20 - filled;
   return '█'.repeat(filled) + '░'.repeat(empty);
 }
 
-function scoreLabel(score: number): string {
+function scoreLabel(score: number | null, state: GovernanceSummary['assuranceState']): string {
+  if (state === 'INCOMPLETE' || score === null) return 'Incomplete';
+  if (state === 'ERROR') return 'Error';
   if (score >= 99) return 'Excellent';
   if (score >= 95) return 'Good';
   if (score >= 85) return 'Fair';
@@ -63,8 +66,16 @@ function formatConsole(summary: GovernanceSummary, projectName: string, period: 
   lines.push(`  ${SEP}`);
   lines.push('');
 
-  const scoreStr = summary.complianceScore.toFixed(1) + '%';
-  lines.push(`  Compliance Score    ${scoreStr.padStart(6)}  [${scoreBar(summary.complianceScore)}]  ${scoreLabel(summary.complianceScore)}`);
+  const scoreStr =
+    summary.complianceScore === null
+      ? 'n/a'
+      : `${summary.complianceScore.toFixed(1)}%`;
+  lines.push(
+    `  Assurance           ${summary.assuranceState.padStart(6)}`,
+  );
+  lines.push(
+    `  Compliance Score    ${scoreStr.padStart(6)}  [${scoreBar(summary.complianceScore)}]  ${scoreLabel(summary.complianceScore, summary.assuranceState)}`,
+  );
   lines.push('');
   lines.push(`  Events recorded     ${String(summary.total).padStart(6)}`);
   lines.push(`  Rules fired         ${String(summary.blocked + summary.warned + summary.passed).padStart(6)}`);
@@ -103,8 +114,8 @@ function formatConsole(summary: GovernanceSummary, projectName: string, period: 
     lines.push('');
   }
 
-  if (summary.total === 0) {
-    lines.push('  No governance events recorded in this period.');
+  if (summary.total === 0 || summary.assuranceState === 'INCOMPLETE') {
+    lines.push('  No enforceable governance events in this period (assurance: INCOMPLETE).');
     lines.push('  Governance logging activates via the MCP server or CI scan hooks.');
     lines.push('  Run: thesmos mcp:install  to enable real-time enforcement logging.');
     lines.push('');
@@ -118,8 +129,15 @@ function formatMarkdown(summary: GovernanceSummary, projectName: string, period:
 
   lines.push(`## 🔱 Thesmos Governance Report — ${projectName}`);
   lines.push('');
+  const scoreDisplay =
+    summary.complianceScore === null
+      ? 'n/a'
+      : `${summary.complianceScore.toFixed(1)}%`;
   lines.push(`**Period:** ${period}  `);
-  lines.push(`**Compliance Score:** ${summary.complianceScore.toFixed(1)}% — ${scoreLabel(summary.complianceScore)}`);
+  lines.push(`**Assurance:** ${summary.assuranceState}  `);
+  lines.push(
+    `**Compliance Score:** ${scoreDisplay} — ${scoreLabel(summary.complianceScore, summary.assuranceState)}`,
+  );
   lines.push('');
   lines.push(`| Metric | Value |`);
   lines.push(`|---|---|`);
@@ -214,7 +232,13 @@ export async function cmdEval(argv: string[]): Promise<void> {
     process.stdout.write(formatConsole(summary, projectName, period) + '\n');
   }
 
-  if (summary.blocked > 0 || summary.bypassed > 0) {
+  if (
+    summary.assuranceState === 'FAIL' ||
+    summary.assuranceState === 'ERROR' ||
+    summary.assuranceState === 'INCOMPLETE' ||
+    summary.blocked > 0 ||
+    summary.bypassed > 0
+  ) {
     process.exitCode = 1;
   }
 }

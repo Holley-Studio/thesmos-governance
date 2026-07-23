@@ -110,6 +110,15 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'certificate:generate': cmdCertificate,
   'certificate:verify': (argv) => cmdCertificate(['--verify', ...argv]),
   'mcp:serve': (argv) => cmdMcp(['serve', ...argv]),
+  // Documented alias: `thesmos mcp --stdio` (package.json mcp.args) → mcp:serve
+  mcp: async (argv) => {
+    const rest = argv.filter((a) => a !== '--stdio');
+    if (argv.includes('--stdio') || rest.length === 0 || rest[0] === 'serve') {
+      await cmdMcp(['serve', ...rest.filter((a) => a !== 'serve')]);
+      return;
+    }
+    await cmdMcp(rest);
+  },
   'mcp:install': (argv) => cmdMcp(['install', ...argv]),
   'mcp:uninstall': (argv) => cmdMcp(['uninstall', ...argv]),
   'mcp:status': (argv) => cmdMcp(['status', ...argv]),
@@ -273,6 +282,7 @@ HOOKS  (governance checks in git hooks — no extra dependencies)
 MCP SERVER  (governance-before-writing — AI calls scan_file before generating code)
   mcp:install              Add thesmos to ~/.claude/settings.json as an MCP server
   mcp:serve                Start the MCP server (stdio JSON-RPC 2.0 — used by mcp:install)
+  mcp [--stdio]            Alias for mcp:serve (matches package.json mcp.args)
   mcp:status               Show whether MCP server is configured
   mcp:uninstall            Remove MCP server from ~/.claude/settings.json
 
@@ -416,7 +426,7 @@ GDPR COMPLIANCE
     --output=<path>                      Write to custom path
 
 THESMOS PANTHEON  (governed AI business team — 40 agents, 6 platforms)
-  pantheon:list                       List all 40 agents with roles and mythology
+  pantheon:list                       List Pantheon agents with roles and mythology
   pantheon:install --all              Add all agents to .thesmos/registry.json
   pantheon:install <id> [id...]       Install specific agents
   pantheon:status                     Show active Pantheon agents in this project
