@@ -47,6 +47,7 @@ import {
   getTaskLogPath,
 } from './session.js';
 import { createAdapter } from './adapters.js';
+import { dependencyBlockReason } from './dependency-gate.js';
 import {
   loadConventions,
   buildConventionContext,
@@ -285,6 +286,30 @@ export async function executeSession(
     // Skip already-completed tasks (for --resume)
     if (isTaskCompleted(session, task.index)) {
       process.stdout.write(`  [skip] Task ${task.index + 1}: ${task.title} (already complete)\n`);
+      continue;
+    }
+
+    // Runtime dependency gate (Depends on: N) — do not run until deps complete
+    const depReason = dependencyBlockReason(task, session);
+    if (depReason) {
+      process.stdout.write(`  [blocked] Task ${task.index + 1}: ${task.title} — ${depReason}\n`);
+      if (!options.dryRun) {
+        markTaskBlocked(session, task.index, depReason);
+        saveSession(root, session);
+        appendTaskEntry(session.journalPath, {
+          index: task.index,
+          title: task.title,
+          status: 'blocked',
+          filesChanged: [],
+          gateResults: [],
+          doneCriteriaResults: [],
+          scopeAudit: { outOfScopeFiles: [], unauthorizedPackages: [] },
+          retries: 0,
+          blockReason: depReason,
+          startedAt: formatTimestamp(),
+          completedAt: formatTimestamp(),
+        });
+      }
       continue;
     }
 
