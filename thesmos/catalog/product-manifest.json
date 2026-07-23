@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-07-23T04:51:52.448Z",
+  "generatedAt": "2026-07-23T04:56:36.039Z",
   "release": {
     "version": "5.0.0",
     "vscodeExtensionVersion": "4.10.0",
@@ -20,6 +20,7 @@
     ]
   },
   "governance": {
-    "ruleCount": 1137
+    "ruleCount": 1137,
+    "blockerRuleCount": null
   }
 }

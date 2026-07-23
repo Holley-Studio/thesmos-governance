@@ -52,6 +52,10 @@ const pantheonDir = resolve(ROOT, 'thesmos/catalog/agents/pantheon');
 const figmaDir = resolve(ROOT, 'thesmos/catalog/agents/figma');
 const reviewersDir = resolve(ROOT, 'thesmos/catalog/agents/reviewers');
 
+// installedAgentCount includes all three agent families (pantheon + figma + reviewers).
+// pantheonTotal in free-agents.json tracks pantheon-only — the count mismatch is
+// expected and intentional, not a drift signal. Update pantheonTotal when the
+// published agent set changes, not when new figma/reviewer agents are added.
 const installedCount = countMdFiles(pantheonDir) + countMdFiles(figmaDir) + countMdFiles(reviewersDir);
 const publishedCount = freeAgents.pantheonTotal;
 const ruleCount = countRules();
@@ -77,6 +81,7 @@ const manifest = {
   },
   governance: {
     ruleCount,
+    blockerRuleCount: null, // populated by thesmos:scan at build time
   },
 };
 

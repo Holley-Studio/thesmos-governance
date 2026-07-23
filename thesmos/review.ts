@@ -9,7 +9,7 @@
  * registry automatically makes it run here.
  */
 
-import type { Finding, ThesmosConfig, ScanResult, ThesmosRule } from './types';
+import type { Finding, ThesmosConfig, ScanResult, ThesmosRule, EngineError, ReviewResult } from './types';
 import { THESMOS_RULES, activeRulesForTier } from './rules/registry';
 import { applySuppressions, extractSuppressions, type Suppression } from './suppress.js';
 import { sortFindings, SEVERITY_EMOJI } from './severity';
@@ -55,7 +55,7 @@ function scopeFindingsToChangedRanges(
 
 // ── Public input types ─────────────────────────────────────────────────────────
 
-export type { ChangedFile } from './types';
+export type { ChangedFile, ReviewResult, EngineError } from './types';
 
 export interface ReviewInput {
   scan: ScanResult;

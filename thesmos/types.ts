@@ -273,6 +273,19 @@ export interface Finding {
   confidence?: Confidence;
 }
 
+export interface EngineError {
+  ruleId: string;
+  error: string;
+  stack?: string;
+}
+
+export interface ReviewResult {
+  findings: Finding[];
+  engineErrors: EngineError[];
+  /** Convenience: just the ruleIds from engineErrors */
+  skippedRuleIds: string[];
+}
+
 export interface AuditFinding {
   level: AuditLevel;
   category: string;
