@@ -13,7 +13,7 @@
  * operations are allowed (safe default: don't block when unconfigured).
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
 import { join, resolve, relative, isAbsolute, basename } from 'node:path';
 import {
   isClaudeAgentsPath,
@@ -147,12 +147,51 @@ export function saveScopeConfig(root: string, config: ScopeConfig): void {
 
 // ── Path matching ─────────────────────────────────────────────────────────────
 
+/**
+ * Canonicalize a path by resolving symlinks.
+ * For paths that exist on disk, realpathSync resolves all symlinks (e.g. /tmp → /private/tmp on macOS).
+ * For paths that don't yet exist (Write targets), we walk up the directory tree to find the deepest
+ * existing ancestor, resolve that, then re-append the non-existent tail. This ensures that
+ * /tmp/proj/src/new-file.ts → /private/tmp/proj/src/new-file.ts even when new-file.ts doesn't exist yet.
+ */
+function canonical(p: string): string {
+  try { return realpathSync(p); } catch { /* path doesn't exist — walk up */ }
+  // Walk up to find an existing ancestor, resolve it, re-append the tail
+  const parts = p.split('/');
+  for (let i = parts.length - 1; i > 0; i--) {
+    const ancestor = parts.slice(0, i).join('/') || '/';
+    try {
+      const resolvedAncestor = realpathSync(ancestor);
+      const tail = parts.slice(i).join('/');
+      return tail ? `${resolvedAncestor}/${tail}` : resolvedAncestor;
+    } catch { /* keep walking up */ }
+  }
+  return p;
+}
+
 function isPathAllowed(filePath: string, root: string, config: ScopeConfig): ScopeViolation | null {
   // F2 fix: always resolve() to canonicalise ../ sequences before any comparison.
   // resolve() collapses traversal components without requiring the file to exist
   // (safe for Write targets that don't yet exist on disk).
-  const absPath = resolve(isAbsolute(filePath) ? filePath : join(root, filePath));
-  const relPath = relative(root, absPath);
+  //
+  // canonical() additionally resolves symlinks when the path exists on disk, preventing
+  // symlink-bypass attacks (e.g. /tmp/proj-link → /etc/shadow).
+  // We canonicalize both the target path AND the root so that relPath computation
+  // remains consistent on platforms where /tmp → /private/tmp (macOS).
+  const resolvedRoot = resolve(root);
+  // canonical() resolves symlinks (e.g. macOS /tmp → /private/tmp).
+  // We use canonicalRoot as the authoritative base for all path comparisons
+  // so that relative-path computation remains consistent across symlink boundaries.
+  const canonicalRoot = canonical(resolvedRoot);
+  // Build the absolute target path. For relative paths, anchor to canonicalRoot.
+  // For absolute paths, use them directly — canonical() will resolve any symlinks in the path.
+  const rawTarget = resolve(isAbsolute(filePath) ? filePath : join(canonicalRoot, filePath));
+  const absPath = canonical(rawTarget);
+  // resolvedTarget: the dot-resolved (but not symlink-resolved) version of the original input,
+  // used for absoluteBlockPaths matching so /tmp/../etc/shadow resolves to /etc/shadow and
+  // matches the blocked /etc/ entry (both sides use resolve(), keeping namespaces consistent).
+  const resolvedTarget = resolve(isAbsolute(filePath) ? filePath : join(resolvedRoot, filePath));
+  const relPath = relative(canonicalRoot, absPath);
   const relNorm = normalizeRelPath(relPath.replace(/\\/g, '/'));
 
   // F1 fix: governance files are immutable from inside a governed session.
@@ -168,8 +207,14 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
 
   // F2 fix (cont.): compare the resolved absolute path against absoluteBlockPaths.
   // Previously absPath was unresolved when given as absolute, allowing /tmp/../etc/shadow to pass.
+  // We check both the dot-resolved path (resolvedTarget) and the symlink-resolved path (absPath)
+  // against the blocked paths so that both /tmp/../etc/shadow and symlink-to-/etc/ are caught.
   for (const blocked of config.workspace.absoluteBlockPaths) {
-    if (absPath.startsWith(blocked) || absPath === blocked) {
+    const blockedNorm = resolve(blocked); // normalize separators and trailing slash consistency
+    if (
+      resolvedTarget.startsWith(blockedNorm) || resolvedTarget === blockedNorm ||
+      absPath.startsWith(blockedNorm) || absPath === blockedNorm
+    ) {
       return {
         type: 'absolute_blocked_path',
         message: `Path "${filePath}" is in an always-blocked system directory "${blocked}".`,

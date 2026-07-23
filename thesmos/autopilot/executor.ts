@@ -17,7 +17,7 @@
  * 12. After max retries: mark BLOCKED, pop stash, continue
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AutopilotPlan, AutopilotSession, AutopilotTask } from '../types.js';
 import {
@@ -27,6 +27,7 @@ import {
   commitTask,
   auditUncommittedPackages,
   getChangedFilesSinceLastCommit,
+  getUntrackedFiles,
 } from './git-ops.js';
 import {
   appendTaskEntry,
@@ -336,6 +337,9 @@ export async function executeSession(
         retries = attempt;
       }
 
+      // Snapshot untracked files BEFORE stash so rollback can remove files the task created
+      const preTaskUntracked = new Set(getUntrackedFiles(root));
+
       // Stash pre-task state so --resume restarts clean
       const stashRef = stashPreTask(root, session.id, task.index);
       session.lastTaskStash = stashRef;
@@ -379,6 +383,13 @@ export async function executeSession(
         process.stdout.write(`  Task timed out after ${timeoutMs / 60000} minutes.\n`);
         // Pop stash — timed-out tasks should not leave partial changes
         if (stashRef) popStash(root, stashRef);
+        // Remove any untracked files the timed-out task created
+        const postTimeoutUntracked = getUntrackedFiles(root);
+        for (const f of postTimeoutUntracked) {
+          if (!preTaskUntracked.has(f)) {
+            try { unlinkSync(join(root, f)); } catch { /* already gone */ }
+          }
+        }
         session.lastTaskStash = null;
         session.timedOutTaskIndexes.push(task.index);
         saveSession(root, session);
@@ -400,7 +411,37 @@ export async function executeSession(
       }
 
       if (!result.success) {
-        process.stdout.write(`  Adapter returned non-zero exit code.\n`);
+        process.stdout.write(`  Adapter returned non-zero exit code — treating as task failure.\n`);
+        // Pop stash and clean up new untracked files created during the failed attempt
+        if (stashRef) popStash(root, stashRef);
+        const postRollbackUntracked = getUntrackedFiles(root);
+        for (const f of postRollbackUntracked) {
+          if (!preTaskUntracked.has(f)) {
+            try { unlinkSync(join(root, f)); } catch { /* already gone */ }
+          }
+        }
+        session.lastTaskStash = null;
+        if (attempt >= plan.maxRetries) {
+          const reason = `Adapter returned success=false`;
+          process.stdout.write(`  ✗ Task BLOCKED: ${reason}\n`);
+          markTaskBlocked(session, task.index, reason);
+          saveSession(root, session);
+          finalEntry = {
+            index: task.index,
+            title: task.title,
+            status: 'blocked',
+            filesChanged: [],
+            gateResults: [],
+            doneCriteriaResults: [],
+            scopeAudit: { outOfScopeFiles: [], unauthorizedPackages: [] },
+            retries,
+            blockReason: reason,
+            startedAt,
+            completedAt: formatTimestamp(),
+          };
+          break;
+        }
+        continue;
       }
 
       // Scope and package audits (before committing)
@@ -485,6 +526,13 @@ export async function executeSession(
 
       // Pop stash to reset to pre-task clean state for next retry
       if (stashRef) popStash(root, stashRef);
+      // Remove any untracked files the failed attempt created
+      const postGateRollbackUntracked = getUntrackedFiles(root);
+      for (const f of postGateRollbackUntracked) {
+        if (!preTaskUntracked.has(f)) {
+          try { unlinkSync(join(root, f)); } catch { /* already gone */ }
+        }
+      }
       session.lastTaskStash = null;
 
       if (attempt >= plan.maxRetries) {
