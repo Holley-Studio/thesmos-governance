@@ -324,10 +324,9 @@ async function runBuildAgent(argv: string[]): Promise<void> {
     console.log(`  ✅ No findings — all generated files pass governance`);
   }
 
-  console.log(`\n  Agent ready. To run:`);
-  console.log(`    npx thesmos agent:run ${name}`);
-  console.log(`    npx thesmos agent:run ${name} --dry-run`);
-  console.log(`    /${name}              (from Claude Code)\n`);
+  console.log(`\n  Agent ready. To use:`);
+  console.log(`    /${name}              (from Claude Code — install with: thesmos pantheon:install)`);
+  console.log(`    thesmos agents        (list installed agents)\n`);
 
   log.info('build:agent scaffold complete', { name, files: result.files.length, findings });
 }
@@ -364,6 +363,7 @@ async function runBuildSkill(argv: string[]): Promise<void> {
 
   const commandContent = [
     `---`,
+    `name: ${name}`,
     `description: ${purpose}`,
     `---`,
     '',
@@ -559,7 +559,6 @@ const RAG_QUESTIONS: WizardQuestion[] = [
     options: [
       { value: 'openai', label: 'OpenAI (text-embedding-3-small) — BYOK' },
       { value: 'cohere', label: 'Cohere (embed-v3) — BYOK' },
-      { value: 'anthropic', label: 'Anthropic — BYOK' },
       { value: 'local', label: 'Local (sentence-transformers) — no API key' },
     ],
     engineering_note: 'Embedding model determines quality, cost, and API key requirements.',
