@@ -2307,4 +2307,80 @@ These rules apply to all code suggestions. Reject or flag any code that violates
 **[NEXT_013]** Route segments with async data fetching should have a `loading.tsx` for streaming UX.
 
 **[NEXT_014]** App Router route segments without `error.tsx` show a generic unhandled error to users.
+---
+
+## Active Thesmos Context
+
+**Active Agents:**
+
+- **"God Agent Aphrodite — Creative Director Agent"** (`aphrodite-creative-agent`) — Invoke: `Agent({ subagent_type: "aphrodite-creative-agent", prompt: "..." })`
+- **"God Agent Apollo — Content Agent"** (`apollo-content-agent`) — Invoke: `Agent({ subagent_type: "apollo-content-agent", prompt: "..." })`
+- **"God Agent Ares — Deal Strategist"** (`ares-deal-strategy-agent`) — Invoke: `Agent({ subagent_type: "ares-deal-strategy-agent", prompt: "..." })`
+- **"God Agent Ares — Discovery Coach"** (`ares-discovery-agent`) — Invoke: `Agent({ subagent_type: "ares-discovery-agent", prompt: "..." })`
+- **"God Agent Ares — Pipeline Analyst"** (`ares-pipeline-agent`) — Invoke: `Agent({ subagent_type: "ares-pipeline-agent", prompt: "..." })`
+- **"God Agent Ares — Sales Agent"** (`ares-sales-agent`) — Invoke: `Agent({ subagent_type: "ares-sales-agent", prompt: "..." })`
+- **"God Agent Argus — Security Agent"** (`argus-security-agent`) — Invoke: `Agent({ subagent_type: "argus-security-agent", prompt: "..." })`
+- **"God Agent Artemis — Photography Agent"** (`artemis-photography-agent`) — Invoke: `Agent({ subagent_type: "artemis-photography-agent", prompt: "..." })`
+- **"God Agent Athena — Strategy Agent"** (`athena-strategy-agent`) — Invoke: `Agent({ subagent_type: "athena-strategy-agent", prompt: "..." })`
+- **"God Agent Daedalus — Product Agent"** (`daedalus-product-agent`) — Invoke: `Agent({ subagent_type: "daedalus-product-agent", prompt: "..." })`
+- **"God Agent Demeter — Customer Success Agent"** (`demeter-cs-agent`) — Invoke: `Agent({ subagent_type: "demeter-cs-agent", prompt: "..." })`
+- **"God Agent Dike — Ethics Agent"** (`dike-ethics-agent`) — Invoke: `Agent({ subagent_type: "dike-ethics-agent", prompt: "..." })`
+- **"God Agent Dionysus — Video Agent"** (`dionysus-video-agent`) — Invoke: `Agent({ subagent_type: "dionysus-video-agent", prompt: "..." })`
+- **"God Agent Hebe — Support Agent"** (`hebe-support-agent`) — Invoke: `Agent({ subagent_type: "hebe-support-agent", prompt: "..." })`
+- **"God Agent Hephaestus — Design Agent"** (`hephaestus-design-agent`) — Invoke: `Agent({ subagent_type: "hephaestus-design-agent", prompt: "..." })`
+- **"God Agent Hera — Operations Agent"** (`hera-operations-agent`) — Invoke: `Agent({ subagent_type: "hera-operations-agent", prompt: "..." })`
+- **"God Agent Heracles — Business Development Agent"** (`heracles-bd-agent`) — Invoke: `Agent({ subagent_type: "heracles-bd-agent", prompt: "..." })`
+- **"God Agent Hermes — Marketing Agent"** (`hermes-marketing-agent`) — Invoke: `Agent({ subagent_type: "hermes-marketing-agent", prompt: "..." })`
+- **"God Agent Hestia — Customer Experience Agent"** (`hestia-cx-agent`) — Invoke: `Agent({ subagent_type: "hestia-cx-agent", prompt: "..." })`
+- **"God Agent Mnemosyne — Knowledge Agent"** (`mnemosyne-knowledge-agent`) — Invoke: `Agent({ subagent_type: "mnemosyne-knowledge-agent", prompt: "..." })`
+- **"God Agent Morpheus — Animation Agent"** (`morpheus-animation-agent`) — Invoke: `Agent({ subagent_type: "morpheus-animation-agent", prompt: "..." })`
+- **"God Agent Nemesis — Compliance Agent"** (`nemesis-compliance-agent`) — Invoke: `Agent({ subagent_type: "nemesis-compliance-agent", prompt: "..." })`
+- **"God Agent Nike — Lead Generation Agent"** (`nike-leadgen-agent`) — Invoke: `Agent({ subagent_type: "nike-leadgen-agent", prompt: "..." })`
+- **"God Agent Pheme — PR Agent"** (`pheme-pr-agent`) — Invoke: `Agent({ subagent_type: "pheme-pr-agent", prompt: "..." })`
+- **"God Agent Plutus — Finance Agent"** (`plutus-finance-agent`) — Invoke: `Agent({ subagent_type: "plutus-finance-agent", prompt: "..." })`
+- **"God Agent Psyche — Research Agent"** (`psyche-research-agent`) — Invoke: `Agent({ subagent_type: "psyche-research-agent", prompt: "..." })`
+- **"God Agent Pythia — Data Agent"** (`pythia-data-agent`) — Invoke: `Agent({ subagent_type: "pythia-data-agent", prompt: "..." })`
+- **"God Agent Themis — Legal Agent"** (`themis-legal-agent`) — Invoke: `Agent({ subagent_type: "themis-legal-agent", prompt: "..." })`
+- **"God Agent Tyche — Analytics Agent"** (`tyche-analytics-agent`) — Invoke: `Agent({ subagent_type: "tyche-analytics-agent", prompt: "..." })`
+- **"God Agent Zeus — Executive Agent"** (`zeus-executive-agent`) — Invoke: `Agent({ subagent_type: "zeus-executive-agent", prompt: "..." })`
+- **"Eidos — Figma AI Orchestrator"** (`eidos-figma-orchestrator`) — Invoke: `Agent({ subagent_type: "eidos-figma-orchestrator", prompt: "..." })`
+- **"Ergon — Code Layers Principal"** (`ergon-code-layers`) — Invoke: `Agent({ subagent_type: "ergon-code-layers", prompt: "..." })`
+- **"Hyle — Shader Material Scientist"** (`hyle-shader-material`) — Invoke: `Agent({ subagent_type: "hyle-shader-material", prompt: "..." })`
+- **"Kairos — Prototype Behavior Engineer"** (`kairos-prototype-engineer`) — Invoke: `Agent({ subagent_type: "kairos-prototype-engineer", prompt: "..." })`
+- **"Kinesis — Motion Systems Director"** (`kinesis-motion-systems`) — Invoke: `Agent({ subagent_type: "kinesis-motion-systems", prompt: "..." })`
+- **"Logos — UX Research & Systems Agent"** (`logos-ux-research`) — Invoke: `Agent({ subagent_type: "logos-ux-research", prompt: "..." })`
+- **"Mnemon — Context Librarian & Governance"** (`mnemon-context-librarian`) — Invoke: `Agent({ subagent_type: "mnemon-context-librarian", prompt: "..." })`
+- **"Morphe — Weave Creative Workflow Architect"** (`morphe-weave-workflow`) — Invoke: `Agent({ subagent_type: "morphe-weave-workflow", prompt: "..." })`
+- **"Praxis — Figma Make + Sites Producer"** (`praxis-figma-make`) — Invoke: `Agent({ subagent_type: "praxis-figma-make", prompt: "..." })`
+- **"Techne — Design System Neuroarchitect"** (`techne-design-system`) — Invoke: `Agent({ subagent_type: "techne-design-system", prompt: "..." })`
+- **"God Agent Aether — AI Strategy Agent"** (`aether-ai-strategy-agent`) — Invoke: `Agent({ subagent_type: "aether-ai-strategy-agent", prompt: "..." })`
+- **"God Agent Alecto — Competitive Intelligence Agent"** (`alecto-competitive-agent`) — Invoke: `Agent({ subagent_type: "alecto-competitive-agent", prompt: "..." })`
+- **"God Agent Asclepius — Debugging & Diagnostics Agent"** (`asclepius-debugging-agent`) — Invoke: `Agent({ subagent_type: "asclepius-debugging-agent", prompt: "..." })`
+- **"God Agent Atlas — Atlas Platform Integration Agent"** (`atlas-integration-agent`) — Invoke: `Agent({ subagent_type: "atlas-integration-agent", prompt: "..." })`
+- **"God Agent Calliope — Email Design Agent"** (`calliope-email-agent`) — Invoke: `Agent({ subagent_type: "calliope-email-agent", prompt: "..." })`
+- **"God Agent Cassandra — QA & Testing Agent"** (`cassandra-qa-agent`) — Invoke: `Agent({ subagent_type: "cassandra-qa-agent", prompt: "..." })`
+- **"God Agent Chiron — Architecture Agent"** (`chiron-architecture-agent`) — Invoke: `Agent({ subagent_type: "chiron-architecture-agent", prompt: "..." })`
+- **"God Agent Chrysos — Stripe Integration Agent"** (`chrysos-stripe-agent`) — Invoke: `Agent({ subagent_type: "chrysos-stripe-agent", prompt: "..." })`
+- **"God Agent Clio — Case Study Agent"** (`clio-case-study-agent`) — Invoke: `Agent({ subagent_type: "clio-case-study-agent", prompt: "..." })`
+- **"God Agent Coeus — Ideation Agent"** (`coeus-ideation-agent`) — Invoke: `Agent({ subagent_type: "coeus-ideation-agent", prompt: "..." })`
+- **"God Agent Eos — Automation Agent"** (`eos-automation-agent`) — Invoke: `Agent({ subagent_type: "eos-automation-agent", prompt: "..." })`
+- **"God Agent Erato — Brand Voice Agent"** (`erato-brand-voice-agent`) — Invoke: `Agent({ subagent_type: "erato-brand-voice-agent", prompt: "..." })`
+- **"God Agent Helios — KeyShot Specialist"** (`helios-keyshot-agent`) — Invoke: `Agent({ subagent_type: "helios-keyshot-agent", prompt: "..." })`
+- **"God Agent Hera — Recruiting Agent"** (`hera-recruiting-agent`) — Invoke: `Agent({ subagent_type: "hera-recruiting-agent", prompt: "..." })`
+- **"God Agent Heracles — CRM Agent"** (`heracles-crm-agent`) — Invoke: `Agent({ subagent_type: "heracles-crm-agent", prompt: "..." })`
+- **"God Agent Kratos — DevOps Agent"** (`kratos-devops-agent`) — Invoke: `Agent({ subagent_type: "kratos-devops-agent", prompt: "..." })`
+- **"God Agent Kronos — GitHub Repository Agent"** (`kronos-github-agent`) — Invoke: `Agent({ subagent_type: "kronos-github-agent", prompt: "..." })`
+- **"God Agent Metis — Project Manager & Execution Planner"** (`metis-pm-agent`) — Invoke: `Agent({ subagent_type: "metis-pm-agent", prompt: "..." })`
+- **"God Agent Momus — Challenger & Clarity Enforcer"** (`momus-challenger-agent`) — Invoke: `Agent({ subagent_type: "momus-challenger-agent", prompt: "..." })`
+- **"God Agent Nike — Social Media Agent"** (`nike-social-agent`) — Invoke: `Agent({ subagent_type: "nike-social-agent", prompt: "..." })`
+- **"God Agent Notus — Vercel Platform Agent"** (`notus-vercel-agent`) — Invoke: `Agent({ subagent_type: "notus-vercel-agent", prompt: "..." })`
+- **"God Agent Plutus — Billing Agent"** (`plutus-billing-agent`) — Invoke: `Agent({ subagent_type: "plutus-billing-agent", prompt: "..." })`
+- **"God Agent Polyhymnia — Docs Agent"** (`polyhymnia-docs-agent`) — Invoke: `Agent({ subagent_type: "polyhymnia-docs-agent", prompt: "..." })`
+- **"God Agent Pontus — Supabase Platform Agent"** (`pontus-supabase-agent`) — Invoke: `Agent({ subagent_type: "pontus-supabase-agent", prompt: "..." })`
+- **"God Agent Proteus — Drift & Alignment Monitor"** (`proteus-drift-agent`) — Invoke: `Agent({ subagent_type: "proteus-drift-agent", prompt: "..." })`
+- **"God Agent Psyche — SEO Agent"** (`psyche-seo-agent`) — Invoke: `Agent({ subagent_type: "psyche-seo-agent", prompt: "..." })`
+- **"God Agent Pygmalion — Blender Specialist"** (`pygmalion-blender-agent`) — Invoke: `Agent({ subagent_type: "pygmalion-blender-agent", prompt: "..." })`
+- **"God Agent Talos — Web Dev Agent"** (`talos-web-dev-agent`) — Invoke: `Agent({ subagent_type: "talos-web-dev-agent", prompt: "..." })`
+
+_Run `thesmos catalog:list` to see all available agents and skills._
 <!-- THESMOS:GENERATED END rules -->

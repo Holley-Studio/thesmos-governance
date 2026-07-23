@@ -88,12 +88,15 @@ Artifacts under `/tmp/thesmos-p0/` (session-local).
 | P0-16–17 | 4 Builders | **DONE** (2026-07-23) — `agent:run` + RAG embed/complete scaffolds |
 | Phase 5 | Observability / evals | **DONE** (2026-07-23) — receipts, activity wire-up, local metrics, suites |
 | P0-20 | 6 Release / deps | **DONE** (2026-07-23) — brace-expansion 5.0.8; Actions SHA-pinned |
+| Health C / 147 drift / doctor exit 0 / catalog soft-OK | 7 Health & catalog | **DONE** (2026-07-23) — health **100/A+**, drift **0**, doctor exit 1 on fail, catalog:validate fail-closed, CI `--health-threshold=90` |
 
 ---
 
 ## Acceptance vs baseline
 
-At baseline commit, none of the master-prompt acceptance gates 14–27 passed. Phase 1 remediates false-assurance gates for compliance/CI/MCP/facts on this branch; remaining gates (health ≥90/A, Claude execution safety, Pantheon runtime, builders, etc.) remain open.
+At baseline commit, none of the master-prompt acceptance gates 14–27 passed. Phases 1–7 on this branch remediate false assurance, execution safety, Pantheon runtime, builders, observability, release engineering, and health/catalog integrity. Remaining work is human review/merge — not a claim of production-ready.
+
+**Phase 7 signals (post-remediation):** `health` 100/A+ · drift 0 · `doctor --json` pass:true exit 0 · `catalog:validate` OK (128 agents) · `ci --health-threshold=90` pass:true.
 
 **Do not claim production-ready, fully compliant, or 10/10.**
 
@@ -101,4 +104,4 @@ At baseline commit, none of the master-prompt acceptance gates 14–27 passed. P
 
 ## Next remediation step
 
-Phases 0–6 complete on `feat/trust-execution-hardening` (local commits only). Await approval to push / open PR.
+Phases 0–7 complete on `feat/trust-execution-hardening` (draft PR #111). Await human review/merge approval.

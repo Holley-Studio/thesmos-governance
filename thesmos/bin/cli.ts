@@ -553,7 +553,7 @@ AUTOPILOT  (disabled by default — enable in .thesmos/config.json)
   autopilot open-pr [session]   Push branch, create draft PR
 
 DIAGNOSTICS
-  doctor                   Check installation health
+  doctor [--json] [--soft] Check installation health (exit 1 on failure; --soft = exit 0)
   audit                    Detailed file-level audit report
   ci-check                 Adapter freshness CI check (legacy; use 'ci' instead)
 

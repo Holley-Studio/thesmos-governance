@@ -1,4 +1,3 @@
-# Project Context — thesmos-helper — 2026-07-16
+# Project Context — thesmos-helper — 2026-07-23
 
 ## Thesmos Governance
-- Last clean scan: 2026-07-12

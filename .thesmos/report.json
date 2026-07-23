@@ -20,25 +20,14 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-12T02:26:06.297Z",
+  "generatedAt": "2026-07-23T22:40:53.398Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
   "componentCount": 0,
   "sharedUiFiles": [],
   "designSystemFiles": [
-    "dist-packs/thesmos-pantheon-agents/for-chatgpt/techne-design-system-chatgpt-knowledge.txt",
-    "dist-packs/thesmos-pantheon-agents/for-chatgpt/techne-design-system-chatgpt.txt",
-    "dist-packs/thesmos-pantheon-agents/for-claude-ai/techne-design-system-claude-project.txt",
-    "dist-packs/thesmos-pantheon-agents/for-claude/skills/design-token-audit",
-    "dist-packs/thesmos-pantheon-agents/for-claude/skills/design-token-audit/SKILL.md",
-    "dist-packs/thesmos-pantheon-agents/for-claude/techne-design-system.md",
-    "dist-packs/thesmos-pantheon-agents/for-codex/techne-design-system.md",
-    "dist-packs/thesmos-pantheon-agents/for-copilot/techne-design-system.instructions.md",
-    "dist-packs/thesmos-pantheon-agents/for-copilot/techne-design-system.md",
-    "dist-packs/thesmos-pantheon-agents/for-cursor/techne-design-system.mdc",
-    "dist-packs/thesmos-pantheon-agents/for-gemini/techne-design-system-gemini.txt",
-    "dist-packs/thesmos-pantheon-agents/for-openai-api/techne-design-system-openai-assistant.json",
+    "pantheon-plugin/agents/techne-design-system.md",
     "thesmos/catalog/agents/figma/techne-design-system.md",
     "thesmos/catalog/agents/reviewers/design-system-reviewer.md",
     "thesmos/catalog/skills/design-token-audit.md"
@@ -61,44 +50,67 @@
     "extensions/vscode/src/__tests__/workingState.test.ts",
     "thesmos/adapters.test.ts",
     "thesmos/advise.test.ts",
+    "thesmos/agent-federation-stress.test.ts",
+    "thesmos/agent-lifecycle.test.ts",
+    "thesmos/agent-orchestration.test.ts",
+    "thesmos/agent-ownership.test.ts",
     "thesmos/ai-lint.test.ts",
+    "thesmos/assurance.test.ts",
+    "thesmos/autopilot/adapters.test.ts",
     "thesmos/autopilot/calibration.test.ts",
     "thesmos/autopilot/conventions.test.ts",
+    "thesmos/autopilot/dependency-gate.test.ts",
     "thesmos/autopilot/plan-parser.test.ts",
     "thesmos/autopilot/recon.test.ts",
     "thesmos/baseline.test.ts",
+    "thesmos/bin/commands/agent-create.test.ts",
+    "thesmos/bin/commands/agent-install.test.ts",
+    "thesmos/bin/commands/agent-run.test.ts",
+    "thesmos/bin/commands/agents-federation.test.ts",
     "thesmos/bin/commands/audit.test.ts",
     "thesmos/bin/commands/ci-check.test.ts",
     "thesmos/bin/commands/diff.test.ts",
     "thesmos/bin/commands/pack-create.test.ts",
     "thesmos/bin/commands/pack-publish.test.ts",
+    "thesmos/bin/commands/pantheon-mode.test.ts",
+    "thesmos/bin/commands/pantheon-pack.test.ts",
     "thesmos/bin/commands/review-baseline.test.ts",
     "thesmos/bin/commands/review.test.ts",
     "thesmos/bin/commands/scan.test.ts",
+    "thesmos/bin/commands/teams.test.ts",
     "thesmos/bin/lib/args.test.ts",
     "thesmos/bin/lib/git.test.ts",
     "thesmos/bin/lib/oracle.test.ts",
+    "thesmos/builder/generators/rag.test.ts",
     "thesmos/catalog.test.ts",
+    "thesmos/catalog/free-agents.test.ts",
     "thesmos/ci-check.test.ts",
     "thesmos/claude-govern.test.ts",
+    "thesmos/compliance-assurance.test.ts",
     "thesmos/config.test.ts",
     "thesmos/context-capsule.test.ts",
     "thesmos/detector.test.ts",
     "thesmos/doctor.test.ts",
     "thesmos/drift.test.ts",
+    "thesmos/eval/suites.test.ts",
+    "thesmos/execution-receipt.test.ts",
     "thesmos/explain.test.ts",
     "thesmos/fix.test.ts",
     "thesmos/gate.test.ts",
+    "thesmos/guard.cross-platform.test.ts",
     "thesmos/hardening.test.ts",
     "thesmos/health.test.ts",
     "thesmos/hooks.test.ts",
     "thesmos/import-scan.test.ts",
     "thesmos/init.test.ts",
     "thesmos/interactive.test.ts",
+    "thesmos/metrics-export.test.ts",
     "thesmos/metrics.test.ts",
     "thesmos/output.test.ts",
+    "thesmos/pack-gate.test.ts",
     "thesmos/packs.test.ts",
     "thesmos/pantheon-models.test.ts",
+    "thesmos/product-facts.test.ts",
     "thesmos/registry.test.ts",
     "thesmos/report.test.ts",
     "thesmos/review.test.ts",
@@ -164,7 +176,11 @@
     },
     {
       "file": "thesmos/rules/agents.ts",
-      "lines": 1449
+      "lines": 1450
+    },
+    {
+      "file": "extensions/vscode/src/chat/chatViewProvider.ts",
+      "lines": 1427
     },
     {
       "file": "thesmos/fix.ts",
@@ -175,12 +191,12 @@
       "lines": 1418
     },
     {
-      "file": "extensions/vscode/src/chat/chatViewProvider.ts",
-      "lines": 1397
-    },
-    {
       "file": "thesmos/rules/database.ts",
       "lines": 1350
+    },
+    {
+      "file": "thesmos/bin/commands/pantheon.ts",
+      "lines": 1261
     },
     {
       "file": "thesmos/rules/typescript.ts",
@@ -193,6 +209,10 @@
     {
       "file": "thesmos/rules/debt.ts",
       "lines": 1153
+    },
+    {
+      "file": "thesmos/scripts/export-agents.ts",
+      "lines": 1127
     },
     {
       "file": "thesmos/rules/java.test.ts",
@@ -219,8 +239,8 @@
       "lines": 1078
     },
     {
-      "file": "thesmos/scripts/export-agents.ts",
-      "lines": 1017
+      "file": "extensions/vscode/src/chat/webview/chat.ts",
+      "lines": 1030
     },
     {
       "file": "thesmos/rules/terraform.ts",
@@ -232,11 +252,11 @@
     },
     {
       "file": "thesmos/bin/commands/build.ts",
-      "lines": 990
+      "lines": 989
     },
     {
-      "file": "extensions/vscode/src/chat/webview/chat.ts",
-      "lines": 961
+      "file": "thesmos/drift.test.ts",
+      "lines": 963
     },
     {
       "file": "thesmos/rules/design.test.ts",
@@ -263,20 +283,16 @@
       "lines": 938
     },
     {
-      "file": "thesmos/drift.test.ts",
-      "lines": 933
+      "file": "extensions/vscode/src/extension.ts",
+      "lines": 922
+    },
+    {
+      "file": "thesmos/init.ts",
+      "lines": 919
     },
     {
       "file": "thesmos/rules/errors.ts",
       "lines": 916
-    },
-    {
-      "file": "thesmos/init.ts",
-      "lines": 915
-    },
-    {
-      "file": "thesmos/bin/commands/pantheon.ts",
-      "lines": 893
     },
     {
       "file": "thesmos/rules/go.ts",
@@ -287,8 +303,8 @@
       "lines": 870
     },
     {
-      "file": "extensions/vscode/src/extension.ts",
-      "lines": 867
+      "file": "thesmos/agent-lifecycle.test.ts",
+      "lines": 860
     },
     {
       "file": "extensions/vscode/src/commands.ts",
@@ -327,8 +343,16 @@
       "lines": 811
     },
     {
+      "file": "thesmos/mcp-server.ts",
+      "lines": 810
+    },
+    {
       "file": "thesmos/rules/php.test.ts",
       "lines": 810
+    },
+    {
+      "file": "thesmos/bin/commands/compliance.ts",
+      "lines": 807
     },
     {
       "file": "thesmos/rules/csharp.test.ts",
@@ -342,9 +366,7 @@
     "scripts/github-setup.sh",
     "scripts/restore-from-drive.sh"
   ],
-  "envFiles": [
-    ".env"
-  ],
+  "envFiles": [],
   "clientBoundaryRisks": [
     {
       "file": "thesmos/review.test.ts",
@@ -407,20 +429,20 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 1186,
-      "lineCount": 304023
+      "fileCount": 493,
+      "lineCount": 107947
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 346,
-      "lineCount": 128892
+      "fileCount": 386,
+      "lineCount": 138793
     },
     {
       "language": "JavaScript",
       "extension": ".js",
-      "fileCount": 5,
-      "lineCount": 459
+      "fileCount": 4,
+      "lineCount": 310
     }
   ],
   "detectedStacks": [
@@ -447,6 +469,7 @@
       "BASE_URL",
       "BRACKET_VAR",
       "CI",
+      "COHERE_API_KEY",
       "CRON_SECRET",
       "DATABASE_URL",
       "DEEPGRAM_API_KEY",

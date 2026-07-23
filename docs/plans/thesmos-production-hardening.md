@@ -24,6 +24,7 @@
 | 4 | Repair builders | **COMPLETE** | Lead |
 | 5 | Observability + evaluations | **COMPLETE** | Runtime |
 | 6 | Release engineering | **COMPLETE** | Release |
+| 7 | Health & catalog integrity | **COMPLETE** | Trust + Runtime |
 
 ## Decisions log
 
@@ -42,6 +43,9 @@
 | 2026-07-23 | Score coverage counts receipts/activity/metrics as evidence | Gate 16 honesty — still 0 when empty |
 | 2026-07-23 | Bump brace-expansion → 5.0.8 (P0-20); pin Actions to SHAs; keep npm publish --provenance | Phase 6 release engineering |
 | 2026-07-23 | Hoist `@vitest/coverage-v8` to root; exclude `scripts/**`; set measured coverage floors; `readFileSync` for sysfs battery check | CI green — coverage was unresolved; validate BLOCKER on `execSync(\`cat\`)` |
+| 2026-07-23 | Built-in catalog loads reviewers + pantheon + figma + root; registry file-missing skipped when catalog-backed (`.thesmos/agents/*` gitignored) | Phase 7 — catalog is SoT; clears false HIGH drift without committing paid agent bodies |
+| 2026-07-23 | `doctor` exits 1 on failure (`--soft` for legacy); `catalog:validate` fails on load-time frontmatter errors | Phase 7 — honest exit contracts |
+| 2026-07-23 | CI runs `thesmos ci --health-threshold=90` | Phase 7 — health gate after drift cleared |
 
 ## Phase 0 evidence summary
 
@@ -210,9 +214,36 @@ None for Phase 1. ProductFacts license resolved as **FSL-1.1-MIT** (from `packag
 
 - [x] Verified `npm publish --provenance` already present in release.yml (no change)
 
+## Phase 7 workstreams
+
+### 7A — Registry ↔ disk ↔ catalog
+
+- [x] Expand `loadBuiltInCatalog` beyond reviewers-only (pantheon/figma/root)
+- [x] Skip `registry.agent-file-missing` / profile artifact gaps when id is catalog-backed
+- [x] `pantheon:install --write` prefers catalog `.md` (Thesmos frontmatter) over Claude export
+- [x] Adapters sync (`## Active Thesmos Context`) + governance freshness via `init --no-adapters`
+
+### 7B — Exit contracts
+
+- [x] `doctor` exit 1 when any check fails; `--soft` preserves informational mode
+- [x] `catalog:validate` fails on soft-null / invalid frontmatter loads; skip README companions
+
+### 7C — CI health threshold
+
+- [x] Wire `--health-threshold=90` in `.github/workflows/ci.yml` (Node 22)
+
+### 7D/E — Freshness
+
+- [x] `thesmos scan` + `context:snapshot` / adapters → health **100/A+**, drift **0**
+
+### 7F — Tests
+
+- [x] Catalog load count / README skip / load-error collection
+- [x] Drift: catalog-backed agents do not require `.thesmos/agents/` copy
+
 ## Remaining work
 
-Phases 0–6 are implemented and pushed (draft PR #111). CI is green after coverage/SARIF/validate follow-ups. Do **not** merge/publish/claim production-ready without approval.
+Phases 0–7 are implemented on draft PR #111. Do **not** merge/publish/claim production-ready without approval.
 
 ## Next exact action
 

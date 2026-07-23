@@ -1,11 +1,15 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * thesmos doctor — verify Thesmos installation health and show fix hints.
- * Always exits 0 (informational, never blocks CI).
+ *
+ * Exit codes:
+ *   0  all checks passed
+ *   1  one or more checks failed (honest contract — CI can gate on this)
  *
  * Flags:
  *   --json       output as JSON
  *   --markdown   output as Markdown
+ *   --soft       always exit 0 (legacy informational mode)
  */
 import { createContext } from '../lib/context.ts';
 import { parseArgs, flag } from '../lib/args.ts';
@@ -21,18 +25,18 @@ export async function cmdDoctor(argv: string[]): Promise<void> {
   const { flags } = parseArgs(argv);
   const json = flag(flags, 'json');
   const markdown = flag(flags, 'markdown');
+  const soft = flag(flags, 'soft');
 
   const checks = runDoctorForRoot(root, config);
+  const pass = checks.every((c) => c.pass);
 
   if (json) {
     process.stdout.write(formatDoctorJson(checks) + '\n');
-    return;
-  }
-
-  if (markdown) {
+  } else if (markdown) {
     process.stdout.write(formatDoctorMarkdown(checks, config.project));
-    return;
+  } else {
+    console.log(formatDoctorConsole(checks, config.project));
   }
 
-  console.log(formatDoctorConsole(checks, config.project));
+  if (!pass && !soft) process.exit(1);
 }

@@ -608,7 +608,9 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
   }
 
   if (write) {
-    // Write agent content directly to .thesmos/agents/ — no export directory needed.
+    // Write canonical Thesmos catalog docs to .thesmos/agents/ (proper frontmatter).
+    // Prefer the source catalog .md over Claude export format so drift/catalog
+    // loaders recognize the agents (id/type/owner frontmatter).
     const canonicalDir = join(root, '.thesmos', 'agents');
     mkdirSync(canonicalDir, { recursive: true });
 
@@ -618,7 +620,14 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
 
     for (const id of toInstall) {
       const agent = agents.find(a => a.id === id)!;
-      const content = exportClaudeCode(agent);
+      const catalogSrc = [
+        join(PANTHEON_DIR, `${id}.md`),
+        join(FIGMA_DIR, `${id}.md`),
+        join(AGENTS_DIR, `${id}.md`),
+      ].find((p) => existsSync(p));
+      const content = catalogSrc
+        ? readFileSync(catalogSrc, 'utf8')
+        : exportClaudeCode(agent);
       const dest = join(canonicalDir, `${id}.md`);
       try {
         writeFileSync(dest, content, 'utf8');

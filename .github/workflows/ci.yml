@@ -120,6 +120,10 @@ jobs:
         working-directory: thesmos
         run: npx tsx -e "import { productFactsAreFresh } from './product-facts.ts'; const r = productFactsAreFresh(); if (!r.fresh) { console.error(r.detail); process.exit(1); } console.log(r.detail);"
 
+      - name: Thesmos CI gate (health ≥ 90)
+        if: matrix.node-version == '22.x'
+        run: node thesmos/dist/cli.js ci --json --health-threshold=90
+
       - name: Upload coverage to Codecov
         if: matrix.node-version == '22.x'
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7

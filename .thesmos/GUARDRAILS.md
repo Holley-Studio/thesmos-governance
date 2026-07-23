@@ -8,7 +8,6 @@
 
 **BLOCKER — CI will fail:**
 
-- 🔴 **[ENV_001]** Use bracket-notation env access — process['env' as 'env']['VAR'] — never process.env.VAR dot notation.
 - 🔴 **[SEC_001]** Never import the Supabase admin client in 'use client' files. Admin clients expose service-role keys to the browser.
 - 🔴 **[SEC_002]** Never disable Row Level Security. All Supabase tables must have RLS enabled with explicit policies.
 - 🔴 **[SEC_003]** Never commit secrets, API keys, or private key material in code or config files.
@@ -190,6 +189,7 @@
 - 🔴 **[AGNT_013]** Agent loop uses alert/warn on token usage but has no hard stop — cost runaway if alert is ignored.
 - 🔴 **[AGNT_014]** Agent autopilot config has no maxIterationsPerTask — tasks can loop indefinitely.
 - 🔴 **[AGNT_023]** Agent bash/edit tool granted without path restrictions — full filesystem access.
+- 🔴 **[AGNT_037]** 1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; use only when explicitly requested.
 - 🔴 **[DEP_001]** Dependency has a CRITICAL CVE — immediate upgrade required.
 - 🔴 **[LIC_001]** GPL/AGPL dependency found in a project with a commercial or permissive license — copyleft contamination.
 - 🔴 **[LIC_009]** Project is open source (GPL) but has a permissive dep that conflicts with GPL requirements.
@@ -584,7 +584,6 @@
 - 🟠 **[AGNT_026]** No .thesmos/model-card.md found — EU AI Act Art. 13 transparency requirement.
 - 🟠 **[AGNT_027]** .thesmos/audit.jsonl is being modified by the agent — audit trail must be append-only.
 - 🟠 **[AGNT_028]** Sub-agent spawned without forwarding parent session token — auth gap in agent chain.
-- 🟠 **[AGNT_037]** 1M context window enabled ([1m] model variant or context-1m beta flag) without context1M.allow1M — premium long-context pricing; cost runaway risk.
 - 🟠 **[DEP_002]** Dependency has a HIGH severity CVE.
 - 🟠 **[DEP_004]** Dependency not updated in 2+ years AND has a known CVE — no fix expected.
 - 🟠 **[DEP_006]** Dependency points to a git URL instead of a semver version — no integrity guarantee.
