@@ -1473,6 +1473,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         break;
 
       case 'exit':
+        this.lastApprovedAdvice = undefined;
         this.turnRunning = false;
         this.setActivity(null);
         this.setPhase(null);
