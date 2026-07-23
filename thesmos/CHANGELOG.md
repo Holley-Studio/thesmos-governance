@@ -4,6 +4,17 @@
 
 ### Minor Changes
 
+- **Trust Execution Hardening (5.1.0):** Phases 0–8 — fail-closed assurance, safe Claude execution defaults, real Pantheon `--execute`, builder/`agent:run` repairs, execution receipts + local metrics, release pins, health/catalog integrity, and score honesty via real `governance.log.jsonl` evidence.
+
+  - Shared `assurance.ts` (`PASS|FAIL|INCOMPLETE|ERROR`); empty/missing evidence never reports 100%.
+  - `compliance:report` reads `.thesmos/report.json`; CI uses `dist/cli.js` + SARIF fail-closed + coverage floors.
+  - `mcp --stdio` alias; product facts from `catalog/product-facts.json`.
+  - Autopilot: `dangerouslySkipPermissions` default-off; Depends-on runtime gate; orchestrate brief-only unless `--execute`.
+  - `agent:run`, RAG scaffolds (OpenAI/Cohere/local embed), versioned receipts, `eval` runtime section.
+  - Catalog loads reviewers + pantheon + figma + root; doctor/catalog:validate honest exits; CI `--health-threshold=90`.
+  - **Phase 8:** `review` / `validate` / `ci` / MCP `scan_file` append enforcement events (`review.clean` on empty); score tip when INCOMPLETE.
+  - Supply chain: brace-expansion 5.0.8; Actions SHA-pinned; `npm publish --provenance` unchanged (no auto-publish).
+
 - **Cross-platform Thesmos guard (Operation Aegis):** Claude Code hooks no longer depend on Unix shell (`npx … 2>&1 || true`, Bash wrappers) for governance.
 
   - Node entrypoint `dist/thesmos-guard.js` is the source of truth (`check` | `budget-check` | `drift`).

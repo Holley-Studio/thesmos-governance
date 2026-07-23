@@ -89,14 +89,17 @@ Artifacts under `/tmp/thesmos-p0/` (session-local).
 | Phase 5 | Observability / evals | **DONE** (2026-07-23) — receipts, activity wire-up, local metrics, suites |
 | P0-20 | 6 Release / deps | **DONE** (2026-07-23) — brace-expansion 5.0.8; Actions SHA-pinned |
 | Health C / 147 drift / doctor exit 0 / catalog soft-OK | 7 Health & catalog | **DONE** (2026-07-23) — health **100/A+**, drift **0**, doctor exit 1 on fail, catalog:validate fail-closed, CI `--health-threshold=90` |
+| Score 60 / D · compliance 0 · INCOMPLETE (no log) | 8 Score honesty | **DONE** (2026-07-23) — `review`/`validate`/`ci`/MCP append real `governance.log.jsonl`; after dogfood review → score **100/A** · compliance **100** · PASS |
 
 ---
 
 ## Acceptance vs baseline
 
-At baseline commit, none of the master-prompt acceptance gates 14–27 passed. Phases 1–7 on this branch remediate false assurance, execution safety, Pantheon runtime, builders, observability, release engineering, and health/catalog integrity. Remaining work is human review/merge — not a claim of production-ready.
+At baseline commit, none of the master-prompt acceptance gates 14–27 passed. Phases 1–8 remediate false assurance, execution safety, Pantheon runtime, builders, observability, release engineering, health/catalog integrity, and score honesty. Remaining: release prep + human publish approval — not a claim of production-ready.
 
-**Phase 7 signals (post-remediation):** `health` 100/A+ · drift 0 · `doctor --json` pass:true exit 0 · `catalog:validate` OK (128 agents) · `ci --health-threshold=90` pass:true.
+**Phase 7 signals:** `health` 100/A+ · drift 0 · `doctor` pass:true · `catalog:validate` OK · `ci --health-threshold=90` pass:true.
+
+**Phase 8 signals:** empty log → score INCOMPLETE/compliance 0 (honest); after `thesmos review` → real events → compliance leaves INCOMPLETE.
 
 **Do not claim production-ready, fully compliant, or 10/10.**
 
@@ -104,4 +107,4 @@ At baseline commit, none of the master-prompt acceptance gates 14–27 passed. P
 
 ## Next remediation step
 
-Phases 0–7 complete on `feat/trust-execution-hardening` (draft PR #111). Await human review/merge approval.
+PR #111 merged. Phase 8 + release prep on follow-up branch — changelog/version only; no publish without approval.

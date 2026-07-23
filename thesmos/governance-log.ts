@@ -129,6 +129,71 @@ export function logMcpOverride(
   });
 }
 
+/** Map review severity → governance outcome (matches MCP scan_file). */
+export function outcomeFromSeverity(
+  severity: string,
+): GovernanceOutcome {
+  if (severity === 'BLOCKER') return 'BLOCKED';
+  if (severity === 'HIGH') return 'WARN';
+  return 'PASS';
+}
+
+export interface LoggableFinding {
+  severity: string;
+  category: string;
+  file: string;
+  message?: string;
+}
+
+/**
+ * Append real enforcement evidence from a review/scan_file pass.
+ * Empty findings → one PASS (`review.clean`) so compliance leaves INCOMPLETE
+ * without inventing a fake 100% from a missing log.
+ */
+export function logReviewFindings(
+  root: string,
+  findings: readonly LoggableFinding[],
+  opts: {
+    source?: GovernanceSource;
+    action?: string;
+    session?: string;
+    /** Fallback path when a finding has no file (and for clean PASS). */
+    path?: string;
+  } = {},
+): GovernanceEvent[] {
+  const source = opts.source ?? 'scan';
+  const action = opts.action ?? 'review';
+  const fallbackPath = opts.path ?? '.';
+
+  if (findings.length === 0) {
+    return [
+      appendGovernanceEvent(root, {
+        source,
+        rule: 'review.clean',
+        action,
+        path: fallbackPath,
+        outcome: 'PASS',
+        override: false,
+        session: opts.session,
+        message: 'No governance violations found.',
+      }),
+    ];
+  }
+
+  return findings.map((f) =>
+    appendGovernanceEvent(root, {
+      source,
+      rule: f.category || 'unknown',
+      action,
+      path: f.file || fallbackPath,
+      outcome: outcomeFromSeverity(f.severity),
+      override: false,
+      session: opts.session,
+      message: f.message,
+    }),
+  );
+}
+
 // ── Read ──────────────────────────────────────────────────────────────────────
 
 export function readGovernanceLog(root: string, limit = 1000): GovernanceEvent[] {

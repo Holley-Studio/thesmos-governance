@@ -25,6 +25,7 @@ import { parseArgs, flag, flagVal } from '../lib/args.ts';
 import { loadReport } from '../lib/report.ts';
 import { getChangedFiles } from '../lib/git.ts';
 import { runReview } from '../../review.ts';
+import { logReviewFindings } from '../../governance-log.ts';
 import { exitCodeFor, shouldWarn, SEVERITY_EMOJI } from '../../severity.ts';
 import { loadBaseline, partitionFindings } from '../../baseline.ts';
 import { runDriftForRoot } from '../../drift.ts';
@@ -76,6 +77,9 @@ export async function cmdCiGate(argv: string[]): Promise<void> {
   const baseline = noBaseline ? null : loadBaseline(root);
   const findings = baseline ? partitionFindings(allFindings, baseline).newFindings : allFindings;
   const suppressedCount = allFindings.length - findings.length;
+
+  // Real enforcement evidence for score/eval (gitignored JSONL).
+  logReviewFindings(root, findings, { source: 'ci', action: 'ci' });
 
   // Drift
   const driftFindings = runDriftForRoot(root, config);

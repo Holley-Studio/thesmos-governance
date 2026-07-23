@@ -141,10 +141,10 @@ export async function cmdScore(argv: string[]): Promise<void> {
     '',
   ];
 
-  if (result.components.coverage === 0) {
+  if (result.components.assuranceState === 'INCOMPLETE' || result.components.compliance === 0) {
     lines.splice(-1, 0,
-      `  Tip: Run thesmos mcp:install to enable real-time enforcement logging`,
-      `       and unlock the full compliance score component.`,
+      `  Tip: Run \`thesmos review\` or \`thesmos mcp:install\` so enforcement`,
+      `       events land in .thesmos/governance.log.jsonl (never invents PASS).`,
       '',
     );
   }

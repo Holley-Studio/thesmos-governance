@@ -34,7 +34,7 @@ import type { Finding, ScanResult, DetectInput } from './types.js';
 import { modelFor } from './generated/pantheon-models.js';
 import { makeLogger } from './logger.js';
 import { buildBudgetReport, calcCost, getCurrentSessionId, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
-import { logMcpBlock, logMcpPass, logRuleFire } from './governance-log.js';
+import { logMcpBlock, logMcpPass, logReviewFindings } from './governance-log.js';
 import { getAutoModeGovernanceInfo } from './claude-govern.js';
 import { loadReport } from './report.js';
 import {
@@ -304,10 +304,13 @@ function handleScanFile(
   const blockers = findings.filter((f) => f.severity === 'BLOCKER').length;
   const highs = findings.filter((f) => f.severity === 'HIGH').length;
 
-  for (const f of findings) {
-    const outcome = f.severity === 'BLOCKER' ? 'BLOCKED' : f.severity === 'HIGH' ? 'WARN' : 'PASS';
-    logRuleFire(root, f.category, params.path, outcome, 'mcp', params.session, f.message);
-  }
+  // Always append enforcement evidence — including clean PASS when empty.
+  logReviewFindings(root, findings, {
+    source: 'mcp',
+    action: 'scan_file',
+    path: params.path,
+    session: params.session,
+  });
 
   const summary =
     findings.length === 0
