@@ -35,6 +35,11 @@ export interface AutopilotConfig {
   stopOnCreditFailure?: boolean;
   retryBackoffSeconds?: [number, number, number];
   httpAdapterUrl?: string;
+  /**
+   * Opt-in only. When true, Claude adapter appends `--dangerously-skip-permissions`.
+   * Default: false. Prefer the autopilot permission profile + claude:govern hooks.
+   */
+  dangerouslySkipPermissions?: boolean;
 }
 
 export type DoneCriterionType = 'file_exists' | 'command_passes' | 'grep_matches' | 'grep_not_matches';

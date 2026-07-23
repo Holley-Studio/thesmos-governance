@@ -249,6 +249,9 @@ export interface ExecutorOptions {
   dryRun: boolean;
   verbose: boolean;
   reconnaissance: boolean;
+  /** Opt-in: pass through to Claude adapter. Default false. */
+  dangerouslySkipPermissions?: boolean;
+  httpAdapterUrl?: string;
 }
 
 export async function executeSession(
@@ -257,7 +260,10 @@ export async function executeSession(
   session: AutopilotSession,
   options: ExecutorOptions,
 ): Promise<void> {
-  const adapter = createAdapter(plan.adapter);
+  const adapter = createAdapter(plan.adapter, {
+    httpUrl: options.httpAdapterUrl,
+    dangerouslySkipPermissions: options.dangerouslySkipPermissions === true,
+  });
   const timeoutMs = 30 * 60 * 1000; // 30 minutes per task
 
   // Load per-repo conventions (empty on first session, richer on repeat runs)

@@ -83,7 +83,7 @@ Artifacts under `/tmp/thesmos-p0/` (session-local).
 | P0-01–05, P0-18–19 | 1A Assurance | **DONE** (2026-07-23) |
 | P0-06–09 | 1B CI | **DONE** (2026-07-23) |
 | P0-10–12 | 1C MCP + 1D Facts | **DONE** (2026-07-23) |
-| P0-15 | 2 Execution safety | TODO |
+| P0-15 | 2 Execution safety | **DONE** (2026-07-23) — default-off; opt-in `autopilot.dangerouslySkipPermissions` |
 | P0-13–14 | 3 Pantheon runtime | TODO |
 | P0-16–17 | 4 Builders | TODO |
 | P0-20 | 6 Release / deps | TODO |
@@ -100,4 +100,4 @@ At baseline commit, none of the master-prompt acceptance gates 14–27 passed. P
 
 ## Next remediation step
 
-Phase 2: make Claude execution safe — remove or default-off `--dangerously-skip-permissions` in autopilot adapters.
+Phase 3: real Pantheon runtime — registry / router / DAG execution (P0-13, P0-14).

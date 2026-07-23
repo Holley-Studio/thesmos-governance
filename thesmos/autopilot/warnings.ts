@@ -192,11 +192,17 @@ function tick(passed: boolean): string {
   return passed ? '✓' : '✗';
 }
 
+export interface WarningScreenOptions {
+  /** When true, surface an elevated warning that Claude skip-permissions is enabled. */
+  dangerouslySkipPermissions?: boolean;
+}
+
 export function displayWarningScreen(
   root: string,
   plan: AutopilotPlan,
   maxCostUSD: number | undefined,
   requirePluggedIn: boolean,
+  options: WarningScreenOptions = {},
 ): { checks: CheckResult[]; canProceed: boolean } {
   const diskCheck = checkDiskSpace(root);
   const batteryCheck = checkBattery(requirePluggedIn);
@@ -205,6 +211,7 @@ export function displayWarningScreen(
   const sleepCheck = checkSystemSleep();
   const costCheck = checkCostCeiling(maxCostUSD);
   const hooks = detectPreCommitHooks(root);
+  const skipPermissions = options.dangerouslySkipPermissions === true;
 
   process.stdout.write('\n' + DIVIDER + '\n');
   process.stdout.write('  ⚠  THESMOS AUTOPILOT — PRE-FLIGHT WARNING\n');
@@ -239,6 +246,19 @@ export function displayWarningScreen(
   }
 
   const warnings = [
+    ...(skipPermissions
+      ? [
+          {
+            title: 'DANGEROUSLY SKIP PERMISSIONS (ENABLED)',
+            body: [
+              'autopilot.dangerouslySkipPermissions=true — Claude CLI will run with',
+              '--dangerously-skip-permissions, bypassing Claude Code permission prompts.',
+              'Prefer the Thesmos permission profile + claude:govern hooks (default).',
+              '→ Set dangerouslySkipPermissions to false (or omit it) unless you accept this risk.',
+            ],
+          },
+        ]
+      : []),
     {
       title: 'API CREDITS',
       body: [

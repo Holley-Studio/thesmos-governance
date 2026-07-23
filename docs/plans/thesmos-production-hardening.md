@@ -19,7 +19,7 @@
 |-------|------|--------|-------|
 | 0 | Reproduce baseline + blocker table | **COMPLETE** | Lead |
 | 1 | Eliminate false assurance (compliance / CI / MCP / facts) | **COMPLETE** | Trust + Release |
-| 2 | Make Claude execution safe | PENDING | Runtime |
+| 2 | Make Claude execution safe | **COMPLETE** | Runtime |
 | 3 | Real Pantheon runtime (registry / router / DAG) | PENDING | Runtime |
 | 4 | Repair builders | PENDING | Lead |
 | 5 | Observability + evaluations | PENDING | Runtime |
@@ -33,6 +33,7 @@
 | 2026-07-23 | No push / no PR until user approves | Explicit in master prompt |
 | 2026-07-23 | Phase 1 before any runtime work | Release-blocking false assurance first |
 | 2026-07-23 | Sequential execution (no parallel worktrees this session) | Single agent; avoid lockfile/manifest conflicts |
+| 2026-07-23 | Claude `--dangerously-skip-permissions` default-off; opt-in via `autopilot.dangerouslySkipPermissions` | P0-15 — permission profile + govern hooks are the safe unattended path |
 
 ## Phase 0 evidence summary
 
@@ -100,6 +101,7 @@ Reproduced at baseline `4b88271`:
 |-------|-------|
 | 0 | `docs/plans/thesmos-production-hardening.md`, `docs/audits/2026-07-product-readiness.md` |
 | 1 | `thesmos/assurance.ts`, `thesmos/assurance.test.ts`, `thesmos/compliance-assurance.test.ts`, `thesmos/bin/commands/compliance.ts`, `thesmos/bin/commands/eval.ts`, `thesmos/bin/commands/score.ts`, `thesmos/bin/commands/mcp.ts`, `thesmos/bin/cli.ts`, `thesmos/governance-log.ts`, `thesmos/mcp-server.ts`, `thesmos/index.ts`, `thesmos/package.json`, `thesmos/product-facts.ts`, `thesmos/product-facts.test.ts`, `thesmos/scripts/generate-product-facts.ts`, `thesmos/catalog/product-facts.json`, `.github/workflows/ci.yml`, `docs/plans/thesmos-production-hardening.md`, `docs/audits/2026-07-product-readiness.md` |
+| 2 | `thesmos/autopilot/adapters.ts`, `thesmos/autopilot/adapters.test.ts`, `thesmos/autopilot/executor.ts`, `thesmos/autopilot/generator.ts`, `thesmos/autopilot/reviewer.ts`, `thesmos/autopilot/warnings.ts`, `thesmos/autopilot/permissions.ts`, `thesmos/bin/commands/autopilot.ts`, `thesmos/types.ts`, `thesmos/catalog/autopilot-plan.example.md`, `docs/plans/thesmos-production-hardening.md`, `docs/audits/2026-07-product-readiness.md` |
 
 ## Commands executed (Phase 0)
 
@@ -123,10 +125,21 @@ git diff --exit-code after build                → 0
 
 None for Phase 1. ProductFacts license resolved as **FSL-1.1-MIT** (from `package.json`); no pricing fields invented.
 
+## Phase 2 workstreams
+
+### 2A — Claude adapter safety (Runtime)
+
+- [x] Extract `buildClaudeCliArgs` / `resolveDangerouslySkipPermissions` (testable)
+- [x] Default-off `--dangerously-skip-permissions` (only when `dangerouslySkipPermissions === true`)
+- [x] Wire opt-in through `AutopilotConfig` → executor / generate / review
+- [x] Pre-flight warning + session banner when skip is enabled
+- [x] Document preferred path: permission profile + `claude:govern` hooks
+- [x] Tests: default argv, opt-in argv, factory overloads
+
 ## Remaining work
 
-Phases 2–6 per master prompt (Claude execution safety → Pantheon runtime → builders → observability → release).
+Phases 3–6 per master prompt (Pantheon runtime → builders → observability → release).
 
 ## Next exact action
 
-Begin Phase 2 — make Claude execution safe (remove/default-off `--dangerously-skip-permissions`; harden autopilot adapters).
+Begin Phase 3 — real Pantheon runtime (registry / router / DAG; P0-13/14).
