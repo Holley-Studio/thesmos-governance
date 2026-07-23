@@ -41,6 +41,7 @@
 | 2026-07-23 | Versioned execution receipts + local metrics-export (no Datadog fantasy) | Phase 5 — hashed I/O only; AGNT_020 local-jsonl |
 | 2026-07-23 | Score coverage counts receipts/activity/metrics as evidence | Gate 16 honesty — still 0 when empty |
 | 2026-07-23 | Bump brace-expansion → 5.0.8 (P0-20); pin Actions to SHAs; keep npm publish --provenance | Phase 6 release engineering |
+| 2026-07-23 | Hoist `@vitest/coverage-v8` to root; exclude `scripts/**`; set measured coverage floors; `readFileSync` for sysfs battery check | CI green — coverage was unresolved; validate BLOCKER on `execSync(\`cat\`)` |
 
 ## Phase 0 evidence summary
 
@@ -211,8 +212,8 @@ None for Phase 1. ProductFacts license resolved as **FSL-1.1-MIT** (from `packag
 
 ## Remaining work
 
-None for the Trust Execution Hardening plan phases 0–6. Do **not** push/PR/publish until user approves.
+Phases 0–6 are implemented and pushed (draft PR #111). Follow-up: keep CI green on #111 (coverage resolution + validate BLOCKER fixes landed). Do **not** merge/publish/claim production-ready without approval.
 
 ## Next exact action
 
-Await user approval to push `feat/trust-execution-hardening` and open a PR.
+Land CI-green on draft PR #111; then await human review/merge approval.

@@ -7,7 +7,7 @@
  * Every circumstance that could interrupt an unattended session is documented here.
  */
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
-import { statfsSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync, statfsSync } from 'node:fs';
 import * as readline from 'node:readline';
 import type { AutopilotPlan } from '../types.js';
 import { detectPreCommitHooks } from './git-ops.js';
@@ -80,7 +80,8 @@ export function checkBattery(requirePluggedIn: boolean): CheckResult {
     if (process.platform === 'linux') {
       const acPath = '/sys/class/power_supply/AC/online';
       if (existsSync(acPath)) {
-        const plugged = execSync(`cat ${acPath}`, { encoding: 'utf8' }).trim() === '1';
+        // Read sysfs directly — no shell (SEC_016 / NODE_005).
+        const plugged = readFileSync(acPath, 'utf8').trim() === '1';
         return {
           label: 'Battery',
           passed: plugged,
