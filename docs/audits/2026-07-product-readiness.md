@@ -105,6 +105,41 @@ At baseline commit, none of the master-prompt acceptance gates 14–27 passed. P
 
 ---
 
+## Stress test (2026-07-23, post Phase 8)
+
+| Check | Result |
+|-------|--------|
+| Unit tests | **3365 passed** (110 files) |
+| Typecheck | pass |
+| Coverage floors | pass (statements ~69%, lines ~70%) |
+| Double-build `dist/cli.js` hash | stable |
+| `doctor --json` | pass:true exit 0 |
+| `catalog:validate` | OK (128 agents, 53 skills) |
+| `agents:doctor --strict` | **exit 0** after catalog-backed skip (was exit 2 / 68 false warns) |
+| `health --json` | 100 / A+ |
+| `ci --health-threshold=90` | pass:true |
+| `score` (after review) | 100 / A · compliance 100 · PASS |
+| `mcp --stdio` initialize | version **5.1.0** |
+| `self:check` / `context:health` | all passed / 100 A |
+| `npm audit --omit=dev` | **0** vulns |
+| `npm audit` (incl. dev) | **2** — js-yaml HIGH, esbuild LOW |
+
+### Attention backlog (not release-blocking for 5.1.0)
+
+| ID | Finding | Severity | Suggested owner |
+|----|---------|----------|-----------------|
+| S1 | `agents:doctor` treated catalog agents as missing local files | HIGH | **FIXED** this PR (align with drift) |
+| S2 | Version bump without regenerating `catalog/product-facts.json` fails CI | HIGH | **FIXED** this PR; add generate step to release checklist |
+| S3 | DevDependency `js-yaml` HIGH (GHSA-52cp-r559-cp3m) | HIGH (dev) | Release — `npm audit fix` / pin |
+| S4 | DevDependency `esbuild` LOW (Windows dev-server read) | LOW (dev) | Release — via tsup |
+| S5 | 7× TECH_DEBT `large_file` (VS Code chat + others); 50 TECH_DEBT w/ `--no-baseline` | MEDIUM | Tech debt / Hephaestus |
+| S6 | Score maps TECH_DEBT→PASS so maturity can hit 100 with known debt | MEDIUM | Trust — consider WARN for TECH_DEBT or separate debt component |
+| S7 | Runtime receipts/metrics still 0 in dogfood unless autopilot/`agent:run` used | MEDIUM | Runtime — CI smoke receipt optional |
+| S8 | `commit:lint -m "…"` treats `-m` as a file path | LOW | CLI UX |
+| S9 | `pack:validate` no-op when no packs present (OK; document) | LOW | Docs |
+
+---
+
 ## Next remediation step
 
-PR #111 merged. Phase 8 + release prep on follow-up branch — changelog/version only; no publish without approval.
+Open PR for Phase 8 + 5.1.0 release prep. Human decides publish. Tackle S3–S7 after merge as needed.

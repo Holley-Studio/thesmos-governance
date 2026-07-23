@@ -268,10 +268,14 @@ None for Phase 1. ProductFacts license resolved as **FSL-1.1-MIT** (from `packag
 - [x] Before review: score 60 / D · compliance 0 · INCOMPLETE
 - [x] After `thesmos review`: score 100 / A · compliance 100 · PASS (7 real TECH_DEBT→PASS events)
 
+## Stress test + backlog
+
+See `docs/audits/2026-07-product-readiness.md` § Stress test. Notable fix during stress: `agents:doctor --strict` now skips catalog-backed registry IDs (same contract as drift).
+
 ## Remaining work
 
-Phases 0–8 complete on follow-up branch. Release prep = changelog + version bump only — **no npm publish** without approval. Do **not** claim production-ready.
+Phases 0–8 + release prep on PR #112. **No npm publish** without approval. Do **not** claim production-ready.
 
 ## Next exact action
 
-Release prep (changelog + version) → stress test → open PR for human review.
+Human review/merge of PR #112; optional publish of 5.1.0; then backlog S3–S7.
