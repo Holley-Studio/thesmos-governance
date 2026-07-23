@@ -210,7 +210,7 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
   // We check both the dot-resolved path (resolvedTarget) and the symlink-resolved path (absPath)
   // against the blocked paths so that both /tmp/../etc/shadow and symlink-to-/etc/ are caught.
   for (const blocked of config.workspace.absoluteBlockPaths) {
-    const blockedNorm = resolve(blocked); // normalize separators and trailing slash consistency
+    const blockedNorm = canonical(resolve(blocked)); // normalize separators, trailing slash, and symlinks
     if (
       resolvedTarget.startsWith(blockedNorm) || resolvedTarget === blockedNorm ||
       absPath.startsWith(blockedNorm) || absPath === blockedNorm
