@@ -3,7 +3,10 @@
 Branch: `feat/operation-signal` (created from clean `main` at `e76eaa2`, after merging the
 branch-reconciliation work from earlier this session and publishing v5.1.0 — see git log).
 
-Status: **in progress**. This ledger is updated in place, not duplicated.
+Status: **session complete, mandate NOT complete.** Two verified bugs fixed and tested (Phase
+2/7's `requires_confirmation` hard-exit; Phase 5's oversized adapters — partial). Seven of nine
+phases remain undone by design (see "Deferred"), not silently downgraded. This ledger is updated
+in place, not duplicated.
 
 ## Baseline (verified before any change)
 
@@ -134,3 +137,67 @@ across all 9 phases, this session:
 - **Windows/Linux verification:** genuinely impossible from this environment (single macOS
   machine, no CI shell access to the matrix runners interactively). Anything claimed here about
   those platforms is from reading the code, not from running it there.
+
+## Final test results
+
+| Package | Typecheck | Vitest | Notes |
+|---|---|---|---|
+| `thesmos` | clean | 3485/3488 | 3 failures are pre-existing, environment-only (stray local `.thesmos/scope.json`, confirmed absent on a clean checkout) |
+| `extensions/vscode` | clean | 93/93 | unaffected by this session's changes |
+| `actions/pr-review` | clean | 108/108 | unaffected by this session's changes |
+
+## Compatibility matrix — honestly reported
+
+| Platform/tool | Status |
+|---|---|
+| macOS/arm64, Node 20/22/24, this repo's own CLI | **Verified** — ran directly this session |
+| Windows, Linux | **Not run.** No such machine available in this environment. Claims about Windows-specific code paths (e.g. named-pipe vs Unix-socket branches already in `permissionBridge.ts`) are from reading the code, never claimed as tested. |
+| VS Code Extension Host (real UI, Chat startup, command registration) | **Not run.** No Extension Host test harness was set up or exercised this session. |
+| Cursor, WSL, SSH, dev containers | **Not run.** |
+| pnpm/Yarn/Bun consumer install | **Not run.** This repo itself uses npm workspaces; the packed-npm-artifact consumer matrix the brief asks for (Phase 9) was not built. |
+
+## Security & privacy review (scoped to what changed this session)
+
+- `emitAskDecision()` writes only the already-user-facing violation message + suggestion to stdout
+  — no new data exposure; it doesn't touch secrets, and the JSON shape is Claude Code's own
+  documented hook protocol.
+- Adapter regeneration is a pure content change (which rules get embedded); no code-execution or
+  credential surface touched.
+- No new dependencies added.
+- Checkpoint secret-exclusion patterns were read, not modified, this session (see Phase 0 table) —
+  no privacy regression introduced, but the gaps noted there (OS keychain exports, diagnostic
+  bundles once they exist) remain open.
+
+## Remaining risks (severity, concrete next action)
+
+| Risk | Severity | Next action |
+|---|---|---|
+| No incident/feedback/diagnostic subsystem exists at all (Phase 1, 4) | High (product gap) | Design a minimal `DecisionOutcome`/diagnostic-event schema as its own spec doc before writing code — this is the biggest single remaining phase. |
+| Bridge has no loopback fallback or failure-injection tests (Phase 3) | Medium-high | `permissionBridge.ts` today only tries a Unix socket/named pipe; add the documented transport-order fallback and the 11 failure-injection scenarios listed in the brief. |
+| `requires_confirmation`'s quote-unaware substring matching (secondary finding, Phase 2/7) | Low-medium | Apply the same `stripQuotedAndComments` treatment already used for `destructivePatterns` to the `requireConfirmation` loop in `scope.ts`. |
+| Adapters still ~93-117KB, not <8KB (Phase 5 gap) | Medium | Needs a human-curated critical-constraints list (content judgment call), not more mechanical filtering. |
+| `.thesmos/scope.json` has a committed machine-specific path (Phase 6) | Low (correctness, not security) | Design a local-overlay/env-expansion mechanism for `ScopeConfig` before removing the entry, or the agent's own memory access on this machine breaks with no replacement. |
+| Health score is fully disconnected from `agents:doctor --strict` (Phase 7) | Medium | Requires a design decision on how much weight agent-sync failures should carry in the aggregate score — flagged, not decided unilaterally. |
+| No packed cross-platform consumer test matrix exists (Phase 9) | Medium-high | Would catch real "works on my machine" gaps before users hit them; needs CI runners for Windows/Linux, which weren't available here. |
+| Checkpoint exclusions don't yet cover OS keychain exports or (future) diagnostic bundles (Phase 8) | Low | Add patterns once the incident-storage feature (Phase 4) actually exists — nothing to exclude yet. |
+
+## Manual QA checklist (for whoever picks this up on real hardware)
+
+- [ ] Windows: install the extension, start Pantheon Chat, trigger a Write/Edit/Bash tool call, confirm the permission bridge binds (named pipe) and a benign action is allowed.
+- [ ] Windows: same, with a project that also has `thesmos claude:govern install` configured — confirm whether the double-decision issue (Phase 2, confirmed on macOS reasoning) actually double-fires in practice.
+- [ ] macOS/Linux: configure `.thesmos/scope.json` with an `operations.requireConfirmation` entry, trigger it from Pantheon Chat, confirm the CLI's real permission-approval UI appears (not a silent deny) — this repo's automated test only proves the hook emits the right JSON, not that Claude Code's UI renders it as expected end-to-end.
+- [ ] Cursor: open a project with the regenerated `.cursor/rules/thesmos.mdc`, confirm it still loads/parses correctly as an `alwaysApply` rule (frontmatter untouched by this session's changes, but worth a real check).
+- [ ] Any editor: run `thesmos doctor` and `thesmos agents:doctor --strict` side by side against a repo with a known agent conflict, confirm `health`/`thesmos doctor` still reports success independent of the strict failure (this is the CONFIRMED-but-unfixed Phase 7 gap — expected to still reproduce).
+
+## Recommended versioning & release path (not performed)
+
+- The `requires_confirmation` fix and the adapter-size reduction are both real, user-facing bug
+  fixes with no breaking API changes — **patch or minor** semver bump (`5.1.0` → `5.1.1` or
+  `5.2.0`; leaning minor given the adapter *content* change is visible/behavioral even though no
+  interface changed).
+- Do not tag/release this branch until at least Phase 3 (bridge hardening) or a documented decision
+  to ship Phase 2/5 alone is made — recommend merging as its own PR scoped to "verified governance
+  hook + adapter-size fixes," separate from the still-open Phase 1/3/4/6/8/9 follow-up work, so the
+  release notes accurately describe what shipped instead of implying the full Operation Signal
+  mandate is done.
+- No tag, publish, or push to `main` performed for this branch — awaiting explicit direction.
