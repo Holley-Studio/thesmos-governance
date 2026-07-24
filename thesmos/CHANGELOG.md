@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Patch Changes
+
+- **Guard config repair hatch:** malformed `.thesmos/config.json` no longer deadlocks the agent — Write/Edit of that file is allowed so it can self-heal; other PreToolUse tools stay blocked. Diagnostics clarify that invalid project `package.json` is unrelated.
+
 ## 5.0.1
 
 ### Patch Changes
