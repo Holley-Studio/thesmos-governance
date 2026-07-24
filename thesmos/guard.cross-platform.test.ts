@@ -215,6 +215,56 @@ describe('thesmos-guard.js — real execution', () => {
       const result = runGuard(['check'], { cwd: tmp, stdin });
       expect(result.status).toBe(2);
       expect(result.stderr).toMatch(/failClosed|Config/i);
+      expect(result.stderr).toMatch(/package\.json does not cause|Repair path/i);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('allows Write of .thesmos/config.json when config is malformed (repair hatch)', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'thesmos-guard-repair-'));
+    try {
+      mkdirSync(join(tmp, '.thesmos'), { recursive: true });
+      writeFileSync(join(tmp, '.thesmos', 'config.json'), '{broken', 'utf8');
+      const fixed = JSON.stringify({ project: 'repaired', autoMode: { failClosed: true } }, null, 2);
+      const stdin = JSON.stringify({
+        tool_name: 'Write',
+        tool_input: {
+          file_path: join(tmp, '.thesmos', 'config.json'),
+          content: fixed + '\n',
+        },
+      });
+      const result = runGuard(['check'], { cwd: tmp, stdin });
+      expect(result.status).toBe(0);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('does not failClosed on invalid project package.json alone', () => {
+    // Invalid package.json must not make Guard treat the project as
+    // ConfigLoadError. Writing package.json itself may still hit SC_002
+    // (missing lockfile) — that is a content rule, not failClosed.
+    const tmp = mkdtempSync(join(tmpdir(), 'thesmos-guard-badpkg-'));
+    try {
+      mkdirSync(join(tmp, '.thesmos'), { recursive: true });
+      mkdirSync(join(tmp, 'src'), { recursive: true });
+      writeFileSync(
+        join(tmp, '.thesmos', 'config.json'),
+        JSON.stringify({ project: 'pkg-test' }, null, 2),
+        'utf8',
+      );
+      writeFileSync(join(tmp, 'package.json'), '{not-json', 'utf8');
+      const stdin = JSON.stringify({
+        tool_name: 'Write',
+        tool_input: {
+          file_path: join(tmp, 'src', 'ok.ts'),
+          content: 'export const ok = true;\n',
+        },
+      });
+      const result = runGuard(['check'], { cwd: tmp, stdin });
+      expect(result.status).toBe(0);
+      expect(result.stderr).not.toMatch(/Config unreadable|failClosed/i);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

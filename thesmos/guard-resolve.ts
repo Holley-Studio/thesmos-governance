@@ -176,8 +176,10 @@ export function writeFailClosedDiagnostic(input: {
     '  Check:',
     '    1. `npm run build` (or reinstall thesmos-governance) so dist/thesmos-guard.js exists',
     '    2. Node.js ≥20 is on PATH (`node -v`)',
-    '    3. `.thesmos/config.json` is valid JSON when present',
-    '    4. Re-run `thesmos claude:govern install` to refresh hook commands',
+    '    3. `.thesmos/config.json` is valid JSON when present (this is the usual deadlock — not package.json)',
+    '    4. To self-heal: Write/Edit `.thesmos/config.json` is allowed even while other tools are blocked',
+    '    5. Or fix that file outside Claude / temporarily remove PreToolUse hooks',
+    '    6. Re-run `thesmos claude:govern install` to refresh hook commands',
   );
   if (input.hint) {
     lines.push(`    → ${input.hint}`);

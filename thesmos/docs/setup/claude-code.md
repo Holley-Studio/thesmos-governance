@@ -165,7 +165,9 @@ thesmos claude:govern status
 { "autoMode": { "failClosed": false } }
 ```
 
-Legitimate allows (not infrastructure failures): unknown tool names, empty file content, ignored extensions, empty Bash command, clean findings.
+**Config repair escape hatch:** if `.thesmos/config.json` is malformed, Write/Edit of that file alone is still allowed (so the agent can self-heal). Other tools stay blocked until config parses again. Invalid project `package.json` does **not** trigger Guard failClosed — but Node itself may refuse to start tools when the project cwd has a broken `package.json` (`ERR_INVALID_PACKAGE_CONFIG`); fix that file outside the agent if hooks never fire.
+
+Legitimate allows (not infrastructure failures): unknown tool names, empty file content, ignored extensions, empty Bash command, clean findings, Write/Edit repair of a broken `.thesmos/config.json`.
 
 **Statusline** (`.claude/statusline-pantheon.sh`) still requires Bash — it is not on the PreToolUse critical path.
 
