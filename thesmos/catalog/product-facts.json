@@ -1,8 +1,8 @@
 {
   "packageName": "thesmos-governance",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "license": "FSL-1.1-MIT",
   "ruleCount": 1137,
   "agentCount": 59,
-  "generatedAt": "2026-07-23"
+  "generatedAt": "2026-07-24"
 }
