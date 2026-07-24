@@ -8,6 +8,13 @@ Status: **session complete, mandate NOT complete.** Two verified bugs fixed and 
 phases remain undone by design (see "Deferred"), not silently downgraded. This ledger is updated
 in place, not duplicated.
 
+> **Update (continuation session): both deliverables below are now COMPLETE, not partial.**
+> See "## Deliverables 1 & 2 — completion update" further down for the current, superseding state:
+> the quote-aware matching gap noted below in Deliverable 1 is fixed; the <8KB adapter target
+> called out as a gap in Deliverable 2 is now actually met (measured, not estimated). The
+> commit-by-commit narrative below is left intact as the historical record of how we got there;
+> read the completion update section for what's true now.
+
 ## Baseline (verified before any change)
 
 - `thesmos`, `extensions/vscode`, `actions/pr-review`: `tsc --noEmit` clean on all three.
@@ -124,6 +131,256 @@ across all 9 phases, this session:
    - Not done: Phase 5's other asks (oversized-adapter migration tooling, `doctor` detection of
      oversized/stale/mismatched adapters, `--targets` mechanism, generate-only-detected-integrations
      logic, size-budget CI gate). Tracked as follow-up.
+
+## Deliverables 1 & 2 — completion update (this session, continued)
+
+Scope for this pass: **finish, don't expand.** Turn the two items above from "partial, gaps
+documented" into complete, tested, merge-ready work. No new subsystems (Permission Bridge,
+incident storage, feedback, shared health) were started — those remain in "Deferred" below,
+unchanged.
+
+### Deliverable 1: `requires_confirmation` handling — now fully closed
+
+The gap flagged above ("`requireConfirmation` matching is not quote-aware... noted for
+follow-up") is fixed, along with the async-stdout risk in `emitAskDecision` and a real fail-open
+bug in scope-config error handling found while closing it out.
+
+**What changed:**
+
+- **`thesmos/shell-command.ts` (new)** — a conservative, local, deterministic shell-command
+  tokenizer: `tokenizeShellCommand()`, `commandMatchesPhrase()`, `normalizeExecutableName()`. This
+  replaces naive substring matching for both `destructivePatterns` and `requireConfirmation` with
+  something that understands quotes (reconstructs bare + quoted text instead of blanking a whole
+  span — the old blanking approach had a real bypass: `r"m" -rf` matched nothing because blanking
+  `"m"` broke `rm` into non-adjacent characters), backslash-escaping (POSIX semantics, but a
+  `\`-ahead-of-an-ordinary-letter is left alone so `C:\Program Files\nodejs\npm.cmd` still resolves
+  as a Windows path), chain operators (`; && || | &`), and heredocs (a phrase inside a `<<EOF`
+  body is documentation, not an executed command, and is excluded). One narrow, explicitly
+  contained fallback (`isExoticSyntaxPattern` + `blankQuotedSpans`) exists only for patterns built
+  entirely from shell metacharacters (e.g. the default fork-bomb pattern `:(){:|:&};:`, which can't
+  tokenize as ordinary words) — a regression test proves this fallback cannot reopen the
+  quote-adjacency bypass for normal word-shaped patterns.
+- **`thesmos/scope.ts`** — `checkCommand()`'s `destructivePatterns` and `requireConfirmation` loops
+  both now call `commandMatchesPhrase()` instead of `.includes()`. Added `ScopeConfigError` (typed,
+  carries `scopePath`) — `loadScopeConfig()` now throws instead of silently returning `null` when
+  `.thesmos/scope.json` exists but fails to parse. This was a real fail-open bug: a corrupt scope
+  file previously meant "no scope config" → **everything allowed**, the opposite of governance
+  intent for a file that exists specifically to restrict access.
+- **`thesmos/claude-govern.ts`** — `emitAskDecision()` no longer calls `process.exit()` immediately
+  after `process.stdout.write()`; POSIX pipe writes are asynchronous, so an immediate exit could
+  cut the JSON short before Claude Code reads it. It now sets `process.exitCode = 0` and returns.
+  Embeds a short correlation id (`[ref: xxxxxx]`) in the human-readable reason text — there's no
+  dedicated schema field for this in Claude Code's hook protocol, so it's appended to the existing
+  text field rather than inventing a field the consumer wouldn't recognize. Added
+  `safeCheckScope()`, which catches `ScopeConfigError` and reports it as a typed, explainable
+  infrastructure failure (respecting `failClosed`) instead of an uncaught exception.
+- **`thesmos/bin/commands/scope.ts`** — CLI subcommand dispatch now catches `ScopeConfigError` and
+  prints a clean message with `process.exitCode = 1` instead of an unhandled-exception stack trace.
+
+**Protocol verified against Claude Code's actual documented PreToolUse hook contract**
+(`hookSpecificOutput.permissionDecision: "allow"|"deny"|"ask"|"defer"`, `permissionDecisionReason`,
+exit-code semantics) — not assumed from training data.
+
+**Coverage added** (`thesmos/shell-command.test.ts`, ~30 tests; `thesmos/scope.test.ts`,
+`thesmos/claude-govern.test.ts` additions): POSIX quotes, escaped characters, flags, chained
+commands (`;`, `&&`, `||`, `|`), Windows executable names and paths (including paths with spaces
+and backslashes), the configured phrase as the real executable vs. the same text as inert quoted
+content (e.g. `echo "npm publish"` does not trigger a `requireConfirmation: npm publish` rule), a
+phrase inside a heredoc body, the fork-bomb-style exotic pattern, malformed `.thesmos/scope.json`
+(now a typed `ScopeConfigError`, fails closed), a confirm-required phrase inside a quoted `echo`
+(asks, doesn't hard-block), one JSON object on stdout and nothing else (no duplicate/contradictory
+output), and an end-to-end spawn of the real hook proving the quote-adjacency bypass is closed.
+
+Committed as `39819a0` — `fix(hooks): finish confirmation handling + close a real
+quote-injection bypass`.
+
+### Deliverable 2: thin-adapter redesign — now actually under 8KB (measured)
+
+The prior pass's BLOCKER+HIGH table got adapters from ~136KB down to ~93-117KB and was explicitly
+flagged as not meeting the brief's <8KB target. That table is now removed entirely, along with the
+second, previously-undiscovered size driver: full agent/skill catalog enumeration
+(`formatCatalogContext`), which alone was tens of KB on a repo with the full Pantheon installed.
+
+**Architecture decision — pointer, not payload.** The rule engine is deterministic and queryable
+on demand; it does not need to be memorized by an LLM on every turn. Every generated adapter now
+contains only: what Thesmos is responsible for, a short non-negotiable constraint list (BLOCKER
+must never ship, never bypass a BLOCKER rule, etc. — not a rule table), how governance decisions
+are made, the four operating commands (`scan`/`review`/`validate`/`doctor`), how to inspect a
+specific rule (`thesmos explain <ID>`, the new `thesmos explain search <query>`, `.thesmos/RULES.md`
+for the full catalog), how to discover an agent (`thesmos agents:list`/`pantheon:list`, a count —
+not a roster), and how a denial gets explained. Six generator functions collapsed to one
+`generateThinAdapterBody()` plus a one-line per-target framing sentence.
+
+**What changed, by file:**
+
+- **`thesmos/adapters.ts`** — `generateThinAdapterBody()` (above) replaces `formatThinRulesTable()`
+  and the removed `generatePantheonProtocol()`. `formatCatalogContext()` compressed from a full
+  per-agent/per-skill roster to counts + a pointer (`thesmos catalog:list`). New
+  `detectAdapterTargets(root)` — single source of truth for "which AI-tool integrations does this
+  repo actually use" (claude + agents always; gemini/cursor/copilot/codex only when their footprint
+  already exists), extracted so `thesmos init` and `thesmos adapters` can't drift apart. New
+  `atomicWriteFileSync()` — writes to a temp file in the same directory, then renames over the
+  target; a failed write never leaves a partially-written adapter file, and cleans up its own temp
+  file on failure. `writeAllAdapters()` now returns a `status: 'generated' | 'failed'` (+ `error`)
+  per target instead of assuming every write succeeds, and the previously-silent
+  `catch { /* advisory */ }` around context-capsule generation now writes a visible (still
+  non-fatal) warning to stderr instead of swallowing the failure outright.
+- **`thesmos/explain.ts` / `thesmos/bin/commands/explain.ts`** — `thesmos explain search <query>`:
+  scored keyword search across id/category/tags/description, since the catalog is no longer
+  embedded in every adapter and needs an on-demand lookup path.
+- **`thesmos/bin/commands/adapters.ts`** — without `--targets`, now regenerates every *detected*
+  integration **plus** any target that already has a file on disk (so an adapter hand-written or
+  generated before its integration became auto-detectable never silently stops being refreshed —
+  the brief's "never delete/abandon an existing user-owned adapter merely because its integration
+  wasn't detected" requirement). Reports skipped targets by name in all three output modes
+  (console/markdown/JSON) instead of dropping them silently, with the exact `--targets=` flag to
+  generate them anyway. Exits 1 if any target's write failed.
+- **`thesmos/bin/commands/init.ts`** — now calls the shared `detectAdapterTargets()` instead of
+  duplicating the same five `existsSync` checks inline.
+- **`thesmos/doctor.ts`** — three new checks, all advisory (repair hints, never silent rewrites):
+  `adapter:<target>:size` (generated-section byte size vs. the 8KB budget — measured on the
+  `THESMOS:GENERATED` span specifically, since pre-existing non-generated content in the same file
+  is outside Thesmos's control and not part of this budget), `adapter:<target>:portable` (flags a
+  host-specific absolute path — `/Users/...`, `/home/...`, `C:\Users\...` — baked into generated
+  content, which would break on any other machine or CI runner), and `adapter:sync-status` (one
+  summary check distinguishing "all N targets in sync" / "partial sync: M/N current, stale:
+  [...]" / "all stale" — surfaces drift across targets as its own signal, not just per-target
+  noise). "Unmanaged content" (a file with no `THESMOS:GENERATED` markers at all) and "version
+  mismatch" were already covered by the existing `isAdapterFresh()`-based freshness check; verified
+  with an explicit test rather than re-implemented.
+
+**Real regenerated files — measured, not estimated** (`npm run thesmos:adapters`, then measured
+both total file size and the `THESMOS:GENERATED`-span size in isolation):
+
+| File | Generated section | Total file size |
+|---|---|---|
+| `.cursor/rules/thesmos.mdc` | 2,367 B | 2,519 B |
+| `GEMINI.md` | 2,358 B | 2,464 B |
+| `.codex/thesmos.md` | 2,364 B | 2,470 B |
+| `.github/copilot-instructions.md` | 2,371 B | 2,479 B |
+| `CLAUDE.md` | 2,357 B | 13,502 B |
+| `AGENTS.md` | 2,372 B | 26,472 B |
+
+**Every generated section is comfortably under the 8KB budget — the brief's actual ask.**
+`CLAUDE.md` and `AGENTS.md` exceed 8KB in *total* file size only, and only because of large,
+pre-existing, non-generated content that predates this work: a Pantheon god-agent routing table in
+`CLAUDE.md` (visible verbatim in this repo's own `CLAUDE.md`, and reproduced in this session's
+own system-prompt context) and a 43-agent trigger-phrase catalog in `AGENTS.md`. Both sit outside
+the `THESMOS:GENERATED` markers — they are user/product-owned content, and the brief's own "never
+overwrite content outside the generated markers" constraint (and "never delete a user-owned
+adapter" in the target-aware generation section) forbids touching them to hit a total-file-size
+number. Reporting this honestly rather than silently deleting that content to make a total-size
+metric look better.
+
+**Tests added/rewritten** (`thesmos/adapters.test.ts`, `thesmos/rules/registry.test.ts`,
+`thesmos/hardening.test.ts`, `thesmos/doctor.test.ts`): every "adapter output contains rule ID X"
+assertion (correct under the old per-rule-table design, structurally impossible to satisfy under
+the new pointer design) rewritten to assert the new contract — an embedded `ruleCount` in the
+`THESMOS:META` comment tracks catalog drift instead of literal rule text. New coverage: a
+realistic ~130KB legacy-format migration test (proves old huge content is replaced cleanly, with
+manual pre/post content preserved and the migrated section verified under 4KB), idempotency at
+both the `buildAdapterContent` and `writeAllAdapters` (real file I/O) levels, an 8KB size-budget
+test run against all six targets both with no catalog and with a large synthetic catalog (100
+agents + 50 skills) to prove catalog size no longer scales adapter size, `detectAdapterTargets()`
+per-integration detection, a forced write-failure case (one target's output path pre-occupied by a
+directory) proving the manifest reports `status: 'failed'` with an error message without blocking
+sibling targets, and a check that a failed write leaves no stray temp file behind. Doctor's new
+checks got their own suite: size/portability checks skip gracefully without `readFileSafe`, flag
+both POSIX and Windows host-path leakage, don't false-positive on relative pointers like
+`.thesmos/RULES.md`, and the sync-status summary distinguishes full/partial/no sync.
+
+Committed as `d429e3b` — `fix(adapters): true thin-adapter redesign, target detection, doctor
+checks`.
+
+### Verification actually run this pass
+
+Followed the exact order documented in this repo's own `AGENTS.md` ("Cursor Cloud specific
+instructions"): typecheck core → typecheck vscode → build thesmos → typecheck pr-review → test →
+build vscode → test pr-review → build pr-review.
+
+```bash
+npx tsc --noEmit -p thesmos/tsconfig.json                       # clean
+npm run typecheck --workspace=extensions/vscode                 # clean
+npm run build --workspace=thesmos                                # clean (tsup)
+npm run typecheck --workspace=actions/pr-review                  # clean
+npm run test --workspace=thesmos                                  # 3562/3565 passing
+npm run build --workspace=extensions/vscode                       # clean (esbuild)
+npm run test --workspace=actions/pr-review                        # 108/108 passing
+npm run build --workspace=actions/pr-review                       # clean (esbuild)
+npm run test --workspace=extensions/vscode                         # 93/93 passing (not in the
+                                                                    #  prescribed chain, run anyway)
+npm run thesmos:doctor                                             # 39/39 checks passing on this
+                                                                    #  actual repo, including all
+                                                                    #  new adapter checks
+```
+
+**3 failing tests, and why they are not new / not repo-caused:**
+
+All 3 are in `thesmos/guard.cross-platform.test.ts`, all spawn the real built
+`dist/thesmos-guard.js` with `cwd` set to the `thesmos/` package directory (inside this actual
+repo), against synthetic test paths like `/proj/src/pay.ts`. Because `cwd` resolves upward to
+*this repo's own* `.thesmos/scope.json` — which has a real, intentionally restrictive
+`allowedPaths` list for dogfooding purposes — every synthetic `/proj/...` path is rejected as a
+**scope violation** ("outside the allowed workspace paths") before the test's intended
+content-scanning behavior (secret detection, benign-content pass-through) ever runs. Confirmed via
+`git log`/`git diff` that `.thesmos/scope.json`'s `allowedPaths` have not changed at any point on
+this branch (last touched in PR #97/#98, long before Operation Signal) and that the test file
+itself was untouched by any commit in this session (last touched in PR #107) — this is a
+pre-existing environmental confound between a dogfooding repo's own strict scope config and a test
+suite that assumes an unrestricted one, not a regression from this session's changes. Rebuilding
+`thesmos/dist` did not change the outcome, ruling out a stale-build explanation. Matches the exact
+3-failure baseline recorded earlier in this same ledger before this pass began.
+
+### Known limitations (honest, not hidden)
+
+- `CLAUDE.md`/`AGENTS.md` total file size still exceeds 8KB — see above. Fixing it requires editing
+  or relocating pre-existing, non-generated, user/product-owned content, which is out of this
+  session's mandate (and arguably a content-curation call for whoever owns that content, not a
+  mechanical fix).
+- The doctor size/portability checks only run when the caller supplies `readFileSafe` in
+  `DoctorInput` — `runDoctorForRoot()` (the real CLI entry point) always does, but any other caller
+  constructing `DoctorInput` by hand without it silently skips these two checks (by design — same
+  pattern the pre-existing freshness check already used).
+- `allowDelete`/`allowGitPush` regex checks in `scope.ts` still use the older
+  `stripQuotedAndComments` approach, not the new tokenizer — noted as a known, separate, smaller
+  residual gap in Deliverable 1's own scope, not touched this pass to avoid expanding beyond what
+  was asked.
+- No CI-enforced size-budget gate exists yet (a lint/CI step that fails a PR if a generated section
+  exceeds 8KB) — the test suite proves the generators themselves stay under budget, but nothing
+  stops a future hand-edit of `generateThinAdapterBody()` from silently growing past it without a
+  human noticing outside of a code review. Worth a follow-up `thesmos:ci-check` addition.
+- Windows/Linux execution of any of this remains unverified in this environment (single macOS
+  machine) — same limitation already documented above for the rest of Operation Signal.
+
+### Remaining Operation Signal phases (unchanged, still deferred)
+
+Phases 1 (shared decision/diagnostic contract), 3 (bridge transport hardening), 4 (incident loop +
+CLI + VS Code UI), 6 (executable resolver consolidation + the committed machine-specific scope
+path), 7 (health/agent-doctor unification), 8 (checkpoint hardening for future diagnostic bundles),
+and 9 (packed cross-platform consumer matrix) are all still open, exactly as scoped in "Deferred"
+below — nothing in this pass touched them, per the explicit instruction not to begin the remaining
+large subsystems this session.
+
+### Recommended PR split / cherry-pick strategy
+
+Two independent, mergeable units on this branch, in commit order:
+
+1. **`39819a0` + this session's Deliverable 1 completion work** — the governance-hook fix
+   (`requires_confirmation` handling, quote-aware command matching, `ScopeConfigError`). Self
+   contained: touches only `thesmos/{scope,claude-govern,shell-command}.ts` and their tests plus
+   `thesmos/bin/commands/scope.ts`. No adapter-format changes. Safe to merge/release independently
+   and first — it's a real security-relevant bugfix (fail-open on corrupt scope config; a bypass in
+   destructive-command matching) with no behavioral dependency on Deliverable 2.
+2. **`d429e3b`** — the adapter redesign (thin body, target detection, doctor checks). Depends on
+   nothing from (1) and can be cherry-picked or merged on its own; it is a visible, behavioral
+   change (every consumer's `CLAUDE.md`/`AGENTS.md`/etc. content changes shape), so it's worth its
+   own changelog entry and its own review pass distinct from the hook fix, even though both commits
+   sit on the same branch.
+
+Suggested versioning: both are non-breaking (no API signature changes), user-visible behavior
+changes — **minor** bump (`5.1.0` → `5.2.0`) covering both, or two separate patch/minor releases if
+the PR split above is taken literally. No tag, publish, merge, or push performed for this branch —
+awaiting explicit direction, per this session's own scope boundary.
 
 ## Deferred (with reason and next concrete step)
 
