@@ -256,6 +256,14 @@ describe('runPreToolCheck — requires_confirmation vs. hard block (Bash)', () =
     expect(result.status).toBe(2);
     expect(result.stdout.trim()).toBe('');
     expect(result.stderr).toMatch(/scope\.json/i);
+    // The diagnostic's "Guard path" must be the relative scope.json path
+    // (never the absolute filesystem path of this real tmpdir joined onto
+    // it) — this stderr output is a shareable diagnostic (hook transcripts,
+    // bug reports), and an absolute path here would leak the machine's
+    // directory layout for no benefit over the relative one. (The separate
+    // "CWD:" line legitimately does show the absolute cwd — that's an
+    // existing, unrelated diagnostic field, not part of this fix.)
+    expect(result.stderr).not.toContain(join(root, '.thesmos', 'scope.json'));
     rmSync(root, { recursive: true, force: true });
   });
 });

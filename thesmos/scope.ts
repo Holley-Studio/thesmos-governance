@@ -21,7 +21,12 @@ import {
   loadManagedManifest,
   normalizeRelPath,
 } from './agent-ownership.js';
-import { commandMatchesPhrase } from './shell-command.js';
+import {
+  commandMatchesPhrase,
+  commandInvokesDelete,
+  commandInvokesGitPush,
+  commandInvokesDatabaseWrite,
+} from './shell-command.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -119,8 +124,23 @@ const GOVERNANCE_PROTECTED = new Set([
  * disable scope enforcement (that would fail OPEN on exactly the config
  * that's supposed to lock things down). Callers should treat this the same
  * as any other infrastructure failure (respect `autoMode.failClosed`).
+ *
+ * `code` is a stable, programmatic identifier (never changes across
+ * versions) for callers that want to branch on the error type without
+ * string-matching `message` or `instanceof`-checking across module
+ * boundaries (e.g. a bundled consumer on a different copy of this class).
+ *
+ * `scopePath` is intentionally the PROJECT-RELATIVE path (`.thesmos/scope.json`),
+ * not an absolute filesystem path — this error's message and path both flow
+ * into hook stderr and CLI output, which are shareable diagnostics (transcripts,
+ * bug reports, support bundles); an absolute path would leak the user's home
+ * directory / machine-specific layout for no benefit, since the relative path
+ * is already sufficient to locate the file from the project root.
  */
 export class ScopeConfigError extends Error {
+  static readonly CODE = 'THESMOS_SCOPE_CONFIG_INVALID' as const;
+  readonly code = ScopeConfigError.CODE;
+
   constructor(
     public readonly scopePath: string,
     message: string,
@@ -144,7 +164,8 @@ export function loadScopeConfig(root: string): ScopeConfig | null {
     raw = JSON.parse(readFileSync(scopePath, 'utf8')) as Partial<ScopeConfig>;
   } catch (err) {
     throw new ScopeConfigError(
-      scopePath,
+      // Relative, not `scopePath` (absolute) — see ScopeConfigError's doc comment.
+      SCOPE_FILE,
       `.thesmos/scope.json exists but could not be parsed as JSON: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
@@ -352,42 +373,6 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
 // ── Command checking ──────────────────────────────────────────────────────────
 
 /**
- * F10 fix: strip quoted strings and shell comments from a command before
- * pattern matching to prevent false-positives on commands that merely
- * *mention* a destructive pattern in a commit message, argument string, or comment.
- *
- * git commit -m "removes rm -rf usage"  → safe, rm -rf is inside a quoted string
- * echo "rm -rf"                          → safe, argument is quoted
- * rm -rf ./dist                          → blocked, bare token
- *
- * Strategy: remove all single/double-quoted spans and # comments, then
- * test the remaining token stream.
- */
-function stripQuotedAndComments(cmd: string): string {
-  let out = '';
-  let i = 0;
-  while (i < cmd.length) {
-    const ch = cmd[i];
-    if (ch === '#') break; // rest is a comment
-    if (ch === '"' || ch === "'") {
-      const q = ch;
-      i++;
-      // Skip past the closing quote (or end-of-string)
-      while (i < cmd.length && cmd[i] !== q) {
-        if (cmd[i] === '\\') i++; // skip escaped char
-        i++;
-      }
-      i++; // skip closing quote
-      out += ' '; // replace quoted span with a space so adjacent tokens don't merge
-    } else {
-      out += ch;
-      i++;
-    }
-  }
-  return out;
-}
-
-/**
  * SECURITY NOTE — Residual Risk (F4, from Argus red-team 2026-07-20):
  * This function blocks a known set of destructive patterns. It does NOT claim
  * to block all destructive commands. Equivalent operations via inline interpreters
@@ -401,22 +386,15 @@ function stripQuotedAndComments(cmd: string): string {
  * Architectural path to eliminate this: move Bash to a binary allowlist model
  * (permit only whitelisted command words, deny-by-default on unknown commands).
  * Until then, this gate provides meaningful friction, not a hard guarantee.
+ *
+ * All five checks below (destructivePatterns, allowDelete, allowGitPush,
+ * allowDatabaseWrites, requireConfirmation) go through the SAME bounded
+ * command-analysis path in shell-command.ts — one tokenizer, one
+ * quote/heredoc/wrapper/interpreter-payload model, not five separate
+ * fragile regexes. See that module's doc comment for exactly what it
+ * recognizes and its documented residual limits.
  */
 function checkCommand(command: string, config: ScopeConfig): ScopeViolation | null {
-  const cmd = command.trim().toLowerCase();
-  // F10 fix (superseded by the tokenizer below for pattern-list matching, kept
-  // here only for the allowDelete/allowGitPush regex checks further down —
-  // see shell-command.ts's module doc for why those two matchers differ).
-  const unquoted = stripQuotedAndComments(cmd);
-
-  // Check destructive patterns. Uses the shell-command tokenizer (not the
-  // stripQuotedAndComments blanking above) so a pattern split across a quote
-  // boundary — e.g. `r"m" -rf /` — still reconstructs to the live command
-  // "rm -rf" instead of silently bypassing the check (verified real bypass,
-  // fixed as part of Operation Signal). Falls back to a quote-blanked
-  // substring check only for exact-syntax patterns that are themselves shell
-  // metacharacters (e.g. the fork-bomb signature) and so can't decompose
-  // into segment tokens — see commandMatchesPhrase's doc comment.
   for (const pattern of config.destructivePatterns) {
     if (commandMatchesPhrase(command, pattern)) {
       return {
@@ -427,32 +405,15 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
     }
   }
 
-  // Check delete operations (F10 fix: test unquoted stream)
-  //
-  // KNOWN RESIDUAL LIMITATION: this regex check (and the git-push check right
-  // below it) still runs against `unquoted` (stripQuotedAndComments' blanking
-  // approach), not the tokenizer's reconstruction — so the same class of
-  // quote-adjacency bypass fixed above for destructivePatterns/
-  // requireConfirmation (e.g. `r"m" -rf`) is NOT yet closed for these two
-  // regex-based checks. They're a different matching shape (hand-written
-  // regex over the whole command, not a configured phrase list) and
-  // migrating them to the tokenizer is a separate, scoped follow-up —
-  // documented in docs/plans/operation-signal.md, not silently left unnoted.
-  if (!config.operations.allowDelete) {
-    if (/\brm\s+(?:-[a-z]*f[a-z]*\s+)?\S/.test(unquoted) && !/\brm\s+--/.test(unquoted)) {
-      const isHelp = unquoted.includes('--help') || unquoted.includes('-h');
-      if (!isHelp) {
-        return {
-          type: 'destructive_command',
-          message: 'File deletion is not allowed in the current scope.',
-          suggestion: 'Set operations.allowDelete to true in .thesmos/scope.json to enable file deletion, or delete manually.',
-        };
-      }
-    }
+  if (!config.operations.allowDelete && commandInvokesDelete(command)) {
+    return {
+      type: 'destructive_command',
+      message: 'File deletion is not allowed in the current scope.',
+      suggestion: 'Set operations.allowDelete to true in .thesmos/scope.json to enable file deletion, or delete manually.',
+    };
   }
 
-  // Check git push (F10 fix: test unquoted stream)
-  if (!config.operations.allowGitPush && /\bgit\s+push\b/.test(unquoted)) {
+  if (!config.operations.allowGitPush && commandInvokesGitPush(command)) {
     return {
       type: 'destructive_command',
       message: 'git push is not allowed in the current scope.',
@@ -460,24 +421,14 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
     };
   }
 
-  // Check database writes
-  if (!config.operations.allowDatabaseWrites) {
-    const dbWritePatterns = [/\bdrop\s+table\b/i, /\bdelete\s+from\b/i, /\btruncate\s+/i, /\balter\s+table\b/i];
-    for (const re of dbWritePatterns) {
-      if (re.test(command)) {
-        return {
-          type: 'destructive_command',
-          message: 'Database write operation is not allowed in the current scope.',
-          suggestion: 'Set operations.allowDatabaseWrites to true in .thesmos/scope.json, or run database commands manually.',
-        };
-      }
-    }
+  if (!config.operations.allowDatabaseWrites && commandInvokesDatabaseWrite(command)) {
+    return {
+      type: 'destructive_command',
+      message: 'Database write operation is not allowed in the current scope.',
+      suggestion: 'Set operations.allowDatabaseWrites to true in .thesmos/scope.json, or run database commands manually.',
+    };
   }
 
-  // Check requireConfirmation list — same tokenizer as destructivePatterns
-  // above (was previously a raw `cmd.includes(pattern)`, which matched a
-  // configured phrase even when it only appeared inside a quoted argument,
-  // an echo string, a commit message, or test fixture text).
   for (const pattern of config.operations.requireConfirmation) {
     if (commandMatchesPhrase(command, pattern)) {
       return {

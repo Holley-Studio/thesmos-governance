@@ -6,6 +6,12 @@ import {
   segmentMatchesPhrase,
   commandMatchesPhrase,
   normalizeExecutableName,
+  analyzeCommand,
+  resolveInvocation,
+  findStringPayload,
+  commandInvokesDelete,
+  commandInvokesGitPush,
+  commandInvokesDatabaseWrite,
 } from './shell-command';
 
 describe('tokenizeShellCommand', () => {
@@ -176,5 +182,250 @@ describe('segmentMatchesPhrase / commandMatchesPhrase', () => {
     // Regression guard: the fallback must never reopen the quote-adjacency
     // bypass for ordinary word patterns like "rm -rf".
     expect(commandMatchesPhrase('echo "rm -rf"', 'rm -rf')).toBe(false);
+  });
+
+  it('matches "npm publish" across a boolean global flag (npm --silent publish)', () => {
+    expect(commandMatchesPhrase('npm --silent publish', 'npm publish')).toBe(true);
+  });
+
+  it('matches "git push" across a value-taking global flag and its value (git -C ./repo push)', () => {
+    expect(commandMatchesPhrase('git -C ./repo push origin main', 'git push')).toBe(true);
+  });
+});
+
+// ── Heredoc header chaining (a real bypass: text after <<DELIM on the same
+// line, including a chained command, was previously discarded along with
+// the body it introduces) ────────────────────────────────────────────────────
+
+describe('heredoc header chaining', () => {
+  it('still flags a destructive command chained after a heredoc header on the same line', () => {
+    // Bash executes `rm -rf` here — only "body" (the heredoc's actual
+    // stdin payload) is data. This must be detected as destructive.
+    const cmd = 'cat <<EOF; rm -rf /tmp/example\nbody\nEOF';
+    expect(commandMatchesPhrase(cmd, 'rm -rf')).toBe(true);
+  });
+
+  it('produces two independent segments: the heredoc-fed command and the chained command', () => {
+    const segs = tokenizeShellCommand('cat <<EOF; rm -rf /tmp/example\nbody\nEOF');
+    expect(segs.map((s) => s.tokens.map((t) => t.text))).toEqual([
+      ['cat'],
+      ['rm', '-rf', '/tmp/example'],
+    ]);
+  });
+
+  it('only the heredoc BODY is excluded — a command on the line AFTER a clean terminator is live', () => {
+    // The terminator line must be exactly the delimiter (real bash rule) —
+    // "EOF" alone terminates the heredoc; "git push" on the FOLLOWING line
+    // is a separate, subsequent statement, not body text.
+    const cmd = 'cat <<EOF\nnpm publish\nEOF\ngit push origin main';
+    expect(commandMatchesPhrase(cmd, 'npm publish')).toBe(false);
+    expect(commandMatchesPhrase(cmd, 'git push')).toBe(true);
+  });
+
+  it('text sharing a line with the terminator does NOT cleanly end the heredoc (matches real bash: the terminator must be alone on its line)', () => {
+    // "EOF; git push" is not a bare "EOF" line, so this is actually an
+    // unterminated heredoc in real bash too — everything through end of
+    // string stays body/inert. Conservative and correct, not a bypass.
+    const cmd = 'cat <<EOF\nnpm publish\nEOF; git push origin main';
+    expect(commandMatchesPhrase(cmd, 'git push')).toBe(false);
+  });
+
+  it('still treats the heredoc body itself as inert even with chaining on the header line', () => {
+    const cmd = 'cat <<EOF; echo hi\nrm -rf /tmp/example\nEOF';
+    // "rm -rf" only appears inside the body — never a live command here.
+    expect(commandMatchesPhrase(cmd, 'rm -rf')).toBe(false);
+  });
+
+  it('handles an unterminated heredoc by consuming to end-of-string (never misparses a later line as live)', () => {
+    const cmd = 'cat <<EOF\nrm -rf /tmp/example';
+    expect(commandMatchesPhrase(cmd, 'rm -rf')).toBe(false);
+    // Sanity: the earlier "cat" segment is still produced.
+    const segs = tokenizeShellCommand(cmd);
+    expect(segs).toHaveLength(1);
+    expect(segs[0]!.tokens.map((t) => t.text)).toEqual(['cat']);
+  });
+
+  it('consumes multiple heredocs opened on the same line in order before resuming', () => {
+    const cmd = 'diff <<A <<B; rm -rf /tmp/example\nbodyA\nA\nbodyB\nB';
+    expect(commandMatchesPhrase(cmd, 'rm -rf')).toBe(true);
+    const segs = tokenizeShellCommand(cmd);
+    expect(segs.map((s) => s.tokens.map((t) => t.text))).toEqual([
+      ['diff'],
+      ['rm', '-rf', '/tmp/example'],
+    ]);
+  });
+});
+
+// ── Interpreter and database-client string payloads ──────────────────────────
+
+describe('interpreter payload recognition', () => {
+  it('bash -c "..." payload is recursively analyzed, not inert', () => {
+    expect(commandMatchesPhrase('bash -c "rm -rf /tmp/example"', 'rm -rf')).toBe(true);
+  });
+
+  it('sh -c \'...\' payload is recursively analyzed', () => {
+    expect(commandMatchesPhrase("sh -c 'git push origin main'", 'git push')).toBe(true);
+  });
+
+  it('zsh -c "..." payload is recursively analyzed', () => {
+    expect(commandMatchesPhrase('zsh -c "npm publish"', 'npm publish')).toBe(true);
+  });
+
+  it('cmd /c "..." payload is recursively analyzed', () => {
+    const { segments } = analyzeCommand('cmd /c "del /s /q build"');
+    const bareWords = segments.flatMap((s) => s.tokens.filter((t) => !t.quoted).map((t) => t.text.toLowerCase()));
+    expect(bareWords).toContain('del');
+  });
+
+  it('powershell -Command "..." payload is recursively analyzed', () => {
+    const { segments } = analyzeCommand('powershell -Command "Remove-Item -Recurse build"');
+    const bareWords = segments.flatMap((s) => s.tokens.filter((t) => !t.quoted).map((t) => t.text.toLowerCase()));
+    expect(bareWords).toContain('remove-item');
+  });
+
+  it('pwsh -Command "..." payload is recursively analyzed', () => {
+    expect(commandMatchesPhrase('pwsh -Command "git push origin main"', 'git push')).toBe(true);
+  });
+
+  it('quoted arguments to echo remain inert (not treated as an interpreter payload)', () => {
+    expect(commandMatchesPhrase('echo "rm -rf /tmp"', 'rm -rf')).toBe(false);
+  });
+
+  it('quoted commit messages remain inert', () => {
+    expect(commandMatchesPhrase('git commit -m "bash -c rm -rf mentioned here"', 'rm -rf')).toBe(false);
+  });
+
+  it('quoted ordinary file paths remain inert', () => {
+    expect(commandMatchesPhrase('cat "./scripts/rm -rf notes.md"', 'rm -rf')).toBe(false);
+  });
+
+  it('quoted documentation text passed to an unrecognized command remains inert', () => {
+    expect(commandMatchesPhrase('some-doc-tool "npm publish is documented here"', 'npm publish')).toBe(false);
+  });
+
+  it('recognizes a nested interpreter payload two levels deep', () => {
+    const cmd = 'bash -c "bash -c \\"rm -rf /tmp/example\\""';
+    expect(commandMatchesPhrase(cmd, 'rm -rf')).toBe(true);
+  });
+
+  it('finds a database-write pattern nested inside a shell interpreter payload', () => {
+    const cmd = 'bash -c "psql -c \'DROP TABLE users\'"';
+    expect(commandInvokesDatabaseWrite(cmd)).toBe(true);
+  });
+});
+
+// ── Recursion depth and payload size limits (fail closed on ambiguity) ───────
+
+describe('bounded recursive analysis — depth and size limits', () => {
+  /** Wraps `inner` in N layers of `bash -c "..."`, correctly re-escaping
+   *  embedded quotes for each additional outer layer. */
+  function nestBashC(inner: string, levels: number): string {
+    let cmd = inner;
+    for (let i = 0; i < levels; i++) {
+      const escaped = cmd.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      cmd = `bash -c "${escaped}"`;
+    }
+    return cmd;
+  }
+
+  it('resolves fully within the depth budget (3 levels of bash -c nesting)', () => {
+    const cmd = nestBashC('rm -rf /tmp/example', 3);
+    const analysis = analyzeCommand(cmd);
+    expect(analysis.ambiguous).toBe(false);
+    expect(commandMatchesPhrase(cmd, 'rm -rf')).toBe(true);
+  });
+
+  it('marks the analysis ambiguous once nesting exceeds the depth budget', () => {
+    const cmd = nestBashC('rm -rf /tmp/example', 4);
+    const analysis = analyzeCommand(cmd);
+    expect(analysis.ambiguous).toBe(true);
+  });
+
+  it('an ambiguous (too-deep) analysis is treated as a match by commandMatchesPhrase — fail closed', () => {
+    const cmd = nestBashC('echo hello', 4); // no destructive text anywhere, but too deep to prove it
+    expect(commandMatchesPhrase(cmd, 'rm -rf')).toBe(true);
+  });
+
+  it('an ambiguous (too-deep) analysis is treated as a match by commandInvokesDelete/GitPush/DatabaseWrite', () => {
+    const cmd = nestBashC('echo hello', 4);
+    expect(commandInvokesDelete(cmd)).toBe(true);
+    expect(commandInvokesGitPush(cmd)).toBe(true);
+    expect(commandInvokesDatabaseWrite(cmd)).toBe(true);
+  });
+
+  it('marks the analysis ambiguous when a single payload exceeds the size limit', () => {
+    const bigPayload = 'echo ' + 'x'.repeat(5000);
+    const cmd = `bash -c "${bigPayload}"`;
+    const analysis = analyzeCommand(cmd);
+    expect(analysis.ambiguous).toBe(true);
+  });
+
+  it('a normal, small payload is well under the size limit and resolves normally', () => {
+    const cmd = 'bash -c "echo hello"';
+    const analysis = analyzeCommand(cmd);
+    expect(analysis.ambiguous).toBe(false);
+  });
+});
+
+// ── resolveInvocation / findStringPayload (unit-level, used by scope.ts) ─────
+
+describe('resolveInvocation', () => {
+  it('resolves the bare executable at position 0', () => {
+    const [seg] = tokenizeShellCommand('rm -rf /tmp/x');
+    expect(resolveInvocation(seg!)).toEqual({ executable: 'rm', index: 0 });
+  });
+
+  it('resolves a POSIX absolute path executable', () => {
+    const [seg] = tokenizeShellCommand('/bin/rm -rf ./build');
+    expect(resolveInvocation(seg!)).toEqual({ executable: 'rm', index: 0 });
+  });
+
+  it('skips a single wrapper (sudo) to find the real executable', () => {
+    const [seg] = tokenizeShellCommand('sudo rm -rf ./build');
+    expect(resolveInvocation(seg!)).toEqual({ executable: 'rm', index: 1 });
+  });
+
+  it('skips env and its assignment to find the real executable', () => {
+    const [seg] = tokenizeShellCommand('env FOO=bar rm -rf ./build');
+    expect(resolveInvocation(seg!)).toEqual({ executable: 'rm', index: 2 });
+  });
+
+  it('skips command wrapper', () => {
+    const [seg] = tokenizeShellCommand('command rm -rf ./build');
+    expect(resolveInvocation(seg!)).toEqual({ executable: 'rm', index: 1 });
+  });
+
+  it('skips chained wrappers (sudo env)', () => {
+    const [seg] = tokenizeShellCommand('sudo env rm -rf ./build');
+    expect(resolveInvocation(seg!)).toEqual({ executable: 'rm', index: 2 });
+  });
+
+  it('returns null when the segment is empty', () => {
+    expect(resolveInvocation({ tokens: [] })).toBeNull();
+  });
+
+  it('returns null when the first token is fully quoted', () => {
+    const [seg] = tokenizeShellCommand('"rm" -rf ./build');
+    expect(resolveInvocation(seg!)).toBeNull();
+  });
+});
+
+describe('findStringPayload', () => {
+  it('returns the reconstructed payload text after a recognized flag', () => {
+    const [seg] = tokenizeShellCommand('bash -c "rm -rf /tmp"');
+    const invocation = resolveInvocation(seg!)!;
+    expect(findStringPayload(seg!, invocation)).toBe('rm -rf /tmp');
+  });
+
+  it('returns null for an executable with no recognized string-payload flags', () => {
+    const [seg] = tokenizeShellCommand('echo "rm -rf /tmp"');
+    const invocation = resolveInvocation(seg!)!;
+    expect(findStringPayload(seg!, invocation)).toBeNull();
+  });
+
+  it('returns null when the recognized flag has no following token', () => {
+    const [seg] = tokenizeShellCommand('bash -c');
+    const invocation = resolveInvocation(seg!)!;
+    expect(findStringPayload(seg!, invocation)).toBeNull();
   });
 });

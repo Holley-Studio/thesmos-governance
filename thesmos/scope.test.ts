@@ -61,6 +61,34 @@ describe('loadScopeConfig', () => {
       expect((err as ScopeConfigError).message).toContain('scope.json');
     }
   });
+
+  it('ScopeConfigError has the stable programmatic code THESMOS_SCOPE_CONFIG_INVALID', () => {
+    mkdirSync(join(root, '.thesmos'), { recursive: true });
+    writeFileSync(join(root, '.thesmos', 'scope.json'), 'not-json');
+    try {
+      loadScopeConfig(root);
+      expect.unreachable('loadScopeConfig should have thrown');
+    } catch (err) {
+      const e = err as ScopeConfigError;
+      expect(e.code).toBe('THESMOS_SCOPE_CONFIG_INVALID');
+      expect(ScopeConfigError.CODE).toBe('THESMOS_SCOPE_CONFIG_INVALID');
+      expect(e.name).toBe('ScopeConfigError');
+    }
+  });
+
+  it('ScopeConfigError.scopePath is project-relative, never the absolute filesystem path (no absolute path in a shareable diagnostic)', () => {
+    mkdirSync(join(root, '.thesmos'), { recursive: true });
+    writeFileSync(join(root, '.thesmos', 'scope.json'), 'not-json');
+    try {
+      loadScopeConfig(root);
+      expect.unreachable('loadScopeConfig should have thrown');
+    } catch (err) {
+      const e = err as ScopeConfigError;
+      expect(e.scopePath).toBe('.thesmos/scope.json');
+      expect(e.scopePath).not.toContain(root); // must not embed the absolute tmp-dir path
+      expect(e.message).not.toContain(root);
+    }
+  });
 });
 
 describe('saveScopeConfig', () => {
@@ -263,6 +291,156 @@ describe('checkScope — command enforcement', () => {
 
   it('F10 — allows echo "rm -rf" (rm -rf in a single-quoted string)', () => {
     const v = checkScope({ toolName: 'Bash', command: "echo 'rm -rf /tmp'", root });
+    expect(v).toBeNull();
+  });
+});
+
+// ── Residual bypasses closed this pass: quote-adjacency for allowDelete/
+// allowGitPush, wrapper/path/flag variants, and database-command correctness,
+// all via the SAME unified command-analysis path as destructivePatterns and
+// requireConfirmation (no separate stripQuotedAndComments regex path anymore).
+
+describe('checkScope — quote-adjacency bypass closed for allowDelete and allowGitPush', () => {
+  let root: string;
+  beforeEach(() => {
+    root = makeTmpDir();
+    writeScope(root, {
+      operations: {
+        allowDelete: false,
+        allowGitPush: false,
+        allowNetworkHosts: [],
+        allowDatabaseWrites: false,
+        requireConfirmation: [],
+      },
+      destructivePatterns: [],
+    });
+  });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /* */ } });
+
+  it('blocks r"m" -rf ./build — the quote-split reconstructs to the bare command "rm"', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'r"m" -rf ./build', root });
+    expect(v).not.toBeNull();
+    expect(v!.type).toBe('destructive_command');
+  });
+
+  it('blocks g"it" push origin main — the quote-split reconstructs to the bare command "git"', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'g"it" push origin main', root });
+    expect(v).not.toBeNull();
+  });
+});
+
+describe('checkScope — executable path, wrapper, and flag variants for allowDelete', () => {
+  let root: string;
+  beforeEach(() => {
+    root = makeTmpDir();
+    writeScope(root, {
+      operations: {
+        allowDelete: false,
+        allowGitPush: false,
+        allowNetworkHosts: [],
+        allowDatabaseWrites: false,
+        requireConfirmation: [],
+      },
+      destructivePatterns: [],
+    });
+  });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /* */ } });
+
+  it('blocks an absolute executable path: /bin/rm -rf ./build', () => {
+    expect(checkScope({ toolName: 'Bash', command: '/bin/rm -rf ./build', root })).not.toBeNull();
+  });
+
+  it('blocks separate (non-combined) flags: rm -r -f ./build', () => {
+    expect(checkScope({ toolName: 'Bash', command: 'rm -r -f ./build', root })).not.toBeNull();
+  });
+
+  it('blocks a sudo-wrapped invocation: sudo rm -rf ./build', () => {
+    expect(checkScope({ toolName: 'Bash', command: 'sudo rm -rf ./build', root })).not.toBeNull();
+  });
+
+  it('blocks an env-wrapped invocation: env rm -rf ./build', () => {
+    expect(checkScope({ toolName: 'Bash', command: 'env rm -rf ./build', root })).not.toBeNull();
+  });
+
+  it('blocks a command-wrapped invocation: command rm -rf ./build', () => {
+    expect(checkScope({ toolName: 'Bash', command: 'command rm -rf ./build', root })).not.toBeNull();
+  });
+
+  it('still allows rm --help (asking for help, not deleting)', () => {
+    expect(checkScope({ toolName: 'Bash', command: 'rm --help', root })).toBeNull();
+  });
+});
+
+describe('checkScope — global flags between an executable and its subcommand', () => {
+  let root: string;
+  beforeEach(() => {
+    root = makeTmpDir();
+    writeScope(root, {
+      operations: {
+        allowDelete: false,
+        allowGitPush: false,
+        allowNetworkHosts: [],
+        allowDatabaseWrites: false,
+        requireConfirmation: ['npm publish'],
+      },
+      destructivePatterns: [],
+    });
+  });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /* */ } });
+
+  it('blocks git -C ./repo push origin main (allowGitPush false, value-taking global flag)', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'git -C ./repo push origin main', root });
+    expect(v).not.toBeNull();
+    expect(v!.message).toContain('git push');
+  });
+
+  it('requires confirmation for npm --silent publish (boolean global flag)', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'npm --silent publish', root });
+    expect(v).not.toBeNull();
+    expect(v!.type).toBe('requires_confirmation');
+  });
+});
+
+describe('checkScope — database-command correctness', () => {
+  let root: string;
+  beforeEach(() => {
+    root = makeTmpDir();
+    writeScope(root, {
+      operations: {
+        allowDelete: false,
+        allowGitPush: false,
+        allowNetworkHosts: [],
+        allowDatabaseWrites: false,
+        requireConfirmation: [],
+      },
+      destructivePatterns: [],
+    });
+  });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /* */ } });
+
+  it('does NOT block echo "DROP TABLE users" — the quoted argument is inert, not executed SQL', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'echo "DROP TABLE users"', root });
+    expect(v).toBeNull();
+  });
+
+  it('still blocks psql -c "DROP TABLE users" — the quoted string is live SQL passed to psql', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'psql -c "DROP TABLE users"', root });
+    expect(v).not.toBeNull();
+    expect(v!.type).toBe('destructive_command');
+  });
+
+  it('blocks mysql -e "DELETE FROM users" — same live-payload recognition for a second database client', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'mysql -e "DELETE FROM users"', root });
+    expect(v).not.toBeNull();
+  });
+
+  it('blocks mysql --execute "TRUNCATE users" via the long flag form', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'mysql --execute "TRUNCATE users"', root });
+    expect(v).not.toBeNull();
+  });
+
+  it('does NOT block an unrelated quoted argument that happens to contain SQL-like words as documentation', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'cat "./docs/DROP TABLE is dangerous.md"', root });
     expect(v).toBeNull();
   });
 });
