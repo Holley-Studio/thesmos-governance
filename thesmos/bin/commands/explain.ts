@@ -6,6 +6,7 @@
  *   thesmos explain <rule-id|category>     explain a specific rule
  *   thesmos explain file <path>            explain all rules active on a file
  *   thesmos explain finding <fingerprint>  explain the rule for a finding
+ *   thesmos explain search <query>         keyword search across id/category/description/tags
  *   thesmos explain --list                 list all rules
  *
  * Flags:
@@ -21,6 +22,7 @@ import {
   findRulesForFile,
   findRuleForFingerprint,
   listRules,
+  searchRules,
   formatExplainConsole,
   formatExplainMarkdown,
   formatExplainJson,
@@ -52,6 +54,32 @@ export async function cmdExplain(argv: string[]): Promise<void> {
   }
 
   const [subOrTarget, ...rest] = positionals;
+
+  // thesmos explain search <query>
+  if (subOrTarget === 'search') {
+    const query = rest.join(' ').trim();
+    if (!query) {
+      process.stderr.write('thesmos explain search: query required\n');
+      process.exit(1);
+    }
+    const rules = searchRules(query);
+    if (json) {
+      process.stdout.write(
+        JSON.stringify(
+          rules.map((r) => ({ id: r.id, category: r.category, severity: r.severity, description: r.description })),
+          null,
+          2,
+        ) + '\n',
+      );
+      return;
+    }
+    if (rules.length === 0) {
+      process.stdout.write(`No rules match "${query}". Run: thesmos explain --list\n`);
+      return;
+    }
+    process.stdout.write(formatExplainListConsole(rules));
+    return;
+  }
 
   // thesmos explain file <path>
   if (subOrTarget === 'file') {

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, afterEach } from 'vitest';
-import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, existsSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { CONFIG_DEFAULTS } from './config';
@@ -18,7 +18,11 @@ import {
   generateAgentsRules,
   buildAdapterContent,
   writeAllAdapters,
+  parseAdapterMeta,
+  isAdapterFresh,
+  detectAdapterTargets,
   type AdapterTarget,
+  type AdapterCatalog,
   type Rule,
 } from './adapters';
 
@@ -175,7 +179,13 @@ describe('getRulesByCategory', () => {
   });
 });
 
-// ── Per-target generators ─────────────────────────────────────────────────────
+// ── Per-target generators — thin adapters (Operation Signal Phase 5) ─────────
+//
+// All six targets now share one content shape: no per-rule table at all (not
+// even a BLOCKER+HIGH one) — a short universal body plus a pointer to
+// `thesmos explain` / `.thesmos/RULES.md` for anything rule-specific. This is
+// a deliberate, intentional architecture change (was: full 1,137-rule dump
+// for 5 targets, BLOCKER+HIGH table for Claude), not a weakened test.
 
 function sharedGeneratorSuite(
   name: string,
@@ -192,22 +202,34 @@ function sharedGeneratorSuite(
       expect(output).toContain(CONFIG.version);
     });
 
-    it('contains all BLOCKER+HIGH rule IDs (thin adapter — the rest live in .thesmos/RULES.md)', () => {
-      const thinRules = RULES.filter((r) => r.severity === 'BLOCKER' || r.severity === 'HIGH');
-      for (const rule of thinRules) {
-        expect(output).toContain(`[${rule.id}]`);
-      }
-    });
-
-    it('does NOT contain MEDIUM/LOW/TECH_DEBT rule IDs (kept out of the always-loaded file)', () => {
-      const excluded = RULES.filter((r) => r.severity !== 'BLOCKER' && r.severity !== 'HIGH').slice(0, 20);
-      for (const rule of excluded) {
+    it('does NOT embed individual rule IDs — the catalog lives in .thesmos/RULES.md', () => {
+      // Spot-check a representative sample across severities; embedding
+      // *any* per-rule content defeats the point of a thin adapter.
+      const sample = [
+        ...RULES.filter((r) => r.severity === 'BLOCKER').slice(0, 5),
+        ...RULES.filter((r) => r.severity === 'HIGH').slice(0, 5),
+        ...RULES.filter((r) => r.severity === 'MEDIUM').slice(0, 5),
+      ];
+      for (const rule of sample) {
         expect(output).not.toContain(`[${rule.id}]`);
       }
     });
 
     it('references .thesmos/RULES.md for the full catalog', () => {
       expect(output).toContain('.thesmos/RULES.md');
+    });
+
+    it('references thesmos explain for inspecting a specific rule', () => {
+      expect(output).toContain('thesmos explain');
+    });
+
+    it('references thesmos validate and thesmos review', () => {
+      expect(output).toContain('thesmos validate');
+      expect(output).toContain('thesmos review');
+    });
+
+    it('references how to discover an agent', () => {
+      expect(output).toMatch(/agents:list|pantheon:list/);
     });
 
     it('contains BLOCKER label', () => {
@@ -218,15 +240,30 @@ function sharedGeneratorSuite(
       expect(generate(RULES, CONFIG)).toBe(output);
     });
 
-    it('is meaningfully smaller than the ~136-165KB full-catalog dump it replaced', () => {
+    it('is comfortably under the 8KB thin-adapter budget by itself', () => {
       // Historical sizes measured on this exact rule catalog before the fix
-      // (Operation Signal Phase 5): 130-165KB per file, always loaded in full,
-      // every one of the 1,137 rules with descriptions and code examples.
-      // BLOCKER+HIGH alone is 664 rules, so this table is still ~80KB — a real
-      // ~40-50% cut, but NOT the brief's <8KB target. Hitting that needs a
-      // curated critical-constraints list instead of a per-rule table; tracked
-      // as follow-up in docs/plans/operation-signal.md, not done this session.
-      expect(output.length).toBeLessThan(100_000);
+      // (Operation Signal Phase 5): 130-165KB per file, always loaded in
+      // full, every one of the 1,137 rules with descriptions and examples.
+      // This body alone now measures ~2.2-2.5KB on the real regenerated
+      // files (see docs/plans/operation-signal.md for the exact numbers).
+      expect(output.length).toBeLessThan(4_000);
+    });
+
+    it('is unaffected by growing the rule catalog (thin adapters do not scale with rule count)', () => {
+      const manyRules = [
+        ...RULES,
+        ...Array.from({ length: 50 }, (_, i) => ({
+          id: `EXTRA_${i}`,
+          category: `extra_${i}`,
+          description: `Extra rule ${i} for scale testing.`,
+          severity: 'HIGH' as const,
+          tags: ['test'],
+          sinceVersion: '2.0.0',
+          detect: () => [],
+        })),
+      ];
+      const grown = generate(manyRules, CONFIG);
+      expect(grown.length).toBe(output.length);
     });
   });
 }
@@ -235,89 +272,8 @@ sharedGeneratorSuite('generateGeminiRules', generateGeminiRules);
 sharedGeneratorSuite('generateCursorRules', generateCursorRules);
 sharedGeneratorSuite('generateCopilotRules', generateCopilotRules);
 sharedGeneratorSuite('generateCodexRules', generateCodexRules);
-
-// Claude gets its own suite — it's a thin adapter referencing .thesmos/ files,
-// not a full rule dump, so the shared preamble/example expectations don't apply.
-describe('generateClaudeRules (thin adapter)', () => {
-  const output = generateClaudeRules(RULES, CONFIG);
-
-  it('contains the project name', () => {
-    expect(output).toContain(CONFIG.project);
-  });
-
-  it('contains the version', () => {
-    expect(output).toContain(CONFIG.version);
-  });
-
-  it('contains all rule IDs', () => {
-    // claude adapter only embeds BLOCKER+HIGH rules to avoid context thrashing
-    const claudeRules = RULES.filter((r) => r.severity === 'BLOCKER' || r.severity === 'HIGH');
-    for (const rule of claudeRules) {
-      expect(output).toContain(`[${rule.id}]`);
-    }
-  });
-
-  it('contains BLOCKER severity label', () => {
-    expect(output).toContain('BLOCKER');
-  });
-
-  it('references .thesmos/governance/CODE_REVIEW.md', () => {
-    expect(output).toContain('.thesmos/governance/CODE_REVIEW.md');
-  });
-
-  it('references the thesmos validate command', () => {
-    expect(output).toContain('thesmos validate');
-  });
-
-  it('references the thesmos review command', () => {
-    expect(output).toContain('thesmos review');
-  });
-
-  it('uses table format (| separators)', () => {
-    expect(output).toContain('| Rule |');
-  });
-
-  it('does NOT inline full code examples from rules', () => {
-    // Full examples should stay in CODE_REVIEW.md, not be duplicated here
-    expect(output).not.toContain('```ts');
-  });
-
-  it('is deterministic — same input produces same output', () => {
-    expect(generateClaudeRules(RULES, CONFIG)).toBe(output);
-  });
-});
-
-describe('generateAgentsRules', () => {
-  const output = generateAgentsRules(RULES, CONFIG);
-
-  it('has a CRITICAL section for BLOCKER rules', () => {
-    expect(output).toContain('CRITICAL');
-  });
-
-  it('contains all BLOCKER rule IDs', () => {
-    for (const rule of getRulesBySeverity(RULES, 'BLOCKER')) {
-      expect(output).toContain(`[${rule.id}]`);
-    }
-  });
-
-  it('has a HIGH PRIORITY section', () => {
-    expect(output).toContain('HIGH PRIORITY');
-  });
-
-  it('contains all HIGH rule IDs', () => {
-    for (const rule of getRulesBySeverity(RULES, 'HIGH')) {
-      expect(output).toContain(`[${rule.id}]`);
-    }
-  });
-
-  it('contains GUIDELINES section for lower-severity rules', () => {
-    expect(output).toContain('GUIDELINES');
-  });
-
-  it('is deterministic', () => {
-    expect(generateAgentsRules(RULES, CONFIG)).toBe(output);
-  });
-});
+sharedGeneratorSuite('generateClaudeRules', generateClaudeRules);
+sharedGeneratorSuite('generateAgentsRules', generateAgentsRules);
 
 // ── buildAdapterContent ───────────────────────────────────────────────────────
 
@@ -364,7 +320,7 @@ describe('buildAdapterContent', () => {
     expect(result).toContain('Manual top.');
     expect(result).toContain('Manual footer.');
     expect(result).not.toContain('OLD RULES CONTENT');
-    expect(result).toContain('[SEC_003]');
+    expect(result).toContain('.thesmos/RULES.md');
   });
 
   it('is idempotent — applying twice produces identical output', () => {
@@ -386,17 +342,19 @@ describe('buildAdapterContent', () => {
     }
   });
 
-  it('agents document has CRITICAL section', () => {
+  it('agents document is a thin pointer, not a rule dump', () => {
     const result = buildAdapterContent('agents', '', RULES, CONFIG);
-    expect(result).toContain('CRITICAL');
+    expect(result).toContain('BLOCKER');
+    expect(result).toContain('.thesmos/RULES.md');
   });
 
-  it('works with a subset of rules', () => {
+  it('output is identical regardless of which rules subset is passed in (thin adapters do not enumerate rules)', () => {
     const subset = getRulesBySeverity(RULES, 'BLOCKER');
-    const result = buildAdapterContent('claude', '', subset, CONFIG);
-    for (const rule of subset) {
-      expect(result).toContain(`[${rule.id}]`);
-    }
+    const withSubset = buildAdapterContent('claude', '', subset, CONFIG);
+    const withAll = buildAdapterContent('claude', '', RULES, CONFIG);
+    // Content is identical except the embedded ruleCount in the META comment.
+    const stripRuleCount = (s: string) => s.replace(/"ruleCount":\d+/, '"ruleCount":N');
+    expect(stripRuleCount(withSubset)).toBe(stripRuleCount(withAll));
   });
 
   it('produces different content for different targets', () => {
@@ -576,22 +534,11 @@ describe('writeAllAdapters', () => {
 
 // ── Adapter drift detection ───────────────────────────────────────────────────
 
-describe('adapter drift detection', () => {
-  it('every BLOCKER+HIGH rule appears in every adapter output (thin adapters — the rest live in .thesmos/RULES.md)', () => {
-    const targets: AdapterTarget[] = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'];
-    // Every adapter target only embeds BLOCKER+HIGH inline to avoid context
-    // thrashing (Operation Signal Phase 5) — MEDIUM/LOW/TECH_DEBT live in
-    // .thesmos/RULES.md instead of being duplicated into every AI adapter file.
-    const blockerHighRules = RULES.filter((r) => r.severity === 'BLOCKER' || r.severity === 'HIGH');
-    for (const target of targets) {
-      const out = buildAdapterContent(target, '', RULES, CONFIG);
-      for (const rule of blockerHighRules) {
-        expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);
-      }
-    }
-  });
-
-  it('adding a new rule makes it appear in all adapters', () => {
+// Thin adapters (Operation Signal Phase 5) never enumerate individual rules,
+// so "does a new rule appear in the adapter" is no longer the drift signal —
+// isAdapterFresh()'s embedded ruleCount is. These tests cover that instead.
+describe('adapter drift detection (via embedded ruleCount, not per-rule content)', () => {
+  it('adding a rule changes the embedded ruleCount for every target', () => {
     const extraRule: Rule = {
       id: 'DRIFT_001',
       category: 'drift_test',
@@ -602,8 +549,12 @@ describe('adapter drift detection', () => {
     const augmented = [...RULES, extraRule];
     const targets: AdapterTarget[] = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'];
     for (const target of targets) {
-      const out = buildAdapterContent(target, '', augmented, CONFIG);
-      expect(out, `${target} should include DRIFT_001`).toContain('[DRIFT_001]');
+      const before = buildAdapterContent(target, '', RULES, CONFIG);
+      const after = buildAdapterContent(target, '', augmented, CONFIG);
+      const meta = parseAdapterMeta(after);
+      expect(meta?.ruleCount, `${target} ruleCount should reflect the augmented catalog`).toBe(augmented.length);
+      expect(isAdapterFresh(before, augmented, CONFIG).fresh, `${target} should be stale against the augmented catalog`).toBe(false);
+      expect(isAdapterFresh(after, augmented, CONFIG).fresh, `${target} should be fresh against the catalog it was built from`).toBe(true);
     }
   });
 
@@ -612,6 +563,179 @@ describe('adapter drift detection', () => {
     for (const target of targets) {
       const out = buildAdapterContent(target, '', RULES, CONFIG);
       expect(out, `${target} missing project name`).toContain(CONFIG.project);
+    }
+  });
+});
+
+// ── Migration from the old (pre-thin) format ─────────────────────────────────
+
+describe('migration from the old per-rule-table format', () => {
+  it('replaces a realistic ~130KB legacy generated section with the thin body, preserving manual content and shrinking dramatically', () => {
+    // Simulate the actual old format: one line per BLOCKER/HIGH rule with
+    // description and example, the size driver that made every real adapter
+    // 130-165KB before Operation Signal Phase 5.
+    const legacyRuleLines = RULES.map(
+      (r) => `### [${r.id}] ${r.category}\n${r.description}\n\`\`\`\nexample violation and fix for ${r.id}\n\`\`\`\n`
+    ).join('\n');
+    const legacyDoc = [
+      '# My Project — Claude Code Instructions',
+      '',
+      'Team-authored preamble that must survive migration.',
+      '',
+      '<!-- THESMOS:GENERATED START rules -->',
+      legacyRuleLines,
+      '<!-- THESMOS:GENERATED END rules -->',
+      '',
+      'Team-authored footer that must survive migration.',
+    ].join('\n');
+    expect(Buffer.byteLength(legacyDoc, 'utf8')).toBeGreaterThan(100_000); // sanity: this really is the old-scale problem
+
+    const migrated = buildAdapterContent('claude', legacyDoc, RULES, CONFIG);
+
+    expect(migrated).toContain('Team-authored preamble that must survive migration.');
+    expect(migrated).toContain('Team-authored footer that must survive migration.');
+    expect(migrated).not.toContain('example violation and fix for');
+    expect(migrated).toContain('.thesmos/RULES.md');
+
+    const migratedSection = migrated.slice(
+      migrated.indexOf('<!-- THESMOS:GENERATED START rules -->'),
+      migrated.indexOf('<!-- THESMOS:GENERATED END rules -->')
+    );
+    expect(Buffer.byteLength(migratedSection, 'utf8')).toBeLessThan(4_000);
+  });
+
+  it('migration is idempotent — running it twice on the same legacy doc converges to a stable thin result', () => {
+    const legacyDoc = [
+      '# Notes',
+      '<!-- THESMOS:GENERATED START rules -->',
+      'huge legacy rule table stand-in '.repeat(2000),
+      '<!-- THESMOS:GENERATED END rules -->',
+    ].join('\n');
+    const first = buildAdapterContent('agents', legacyDoc, RULES, CONFIG);
+    const second = buildAdapterContent('agents', first, RULES, CONFIG);
+    expect(second).toBe(first);
+  });
+});
+
+// ── detectAdapterTargets ──────────────────────────────────────────────────────
+
+describe('detectAdapterTargets', () => {
+  it('always includes claude and agents even with no integration footprints present', () => {
+    const root = trackTmp(makeTmpDir());
+    const detected = detectAdapterTargets(root);
+    expect(detected).toContain('claude');
+    expect(detected).toContain('agents');
+    expect(detected).not.toContain('gemini');
+    expect(detected).not.toContain('cursor');
+    expect(detected).not.toContain('copilot');
+    expect(detected).not.toContain('codex');
+  });
+
+  it('detects gemini when GEMINI.md already exists', () => {
+    const root = trackTmp(makeTmpDir());
+    writeFileSync(join(root, 'GEMINI.md'), '# Gemini\n', 'utf8');
+    expect(detectAdapterTargets(root)).toContain('gemini');
+  });
+
+  it('detects cursor when a .cursor directory exists', () => {
+    const root = trackTmp(makeTmpDir());
+    mkdirSync(join(root, '.cursor'), { recursive: true });
+    expect(detectAdapterTargets(root)).toContain('cursor');
+  });
+
+  it('detects copilot when .github/copilot-instructions.md exists', () => {
+    const root = trackTmp(makeTmpDir());
+    mkdirSync(join(root, '.github'), { recursive: true });
+    writeFileSync(join(root, '.github', 'copilot-instructions.md'), '# Copilot\n', 'utf8');
+    expect(detectAdapterTargets(root)).toContain('copilot');
+  });
+
+  it('detects codex when a .codex directory exists', () => {
+    const root = trackTmp(makeTmpDir());
+    mkdirSync(join(root, '.codex'), { recursive: true });
+    expect(detectAdapterTargets(root)).toContain('codex');
+  });
+});
+
+// ── writeAllAdapters — manifest status + atomic writes ───────────────────────
+
+describe('writeAllAdapters manifest status', () => {
+  it('reports status "generated" for every successfully written target', () => {
+    const root = trackTmp(makeTmpDir());
+    const manifests = writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS, ['claude', 'gemini']);
+    for (const m of manifests) {
+      expect(m.status, `${m.target}`).toBe('generated');
+      expect(m.generated).toBe(true);
+      expect(m.error).toBeUndefined();
+    }
+  });
+
+  it('a write failure on one target is reported as status "failed" and does not stop other targets', () => {
+    const root = trackTmp(makeTmpDir());
+    // Force a failure for exactly one target: pre-create its output path as a
+    // directory, so writing a file there errors, while leaving the sibling
+    // target free to succeed.
+    mkdirSync(join(root, 'GEMINI.md'), { recursive: true });
+    const manifests = writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS, ['claude', 'gemini']);
+
+    const gemini = manifests.find((m) => m.target === 'gemini')!;
+    const claude = manifests.find((m) => m.target === 'claude')!;
+    expect(gemini.status).toBe('failed');
+    expect(gemini.generated).toBe(false);
+    expect(typeof gemini.error).toBe('string');
+    expect(claude.status).toBe('generated');
+    expect(existsSync(join(root, ADAPTER_OUTPUT_PATHS.claude))).toBe(true);
+  });
+
+  it('a failed target never leaves a stray temp file in the output directory', () => {
+    const root = trackTmp(makeTmpDir());
+    mkdirSync(join(root, 'GEMINI.md'), { recursive: true });
+    writeAllAdapters(root, THESMOS_RULES, CONFIG_DEFAULTS, ['claude', 'gemini']);
+    const leftovers = readdirSync(root).filter((f) => f.includes('.tmp-'));
+    expect(leftovers).toEqual([]);
+  });
+});
+
+// ── Size budget (Operation Signal Phase 5 contract) ──────────────────────────
+
+describe('8KB thin-adapter size budget', () => {
+  const ALL_TARGETS: AdapterTarget[] = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'];
+  const BUDGET_BYTES = 8192;
+
+  it('the generated section alone is under 8KB for every target, with no catalog attached', () => {
+    for (const target of ALL_TARGETS) {
+      const content = buildAdapterContent(target, '', RULES, CONFIG);
+      const section = content.slice(
+        content.indexOf('<!-- THESMOS:GENERATED START rules -->'),
+        content.indexOf('<!-- THESMOS:GENERATED END rules -->')
+      );
+      expect(Buffer.byteLength(section, 'utf8'), `${target} generated section`).toBeLessThan(BUDGET_BYTES);
+    }
+  });
+
+  it('the generated section stays under 8KB even with a large active catalog attached (100 agents + 50 skills)', () => {
+    const bigCatalog: AdapterCatalog = {
+      agents: Array.from({ length: 100 }, (_, i) => ({ id: `agent-${i}`, name: `Agent ${i}` })),
+      skills: Array.from({ length: 50 }, (_, i) => ({ id: `skill-${i}`, name: `Skill ${i}` })),
+      profile: 'full-pantheon',
+    };
+    for (const target of ALL_TARGETS) {
+      const content = buildAdapterContent(target, '', RULES, CONFIG, bigCatalog);
+      const section = content.slice(
+        content.indexOf('<!-- THESMOS:GENERATED START rules -->'),
+        content.indexOf('<!-- THESMOS:GENERATED END rules -->')
+      );
+      expect(Buffer.byteLength(section, 'utf8'), `${target} generated section with large catalog`).toBeLessThan(BUDGET_BYTES);
+    }
+  });
+
+  it('the full document is under 8KB for every target when starting from an empty file', () => {
+    // Total size == generated section size when there's no pre-existing
+    // user-owned content, since buildAdapterContent falls back to the
+    // (also thin) target preamble.
+    for (const target of ALL_TARGETS) {
+      const content = buildAdapterContent(target, '', RULES, CONFIG);
+      expect(Buffer.byteLength(content, 'utf8'), `${target} full document`).toBeLessThan(BUDGET_BYTES);
     }
   });
 });
