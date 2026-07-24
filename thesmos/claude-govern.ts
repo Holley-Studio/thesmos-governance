@@ -20,6 +20,7 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { activeRulesForTier } from './rules/registry.js';
 import { categoryLabel } from './rule-labels.js';
 import { loadConfig, CONFIG_DEFAULTS, ConfigLoadError } from './config.js';
@@ -507,15 +508,18 @@ function safeCheckScope(input: ScopeCheckInput, failClosed: boolean): ScopeViola
 }
 
 /**
- * Short, non-cryptographic correlation id for tying a hook's stdout decision
- * to whatever this same invocation writes to a debug log or reports back to
- * the user — the PreToolUse JSON schema has no dedicated correlation field
- * (verified against the current protocol; see module doc below), so it's
- * embedded in the human-readable reason text instead of invented as a fake
- * schema field.
+ * Short correlation id for tying a hook's stdout decision to whatever this
+ * same invocation writes to a debug log or reports back to the user — the
+ * PreToolUse JSON schema has no dedicated correlation field (verified
+ * against the current protocol; see module doc below), so it's embedded in
+ * the human-readable reason text instead of invented as a fake schema
+ * field. Uses crypto.randomUUID() (matches this codebase's convention for
+ * every other generated id — see agent-lifecycle.ts, execution-receipt.ts)
+ * rather than Math.random(), even though this id isn't a security boundary,
+ * to avoid ambiguity in this file's own governance review.
  */
 function makeCorrelationId(): string {
-  return Math.random().toString(36).slice(2, 8);
+  return randomUUID().slice(0, 8);
 }
 
 /**

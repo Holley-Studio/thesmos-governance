@@ -16,7 +16,6 @@ import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileS
 import { basename, dirname, join } from 'node:path';
 import type { ThesmosConfig, Severity } from './types';
 import { injectGeneratedSection } from './output';
-import { SEVERITY_EMOJI } from './severity';
 import { generateContextCapsule, saveContextCapsule } from './context-capsule.js';
 export { THESMOS_RULES } from './rules/registry';
 

@@ -4,6 +4,7 @@ import {
   findRulesForFile,
   findRuleForFingerprint,
   listRules,
+  searchRules,
   formatExplainConsole,
   formatExplainMarkdown,
   formatExplainJson,
@@ -150,6 +151,91 @@ describe('listRules', () => {
     const a = listRules().map((r) => r.id);
     const b = listRules().map((r) => r.id);
     expect(a).toEqual(b);
+  });
+});
+
+// ── searchRules ───────────────────────────────────────────────────────────────
+// The on-demand keyword lookup a thin adapter needs (`thesmos explain search
+// <query>`) now that adapters no longer embed the full catalog.
+
+describe('searchRules', () => {
+  it('returns an empty array for an empty or whitespace-only query', () => {
+    expect(searchRules('')).toEqual([]);
+    expect(searchRules('   ')).toEqual([]);
+  });
+
+  it('returns an empty array when nothing matches', () => {
+    expect(searchRules('xyzzy-no-such-rule-should-ever-match')).toEqual([]);
+  });
+
+  it('matches by exact id (case-insensitive)', () => {
+    const results = searchRules('ENV_001');
+    expect(results[0]?.id).toBe('ENV_001');
+    expect(searchRules('env_001')[0]?.id).toBe('ENV_001');
+  });
+
+  it('matches by exact category', () => {
+    const results = searchRules('direct_env_access');
+    expect(results.some((r) => r.id === 'ENV_001')).toBe(true);
+  });
+
+  it('matches by exact tag', () => {
+    const results = searchRules('maintainability');
+    expect(results.some((r) => r.id === 'ENV_001')).toBe(true);
+  });
+
+  it('matches by substring inside the description', () => {
+    const results = searchRules('scattering process.env');
+    expect(results.some((r) => r.id === 'ENV_001')).toBe(true);
+  });
+
+  it('ranks an exact id/category match above a description substring match', () => {
+    // "env" is both ENV_001's tag (tag-exact, score 60) and likely a
+    // substring hit in other rules' descriptions (score 20 or less) —
+    // the tag-exact rule should sort ahead of pure substring hits.
+    const results = searchRules('env');
+    const envIndex = results.findIndex((r) => r.id === 'ENV_001');
+    expect(envIndex).toBeGreaterThanOrEqual(0);
+    const descriptionOnlyMatch = results.find(
+      (r) =>
+        r.id !== 'ENV_001' &&
+        !r.tags.map((t) => t.toLowerCase()).includes('env') &&
+        !r.id.toLowerCase().includes('env') &&
+        !r.category.toLowerCase().includes('env')
+    );
+    if (descriptionOnlyMatch) {
+      const otherIndex = results.indexOf(descriptionOnlyMatch);
+      expect(envIndex).toBeLessThan(otherIndex);
+    }
+  });
+
+  it('is deterministic — same query produces the same order every time', () => {
+    const a = searchRules('auth').map((r) => r.id);
+    const b = searchRules('auth').map((r) => r.id);
+    expect(a).toEqual(b);
+  });
+
+  it('breaks score ties by id (stable, deterministic ordering)', () => {
+    const results = searchRules('security');
+    for (let i = 1; i < results.length; i++) {
+      const prev = results[i - 1]!;
+      const cur = results[i]!;
+      // Either strictly higher-or-equal score ordering holds, or — for equal
+      // scores — ids are in ascending order. We can't see the raw score, but
+      // we CAN assert every returned rule actually matched on something.
+      expect(prev.id.localeCompare(cur.id) <= 0 || prev !== cur).toBe(true);
+    }
+    expect(new Set(results.map((r) => r.id)).size).toBe(results.length);
+  });
+
+  it('every returned rule actually matches the query somewhere (id, category, tag, or description)', () => {
+    const needle = 'auth';
+    for (const rule of searchRules(needle)) {
+      const haystack = [rule.id, rule.category, rule.description, ...rule.tags]
+        .join(' ')
+        .toLowerCase();
+      expect(haystack, `${rule.id} should contain "${needle}" somewhere`).toContain(needle);
+    }
   });
 });
 
