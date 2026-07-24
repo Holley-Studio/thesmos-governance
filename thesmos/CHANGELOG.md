@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 5.1.0
+
+### Patch Changes
+
+- **`secret_in_diff` false positives:** the rule scanned every line of a unified diff regardless of `+`/`-`/context prefix, so *removing* a hardcoded secret (or merely touching a file near an old, already-committed one) still tripped a BLOCKER. Now only newly added lines are scanned.
+- **Branch reconciliation:** local `main` had accumulated unpublished work that diverged from what shipped in 5.0.1 on `origin/main` (including this repo's own Trust Execution Hardening work). Both lines of history are merged in, with conflicting API changes (`runReview()`'s structured return, `parseArgs()`'s flag handling) reconciled to a single consistent shape.
+
+### Minor Changes
+
+- **Docker support:** `thesmos/Dockerfile` builds the CLI/MCP server as a non-root, dependency-free container image. See the Docker section in the README for usage (`docker build -f thesmos/Dockerfile -t thesmos-governance .`).
+
 ## 5.0.1
 
 ### Patch Changes
