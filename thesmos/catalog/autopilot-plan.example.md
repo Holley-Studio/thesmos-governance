@@ -122,12 +122,15 @@ Resume with: `thesmos autopilot resume MASTER_PLAN.md`
     "taskTimeoutMinutes": 30,
     "maxRetriesPerTask": 2,
     "requirePluggedIn": true,
-    "stopOnCreditFailure": true
+    "stopOnCreditFailure": true,
+    "dangerouslySkipPermissions": false
   }
 }
 ```
 
 Set in `.thesmos/config.json`.
+
+`dangerouslySkipPermissions` defaults to **false** (omit the field). When `true`, the Claude adapter appends `--dangerously-skip-permissions`. Prefer the autopilot permission profile + `claude:govern` hooks for unattended runs.
 
 ## Cancel while running
 

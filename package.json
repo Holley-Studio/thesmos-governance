@@ -31,5 +31,8 @@
     "thesmos",
     "actions/pr-review",
     "extensions/vscode"
-  ]
+  ],
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.10"
+  }
 }

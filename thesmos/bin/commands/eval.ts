@@ -1,9 +1,11 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * thesmos eval — governance visibility report
+ * thesmos eval — governance + runtime observability report
  *
- * Reads .thesmos/governance.log.jsonl + .thesmos/report.json and produces
- * a human-readable (or machine-readable) governance evaluation report.
+ * Primary: reads .thesmos/governance.log.jsonl (enforcement events).
+ * Secondary: summarises execution receipts / agent-activity / metrics-export
+ * when present. This is NOT a Pantheon behavioral test runner — those live
+ * in Vitest (`thesmos/eval/suites.test.ts` and unit suites).
  *
  * Usage:
  *   thesmos eval                  Current session (last 24h)
@@ -22,6 +24,28 @@ import {
   summariseGovernanceLog,
   type GovernanceSummary,
 } from '../../governance-log.ts';
+import { readAgentActivityLog } from '../../agent-activity.ts';
+import { readExecutionReceipts } from '../../execution-receipt.ts';
+import { readMetricsExport } from '../../metrics-export.ts';
+
+interface RuntimeObservability {
+  receipts: number;
+  activityEvents: number;
+  metricsEvents: number;
+  lastReceiptStatus?: string;
+}
+
+function summariseRuntime(root: string): RuntimeObservability {
+  const receipts = readExecutionReceipts(root, undefined, 10_000);
+  const activity = readAgentActivityLog(root, 10_000);
+  const metrics = readMetricsExport(root, 10_000);
+  return {
+    receipts: receipts.length,
+    activityEvents: activity.length,
+    metricsEvents: metrics.length,
+    lastReceiptStatus: receipts.at(-1)?.terminalStatus,
+  };
+}
 
 // ── Duration parser ───────────────────────────────────────────────────────────
 
@@ -40,13 +64,16 @@ function parseSince(val: string): Date {
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
-function scoreBar(score: number): string {
+function scoreBar(score: number | null): string {
+  if (score === null) return '░'.repeat(20);
   const filled = Math.round(score / 5);
   const empty = 20 - filled;
   return '█'.repeat(filled) + '░'.repeat(empty);
 }
 
-function scoreLabel(score: number): string {
+function scoreLabel(score: number | null, state: GovernanceSummary['assuranceState']): string {
+  if (state === 'INCOMPLETE' || score === null) return 'Incomplete';
+  if (state === 'ERROR') return 'Error';
   if (score >= 99) return 'Excellent';
   if (score >= 95) return 'Good';
   if (score >= 85) return 'Fair';
@@ -63,8 +90,16 @@ function formatConsole(summary: GovernanceSummary, projectName: string, period: 
   lines.push(`  ${SEP}`);
   lines.push('');
 
-  const scoreStr = summary.complianceScore.toFixed(1) + '%';
-  lines.push(`  Compliance Score    ${scoreStr.padStart(6)}  [${scoreBar(summary.complianceScore)}]  ${scoreLabel(summary.complianceScore)}`);
+  const scoreStr =
+    summary.complianceScore === null
+      ? 'n/a'
+      : `${summary.complianceScore.toFixed(1)}%`;
+  lines.push(
+    `  Assurance           ${summary.assuranceState.padStart(6)}`,
+  );
+  lines.push(
+    `  Compliance Score    ${scoreStr.padStart(6)}  [${scoreBar(summary.complianceScore)}]  ${scoreLabel(summary.complianceScore, summary.assuranceState)}`,
+  );
   lines.push('');
   lines.push(`  Events recorded     ${String(summary.total).padStart(6)}`);
   lines.push(`  Rules fired         ${String(summary.blocked + summary.warned + summary.passed).padStart(6)}`);
@@ -103,8 +138,8 @@ function formatConsole(summary: GovernanceSummary, projectName: string, period: 
     lines.push('');
   }
 
-  if (summary.total === 0) {
-    lines.push('  No governance events recorded in this period.');
+  if (summary.total === 0 || summary.assuranceState === 'INCOMPLETE') {
+    lines.push('  No enforceable governance events in this period (assurance: INCOMPLETE).');
     lines.push('  Governance logging activates via the MCP server or CI scan hooks.');
     lines.push('  Run: thesmos mcp:install  to enable real-time enforcement logging.');
     lines.push('');
@@ -113,13 +148,39 @@ function formatConsole(summary: GovernanceSummary, projectName: string, period: 
   return lines.join('\n');
 }
 
+function formatRuntimeConsole(runtime: RuntimeObservability): string {
+  const lines = [
+    '  Runtime observability',
+    `  ${'─'.repeat(64)}`,
+    `  Execution receipts  ${String(runtime.receipts).padStart(6)}`,
+    `  Agent activity      ${String(runtime.activityEvents).padStart(6)}`,
+    `  Metrics export      ${String(runtime.metricsEvents).padStart(6)}`,
+  ];
+  if (runtime.lastReceiptStatus) {
+    lines.push(`  Last receipt        ${runtime.lastReceiptStatus}`);
+  }
+  if (runtime.receipts === 0 && runtime.activityEvents === 0 && runtime.metricsEvents === 0) {
+    lines.push('');
+    lines.push('  No runtime receipts yet. Run autopilot, agent:run, or pantheon:orchestrate --execute.');
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
 function formatMarkdown(summary: GovernanceSummary, projectName: string, period: string): string {
   const lines: string[] = [];
 
   lines.push(`## 🔱 Thesmos Governance Report — ${projectName}`);
   lines.push('');
+  const scoreDisplay =
+    summary.complianceScore === null
+      ? 'n/a'
+      : `${summary.complianceScore.toFixed(1)}%`;
   lines.push(`**Period:** ${period}  `);
-  lines.push(`**Compliance Score:** ${summary.complianceScore.toFixed(1)}% — ${scoreLabel(summary.complianceScore)}`);
+  lines.push(`**Assurance:** ${summary.assuranceState}  `);
+  lines.push(
+    `**Compliance Score:** ${scoreDisplay} — ${scoreLabel(summary.complianceScore, summary.assuranceState)}`,
+  );
   lines.push('');
   lines.push(`| Metric | Value |`);
   lines.push(`|---|---|`);
@@ -205,16 +266,31 @@ export async function cmdEval(argv: string[]): Promise<void> {
   }
 
   const summary = summariseGovernanceLog(events);
+  const runtime = summariseRuntime(root);
 
   if (json) {
-    process.stdout.write(formatJson(summary, projectName, period) + '\n');
+    const payload = JSON.parse(formatJson(summary, projectName, period)) as Record<string, unknown>;
+    payload.runtime = runtime;
+    process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
   } else if (markdown) {
     process.stdout.write(formatMarkdown(summary, projectName, period) + '\n');
+    process.stdout.write(`### Runtime observability\n\n`);
+    process.stdout.write(`| Metric | Value |\n|---|---|\n`);
+    process.stdout.write(`| Execution receipts | ${runtime.receipts} |\n`);
+    process.stdout.write(`| Agent activity | ${runtime.activityEvents} |\n`);
+    process.stdout.write(`| Metrics export | ${runtime.metricsEvents} |\n\n`);
   } else {
     process.stdout.write(formatConsole(summary, projectName, period) + '\n');
+    process.stdout.write(formatRuntimeConsole(runtime) + '\n');
   }
 
-  if (summary.blocked > 0 || summary.bypassed > 0) {
+  if (
+    summary.assuranceState === 'FAIL' ||
+    summary.assuranceState === 'ERROR' ||
+    summary.assuranceState === 'INCOMPLETE' ||
+    summary.blocked > 0 ||
+    summary.bypassed > 0
+  ) {
     process.exitCode = 1;
   }
 }

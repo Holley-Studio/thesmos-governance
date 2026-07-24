@@ -559,9 +559,9 @@ const RAG_QUESTIONS: WizardQuestion[] = [
     options: [
       { value: 'openai', label: 'OpenAI (text-embedding-3-small) — BYOK' },
       { value: 'cohere', label: 'Cohere (embed-v3) — BYOK' },
-      { value: 'local', label: 'Local (sentence-transformers) — no API key' },
+      { value: 'local', label: 'Local deterministic (offline scaffold) — no API key' },
     ],
-    engineering_note: 'Embedding model determines quality, cost, and API key requirements.',
+    engineering_note: 'Embedding model determines quality, cost, and API key requirements. Anthropic has no public embeddings API — use OpenAI/Cohere or local.',
   },
   {
     key: 'vectorStore',

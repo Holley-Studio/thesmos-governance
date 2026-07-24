@@ -278,6 +278,7 @@ async function cmdAutopilotStart(planPath: string, argv: string[]): Promise<void
       plan!,
       config.autopilot?.maxCostUSD,
       config.autopilot?.requirePluggedIn ?? false,
+      { dangerouslySkipPermissions: config.autopilot?.dangerouslySkipPermissions === true },
     );
 
     if (!canProceed) {
@@ -341,13 +342,26 @@ async function cmdAutopilotStart(planPath: string, argv: string[]): Promise<void
   process.stdout.write(`Tasks:   ${plan!.tasks.filter((t) => !t.isCheckpoint).length}\n`);
   process.stdout.write(`Adapter: ${plan!.adapter}\n`);
   process.stdout.write(`Journal: ${journalPath}\n`);
-  if (!dryRun) process.stdout.write(`Permissions: auto-approved for this session\n`);
+  if (!dryRun) process.stdout.write(`Permissions: auto-approved for this session (profile)\n`);
+  if (config.autopilot?.dangerouslySkipPermissions === true) {
+    process.stdout.write(
+      `Claude skip-permissions: ENABLED (dangerouslySkipPermissions=true)\n`,
+    );
+  } else {
+    process.stdout.write(`Claude skip-permissions: off (default)\n`);
+  }
   process.stdout.write(`To cancel: touch .thesmos/autopilot/.cancel\n`);
   process.stdout.write(`${DIVIDER}\n`);
 
   // Execute
   try {
-    await executeSession(root, plan!, session, { dryRun, verbose, reconnaissance });
+    await executeSession(root, plan!, session, {
+      dryRun,
+      verbose,
+      reconnaissance,
+      dangerouslySkipPermissions: config.autopilot?.dangerouslySkipPermissions === true,
+      httpAdapterUrl: config.autopilot?.httpAdapterUrl,
+    });
   } finally {
     // Always restore permissions
     restorePermissions(root, session.permissionsBackupPath);
@@ -430,7 +444,13 @@ async function cmdAutopilotResume(planPath: string, argv: string[]): Promise<voi
   const reconnaissance = argv.includes('--recon');
 
   try {
-    await executeSession(root, plan, session, { dryRun, verbose, reconnaissance });
+    await executeSession(root, plan, session, {
+      dryRun,
+      verbose,
+      reconnaissance,
+      dangerouslySkipPermissions: config.autopilot?.dangerouslySkipPermissions === true,
+      httpAdapterUrl: config.autopilot?.httpAdapterUrl,
+    });
   } finally {
     restorePermissions(root, session.permissionsBackupPath);
     markPermissionsRestored(session.journalPath, formatTimestamp());
@@ -584,6 +604,8 @@ async function cmdAutopilotGenerate(argv: string[]): Promise<void> {
       outputPath,
       adapter: config.autopilot?.adapter ?? 'claude',
       verbose: argv.includes('--verbose'),
+      dangerouslySkipPermissions: config.autopilot?.dangerouslySkipPermissions === true,
+      httpAdapterUrl: config.autopilot?.httpAdapterUrl,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -595,12 +617,15 @@ async function cmdAutopilotGenerate(argv: string[]): Promise<void> {
 // ── Sub-command: review ───────────────────────────────────────────────────────
 
 async function cmdAutopilotReview(argv: string[]): Promise<void> {
-  const { root } = createContext();
+  const { root, config } = createContext();
   const sessionId = argv.find((a) => !a.startsWith('--'));
   const base = argv.find((a) => a.startsWith('--base='))?.slice(7) ?? 'main';
 
   try {
-    await reviewSession(root, sessionId, base);
+    await reviewSession(root, sessionId, base, {
+      dangerouslySkipPermissions: config.autopilot?.dangerouslySkipPermissions === true,
+      httpAdapterUrl: config.autopilot?.httpAdapterUrl,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     process.stderr.write(`Review failed: ${msg}\n`);

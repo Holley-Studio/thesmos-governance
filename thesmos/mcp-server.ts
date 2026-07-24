@@ -37,8 +37,14 @@ import { makeLogger } from './logger.js';
 import { buildBudgetReport, getCurrentSessionId, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
 import { logMcpBlock, logMcpPass, logRuleFire } from './governance-log.js';
 import { getAutoModeGovernanceInfo } from './claude-govern.js';
+import {
+  assuranceFromRuleCounts,
+  formatAssuranceScore,
+} from './assurance.js';
+import { loadProductFacts } from './product-facts.js';
 
 const log = makeLogger('mcp');
+const PRODUCT_FACTS = loadProductFacts();
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -62,8 +68,8 @@ const MAX_SCAN_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 // ── MCP Protocol constants ────────────────────────────────────────────────────
 
 const SERVER_INFO = {
-  name: 'thesmos-governance',
-  version: '1.0.0',
+  name: PRODUCT_FACTS.packageName,
+  version: PRODUCT_FACTS.version,
 };
 
 const CAPABILITIES = {
@@ -158,7 +164,7 @@ const TOOL_DEFINITIONS = [
   {
     name: 'get_active_agents',
     description:
-      'Returns all 40 Pantheon agents with their domains, roles, mythology, and invocation instructions. Use this to discover which agent to invoke for a given task domain.',
+      `Returns all ${PRODUCT_FACTS.agentCount} Pantheon agents with their domains, roles, mythology, and invocation instructions. Use this to discover which agent to invoke for a given task domain.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -529,63 +535,59 @@ function handleGetComplianceStatus(root: string, params: { framework: string }):
   );
 
   const scan = getRealScanOrNull(root);
-  if (scan === null) {
-    return {
-      framework,
-      status: 'NOT_ASSESSED',
-      reason: 'No scan data available. Run: thesmos scan',
-    };
-  }
+  const evidenceMissing = scan === null;
 
   // Reject stale scans — compliance evidence must be fresh.
-  const scanAge = Date.now() - new Date(scan.generatedAt).getTime();
-  if (scanAge > MAX_SCAN_AGE_MS) {
-    const ageHours = Math.round(scanAge / (60 * 60 * 1000));
-    return {
-      framework,
-      status: 'NOT_ASSESSED',
-      reason: `Scan data is stale (${ageHours}h old). Run: thesmos scan`,
-      scanGeneratedAt: scan.generatedAt,
-      scanAgeHours: ageHours,
-    };
+  const scanAge = scan ? Date.now() - new Date(scan.generatedAt).getTime() : null;
+  const stale = scanAge !== null && scanAge > MAX_SCAN_AGE_MS;
+  const ageHours = scanAge !== null ? Math.round(scanAge / (60 * 60 * 1000)) : null;
+
+  let frameworkFindings: Finding[] = [];
+  if (!evidenceMissing && !stale && scan) {
+    const { findings: allFindings } = runReview({ scan, config, changedFiles: [] });
+    frameworkFindings = allFindings.filter((f) =>
+      frameworkRules.some((r) => r.category === f.category),
+    );
   }
 
-  if (frameworkRules.length === 0) {
-    return {
-      framework,
-      status: 'NOT_ASSESSED',
-      reason: `No rules found for framework '${framework}'. Check the framework identifier.`,
-      scanGeneratedAt: scan.generatedAt,
-    };
-  }
-
-  const { findings: allFindings } = runReview({ scan, config, changedFiles: [] });
-  const frameworkFindings = allFindings.filter((f) =>
-    frameworkRules.some((r) => r.category === f.category),
-  );
-
-  const passed = frameworkRules.filter((r) => !frameworkFindings.some((f) => f.category === r.category)).length;
+  const passed = evidenceMissing || stale
+    ? 0
+    : frameworkRules.filter((r) => !frameworkFindings.some((f) => f.category === r.category)).length;
   const total = frameworkRules.length;
-  const complianceScore = Math.round((passed / total) * 100);
+  const assurance = assuranceFromRuleCounts(passed, total, {
+    evidenceMissing: evidenceMissing || stale,
+    evidenceSource: evidenceMissing || stale ? null : join(root, '.thesmos', 'report.json'),
+    reason: evidenceMissing
+      ? 'No `.thesmos/report.json` — run `thesmos scan` before claiming compliance'
+      : stale
+        ? `Scan data is stale (${ageHours}h old) — run \`thesmos scan\` before claiming compliance`
+        : undefined,
+  });
 
   const blockers = frameworkFindings.filter((f) => f.severity === 'BLOCKER');
   const highs = frameworkFindings.filter((f) => f.severity === 'HIGH');
-  const isCompliant = frameworkFindings.length === 0;
 
   return {
     framework,
-    status: isCompliant ? 'COMPLIANT' : 'NON_COMPLIANT',
-    complianceScore,
-    rulesEvaluated: total,
-    rulesPassed: passed,
-    rulesFailed: total - passed,
+    state: assurance.state,
+    pass: assurance.state === 'PASS',
+    complianceScore: assurance.score,
+    rulesEvaluated: assurance.rulesEvaluated,
+    rulesPassed: assurance.rulesPassed,
+    rulesFailed: assurance.rulesFailed,
+    reason: assurance.reason,
+    evidenceSource: assurance.evidenceSource,
+    scanGeneratedAt: scan?.generatedAt ?? null,
+    scanAgeHours: ageHours,
     findings: frameworkFindings,
     topBlockers: blockers.slice(0, 5).map((f) => ({ category: f.category, file: f.file, message: f.message })),
     topHighs: highs.slice(0, 5).map((f) => ({ category: f.category, file: f.file, message: f.message })),
-    scanGeneratedAt: scan.generatedAt,
-    summary: isCompliant
-      ? `✅ ${framework} compliance: ${complianceScore}% (${passed}/${total} rules passed — no violations detected)`
-      : `⚠️ ${framework} compliance: ${complianceScore}% (${passed}/${total} rules passed, ${blockers.length} blockers, ${highs.length} highs)`,
+    summary:
+      assurance.state === 'INCOMPLETE' || assurance.state === 'ERROR'
+        ? `○ ${framework} compliance: ${assurance.state} (${formatAssuranceScore(assurance.score)}) — ${assurance.reason}`
+        : assurance.state === 'PASS'
+          ? `✅ ${framework} compliance: ${formatAssuranceScore(assurance.score)} (${passed}/${total} rules passed — no violations detected)`
+          : `⚠️ ${framework} compliance: ${formatAssuranceScore(assurance.score)} (${passed}/${total} rules passed, ${blockers.length} blockers, ${highs.length} highs)`,
   };
 }
 
@@ -594,17 +596,14 @@ function handleCheckFrameworkCoverage(root: string, params: { framework: string 
   const { framework } = params;
 
   const frameworkRules = THESMOS_RULES.filter((r) => r.frameworks?.includes(framework));
-
   const scan = getRealScanOrNull(root);
-  if (scan === null) {
-    return {
-      framework,
-      status: 'NOT_ASSESSED',
-      reason: 'No scan data available. Run: thesmos scan',
-    };
+  const scanAge = scan ? Date.now() - new Date(scan.generatedAt).getTime() : null;
+  const stale = scanAge !== null && scanAge > MAX_SCAN_AGE_MS;
+  const evidenceMissing = scan === null || stale;
+  let allFindings: Finding[] = [];
+  if (!evidenceMissing && scan) {
+    allFindings = runReview({ scan, config, changedFiles: [] }).findings;
   }
-
-  const { findings: allFindings } = runReview({ scan, config, changedFiles: [] });
 
   const coverage = frameworkRules.map((r) => {
     const ruleFinding = allFindings.find((f) => f.category === r.category);
@@ -613,24 +612,34 @@ function handleCheckFrameworkCoverage(root: string, params: { framework: string 
       category: r.category,
       severity: r.severity,
       description: r.description,
-      status: ruleFinding ? 'FAILING' : 'PASSING',
+      status: evidenceMissing ? 'INCOMPLETE' : ruleFinding ? 'FAILING' : 'PASSING',
       finding: ruleFinding ?? null,
     };
   });
 
   const passing = coverage.filter((c) => c.status === 'PASSING').length;
   const failing = coverage.filter((c) => c.status === 'FAILING').length;
+  const assurance = assuranceFromRuleCounts(passing, frameworkRules.length, {
+    evidenceMissing,
+    evidenceSource: evidenceMissing ? null : join(root, '.thesmos', 'report.json'),
+    reason: stale
+      ? `Scan data is stale (${Math.round((scanAge ?? 0) / (60 * 60 * 1000))}h old) — run \`thesmos scan\` before claiming compliance`
+      : undefined,
+  });
 
   return {
     framework,
+    state: assurance.state,
     totalRules: frameworkRules.length,
-    passing,
-    failing,
-    coveragePercent: frameworkRules.length > 0 ? Math.round((passing / frameworkRules.length) * 100) : 100,
+    passing: assurance.rulesPassed,
+    failing: assurance.rulesFailed,
+    coveragePercent: assurance.score,
     rules: coverage,
-    note: frameworkRules.length === 0
-      ? `No rules explicitly tagged with framework "${framework}". Use get_compliance_status for prefix-based matching.`
-      : undefined,
+    note: evidenceMissing
+      ? (assurance.reason ?? 'No `.thesmos/report.json` — coverage is INCOMPLETE until you run `thesmos scan`.')
+      : frameworkRules.length === 0
+        ? `No rules explicitly tagged with framework "${framework}". Use get_compliance_status for prefix-based matching.`
+        : undefined,
   };
 }
 

@@ -146,6 +146,11 @@ export function validateFrontmatter(
   return { valid: errors.length === 0, errors };
 }
 
+/** True for agent/skill docs; false for README.md and companion *-README.md docs. */
+export function isCatalogDocFilename(file: string): boolean {
+  return file.endsWith('.md') && file !== 'README.md' && !file.endsWith('-README.md');
+}
+
 // ── Catalog entry builder (pure) ──────────────────────────────────────────────
 
 function buildEntry(
@@ -180,7 +185,7 @@ export function loadCatalogDir(
   listFn: CatalogListFn = (d) =>
     existsSync(d)
       ? readdirSync(d)
-          .filter((f) => f.endsWith('.md'))
+          .filter((f) => isCatalogDocFilename(f))
           .sort()
       : []
 ): CatalogEntry[] {
@@ -188,6 +193,7 @@ export function loadCatalogDir(
   const entries: CatalogEntry[] = [];
 
   for (const file of files) {
+    if (!isCatalogDocFilename(file)) continue;
     const absPath = join(dir, file);
     const content = readFn(absPath);
     if (content === null) continue;
@@ -200,6 +206,39 @@ export function loadCatalogDir(
   }
 
   return entries;
+}
+
+/**
+ * Scan a catalog directory for docs that fail frontmatter validation.
+ * Used by `catalog:validate` so soft-null loads cannot silently report OK.
+ */
+export function collectCatalogLoadErrors(
+  dir: string,
+  readFn: CatalogReadFn = (p) => (existsSync(p) ? readFileSync(p, 'utf8') : null),
+  listFn: CatalogListFn = (d) =>
+    existsSync(d)
+      ? readdirSync(d)
+          .filter((f) => isCatalogDocFilename(f))
+          .sort()
+      : []
+): string[] {
+  if (!existsSync(dir)) return [];
+  const errors: string[] = [];
+  for (const file of listFn(dir)) {
+    if (!isCatalogDocFilename(file)) continue;
+    const absPath = join(dir, file);
+    const content = readFn(absPath);
+    if (content === null) {
+      errors.push(`${absPath}: unreadable`);
+      continue;
+    }
+    const { frontmatter } = parseFrontmatter(content);
+    const { valid, errors: fmErrors } = validateFrontmatter(frontmatter);
+    if (!valid) {
+      errors.push(`${absPath}: ${fmErrors.join(', ')}`);
+    }
+  }
+  return errors;
 }
 
 // ── Catalog directory locator ─────────────────────────────────────────────────
@@ -217,15 +256,56 @@ export function findCatalogDir(): string {
 
 // ── Built-in catalog loaders ──────────────────────────────────────────────────
 
+/**
+ * Built-in agent sources under catalog/agents/:
+ *   reviewers/  — governance reviewer agents (always shipped)
+ *   pantheon/   — God Agents (subset may be shipped in free npm package)
+ *   figma/      — Figma specialist agents (when present on disk)
+ *   (root)      — additional root-level agent docs (when present)
+ *
+ * Loads whatever exists on disk so monorepo + full packs see the full set,
+ * while the published free tarball (reviewers + free pantheon subset) still works.
+ */
 export function loadBuiltInCatalog(): {
   agents: CatalogEntry[];
   skills: CatalogEntry[];
 } {
   const catalogDir = findCatalogDir();
+  const agentsRoot = join(catalogDir, 'agents');
+  const agentDirs = [
+    join(agentsRoot, 'reviewers'),
+    join(agentsRoot, 'pantheon'),
+    join(agentsRoot, 'figma'),
+    agentsRoot,
+  ];
+
+  const agents: CatalogEntry[] = [];
+  const seen = new Set<string>();
+  for (const dir of agentDirs) {
+    if (!existsSync(dir)) continue;
+    for (const entry of loadCatalogDir(dir, 'builtin')) {
+      if (seen.has(entry.frontmatter.id)) continue;
+      seen.add(entry.frontmatter.id);
+      agents.push(entry);
+    }
+  }
+
   return {
-    agents: loadCatalogDir(join(catalogDir, 'agents', 'reviewers'), 'builtin'),
+    agents,
     skills: loadCatalogDir(join(catalogDir, 'skills'), 'builtin'),
   };
+}
+
+/** Directories scanned for built-in agent docs (for validate load-error checks). */
+export function builtInAgentCatalogDirs(): string[] {
+  const catalogDir = findCatalogDir();
+  const agentsRoot = join(catalogDir, 'agents');
+  return [
+    join(agentsRoot, 'reviewers'),
+    join(agentsRoot, 'pantheon'),
+    join(agentsRoot, 'figma'),
+    agentsRoot,
+  ].filter((d) => existsSync(d));
 }
 
 export function loadBuiltInProfiles(): CatalogProfile[] {

@@ -12,6 +12,8 @@ import {
   validateFrontmatter,
   validateCatalog,
   loadCatalogDir,
+  collectCatalogLoadErrors,
+  isCatalogDocFilename,
   loadBuiltInCatalog,
   loadBuiltInProfiles,
   loadCatalogProfile,
@@ -316,12 +318,40 @@ Body content.
   });
 });
 
+describe('isCatalogDocFilename', () => {
+  it('accepts agent docs and rejects README companions', () => {
+    expect(isCatalogDocFilename('apollo-content-agent.md')).toBe(true);
+    expect(isCatalogDocFilename('README.md')).toBe(false);
+    expect(isCatalogDocFilename('apollo-content-agent-README.md')).toBe(false);
+  });
+});
+
+describe('collectCatalogLoadErrors', () => {
+  it('reports invalid frontmatter and ignores README.md', () => {
+    const root = join(tmpdir(), `thesmos-catalog-load-${Date.now()}`);
+    mkdirSync(root, { recursive: true });
+    try {
+      writeFileSync(join(root, 'README.md'), '# not an agent\n', 'utf8');
+      writeFileSync(join(root, 'bad-agent.md'), '---\nname: Bad\n---\nbody\n', 'utf8');
+      const errors = collectCatalogLoadErrors(root);
+      expect(errors.some((e) => e.includes('bad-agent.md'))).toBe(true);
+      expect(errors.some((e) => e.includes('README.md'))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 // ── loadBuiltInCatalog — snapshot tests ──────────────────────────────────────
 
 describe('loadBuiltInCatalog', () => {
-  it('loads exactly 60 built-in agents', () => {
+  it('loads reviewers + pantheon + figma + root agents (full monorepo catalog)', () => {
     const { agents } = loadBuiltInCatalog();
-    expect(agents).toHaveLength(60);
+    // 60 reviewers + pantheon/figma/root God Agents — must stay ≥ reviewers alone.
+    expect(agents.length).toBeGreaterThanOrEqual(60);
+    expect(agents).toHaveLength(128);
+    expect(agents.some((a) => a.frontmatter.id === 'apollo-content-agent')).toBe(true);
+    expect(agents.some((a) => a.frontmatter.id === 'security-reviewer')).toBe(true);
   });
 
   it('loads exactly 63 built-in skills', () => {

@@ -22,6 +22,8 @@ import { parseArgs, flag, flagVal } from '../lib/args.ts';
 import { logAgentSpawn } from '../../agent-activity.ts';
 import { modelFor } from '../../generated/pantheon-models.ts';
 import { addAgentToRegistry, syncAdapters, installAgent, isIgnoredAgentFile } from '../../agent-lifecycle.ts';
+import { routeTask } from '../../pantheon/router.ts';
+import { executeOrchestration } from '../../pantheon/orchestrate-execute.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Resolve catalog path for both dev (bin/commands/) and bundle (dist/) locations.
@@ -271,67 +273,7 @@ One rubber-stamped ✅ makes every badge noise.
 `;
 }
 
-// ── Zeus routing table ─────────────────────────────────────────────────────────
-
-const DOMAIN_ROUTING: Array<{ pattern: RegExp; agents: string[] }> = [
-  { pattern: /marketing|campaign|growth|channel|brand awareness|gtm plan/i, agents: ['hermes-marketing-agent', 'apollo-content-agent', 'aphrodite-creative-agent'] },
-  { pattern: /meddpicc|discovery call|qualify this|pipeline audit|forecast this/i, agents: ['ares-deal-strategy-agent', 'ares-discovery-agent', 'ares-pipeline-agent', 'ares-sales-agent'] },
-  { pattern: /sales|pitch|deal|close|proposal|objection|demo/i, agents: ['ares-sales-agent', 'nike-leadgen-agent', 'ares-deal-strategy-agent'] },
-  { pattern: /design|ui|ux|component|layout|wireframe|interface|design system/i, agents: ['hephaestus-design-agent', 'aphrodite-creative-agent'] },
-  { pattern: /legal|contract|tos|nda|terms|liability|agreement/i, agents: ['themis-legal-agent', 'argus-security-agent'] },
-  { pattern: /analytics|kpi|metrics|dashboard|measure/i, agents: ['tyche-analytics-agent', 'pythia-data-agent'] },
-  { pattern: /security|threat|audit|vulnerability|pentest|owasp/i, agents: ['argus-security-agent'] },
-  { pattern: /finance|pricing|budget|unit economics|cac|ltv|revenue|cost/i, agents: ['plutus-finance-agent'] },
-  { pattern: /pr|press|media|crisis|announcement|coverage|journalist/i, agents: ['pheme-pr-agent', 'apollo-content-agent'] },
-  { pattern: /operations|sop|hiring|hr|onboarding|process|handbook/i, agents: ['hera-operations-agent'] },
-  { pattern: /content|copy|blog|email|post|write|landing page copy/i, agents: ['apollo-content-agent', 'erato-brand-voice-agent'] },
-  { pattern: /\bseo\b|organic search|keyword cluster/i, agents: ['psyche-seo-agent', 'apollo-content-agent'] },
-  { pattern: /video|production|shoot|edit|film/i, agents: ['dionysus-video-agent'] },
-  { pattern: /animation|motion|storyboard|after effects|micro-interaction/i, agents: ['morpheus-animation-agent'] },
-  { pattern: /photo|shot list|photography|art direction|retouching/i, agents: ['artemis-photography-agent'] },
-  { pattern: /\bsql\b|business intelligence|cohort|attribution|anomaly|analyse data/i, agents: ['pythia-data-agent', 'tyche-analytics-agent'] },
-  { pattern: /ux research|user interview|usability|persona|jtbd|affinity map/i, agents: ['psyche-research-agent', 'daedalus-product-agent'] },
-  { pattern: /compliance|grc|gdpr|soc2|iso 27001|eu ai act|audit trail|risk register/i, agents: ['nemesis-compliance-agent', 'argus-security-agent'] },
-  { pattern: /customer success|renewal|churn prevention|qbr|upsell|health score/i, agents: ['demeter-cs-agent', 'hestia-cx-agent'] },
-  { pattern: /strategy|gtm|competitive|okr|positioning/i, agents: ['athena-strategy-agent'] },
-  { pattern: /leads|prospecting|outbound|icp|lead gen/i, agents: ['nike-leadgen-agent'] },
-  { pattern: /creative|brand|identity|visual|aesthetic|logo|creative brief/i, agents: ['aphrodite-creative-agent', 'erato-brand-voice-agent'] },
-  { pattern: /cx|customer experience|retention|churn|nps|csat/i, agents: ['hestia-cx-agent'] },
-  { pattern: /support ticket|how do i install|faq|why is my gate/i, agents: ['hebe-support-agent'] },
-  { pattern: /knowledge|documentation|wiki|runbook|memory|context/i, agents: ['mnemosyne-knowledge-agent', 'polyhymnia-docs-agent'] },
-  { pattern: /product|prd|feature|roadmap|user story|requirements|mvp/i, agents: ['daedalus-product-agent'] },
-  { pattern: /partnership|bd|business development|reseller|channel partner|alliance/i, agents: ['heracles-bd-agent'] },
-  { pattern: /next\.?js|react|typescript|implement|api route|server component|web app|frontend/i, agents: ['talos-web-dev-agent', 'hephaestus-design-agent'] },
-  { pattern: /architecture|system design|adr|tech stack choice/i, agents: ['chiron-architecture-agent'] },
-  { pattern: /devops|dockerfile|kubernetes|terraform|ci\/?cd|infrastructure/i, agents: ['kratos-devops-agent', 'eos-automation-agent'] },
-  { pattern: /test plan|playwright|qa strategy|e2e test|write tests/i, agents: ['cassandra-qa-agent'] },
-  { pattern: /\bai\b|llm|prompt engineering|rag|model selection|agent architecture/i, agents: ['aether-ai-strategy-agent', 'dike-ethics-agent'] },
-  { pattern: /ethics|bias|responsible ai|ai act classification/i, agents: ['dike-ethics-agent'] },
-  { pattern: /mjml|html email|email template/i, agents: ['calliope-email-agent'] },
-  { pattern: /project plan|critical path|break this into phases|execution plan/i, agents: ['metis-pm-agent'] },
-  { pattern: /challenge this|devil.?s advocate|pre-mortem|what.?s wrong with/i, agents: ['momus-challenger-agent'] },
-  { pattern: /figma|design.?to.?code|token governance/i, agents: ['eidos-figma-orchestrator'] },
-  { pattern: /debug|root cause|stack trace|why is this broken/i, agents: ['asclepius-debugging-agent'] },
-  { pattern: /stripe|payments|billing integration/i, agents: ['chrysos-stripe-agent', 'plutus-billing-agent'] },
-  { pattern: /supabase|postgres rls/i, agents: ['pontus-supabase-agent'] },
-  { pattern: /vercel|edge deploy/i, agents: ['notus-vercel-agent'] },
-  { pattern: /github release|repository hygiene/i, agents: ['kronos-github-agent'] },
-  { pattern: /social media|community growth|linkedin posts/i, agents: ['nike-social-agent', 'apollo-content-agent'] },
-  { pattern: /case study|social proof|customer roi story/i, agents: ['clio-case-study-agent'] },
-  { pattern: /drift|scope creep|are we still on course/i, agents: ['proteus-drift-agent'] },
-  { pattern: /blender|3d model|keyshot|product viz/i, agents: ['pygmalion-blender-agent', 'helios-keyshot-agent'] },
-];
-
-function routeTask(task: string): string[] {
-  const matched = new Set<string>();
-  for (const { pattern, agents } of DOMAIN_ROUTING) {
-    if (pattern.test(task)) {
-      for (const a of agents) matched.add(a);
-    }
-  }
-  const result = [...matched];
-  return result.slice(0, 4);
-}
+// Zeus routing table lives in pantheon/router.ts (unit-tested).
 
 // ── Registry helpers ───────────────────────────────────────────────────────────
 
@@ -787,7 +729,7 @@ function installCursorRules(agents: PantheonAgent[], toInstall: string[], root: 
 }
 
 function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void {
-  const { flags, positionals } = parseArgs(argv, { valueFlags: ['pack', 'agent'] });
+  const { flags, positionals } = parseArgs(argv);
   const all = flag(flags, 'all');
   const write = flag(flags, 'write');
   const cursor = flag(flags, 'cursor');
@@ -827,7 +769,9 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
   }
 
   if (write) {
-    // Write agent content directly to .thesmos/agents/ — no export directory needed.
+    // Write canonical Thesmos catalog docs to .thesmos/agents/ (proper frontmatter).
+    // Prefer the source catalog .md over Claude export format so drift/catalog
+    // loaders recognize the agents (id/type/owner frontmatter).
     const canonicalDir = join(root, '.thesmos', 'agents');
     mkdirSync(canonicalDir, { recursive: true });
 
@@ -838,7 +782,14 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
 
     for (const id of toInstall) {
       const agent = agents.find(a => a.id === id)!;
-      const content = exportClaudeCode(agent);
+      const catalogSrc = [
+        join(PANTHEON_DIR, `${id}.md`),
+        join(FIGMA_DIR, `${id}.md`),
+        join(AGENTS_DIR, `${id}.md`),
+      ].find((p) => existsSync(p));
+      const content = catalogSrc
+        ? readFileSync(catalogSrc, 'utf8')
+        : exportClaudeCode(agent);
       const dest = join(canonicalDir, `${id}.md`);
       try {
         writeFileSync(dest, content, 'utf8');
@@ -928,7 +879,7 @@ function cmdStatus(agents: PantheonAgent[], root: string): void {
 // ── pantheon:export ────────────────────────────────────────────────────────────
 
 function cmdExport(agents: PantheonAgent[], argv: string[], root: string): void {
-  const { flags } = parseArgs(argv, { valueFlags: ['target', 'agent', 'out'] });
+  const { flags } = parseArgs(argv);
   const target = flagVal(flags, 'target') ?? 'claude-code';
   const agentFilter = flagVal(flags, 'agent');
   const outDir = flagVal(flags, 'out');
@@ -1194,37 +1145,43 @@ function cmdCouncil(agents: PantheonAgent[], argv: string[]): void {
 
 // ── pantheon:orchestrate ───────────────────────────────────────────────────────
 
-function cmdOrchestrate(agents: PantheonAgent[], argv: string[]): void {
+async function cmdOrchestrate(agents: PantheonAgent[], argv: string[]): Promise<void> {
   const { flags, positionals } = parseArgs(argv);
   const task = positionals.join(' ');
-  const outFile = flags['out'] as string | undefined;
+  const outFile = flagVal(flags, 'out');
+  const shouldExecute = flag(flags, 'execute');
 
   if (!task) {
-    console.error('  Usage: thesmos pantheon:orchestrate "<task description>"');
+    console.error('  Usage: thesmos pantheon:orchestrate "<task description>" [--execute] [--out <file>]');
+    console.error('  Default: write Zeus brief only (no LLM). Pass --execute to run routed agents.');
     process.exit(1);
   }
 
   const agentIds = routeTask(task);
   const orchestrateSessionId = randomUUID();
+  const { root, config } = createContext();
 
-  try {
-    const { root } = createContext();
-    for (const id of agentIds) {
-      logAgentSpawn(root, {
-        sessionId: orchestrateSessionId,
-        agentId: randomUUID(),
-        description: `Orchestrate: ${task}`,
-        subagentType: id,
-      });
-    }
-  } catch { /* non-fatal */ }
+  // Brief-only mode: log planned routing (not a real adapter run)
+  if (!shouldExecute) {
+    try {
+      for (const id of agentIds) {
+        logAgentSpawn(root, {
+          sessionId: orchestrateSessionId,
+          agentId: randomUUID(),
+          description: `Orchestrate brief: ${task}`,
+          subagentType: id,
+        });
+      }
+    } catch { /* non-fatal */ }
+  }
 
   let brief = `# Zeus Orchestration Brief\n`;
   brief += `**Task:** ${task}\n`;
-  brief += `**Delegated to:** ${agentIds.length} agent${agentIds.length !== 1 ? 's' : ''}\n\n---\n\n`;
+  brief += `**Delegated to:** ${agentIds.length} agent${agentIds.length !== 1 ? 's' : ''}\n`;
+  brief += `**Mode:** ${shouldExecute ? 'execute (adapter)' : 'brief only (no LLM)'}\n\n---\n\n`;
 
   if (agentIds.length === 0) {
-    brief += `Zeus could not confidently route this task. Run \`thesmos pantheon:list\` to browse all 40 agents and invoke the most relevant one directly.\n`;
+    brief += `Zeus could not confidently route this task. Run \`thesmos pantheon:list\` to browse agents and invoke the most relevant one directly.\n`;
   } else {
     for (const id of agentIds) {
       const a = agents.find(x => x.id === id);
@@ -1254,12 +1211,52 @@ function cmdOrchestrate(agents: PantheonAgent[], argv: string[]): void {
   } else {
     console.log('\n' + brief);
   }
+
+  if (!shouldExecute) {
+    console.log('  Tip: pass --execute to run routed agents via the configured adapter (opt-in).\n');
+    return;
+  }
+
+  if (agentIds.length === 0) {
+    console.error('  Nothing to execute — no agents routed.\n');
+    process.exit(1);
+  }
+
+  console.log('  Executing routed agents (--execute)...\n');
+  const results = await executeOrchestration({
+    root,
+    task,
+    agents: agents.map((a) => ({
+      id: a.id,
+      name: a.name,
+      god: a.god,
+      role: a.role,
+      body: a.body,
+    })),
+    agentIds,
+    sessionId: orchestrateSessionId,
+    adapterType: config.autopilot?.adapter ?? 'claude',
+    httpAdapterUrl: config.autopilot?.httpAdapterUrl,
+    dangerouslySkipPermissions: config.autopilot?.dangerouslySkipPermissions === true,
+  });
+
+  console.log('\n  Execution results:');
+  for (const r of results) {
+    const mark = r.success ? '✓' : '✗';
+    const detail = r.timedOut ? 'timed out' : (r.summary ?? (r.success ? 'ok' : 'failed'));
+    console.log(`  ${mark} ${r.god}: ${detail}`);
+  }
+  console.log('');
+
+  if (results.some((r) => !r.success)) {
+    process.exit(1);
+  }
 }
 
 // ── pantheon:memory ────────────────────────────────────────────────────────────
 
 function cmdMemory(agents: PantheonAgent[], argv: string[], root: string): void {
-  const { flags, positionals } = parseArgs(argv, { valueFlags: ['agent', 'note'] });
+  const { flags, positionals } = parseArgs(argv);
   const sub = positionals[0];
   const agentIdFlag = flagVal(flags, 'agent');
   const note = positionals.slice(1).join(' ') || flagVal(flags, 'note') || '';
@@ -1424,7 +1421,7 @@ export async function cmdPantheon(argv: string[]): Promise<void> {
       cmdCouncil(agents, rest);
       break;
     case 'orchestrate':
-      cmdOrchestrate(agents, rest);
+      await cmdOrchestrate(agents, rest);
       break;
     case 'memory':
       cmdMemory(agents, rest, root);

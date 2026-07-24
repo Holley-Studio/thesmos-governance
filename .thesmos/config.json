@@ -16,7 +16,8 @@
     "mcp_tool_description_injection"
   ],
   "reviewIgnorePaths": [
-    "thesmos/rules/"
+    "thesmos/rules/",
+    "extensions/vscode/dist/"
   ],
   "ignoredFolders": [
     "node_modules",

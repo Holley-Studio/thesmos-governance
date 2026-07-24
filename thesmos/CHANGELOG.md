@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased
+
+## 5.0.1
+
+### Patch Changes
+
+- **Pantheon Chat permission deadlock (macOS):** Unix socket under `os.tmpdir()` exceeded `sun_path` (ENAMETOOLONG) so the bridge never bound and every Edit/Write/Bash was denied. Socket now lives at `/tmp/thesmos-perm/p-<16hex>.sock` with listen error logging.
+- **VS Code extension** version aligned to `5.0.1` and published with this release (Marketplace / Open VSX).
+- **PR governance review:** ignore `extensions/vscode/dist/` so bundled esbuild output no longer floods false BLOCKER/HIGH findings.
+
+### Minor Changes
+
+- **Cross-platform Thesmos guard (Operation Aegis):** Claude Code hooks no longer depend on Unix shell (`npx … 2>&1 || true`, Bash wrappers) for governance.
+
+  - Node entrypoint `dist/thesmos-guard.js` is the source of truth (`check` | `budget-check` | `drift`).
+  - Thin wrappers: `bin/thesmos-guard.sh` (LF) and `bin/thesmos-guard.cmd` (CRLF) — no duplicated rule logic.
+  - `thesmos claude:govern install` writes Node-direct commands via `process.execPath` + resolved entry.
+  - Plugin `hooks/hooks.json` uses exec-form `node` + `args` with `${CLAUDE_PLUGIN_ROOT}`.
+  - New config: `autoMode.failClosed` defaults to **true** — infrastructure failures (malformed stdin/config, internal exceptions) block with exit 2. Explicit `failClosed: false` restores legacy fail-open.
+  - `bin` entry: `thesmos-guard`. Windows CI job exercises the real guard path.
+  - Statusline remains Bash-only (non-critical path); document honestly — not required for PreToolUse.
+
+- **Federated agent architecture:** Thesmos governs agent behavior without claiming ownership of every file under `.claude/agents/`.
+
+  - Ownership manifest: `.thesmos/managed-agents.json` (only listed paths are Thesmos-owned).
+  - Managed Claude fallbacks write to `.claude/agents/thesmos/` (and `~/.claude/agents/thesmos/` for local install).
+  - Scope allows creating/editing unmanaged project agents; overwriting managed files is blocked with guidance.
+  - Discovery: `thesmos agents:list --all`, `agents:doctor`, `agents:conflicts` (project > user > plugin precedence).
+  - Adoption: `thesmos agent:adopt` / `agent:release` (external agents are never auto-adopted).
+  - Adapter and local installer sync never overwrite or delete untracked files; modified managed files are preserved and reported.
+  - Zeus uses unrestricted `Agent` tooling and documents external-agent interoperability.
+  - New package layout: `pantheon-plugin/` for Claude Code plugin distribution (fallback copy path remains).
+
+- **Trust Execution Hardening (phases 0–6):** fail-closed assurance, safe Claude execution defaults, real Pantheon `--execute`, builder/`agent:run` repairs, execution receipts + local metrics, release pins, and health/catalog integrity (#111).
+
 ## 5.0.0
 
 ### Major Changes

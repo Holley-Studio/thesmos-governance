@@ -157,7 +157,7 @@ async function run(): Promise<void> {
     // below narrow that down to what this PR actually introduced.
 
     core.info('Running governance review…');
-    const allFindings = runReview({ scan, config, changedFiles });
+    const { findings: allFindings } = runReview({ scan, config, changedFiles });
     core.info(
       allFindings.length === 0
         ? 'All governance checks passed ✅'

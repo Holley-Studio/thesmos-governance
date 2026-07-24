@@ -601,8 +601,9 @@ describe('runReview — engine error handling', () => {
       id: 'TEST_THROW_001',
       category: 'test_throw',
       severity: 'BLOCKER',
-      title: 'Test throwing rule',
-      summary: 'Throws on purpose',
+      description: 'Throws on purpose',
+      tags: [],
+      sinceVersion: '0.0.0',
       detect: () => { throw new Error('intentional boom'); },
     };
 
@@ -622,8 +623,9 @@ describe('runReview — engine error handling', () => {
       id: 'TEST_GOOD_001',
       category: 'test_good',
       severity: 'HIGH',
-      title: 'Returns one finding',
-      summary: 'Always finds one issue',
+      description: 'Always finds one issue',
+      tags: [],
+      sinceVersion: '0.0.0',
       detect: () => [{
         ruleId: 'TEST_GOOD_001', category: 'test_good', severity: 'HIGH',
         title: 'Test finding', message: 'found', file: 'x.ts', confidence: 'high',
@@ -633,8 +635,9 @@ describe('runReview — engine error handling', () => {
       id: 'TEST_THROW_002',
       category: 'test_throw_2',
       severity: 'BLOCKER',
-      title: 'Throws',
-      summary: 'Throws',
+      description: 'Throws',
+      tags: [],
+      sinceVersion: '0.0.0',
       detect: () => { throw new Error('boom'); },
     };
 
@@ -657,8 +660,9 @@ describe('validate command — fail closed on engine error', () => {
       id: 'TEST_CRASH_001',
       category: 'test_crash',
       severity: 'BLOCKER',
-      title: 'Throws',
-      summary: 'Throws',
+      description: 'Throws',
+      tags: [],
+      sinceVersion: '0.0.0',
       detect: () => { throw new Error('crash'); },
     };
 

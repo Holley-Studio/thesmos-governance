@@ -92,6 +92,8 @@ export async function getChangedFiles(
     'dist/',
     'thesmos/dist/',
     'actions/pr-review/dist/',
+    // Bundled VS Code extension output — esbuild noise, not authored source.
+    'extensions/vscode/dist/',
     'coverage/',
     'node_modules/',
     // Agent persona files — they intentionally contain example attack patterns

@@ -203,6 +203,7 @@ describe('exportClaudeCode skill section', () => {
       tags: ['security'],
       governanceRules: ['SEC_001'],
       skillIds: ['security-scan', 'secret-scan'],
+      cursorGlobs: '**/*',
       body: '## Identity\nArgus body here.',
     };
     const output = exportClaudeCodeForTest(agent);
@@ -226,6 +227,7 @@ describe('exportClaudeCode skill section', () => {
       tags: ['executive'],
       governanceRules: [],
       skillIds: [],
+      cursorGlobs: '**/*',
       body: '## Identity\nZeus body here.',
     };
     const output = exportClaudeCodeForTest(agent);

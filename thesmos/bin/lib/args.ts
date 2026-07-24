@@ -44,6 +44,7 @@ const VALUE_FLAGS = new Set([
   'pack',
   'pr',
   'profile',
+  'prompt',
   'provider',
   'reason',
   'repo',

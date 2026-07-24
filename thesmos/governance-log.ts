@@ -165,7 +165,10 @@ export interface GovernanceSummary {
   warned: number;
   passed: number;
   bypassed: number;
-  complianceScore: number;
+  /** Null when no enforced events — never invent 100% from an empty log. */
+  complianceScore: number | null;
+  /** Honest assurance state for empty / partial / full evidence. */
+  assuranceState: 'PASS' | 'FAIL' | 'INCOMPLETE' | 'ERROR';
   blockedEvents: GovernanceEvent[];
   bypassedEvents: GovernanceEvent[];
   ruleHits: Record<string, number>;
@@ -202,8 +205,11 @@ export function summariseGovernanceLog(events: GovernanceEvent[]): GovernanceSum
 
   const enforced = blocked.length + passed.length + bypassed.length + warned.length;
   const compliant = passed.length + warned.length;
+  // Empty log → INCOMPLETE (null score), never a fake 100%.
   const complianceScore =
-    enforced === 0 ? 100 : Math.round((compliant / enforced) * 1000) / 10;
+    enforced === 0 ? null : Math.round((compliant / enforced) * 1000) / 10;
+  const assuranceState: GovernanceSummary['assuranceState'] =
+    enforced === 0 ? 'INCOMPLETE' : blocked.length + bypassed.length > 0 ? 'FAIL' : 'PASS';
 
   const ruleHits: Record<string, number> = {};
   const categoryHits: Record<string, number> = {};
@@ -232,6 +238,7 @@ export function summariseGovernanceLog(events: GovernanceEvent[]): GovernanceSum
     passed: passed.length,
     bypassed: bypassed.length,
     complianceScore,
+    assuranceState,
     blockedEvents: blocked,
     bypassedEvents: bypassed,
     ruleHits,

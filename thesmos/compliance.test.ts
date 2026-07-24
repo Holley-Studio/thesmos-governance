@@ -21,14 +21,14 @@ describe('compliance: scan staleness constant', () => {
     expect(stalenessIdx).toBeLessThan(complianceScoreIdx);
   });
 
-  it('returns NOT_ASSESSED reason for stale scan', () => {
-    expect(MCP_SERVER_SRC).toContain("'NOT_ASSESSED'");
+  it('returns INCOMPLETE reason for stale scan', () => {
+    expect(MCP_SERVER_SRC).toContain("'INCOMPLETE'");
     expect(MCP_SERVER_SRC).toContain('stale');
   });
 
-  it('COMPLIANT and NON_COMPLIANT status values are present', () => {
-    expect(MCP_SERVER_SRC).toContain("'COMPLIANT'");
-    expect(MCP_SERVER_SRC).toContain("'NON_COMPLIANT'");
+  it('PASS and FAILING status values are present', () => {
+    expect(MCP_SERVER_SRC).toContain("'PASS'");
+    expect(MCP_SERVER_SRC).toContain("'FAILING'");
   });
 
   it('scanGeneratedAt field is included in responses', () => {

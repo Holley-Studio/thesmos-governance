@@ -297,10 +297,17 @@ export function displayReview(report: ReviewReport, session: AutopilotSession, r
 
 // ── Main review runner ────────────────────────────────────────────────────────
 
+export interface ReviewOptions {
+  /** Opt-in: Claude --dangerously-skip-permissions. Default false. */
+  dangerouslySkipPermissions?: boolean;
+  httpAdapterUrl?: string;
+}
+
 export async function reviewSession(
   root: string,
   sessionId: string | undefined,
   baseBranch = 'main',
+  reviewOptions: ReviewOptions = {},
 ): Promise<void> {
   let session: AutopilotSession | null = null;
 
@@ -330,7 +337,10 @@ export async function reviewSession(
   }
 
   const adapterName = session.adapter ?? 'claude';
-  const adapter = createAdapter(adapterName) as Adapter;
+  const adapter = createAdapter(adapterName, {
+    httpUrl: reviewOptions.httpAdapterUrl,
+    dangerouslySkipPermissions: reviewOptions.dangerouslySkipPermissions === true,
+  }) as Adapter;
 
   process.stdout.write(`\nThesmos Autopilot — Session Reviewer\n`);
   process.stdout.write(`Session: ${session.id}\n`);

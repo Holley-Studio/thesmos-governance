@@ -389,6 +389,9 @@ export interface GenerateOptions {
   outputPath?: string;
   adapter?: string;
   verbose?: boolean;
+  /** Opt-in: Claude --dangerously-skip-permissions. Default false. */
+  dangerouslySkipPermissions?: boolean;
+  httpAdapterUrl?: string;
 }
 
 export async function generatePlan(
@@ -398,7 +401,10 @@ export async function generatePlan(
 ): Promise<string> {
   const outputPath = options.outputPath ?? join(root, 'MASTER_PLAN.md');
   const adapterName = options.adapter ?? 'claude';
-  const adapter = createAdapter(adapterName) as Adapter;
+  const adapter = createAdapter(adapterName, {
+    httpUrl: options.httpAdapterUrl,
+    dangerouslySkipPermissions: options.dangerouslySkipPermissions === true,
+  }) as Adapter;
 
   process.stdout.write(`\nThesmos Autopilot — Plan Generator\n`);
   process.stdout.write(`Reading codebase...\n`);

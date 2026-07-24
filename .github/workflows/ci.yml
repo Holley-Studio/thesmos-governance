@@ -31,10 +31,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -64,6 +64,11 @@ jobs:
         working-directory: thesmos
         run: npm test
 
+      - name: Test coverage
+        if: matrix.node-version == '22.x'
+        working-directory: thesmos
+        run: npm run test:coverage
+
       - name: Build (vscode extension)
         working-directory: extensions/vscode
         run: npm run build
@@ -81,36 +86,48 @@ jobs:
         run: npm run build
 
       - name: Governance SARIF scan
+        id: sarif_scan
         if: matrix.node-version == '22.x'
-        working-directory: thesmos
-        run: node dist/bin/cli.js validate --sarif > ../governance.sarif
-
-      - name: Validate SARIF schema
-        if: matrix.node-version == '22.x'
+        continue-on-error: true
+        # Must run from repo root — validate loads .thesmos/report.json via cwd.
         run: |
-          node -e "
-            const fs = require('fs');
-            const sarif = JSON.parse(fs.readFileSync('governance.sarif', 'utf8'));
-            if (!sarif.version || !Array.isArray(sarif.runs) || sarif.runs.length === 0) {
-              console.error('Invalid SARIF: missing version or runs');
-              process.exit(1);
-            }
-            const size = fs.statSync('governance.sarif').size;
-            if (size < 10) { console.error('SARIF file is empty'); process.exit(1); }
-            console.log('SARIF valid, size=' + size + ' bytes');
-          "
+          set +e
+          node thesmos/dist/cli.js validate --sarif > governance.sarif
+          STATUS=$?
+          set -e
+          if [ ! -s governance.sarif ]; then
+            echo "error: SARIF output missing or empty (validate exit=$STATUS)"
+            exit 1
+          fi
+          python3 -c "import json; d=json.load(open('governance.sarif')); assert 'runs' in d, 'invalid SARIF'"
+          exit $STATUS
 
       - name: Upload SARIF to GitHub Security tab
-        if: matrix.node-version == '22.x'
-        uses: github/codeql-action/upload-sarif@v4
+        if: matrix.node-version == '22.x' && always() && hashFiles('governance.sarif') != ''
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
         with:
           sarif_file: governance.sarif
           category: thesmos-governance
         continue-on-error: true   # upload service may be unavailable; generation is required above
 
+      - name: Fail when governance validate failed
+        if: matrix.node-version == '22.x' && steps.sarif_scan.outcome == 'failure'
+        run: |
+          echo "Governance validate failed — see SARIF scan step"
+          exit 1
+
+      - name: Product facts freshness
+        if: matrix.node-version == '22.x'
+        working-directory: thesmos
+        run: npx tsx -e "import { productFactsAreFresh } from './product-facts.ts'; const r = productFactsAreFresh(); if (!r.fresh) { console.error(r.detail); process.exit(1); } console.log(r.detail);"
+
+      - name: Thesmos CI gate (health ≥ 90)
+        if: matrix.node-version == '22.x'
+        run: node thesmos/dist/cli.js ci --json --health-threshold=90
+
       - name: Upload coverage to Codecov
         if: matrix.node-version == '22.x'
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         with:
           directory: thesmos/coverage/
           flags: core
@@ -119,7 +136,7 @@ jobs:
 
       - name: Upload coverage artifact
         if: matrix.node-version == '22.x'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: coverage
           path: thesmos/coverage/
@@ -132,10 +149,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Node.js 22.x
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22.x
           cache: npm
