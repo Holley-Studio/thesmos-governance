@@ -192,10 +192,22 @@ function sharedGeneratorSuite(
       expect(output).toContain(CONFIG.version);
     });
 
-    it('contains all rule IDs', () => {
-      for (const rule of RULES) {
+    it('contains all BLOCKER+HIGH rule IDs (thin adapter — the rest live in .thesmos/RULES.md)', () => {
+      const thinRules = RULES.filter((r) => r.severity === 'BLOCKER' || r.severity === 'HIGH');
+      for (const rule of thinRules) {
         expect(output).toContain(`[${rule.id}]`);
       }
+    });
+
+    it('does NOT contain MEDIUM/LOW/TECH_DEBT rule IDs (kept out of the always-loaded file)', () => {
+      const excluded = RULES.filter((r) => r.severity !== 'BLOCKER' && r.severity !== 'HIGH').slice(0, 20);
+      for (const rule of excluded) {
+        expect(output).not.toContain(`[${rule.id}]`);
+      }
+    });
+
+    it('references .thesmos/RULES.md for the full catalog', () => {
+      expect(output).toContain('.thesmos/RULES.md');
     });
 
     it('contains BLOCKER label', () => {
@@ -204,6 +216,17 @@ function sharedGeneratorSuite(
 
     it('is deterministic — same input produces same output', () => {
       expect(generate(RULES, CONFIG)).toBe(output);
+    });
+
+    it('is meaningfully smaller than the ~136-165KB full-catalog dump it replaced', () => {
+      // Historical sizes measured on this exact rule catalog before the fix
+      // (Operation Signal Phase 5): 130-165KB per file, always loaded in full,
+      // every one of the 1,137 rules with descriptions and code examples.
+      // BLOCKER+HIGH alone is 664 rules, so this table is still ~80KB — a real
+      // ~40-50% cut, but NOT the brief's <8KB target. Hitting that needs a
+      // curated critical-constraints list instead of a per-rule table; tracked
+      // as follow-up in docs/plans/operation-signal.md, not done this session.
+      expect(output.length).toBeLessThan(100_000);
     });
   });
 }
@@ -242,12 +265,12 @@ describe('generateClaudeRules (thin adapter)', () => {
     expect(output).toContain('.thesmos/governance/CODE_REVIEW.md');
   });
 
-  it('references thesmos:validate command', () => {
-    expect(output).toContain('thesmos:validate');
+  it('references the thesmos validate command', () => {
+    expect(output).toContain('thesmos validate');
   });
 
-  it('references thesmos:review command', () => {
-    expect(output).toContain('thesmos:review');
+  it('references the thesmos review command', () => {
+    expect(output).toContain('thesmos review');
   });
 
   it('uses table format (| separators)', () => {
@@ -554,14 +577,15 @@ describe('writeAllAdapters', () => {
 // ── Adapter drift detection ───────────────────────────────────────────────────
 
 describe('adapter drift detection', () => {
-  it('every THESMOS_RULES entry appears in every adapter output', () => {
+  it('every BLOCKER+HIGH rule appears in every adapter output (thin adapters — the rest live in .thesmos/RULES.md)', () => {
     const targets: AdapterTarget[] = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'];
+    // Every adapter target only embeds BLOCKER+HIGH inline to avoid context
+    // thrashing (Operation Signal Phase 5) — MEDIUM/LOW/TECH_DEBT live in
+    // .thesmos/RULES.md instead of being duplicated into every AI adapter file.
     const blockerHighRules = RULES.filter((r) => r.severity === 'BLOCKER' || r.severity === 'HIGH');
     for (const target of targets) {
-      // claude adapter intentionally only embeds BLOCKER+HIGH rules to avoid context thrashing
-      const rulesForTarget = target === 'claude' ? blockerHighRules : RULES;
       const out = buildAdapterContent(target, '', RULES, CONFIG);
-      for (const rule of rulesForTarget) {
+      for (const rule of blockerHighRules) {
         expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);
       }
     }

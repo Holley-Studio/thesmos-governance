@@ -94,15 +94,15 @@ describe('downstream derivation from registry', () => {
 describe('adapters derive from registry', () => {
   const ALL_TARGETS = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'] as const;
 
-  it('every adapter target contains all registry rule IDs', () => {
+  it('every adapter target contains all BLOCKER+HIGH registry rule IDs', () => {
+    // Every adapter target only embeds BLOCKER+HIGH inline (thin adapters,
+    // Operation Signal Phase 5) — MEDIUM/LOW/TECH_DEBT live in .thesmos/RULES.md.
     const blockerHighRules = THESMOS_RULES.filter(
       (r) => r.severity === 'BLOCKER' || r.severity === 'HIGH'
     );
     for (const target of ALL_TARGETS) {
-      // claude adapter intentionally only embeds BLOCKER+HIGH rules to avoid context thrashing
-      const rulesForTarget = target === 'claude' ? blockerHighRules : THESMOS_RULES;
       const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
-      for (const rule of rulesForTarget) {
+      for (const rule of blockerHighRules) {
         expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);
       }
     }

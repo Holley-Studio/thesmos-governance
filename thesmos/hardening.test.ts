@@ -62,16 +62,16 @@ describe('rule registry completeness', () => {
     }
   });
 
-  it('new rules added to THESMOS_RULES appear in all adapter outputs', () => {
+  it('new rules added to THESMOS_RULES appear in all adapter outputs (if BLOCKER/HIGH)', () => {
     const allTargets = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'] as const;
+    // Every adapter target is a thin adapter now (Operation Signal Phase 5) —
+    // only BLOCKER+HIGH rules are embedded inline in any of them.
     const blockerHighRules = THESMOS_RULES.filter(
       (r) => r.severity === 'BLOCKER' || r.severity === 'HIGH'
     );
     for (const target of allTargets) {
-      // claude adapter intentionally only embeds BLOCKER+HIGH rules to avoid context thrashing
-      const rulesForTarget = target === 'claude' ? blockerHighRules : THESMOS_RULES;
       const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
-      for (const rule of rulesForTarget) {
+      for (const rule of blockerHighRules) {
         expect(out, `${target} is missing [${rule.id}]`).toContain(`[${rule.id}]`);
       }
     }
@@ -224,15 +224,14 @@ describe('adapter files are AI-stack-agnostic', () => {
     expect(out.toLowerCase()).not.toContain('claude code only');
   });
 
-  it('all adapters contain only rule IDs from THESMOS_RULES', () => {
+  it('all adapters contain the BLOCKER+HIGH rule IDs from THESMOS_RULES', () => {
+    // Every adapter target is a thin adapter now (Operation Signal Phase 5).
     const blockerHighRules = THESMOS_RULES.filter(
       (r) => r.severity === 'BLOCKER' || r.severity === 'HIGH'
     );
     for (const target of TARGETS) {
-      // claude adapter intentionally only embeds BLOCKER+HIGH rules to avoid context thrashing
-      const rulesForTarget = target === 'claude' ? blockerHighRules : THESMOS_RULES;
       const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
-      for (const rule of rulesForTarget) {
+      for (const rule of blockerHighRules) {
         expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);
       }
     }

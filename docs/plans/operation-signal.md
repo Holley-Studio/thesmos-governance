@@ -82,6 +82,46 @@ across all 9 phases, this session:
      shape, the exit code, and that genuine `destructive_command` violations are unaffected (still
      exit 2 with stderr). All pass; `tsc --noEmit` clean; no existing tests weakened.
 
+2. **Phase 5 — thin adapters, partial (mechanical pass; full <8KB target deferred).**
+   `thesmos/adapters.ts`: extracted a shared `formatThinRulesTable()` (BLOCKER+HIGH only, compact
+   table, MEDIUM/LOW/TECH_DEBT pointed at `.thesmos/RULES.md`) — this is exactly the pattern
+   `generateClaudeRules` already used, now applied to `generateGeminiRules`, `generateCursorRules`,
+   `generateCopilotRules`, `generateCodexRules`, and `generateAgentsRules` (which previously dumped
+   **every one of the 1,137 rules**, full descriptions included — the single worst offender).
+   Removed the now-dead `formatRulesSections()` (full-catalog-with-code-examples formatter) and its
+   now-unused `SEVERITY_ORDER` import.
+   - **Verified real-world effect** (regenerated the actual committed files via
+     `npm run thesmos:adapters` and measured):
+
+     | File | Before | After | Change |
+     |---|---|---|---|
+     | `.cursor/rules/thesmos.mdc` (`alwaysApply: true`) | 136,013 B | 93,495 B | −31% |
+     | `AGENTS.md` | 164,608 B | 117,295 B | −29% |
+     | `GEMINI.md` | 135,973 B | 93,455 B | −31% |
+     | `.codex/thesmos.md` | 135,975 B | 93,457 B | −31% |
+     | `.github/copilot-instructions.md` | 135,990 B | 93,472 B | −31% |
+     | `CLAUDE.md` (refactored to the shared helper, same filter it already had) | 107,711 B | 107,788 B | ~unchanged |
+
+   - **Honest gap: this is NOT the brief's <8KB target.** BLOCKER+HIGH alone is **664 of the 1,137
+     rules** — a compact table of 664 rows is inherently tens of KB, not under 8KB, no matter how
+     tightly formatted. Hitting <8KB requires the redesign the brief actually describes: a short,
+     hand-curated list of critical constraints (not a per-rule table) with `thesmos explain <ID>` /
+     `.thesmos/RULES.md` as the on-demand detail path. That's a content-curation judgment call
+     (which ~15-20 constraints matter most across 1,137 rules) with real blast radius (every future
+     AI session in every consumer repo reads this file) — scoping it as tracked follow-up rather
+     than rushing a curated list in the same pass as the mechanical fix.
+   - Updated 4 test suites that had explicit, deliberate assertions enforcing the OLD full-catalog
+     behavior (this was a real, intentional behavior change, not a regression): `adapters.test.ts`
+     (added BLOCKER+HIGH-only assertions, a "does NOT contain MEDIUM/LOW" assertion, and a
+     size-budget snapshot test with the real before/after numbers documented above),
+     `rules/registry.test.ts`, `hardening.test.ts` (two separate occurrences of the same pattern).
+   - Verified: `tsc --noEmit` clean across all 3 packages; full vitest suite 3485/3488 passing (same
+     3 known pre-existing environmental failures as the baseline, zero new failures); adapters
+     actually regenerated and byte sizes actually measured, not estimated.
+   - Not done: Phase 5's other asks (oversized-adapter migration tooling, `doctor` detection of
+     oversized/stale/mismatched adapters, `--targets` mechanism, generate-only-detected-integrations
+     logic, size-budget CI gate). Tracked as follow-up.
+
 ## Deferred (with reason and next concrete step)
 
 - **Phase 1 (shared decision/diagnostic contract), Phase 4 (incident loop + CLI commands + VS Code
