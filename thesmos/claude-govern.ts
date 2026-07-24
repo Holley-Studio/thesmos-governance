@@ -26,7 +26,7 @@ import { loadConfig, CONFIG_DEFAULTS, ConfigLoadError } from './config.js';
 import { classifySeverity, SEVERITY_ORDER } from './severity.js';
 import { extractSuppressions, applySuppressions } from './suppress.js';
 import { extractInstallPackages, quickPhantomCheck } from './import-scan.js';
-import { checkScope } from './scope.js';
+import { checkScope, ScopeConfigError, type ScopeCheckInput, type ScopeViolation } from './scope.js';
 import { runPostToolBudgetCheck, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
 import {
   buildGuardInvocation,
@@ -490,23 +490,74 @@ function exitInfraFailure(
 }
 
 /**
+ * checkScope() throws ScopeConfigError when `.thesmos/scope.json` EXISTS but
+ * fails to parse — a present-but-corrupt scope file must fail closed (an
+ * explainable infrastructure error), never silently degrade to "no scope
+ * config, allow everything" the way a missing file legitimately does.
+ */
+function safeCheckScope(input: ScopeCheckInput, failClosed: boolean): ScopeViolation | null {
+  try {
+    return checkScope(input);
+  } catch (err) {
+    if (err instanceof ScopeConfigError) {
+      exitInfraFailure(err.message, 'internal', failClosed, err.scopePath);
+    }
+    throw err;
+  }
+}
+
+/**
+ * Short, non-cryptographic correlation id for tying a hook's stdout decision
+ * to whatever this same invocation writes to a debug log or reports back to
+ * the user — the PreToolUse JSON schema has no dedicated correlation field
+ * (verified against the current protocol; see module doc below), so it's
+ * embedded in the human-readable reason text instead of invented as a fake
+ * schema field.
+ */
+function makeCorrelationId(): string {
+  return Math.random().toString(36).slice(2, 8);
+}
+
+/**
  * Surface a scope violation to Claude Code as a real "ask" decision — the CLI
  * prompts the user to approve or deny, and either answer is recoverable —
  * instead of exit(2), which Claude Code treats identically to a hard BLOCKER
  * (no distinction between "needs a human nod" and "forbidden outright").
- * https://docs.claude.com/en/docs/claude-code/hooks (hookSpecificOutput.permissionDecision)
+ *
+ * Verified against the current PreToolUse hook JSON schema
+ * (https://code.claude.com/docs/en/hooks, `docs.claude.com` redirects there):
+ * only `hookSpecificOutput.{hookEventName,permissionDecision,
+ * permissionDecisionReason,updatedInput,additionalContext}` are recognized
+ * for PreToolUse; there is no dedicated correlation-id field, so one is
+ * embedded in `permissionDecisionReason` instead (see makeCorrelationId).
+ *
+ * Exit-code discipline per the same doc: "exit 0 and print JSON" and "use
+ * exit codes alone" are two DIFFERENT signaling modes that must not be
+ * mixed — exit 2 makes Claude Code ignore stdout (and any JSON in it)
+ * entirely, so every hard-block path in this file (still) uses exit(2) +
+ * stderr, and only this "ask" path uses exit 0 + stdout JSON.
+ *
+ * Does NOT call process.exit() itself — on POSIX, stdout writes to a pipe
+ * (which is what a hook's stdout is, from Claude Code's perspective) are
+ * ASYNCHRONOUS, so an immediate process.exit() after write() can truncate
+ * the JSON before it's flushed, corrupting the hook's own output. Callers
+ * must `return` immediately after invoking this so the process exits
+ * naturally (via `exitCode`) once the event loop drains and the write
+ * actually completes — never call process.exit() after this returns.
  */
-function emitAskDecision(reason: string): never {
-  process.stdout.write(
-    JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        permissionDecision: 'ask',
-        permissionDecisionReason: reason,
-      },
-    }) + '\n',
-  );
-  process.exit(0);
+function emitAskDecision(reason: string): void {
+  const correlationId = makeCorrelationId();
+  const payload = {
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse' as const,
+      permissionDecision: 'ask' as const,
+      permissionDecisionReason: `${reason} [ref: ${correlationId}]`,
+    },
+  };
+  // Exactly one write, and nothing else touches stdout in this code path —
+  // any other output here would risk corrupting the JSON Claude Code parses.
+  process.stdout.write(JSON.stringify(payload) + '\n');
+  process.exitCode = 0;
 }
 
 /**
@@ -573,10 +624,11 @@ export async function runPreToolCheck(root: string): Promise<void> {
       if (!command.trim()) process.exit(0);
 
       // Scope enforcement first
-      const scopeViolation = checkScope({ toolName: 'Bash', command, root });
+      const scopeViolation = safeCheckScope({ toolName: 'Bash', command, root }, failClosed);
       if (scopeViolation) {
         if (scopeViolation.type === 'requires_confirmation') {
           emitAskDecision(`${scopeViolation.message} ${scopeViolation.suggestion}`);
+          return;
         }
         const lines: string[] = ['🛑 Thesmos scope violation:\n'];
         lines.push(`  ${scopeViolation.message}`);
@@ -613,10 +665,11 @@ export async function runPreToolCheck(root: string): Promise<void> {
     if (!filePath) process.exit(0);
 
     // Scope enforcement for Write/Edit
-    const writeScopeViolation = checkScope({ toolName, filePath, root });
+    const writeScopeViolation = safeCheckScope({ toolName, filePath, root }, failClosed);
     if (writeScopeViolation) {
       if (writeScopeViolation.type === 'requires_confirmation') {
         emitAskDecision(`${writeScopeViolation.message} ${writeScopeViolation.suggestion}`);
+        return;
       }
       const lines: string[] = ['🛑 Thesmos scope violation:\n'];
       lines.push(`  ${writeScopeViolation.message}`);

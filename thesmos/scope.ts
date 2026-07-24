@@ -21,6 +21,7 @@ import {
   loadManagedManifest,
   normalizeRelPath,
 } from './agent-ownership.js';
+import { commandMatchesPhrase } from './shell-command.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,7 +43,9 @@ export interface ScopeOperations {
   allowNetworkHosts: string[];
   /** Whether the agent may run database write commands. Default: false. */
   allowDatabaseWrites: boolean;
-  /** Commands requiring human confirmation — scope check exits 2 with advisory. */
+  /** Commands requiring human confirmation — surfaced as a recoverable
+   *  hookSpecificOutput "ask" decision by the claude:govern PreToolUse hook,
+   *  not a hard block. See thesmos/claude-govern.ts's emitAskDecision(). */
   requireConfirmation: string[];
 }
 
@@ -109,15 +112,43 @@ const GOVERNANCE_PROTECTED = new Set([
 
 // ── Load / save ───────────────────────────────────────────────────────────────
 
+/**
+ * Thrown when `.thesmos/scope.json` EXISTS but cannot be parsed as JSON.
+ * Distinct from the file simply being absent (a safe, intentional "allow
+ * all" default) — a present-but-corrupt scope file must never silently
+ * disable scope enforcement (that would fail OPEN on exactly the config
+ * that's supposed to lock things down). Callers should treat this the same
+ * as any other infrastructure failure (respect `autoMode.failClosed`).
+ */
+export class ScopeConfigError extends Error {
+  constructor(
+    public readonly scopePath: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ScopeConfigError';
+  }
+}
+
+/**
+ * Returns null only when `.thesmos/scope.json` does not exist (the safe,
+ * intentional "unconfigured — allow all" default). Throws `ScopeConfigError`
+ * when the file exists but fails to parse, so callers can fail closed
+ * instead of silently treating a corrupt config as "no config."
+ */
 export function loadScopeConfig(root: string): ScopeConfig | null {
   const scopePath = join(root, SCOPE_FILE);
   if (!existsSync(scopePath)) return null;
+  let raw: Partial<ScopeConfig>;
   try {
-    const raw = JSON.parse(readFileSync(scopePath, 'utf8')) as Partial<ScopeConfig>;
-    return mergeScopeConfig(raw);
-  } catch {
-    return null;
+    raw = JSON.parse(readFileSync(scopePath, 'utf8')) as Partial<ScopeConfig>;
+  } catch (err) {
+    throw new ScopeConfigError(
+      scopePath,
+      `.thesmos/scope.json exists but could not be parsed as JSON: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
+  return mergeScopeConfig(raw);
 }
 
 function mergeScopeConfig(partial: Partial<ScopeConfig>): ScopeConfig {
@@ -373,13 +404,21 @@ function stripQuotedAndComments(cmd: string): string {
  */
 function checkCommand(command: string, config: ScopeConfig): ScopeViolation | null {
   const cmd = command.trim().toLowerCase();
-  // F10 fix: match patterns against the unquoted token stream to avoid blocking
-  // commands that only mention a destructive pattern in a string literal or comment.
+  // F10 fix (superseded by the tokenizer below for pattern-list matching, kept
+  // here only for the allowDelete/allowGitPush regex checks further down —
+  // see shell-command.ts's module doc for why those two matchers differ).
   const unquoted = stripQuotedAndComments(cmd);
 
-  // Check destructive patterns
+  // Check destructive patterns. Uses the shell-command tokenizer (not the
+  // stripQuotedAndComments blanking above) so a pattern split across a quote
+  // boundary — e.g. `r"m" -rf /` — still reconstructs to the live command
+  // "rm -rf" instead of silently bypassing the check (verified real bypass,
+  // fixed as part of Operation Signal). Falls back to a quote-blanked
+  // substring check only for exact-syntax patterns that are themselves shell
+  // metacharacters (e.g. the fork-bomb signature) and so can't decompose
+  // into segment tokens — see commandMatchesPhrase's doc comment.
   for (const pattern of config.destructivePatterns) {
-    if (unquoted.includes(pattern.toLowerCase())) {
+    if (commandMatchesPhrase(command, pattern)) {
       return {
         type: 'destructive_command',
         message: `Command contains a destructive pattern "${pattern}".`,
@@ -389,6 +428,16 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
   }
 
   // Check delete operations (F10 fix: test unquoted stream)
+  //
+  // KNOWN RESIDUAL LIMITATION: this regex check (and the git-push check right
+  // below it) still runs against `unquoted` (stripQuotedAndComments' blanking
+  // approach), not the tokenizer's reconstruction — so the same class of
+  // quote-adjacency bypass fixed above for destructivePatterns/
+  // requireConfirmation (e.g. `r"m" -rf`) is NOT yet closed for these two
+  // regex-based checks. They're a different matching shape (hand-written
+  // regex over the whole command, not a configured phrase list) and
+  // migrating them to the tokenizer is a separate, scoped follow-up —
+  // documented in docs/plans/operation-signal.md, not silently left unnoted.
   if (!config.operations.allowDelete) {
     if (/\brm\s+(?:-[a-z]*f[a-z]*\s+)?\S/.test(unquoted) && !/\brm\s+--/.test(unquoted)) {
       const isHelp = unquoted.includes('--help') || unquoted.includes('-h');
@@ -425,9 +474,12 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
     }
   }
 
-  // Check requireConfirmation list
+  // Check requireConfirmation list — same tokenizer as destructivePatterns
+  // above (was previously a raw `cmd.includes(pattern)`, which matched a
+  // configured phrase even when it only appeared inside a quoted argument,
+  // an echo string, a commit message, or test fixture text).
   for (const pattern of config.operations.requireConfirmation) {
-    if (cmd.includes(pattern.toLowerCase())) {
+    if (commandMatchesPhrase(command, pattern)) {
       return {
         type: 'requires_confirmation',
         message: `Command "${pattern}" requires human confirmation before proceeding.`,

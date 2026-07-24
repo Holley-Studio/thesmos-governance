@@ -175,6 +175,22 @@ describe('runPreToolCheck — requires_confirmation vs. hard block (Bash)', () =
     expect(output.hookSpecificOutput.hookEventName).toBe('PreToolUse');
     expect(output.hookSpecificOutput.permissionDecision).toBe('ask');
     expect(output.hookSpecificOutput.permissionDecisionReason).toContain('zzz-test-risky-op');
+    // A correlation id is embedded in the reason text -- the PreToolUse
+    // schema has no dedicated field for one (verified against the current
+    // protocol), so this is the documented "where supported" answer.
+    expect(output.hookSpecificOutput.permissionDecisionReason).toMatch(/\[ref: [a-z0-9]+\]/);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('stdout contains exactly one JSON object and nothing else (no corruption risk)', () => {
+    const root = makeScopeFixture(['zzz-test-risky-op']);
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'zzz-test-risky-op --now' } }),
+    );
+    const lines = result.stdout.split('\n').filter((l) => l.length > 0);
+    expect(lines).toHaveLength(1);
+    expect(() => JSON.parse(lines[0]!)).not.toThrow();
     rmSync(root, { recursive: true, force: true });
   });
 
@@ -198,6 +214,48 @@ describe('runPreToolCheck — requires_confirmation vs. hard block (Bash)', () =
     );
     expect(result.status).toBe(0);
     expect(result.stdout.trim()).toBe('');
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('a confirm-required phrase appearing only in a quoted echo string is allowed, not asked', () => {
+    // The requireConfirmation matcher now uses the same quote-aware
+    // tokenizer as destructivePatterns -- decorative mentions must not
+    // trigger the confirmation flow at all.
+    const root = makeScopeFixture(['zzz-test-risky-op']);
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'echo "zzz-test-risky-op is dangerous"' } }),
+    );
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe('');
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('closes the quote-adjacency bypass end-to-end: a split-quoted destructive command still hard-blocks', () => {
+    const root = makeScopeFixture([], ['zzz-rf']);
+    // "zz"z"-rf" reconstructs to the bare token "zzz-rf" once quotes are
+    // resolved -- previously, blanking the whole quoted span broke this
+    // apart and let it through undetected.
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'z"z"z-rf /tmp/x' } }),
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toMatch(/destructive pattern/i);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('malformed .thesmos/scope.json produces a typed, explainable infrastructure failure (fails closed)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'thesmos-claude-govern-'));
+    mkdirSync(join(root, '.thesmos'), { recursive: true });
+    writeFileSync(join(root, '.thesmos', 'scope.json'), '{ not valid json', 'utf-8');
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'echo hello' } }),
+    );
+    expect(result.status).toBe(2);
+    expect(result.stdout.trim()).toBe('');
+    expect(result.stderr).toMatch(/scope\.json/i);
     rmSync(root, { recursive: true, force: true });
   });
 });

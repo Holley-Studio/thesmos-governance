@@ -9,6 +9,7 @@ import {
   checkScope,
   getScopeStatus,
   SCOPE_DEFAULTS,
+  ScopeConfigError,
   type ScopeConfig,
 } from './scope.js';
 
@@ -47,10 +48,18 @@ describe('loadScopeConfig', () => {
     expect(cfg!.workspace.blockedPaths).toEqual(SCOPE_DEFAULTS.workspace.blockedPaths);
   });
 
-  it('returns null for invalid JSON', () => {
+  it('throws ScopeConfigError for invalid JSON — a present-but-corrupt scope file must fail closed, not silently allow everything', () => {
     mkdirSync(join(root, '.thesmos'), { recursive: true });
     writeFileSync(join(root, '.thesmos', 'scope.json'), 'not-json');
-    expect(loadScopeConfig(root)).toBeNull();
+    expect(() => loadScopeConfig(root)).toThrow(ScopeConfigError);
+    try {
+      loadScopeConfig(root);
+      expect.unreachable('loadScopeConfig should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ScopeConfigError);
+      expect((err as ScopeConfigError).scopePath).toContain('scope.json');
+      expect((err as ScopeConfigError).message).toContain('scope.json');
+    }
   });
 });
 
