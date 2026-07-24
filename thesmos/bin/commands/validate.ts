@@ -24,6 +24,7 @@ import {
 import { exitCodeFor, shouldWarn } from '../../severity.ts';
 import { loadBaseline, partitionFindings } from '../../baseline.ts';
 import { getActiveRules } from '../../packs.ts';
+import { logReviewFindings } from '../../governance-log.ts';
 
 export async function cmdValidate(argv: string[]): Promise<void> {
   const { root, config } = createContext();
@@ -33,6 +34,7 @@ export async function cmdValidate(argv: string[]): Promise<void> {
   const sarif = flag(flags, 'sarif');
   const base = flagVal(flags, 'base');
   const noBaseline = flag(flags, 'no-baseline');
+  const noLog = flag(flags, 'no-log');
 
   const scan = loadReport(root);
 
@@ -56,6 +58,10 @@ export async function cmdValidate(argv: string[]): Promise<void> {
   const findings = baseline
     ? partitionFindings(allFindings, baseline).newFindings
     : allFindings;
+
+  if (!noLog) {
+    logReviewFindings(root, findings, { source: 'ci', action: 'validate' });
+  }
 
   const exitCode = exitCodeFor(findings, config);
 

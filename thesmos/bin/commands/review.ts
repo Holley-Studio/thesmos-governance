@@ -13,6 +13,7 @@
  *   --json            output as JSON
  *   --markdown        output as Markdown
  *   --no-baseline     ignore .thesmos/baseline.json — show all findings
+ *   --no-log          skip appending events to .thesmos/governance.log.jsonl
  * Positionals:
  *   [file...]         specific files to review (overrides --base)
  */
@@ -29,6 +30,7 @@ import {
 import { shouldWarn } from '../../severity.ts';
 import { loadBaseline, partitionFindings } from '../../baseline.ts';
 import { getActiveRules } from '../../packs.ts';
+import { logReviewFindings } from '../../governance-log.ts';
 
 export async function cmdReview(argv: string[]): Promise<void> {
   const { root, config } = createContext();
@@ -38,6 +40,7 @@ export async function cmdReview(argv: string[]): Promise<void> {
   const sarif = flag(flags, 'sarif');
   const base = flagVal(flags, 'base');
   const noBaseline = flag(flags, 'no-baseline');
+  const noLog = flag(flags, 'no-log');
 
   const scan = loadReport(root);
 
@@ -63,6 +66,11 @@ export async function cmdReview(argv: string[]): Promise<void> {
     ? partitionFindings(allFindings, baseline).newFindings
     : allFindings;
   const baselinedCount = allFindings.length - findings.length;
+
+  // Dogfood: append real enforcement events so score/eval leave INCOMPLETE.
+  if (!noLog) {
+    logReviewFindings(root, findings, { source: 'scan', action: 'review' });
+  }
 
   if (json) {
     process.stdout.write(JSON.stringify({ total: findings.length, findings, baselinedCount }, null, 2));

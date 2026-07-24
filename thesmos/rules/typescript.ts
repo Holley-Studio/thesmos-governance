@@ -302,7 +302,9 @@ export const TYPESCRIPT_RULES: ThesmosRule[] = [
     detect({ config, changedFiles = [] }: DetectInput): Finding[] {
       const severity = classifySeverity('floating_promise', config.severityRules);
       const FLOATING_RE = /^\s*(?!(?:return|await|const|let|var|export|throw|void)\b)[a-zA-Z_$][a-zA-Z0-9_$.]*\s*\([^)]*\)\s*;/;
-      const ASYNC_HINT = /(?:Async|async|Email|Notify|Send|emit|publish|enqueue|dispatch|track|log)[A-Z]/;
+      // Bare `log*` excluded — sync helpers (logReviewFindings) are not promises.
+      const ASYNC_HINT =
+        /(?:Async|async|Email|Notify|Send|emit|publish|enqueue|dispatch|track)[A-Z]|log(?:Event|Metric|Async|Span|Trace)\b|[A-Za-z$]+Async\b/;
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
         if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;

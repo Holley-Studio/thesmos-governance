@@ -129,6 +129,72 @@ export function logMcpOverride(
   });
 }
 
+/** Map review severity → governance outcome (matches MCP scan_file). */
+export function outcomeFromSeverity(
+  severity: string,
+): GovernanceOutcome {
+  if (severity === 'BLOCKER') return 'BLOCKED';
+  // HIGH and TECH_DEBT dilute compliance (weighted WARN) — never pretend debt is clean PASS.
+  if (severity === 'HIGH' || severity === 'TECH_DEBT') return 'WARN';
+  return 'PASS';
+}
+
+export interface LoggableFinding {
+  severity: string;
+  category: string;
+  file: string;
+  message?: string;
+}
+
+/**
+ * Append real enforcement evidence from a review/scan_file pass.
+ * Empty findings → one PASS (`review.clean`) so compliance leaves INCOMPLETE
+ * without inventing a fake 100% from a missing log.
+ */
+export function logReviewFindings(
+  root: string,
+  findings: readonly LoggableFinding[],
+  opts: {
+    source?: GovernanceSource;
+    action?: string;
+    session?: string;
+    /** Fallback path when a finding has no file (and for clean PASS). */
+    path?: string;
+  } = {},
+): GovernanceEvent[] {
+  const source = opts.source ?? 'scan';
+  const action = opts.action ?? 'review';
+  const fallbackPath = opts.path ?? '.';
+
+  if (findings.length === 0) {
+    return [
+      appendGovernanceEvent(root, {
+        source,
+        rule: 'review.clean',
+        action,
+        path: fallbackPath,
+        outcome: 'PASS',
+        override: false,
+        session: opts.session,
+        message: 'No governance violations found.',
+      }),
+    ];
+  }
+
+  return findings.map((f) =>
+    appendGovernanceEvent(root, {
+      source,
+      rule: f.category || 'unknown',
+      action,
+      path: f.file || fallbackPath,
+      outcome: outcomeFromSeverity(f.severity),
+      override: false,
+      session: opts.session,
+      message: f.message,
+    }),
+  );
+}
+
 // ── Read ──────────────────────────────────────────────────────────────────────
 
 export function readGovernanceLog(root: string, limit = 1000): GovernanceEvent[] {
@@ -204,10 +270,11 @@ export function summariseGovernanceLog(events: GovernanceEvent[]): GovernanceSum
   const bypassed = events.filter((e) => e.outcome === 'BYPASSED');
 
   const enforced = blocked.length + passed.length + bypassed.length + warned.length;
-  const compliant = passed.length + warned.length;
+  // WARN (HIGH / TECH_DEBT) counts half — maturity cannot hit 100% while debt remains.
+  const compliantWeight = passed.length + warned.length * 0.5;
   // Empty log → INCOMPLETE (null score), never a fake 100%.
   const complianceScore =
-    enforced === 0 ? null : Math.round((compliant / enforced) * 1000) / 10;
+    enforced === 0 ? null : Math.round((compliantWeight / enforced) * 1000) / 10;
   const assuranceState: GovernanceSummary['assuranceState'] =
     enforced === 0 ? 'INCOMPLETE' : blocked.length + bypassed.length > 0 ? 'FAIL' : 'PASS';
 

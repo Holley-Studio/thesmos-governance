@@ -14,7 +14,7 @@
  * Reference: "Slopsquatting: AI Package Hallucination Attacks" (Aikido, 2025)
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ThesmosRule, DetectInput, Finding } from '../types';
 import { classifySeverity } from '../severity';
@@ -194,9 +194,8 @@ export function getLockfilePackages(root: string): Set<string> | null {
 
 // ── Parse package.json for installed packages ─────────────────────────────────
 
-function getInstalledPackages(root: string): Set<string> {
-  const pkgPath = join(root, 'package.json');
-  if (!existsSync(pkgPath)) return new Set();
+function depsFromPackageJson(pkgPath: string): string[] {
+  if (!existsSync(pkgPath)) return [];
   try {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
       dependencies?: Record<string, string>;
@@ -204,12 +203,63 @@ function getInstalledPackages(root: string): Set<string> {
       peerDependencies?: Record<string, string>;
       optionalDependencies?: Record<string, string>;
     };
-    return new Set([
+    return [
       ...Object.keys(pkg.dependencies ?? {}),
       ...Object.keys(pkg.devDependencies ?? {}),
       ...Object.keys(pkg.peerDependencies ?? {}),
       ...Object.keys(pkg.optionalDependencies ?? {}),
-    ]);
+    ];
+  } catch {
+    return [];
+  }
+}
+
+/** Resolve npm workspace package.json paths (supports plain dirs and `foo/*`). */
+function workspacePackageJsons(root: string, workspaces: string[]): string[] {
+  const out: string[] = [];
+  for (const pattern of workspaces) {
+    if (pattern.includes('*')) {
+      const [parent = '.', childGlob = '*'] = pattern.split('/');
+      // Only support a single trailing `*` segment (e.g. packages/*).
+      if (childGlob !== '*' || pattern.split('/').length !== 2) continue;
+      const parentDir = join(root, parent);
+      if (!existsSync(parentDir)) continue;
+      try {
+        for (const name of readdirSync(parentDir)) {
+          const pkgPath = join(parentDir, name, 'package.json');
+          if (existsSync(pkgPath)) out.push(pkgPath);
+        }
+      } catch {
+        // ignore unreadable workspace parents
+      }
+    } else {
+      const pkgPath = join(root, pattern, 'package.json');
+      if (existsSync(pkgPath)) out.push(pkgPath);
+    }
+  }
+  return out;
+}
+
+/**
+ * Collect declared packages from root package.json and npm workspaces.
+ * Monorepo workspace deps (e.g. vitest in thesmos/) must not false-positive
+ * as undeclared when the scanner runs from the repo root.
+ */
+function getInstalledPackages(root: string): Set<string> {
+  const pkgPath = join(root, 'package.json');
+  if (!existsSync(pkgPath)) return new Set();
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
+      workspaces?: string[] | { packages?: string[] };
+    };
+    const names = new Set(depsFromPackageJson(pkgPath));
+    const ws = Array.isArray(pkg.workspaces)
+      ? pkg.workspaces
+      : (pkg.workspaces?.packages ?? []);
+    for (const workspacePkg of workspacePackageJsons(root, ws)) {
+      for (const dep of depsFromPackageJson(workspacePkg)) names.add(dep);
+    }
+    return names;
   } catch {
     return new Set();
   }

@@ -47,6 +47,9 @@ extensions/vscode/*.vsix
 
 # Thesmos session runtime artifacts (per-machine)
 .thesmos/agent-activity.jsonl
+.thesmos/governance.log.jsonl
+.thesmos/metrics-export.jsonl
+.thesmos/receipts/
 .thesmos/token-session-id
 .thesmos/active-plan.md
 

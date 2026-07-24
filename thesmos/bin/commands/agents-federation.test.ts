@@ -128,6 +128,42 @@ describe('agents:doctor hostile manifest', () => {
     }
   });
 
+  it('skips registry_inconsistency for catalog-backed agents without local copies', async () => {
+    writeFileSync(
+      join(root, '.thesmos', 'registry.json'),
+      JSON.stringify({
+        rules: ['@thesmos/core'],
+        agents: ['zeus-executive-agent', 'totally-unknown-agent-xyz'],
+        skills: [],
+      }),
+      'utf8'
+    );
+    writeFileSync(
+      join(root, '.thesmos', 'managed-agents.json'),
+      JSON.stringify({ version: 1, files: {} }),
+      'utf8'
+    );
+
+    let out = '';
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+      out += String(chunk);
+      return true;
+    });
+    const { exitCode } = await withRoot(root, async () => {
+      await cmdAgentsDoctor(['--json', '--strict']);
+    });
+    writeSpy.mockRestore();
+
+    const parsed = JSON.parse(out) as {
+      findings: Array<{ code: string; message: string }>;
+    };
+    const reg = parsed.findings.filter((f) => f.code === 'registry_inconsistency');
+    expect(reg.some((f) => f.message.includes('zeus-executive-agent'))).toBe(false);
+    expect(reg.some((f) => f.message.includes('totally-unknown-agent-xyz'))).toBe(true);
+    // Strict still fails because of the unknown agent warn
+    expect(exitCode).toBe(2);
+  });
+
   it('does not crash when managed-agents.json contains traversal keys', async () => {
     writeFileSync(
       join(root, '.thesmos', 'managed-agents.json'),

@@ -40,6 +40,7 @@ import {
   syncAdapters,
 } from '../../agent-lifecycle.ts';
 import { appendAuditEntry } from '../../agent-audit.ts';
+import { loadBuiltInCatalog, loadUserCatalog } from '../../catalog.ts';
 
 // ── agents:list ───────────────────────────────────────────────────────────────
 
@@ -190,19 +191,32 @@ export async function cmdAgentsDoctor(argv: string[]): Promise<void> {
     }
   }
 
-  // Registry consistency: adopted ownership without registry entry is fine;
-  // registry entry without canonical file is a warning
+  // Registry consistency: adopted ownership without registry entry is fine.
+  // Catalog-backed agents (built-in / user) do not require a local
+  // `.thesmos/agents/<id>.md` copy — that tree is gitignored for paid packs.
   try {
     const regPath = join(root, '.thesmos', 'registry.json');
     if (existsSync(regPath)) {
       const reg = JSON.parse(readFileSync(regPath, 'utf8')) as { agents?: string[] };
+      let knownAgentIds = new Set<string>();
+      try {
+        const builtin = loadBuiltInCatalog();
+        const user = loadUserCatalog(root);
+        knownAgentIds = new Set([
+          ...builtin.agents.map((a) => a.frontmatter.id),
+          ...user.agents.map((a) => a.frontmatter.id),
+        ]);
+      } catch {
+        /* catalog unavailable — fall through to file check */
+      }
       for (const id of reg.agents ?? []) {
+        if (knownAgentIds.has(id)) continue;
         const canonical = join(root, '.thesmos', 'agents', `${id}.md`);
         if (!existsSync(canonical)) {
           findings.push({
             level: 'warn',
             code: 'registry_inconsistency',
-            message: `Registry lists "${id}" but .thesmos/agents/${id}.md is missing.`,
+            message: `Registry lists "${id}" but it is not in any catalog and .thesmos/agents/${id}.md is missing.`,
           });
         }
       }

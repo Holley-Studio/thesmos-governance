@@ -7,13 +7,14 @@
  *   thesmos commit:lint <msg-file>       # Used by commit-msg hook (pass $1)
  *   thesmos commit:lint --last           # Lint the last git commit
  *   thesmos commit:lint --message "..."  # Lint an inline string
+ *   thesmos commit:lint -m "..."         # Same as --message
  *   thesmos commit:lint --json           # JSON output
  *   thesmos commit:create                # Interactive wizard
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { COMMIT_RULES } from '../../rules/commits.js';
 import type { DetectInput, Finding, ScanResult } from '../../types.js';
@@ -78,8 +79,8 @@ export async function cmdCommitLint(argv: string[]): Promise<void> {
 
   let message: string | null = null;
 
-  // --message "..." inline
-  const msgIdx = argv.indexOf('--message');
+  // --message / -m "..." inline
+  const msgIdx = Math.max(argv.indexOf('--message'), argv.indexOf('-m'));
   if (msgIdx !== -1 && argv[msgIdx + 1]) {
     message = argv[msgIdx + 1]!;
   }
@@ -104,11 +105,12 @@ export async function cmdCommitLint(argv: string[]): Promise<void> {
 
   if (!message) {
     process.stderr.write(
-      'commit:lint: provide a message file, --message "...", or --last\n\n' +
+      'commit:lint: provide a message file, --message/-m "...", or --last\n\n' +
       'Examples:\n' +
       '  thesmos commit:lint "$1"          # from commit-msg hook\n' +
       '  thesmos commit:lint --last        # lint most recent commit\n' +
-      '  thesmos commit:lint --message "feat: add login"\n'
+      '  thesmos commit:lint --message "feat: add login"\n' +
+      '  thesmos commit:lint -m "fix: typo"\n'
     );
     process.exit(1);
   }
@@ -259,7 +261,8 @@ export async function cmdCommitCreate(argv: string[]): Promise<void> {
         try {
           const tmpFile = join(root, '.git', 'COMMIT_EDITMSG.thesmos-wizard');
           writeFileSync(tmpFile, commitMsg);
-          execSync(`git commit -F "${tmpFile}"`, { stdio: 'inherit' });
+          // argv form — no shell, so path cannot inject via quoting (SEC_016 / NODE_005)
+          execFileSync('git', ['commit', '-F', tmpFile], { stdio: 'inherit' });
         } catch {
           process.stderr.write('commit:create: git commit failed.\n');
           process.exit(1);

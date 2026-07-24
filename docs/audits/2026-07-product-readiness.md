@@ -89,19 +89,59 @@ Artifacts under `/tmp/thesmos-p0/` (session-local).
 | Phase 5 | Observability / evals | **DONE** (2026-07-23) — receipts, activity wire-up, local metrics, suites |
 | P0-20 | 6 Release / deps | **DONE** (2026-07-23) — brace-expansion 5.0.8; Actions SHA-pinned |
 | Health C / 147 drift / doctor exit 0 / catalog soft-OK | 7 Health & catalog | **DONE** (2026-07-23) — health **100/A+**, drift **0**, doctor exit 1 on fail, catalog:validate fail-closed, CI `--health-threshold=90` |
+| Score 60 / D · compliance 0 · INCOMPLETE (no log) | 8 Score honesty | **DONE** (2026-07-23) — `review`/`validate`/`ci`/MCP append real `governance.log.jsonl`; after dogfood review → score **100/A** · compliance **100** · PASS |
 
 ---
 
 ## Acceptance vs baseline
 
-At baseline commit, none of the master-prompt acceptance gates 14–27 passed. Phases 1–7 on this branch remediate false assurance, execution safety, Pantheon runtime, builders, observability, release engineering, and health/catalog integrity. Remaining work is human review/merge — not a claim of production-ready.
+At baseline commit, none of the master-prompt acceptance gates 14–27 passed. Phases 1–8 remediate false assurance, execution safety, Pantheon runtime, builders, observability, release engineering, health/catalog integrity, and score honesty. Remaining: release prep + human publish approval — not a claim of production-ready.
 
-**Phase 7 signals (post-remediation):** `health` 100/A+ · drift 0 · `doctor --json` pass:true exit 0 · `catalog:validate` OK (128 agents) · `ci --health-threshold=90` pass:true.
+**Phase 7 signals:** `health` 100/A+ · drift 0 · `doctor` pass:true · `catalog:validate` OK · `ci --health-threshold=90` pass:true.
+
+**Phase 8 signals:** empty log → score INCOMPLETE/compliance 0 (honest); after `thesmos review` → real events → compliance leaves INCOMPLETE.
 
 **Do not claim production-ready, fully compliant, or 10/10.**
 
 ---
 
+## Stress test (2026-07-23, post Phase 8)
+
+| Check | Result |
+|-------|--------|
+| Unit tests | **3365 passed** (110 files) |
+| Typecheck | pass |
+| Coverage floors | pass (statements ~69%, lines ~70%) |
+| Double-build `dist/cli.js` hash | stable |
+| `doctor --json` | pass:true exit 0 |
+| `catalog:validate` | OK (128 agents, 53 skills) |
+| `agents:doctor --strict` | **exit 0** after catalog-backed skip (was exit 2 / 68 false warns) |
+| `health --json` | 100 / A+ |
+| `ci --health-threshold=90` | pass:true |
+| `score` (after review) | weighted compliance (TECH_DEBT→WARN @ 0.5); clean tree can still be 100 |
+| `mcp --stdio` initialize | version **5.1.0** |
+| `self:check` / `context:health` | all passed / 100 A |
+| `npm audit --omit=dev` | **0** vulns |
+| `npm audit` (incl. dev) | **0** (js-yaml→4.3.0; esbuild overridden to 0.28.1) |
+
+### Attention backlog (not release-blocking for 5.1.0)
+
+| ID | Finding | Severity | Suggested owner |
+|----|---------|----------|-----------------|
+| S1 | `agents:doctor` treated catalog agents as missing local files | HIGH | **FIXED** this PR (align with drift) |
+| S2 | Version bump without regenerating `catalog/product-facts.json` fails CI | HIGH | **FIXED** this PR; add generate step to release checklist |
+| S3 | DevDependency `js-yaml` HIGH (GHSA-52cp-r559-cp3m) | HIGH (dev) | **FIXED** — `npm audit fix` → 4.3.0 |
+| S4 | DevDependency `esbuild` LOW (Windows dev-server read) | LOW (dev) | **FIXED** — root `overrides.esbuild: 0.28.1` (tsup nested) |
+| S5 | 7× TECH_DEBT `large_file` (VS Code chat + others); 50 TECH_DEBT w/ `--no-baseline` | MEDIUM | **Deferred** — honest baseline debt; do not fake-clear. Split VS Code chat modules in a dedicated PR |
+| S6 | Score maps TECH_DEBT→PASS so maturity can hit 100 with known debt | MEDIUM | **FIXED** — TECH_DEBT→WARN; compliance = (PASS + 0.5×WARN) / enforced |
+| S7 | Runtime receipts/metrics still 0 in dogfood unless autopilot/`agent:run` used | MEDIUM | **FIXED** — `thesmos ci` writes a hashed smoke receipt (`source: 'ci'`) |
+| S8 | `commit:lint -m "…"` treats `-m` as a file path | LOW | **FIXED** — `-m` alias for `--message` |
+| S9 | `pack:validate` no-op when no packs present (OK; document) | LOW | Docs |
+| S10 | CI false positives: `eval()` in fixtures, `logReviewFindings` floating-promise, vitest “undeclared” | HIGH | **FIXED** — fixture wording; ASYNC_HINT / NODE_022 tightened; SLOP workspace-aware |
+| S11 | Validate CI BLOCKER: `commit:create` used `execSync(\`git commit -F "…"\`)` | BLOCKER | **FIXED** — `execFileSync('git', ['commit', '-F', tmpFile])` (no shell) |
+
+---
+
 ## Next remediation step
 
-Phases 0–7 complete on `feat/trust-execution-hardening` (draft PR #111). Await human review/merge approval.
+Human review/merge of PR #112; optional publish of 5.1.0. Remaining elevation: S5 large-file splits (Hephaestus), S9 pack docs.

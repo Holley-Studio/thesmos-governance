@@ -343,10 +343,11 @@ CONTEXT HEALTH + SESSION HANDOFF
   context:health --json    Machine-readable JSON output
 
 REVIEW & VALIDATE
-  review                   Run all rules, print findings
+  review                   Run all rules, print findings (logs to governance.log)
   validate                 Run rules, exit 1 on BLOCKER/HIGH (use in CI)
     --base=<branch>          Only check files changed vs. <branch>
     --no-baseline            Ignore baseline when computing exit code
+    --no-log                 Skip appending events to governance.log.jsonl
   validate --json          Machine-readable findings
   validate --sarif         SARIF 2.1.0 output (GitHub Code Scanning, VS Code, JetBrains)
   validate --markdown      Markdown summary for PR comments

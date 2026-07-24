@@ -25,6 +25,7 @@
 | 5 | Observability + evaluations | **COMPLETE** | Runtime |
 | 6 | Release engineering | **COMPLETE** | Release |
 | 7 | Health & catalog integrity | **COMPLETE** | Trust + Runtime |
+| 8 | Score honesty (real compliance evidence) | **COMPLETE** | Trust |
 
 ## Decisions log
 
@@ -46,6 +47,8 @@
 | 2026-07-23 | Built-in catalog loads reviewers + pantheon + figma + root; registry file-missing skipped when catalog-backed (`.thesmos/agents/*` gitignored) | Phase 7 — catalog is SoT; clears false HIGH drift without committing paid agent bodies |
 | 2026-07-23 | `doctor` exits 1 on failure (`--soft` for legacy); `catalog:validate` fails on load-time frontmatter errors | Phase 7 — honest exit contracts |
 | 2026-07-23 | CI runs `thesmos ci --health-threshold=90` | Phase 7 — health gate after drift cleared |
+| 2026-07-23 | PR #111 merged to main (`e6cab82`) | Human merge; Phase 8+ on `cursor/score-honesty-release-prep-5394` |
+| 2026-07-23 | `review` / `validate` / `ci` / MCP `scan_file` append `governance.log.jsonl`; clean → `review.clean` PASS | Phase 8 — leave INCOMPLETE only when no real events |
 
 ## Phase 0 evidence summary
 
@@ -241,10 +244,48 @@ None for Phase 1. ProductFacts license resolved as **FSL-1.1-MIT** (from `packag
 - [x] Catalog load count / README skip / load-error collection
 - [x] Drift: catalog-backed agents do not require `.thesmos/agents/` copy
 
+## Phase 8 workstreams
+
+### 8A — Shared enforcement logger
+
+- [x] `logReviewFindings` + `outcomeFromSeverity` in `governance-log.ts`
+- [x] Empty findings → one `review.clean` PASS (never invent 100% from missing log)
+- [x] Unit tests: clean / mixed severities / empty summary INCOMPLETE
+
+### 8B — Wire producers
+
+- [x] `thesmos review` / `validate` (opt-out `--no-log`)
+- [x] `thesmos ci` gate
+- [x] MCP `scan_file` (including clean pass)
+- [x] `.gitignore` `.thesmos/governance.log.jsonl`
+
+### 8C — Score UX
+
+- [x] Tip when `assuranceState === INCOMPLETE` points at `review` / `mcp:install`
+
+### 8D — Dogfood signal (this repo)
+
+- [x] Before review: score 60 / D · compliance 0 · INCOMPLETE
+- [x] After `thesmos review`: enforcement events land; TECH_DEBT maps to weighted WARN (not fake clean PASS)
+
+## Stress test + elevate (post Phase 8)
+
+See `docs/audits/2026-07-product-readiness.md` § Stress test.
+
+- [x] `agents:doctor --strict` skips catalog-backed registry IDs (S1)
+- [x] Unblock PR governance gates: fixture `eval()` FP, NODE_022/TS_010 async hints, SLOP workspace deps (S10)
+- [x] Dev audit clean: js-yaml 4.3.0 + esbuild override 0.28.1 (S3/S4)
+- [x] Score honesty: TECH_DEBT→WARN + 0.5 weight in compliance (S6)
+- [x] `thesmos ci` smoke receipt (S7)
+- [x] `commit:lint -m` alias (S8)
+- [x] `commit:create` argv-safe git commit (S11 — clears validate BLOCKER)
+- [ ] S5 large_file splits (deferred — keep baseline honest)
+- [ ] S9 pack:validate docs
+
 ## Remaining work
 
-Phases 0–7 are implemented on draft PR #111. Do **not** merge/publish/claim production-ready without approval.
+Phases 0–8 + elevate + release prep on PR #112. **No npm publish** without approval. Do **not** claim production-ready.
 
 ## Next exact action
 
-Await human review/merge approval on draft PR #111.
+Human review/merge of PR #112 after Thesmos Review validate goes green; optional publish of 5.1.0; then S5 large-file split PR.
