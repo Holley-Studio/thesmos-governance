@@ -274,6 +274,33 @@ Add scripts to your `package.json` (optional — you can also use `npx thesmos <
 
 **Node.js 20 or later is required.**
 
+### Docker
+
+Prefer a container over a local Node install? Build the CLI from the repo root
+(build context must be the monorepo root, since `package-lock.json` lives there):
+
+```bash
+git clone https://github.com/Holley-Studio/thesmos-governance.git
+cd thesmos-governance
+docker build -f thesmos/Dockerfile -t thesmos-governance .
+```
+
+Run it against a mounted project:
+
+```bash
+docker run --rm -v "$PWD":/workspace thesmos-governance scan
+docker run --rm -v "$PWD":/workspace thesmos-governance validate --base=main
+```
+
+Or as an MCP server over stdio (`-i` keeps stdin open for the JSON-RPC transport):
+
+```bash
+docker run --rm -i -v "$PWD":/workspace thesmos-governance mcp:serve
+```
+
+The image runs as a non-root user and contains no dependencies beyond the
+bundled CLI — see `thesmos/Dockerfile` for details.
+
 ---
 
 ## Commands
