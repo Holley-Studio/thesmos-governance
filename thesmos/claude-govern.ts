@@ -490,6 +490,26 @@ function exitInfraFailure(
 }
 
 /**
+ * Surface a scope violation to Claude Code as a real "ask" decision — the CLI
+ * prompts the user to approve or deny, and either answer is recoverable —
+ * instead of exit(2), which Claude Code treats identically to a hard BLOCKER
+ * (no distinction between "needs a human nod" and "forbidden outright").
+ * https://docs.claude.com/en/docs/claude-code/hooks (hookSpecificOutput.permissionDecision)
+ */
+function emitAskDecision(reason: string): never {
+  process.stdout.write(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'ask',
+        permissionDecisionReason: reason,
+      },
+    }) + '\n',
+  );
+  process.exit(0);
+}
+
+/**
  * Run by Claude Code as a PreToolUse hook.
  * Reads tool input from stdin, scans file content for BLOCKER violations.
  * Exits 2 (block) if any found; exits 0 (allow) otherwise.
@@ -555,8 +575,10 @@ export async function runPreToolCheck(root: string): Promise<void> {
       // Scope enforcement first
       const scopeViolation = checkScope({ toolName: 'Bash', command, root });
       if (scopeViolation) {
-        const prefix = scopeViolation.type === 'requires_confirmation' ? '⚠️' : '🛑';
-        const lines: string[] = [`${prefix} Thesmos scope violation:\n`];
+        if (scopeViolation.type === 'requires_confirmation') {
+          emitAskDecision(`${scopeViolation.message} ${scopeViolation.suggestion}`);
+        }
+        const lines: string[] = ['🛑 Thesmos scope violation:\n'];
         lines.push(`  ${scopeViolation.message}`);
         lines.push(`  → ${scopeViolation.suggestion}`);
         // Claude Code only surfaces stderr for blocking hooks (exit 2)
@@ -593,6 +615,9 @@ export async function runPreToolCheck(root: string): Promise<void> {
     // Scope enforcement for Write/Edit
     const writeScopeViolation = checkScope({ toolName, filePath, root });
     if (writeScopeViolation) {
+      if (writeScopeViolation.type === 'requires_confirmation') {
+        emitAskDecision(`${writeScopeViolation.message} ${writeScopeViolation.suggestion}`);
+      }
       const lines: string[] = ['🛑 Thesmos scope violation:\n'];
       lines.push(`  ${writeScopeViolation.message}`);
       lines.push(`  → ${writeScopeViolation.suggestion}`);

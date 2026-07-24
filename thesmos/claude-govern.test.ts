@@ -1,8 +1,52 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { evaluateGovernFindings } from './claude-govern';
 import { CONFIG_DEFAULTS } from './config';
 import type { ThesmosConfig } from './types';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const CLI_ENTRY = join(HERE, 'bin', 'cli.ts');
+// tsx is hoisted to the workspace root's node_modules (npm workspaces) — resolve
+// its real CLI entry explicitly so this works regardless of the spawned
+// process's cwd (which must be the fixture project root, not this package).
+const TSX_ENTRY = join(HERE, '..', 'node_modules', 'tsx', 'dist', 'cli.mjs');
+
+function runPreToolHook(root: string, stdin: string): { status: number | null; stdout: string; stderr: string } {
+  const result = spawnSync(process.execPath, [TSX_ENTRY, CLI_ENTRY, 'claude:govern', 'check'], {
+    cwd: root,
+    input: stdin,
+    encoding: 'utf8',
+    timeout: 30_000,
+  });
+  return { status: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
+}
+
+function makeScopeFixture(requireConfirmation: string[], destructivePatterns: string[] = []): string {
+  const root = mkdtempSync(join(tmpdir(), 'thesmos-claude-govern-'));
+  mkdirSync(join(root, '.thesmos'), { recursive: true });
+  writeFileSync(
+    join(root, '.thesmos', 'scope.json'),
+    JSON.stringify({
+      version: '1.0',
+      workspace: { allowedPaths: [], blockedPaths: [], absoluteBlockPaths: [] },
+      operations: {
+        allowDelete: true,
+        allowGitPush: true,
+        allowNetworkHosts: [],
+        allowDatabaseWrites: true,
+        requireConfirmation,
+      },
+      destructivePatterns,
+    }),
+    'utf-8',
+  );
+  return root;
+}
 
 // Assembled at runtime so secret scanners (GitHub push protection, SEC_003)
 // never see a key-shaped literal in this source file — the rule engine under
@@ -107,5 +151,53 @@ describe('evaluateGovernFindings — real-time govern check', () => {
       config,
     });
     expect(findings.some((f) => f.category === 'debugger_statement')).toBe(true);
+  });
+});
+
+// ── runPreToolCheck (PreToolUse hook) — real subprocess, real stdin/exit ──────
+//
+// Regression coverage for a verified bug (Operation Signal Phase 2/7): a
+// `requires_confirmation` scope violation used to be indistinguishable from a
+// hard BLOCKER — both exited 2, so Claude Code denied the action outright with
+// no way to actually confirm. This must now surface as a real "ask" decision
+// (exit 0 + hookSpecificOutput JSON) that Claude Code's own permission UI can
+// resolve, while genuine hard blocks keep exiting 2.
+
+describe('runPreToolCheck — requires_confirmation vs. hard block (Bash)', () => {
+  it('requires_confirmation emits an "ask" decision (exit 0), not a hard block', () => {
+    const root = makeScopeFixture(['zzz-test-risky-op']);
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'zzz-test-risky-op --now' } }),
+    );
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout);
+    expect(output.hookSpecificOutput.hookEventName).toBe('PreToolUse');
+    expect(output.hookSpecificOutput.permissionDecision).toBe('ask');
+    expect(output.hookSpecificOutput.permissionDecisionReason).toContain('zzz-test-risky-op');
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('a genuine destructive_command still hard-blocks (exit 2, stderr)', () => {
+    const root = makeScopeFixture([], ['zzz-test-destructive-pattern']);
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'zzz-test-destructive-pattern now' } }),
+    );
+    expect(result.status).toBe(2);
+    expect(result.stdout.trim()).toBe('');
+    expect(result.stderr).toMatch(/destructive pattern/i);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('a benign command is allowed (exit 0, no decision JSON)', () => {
+    const root = makeScopeFixture(['zzz-test-risky-op']);
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'echo hello' } }),
+    );
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe('');
+    rmSync(root, { recursive: true, force: true });
   });
 });
