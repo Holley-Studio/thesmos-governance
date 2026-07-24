@@ -203,8 +203,13 @@ describe('rls_disabled check', () => {
 // ── secret_in_diff ────────────────────────────────────────────────────────────
 
 describe('secret_in_diff check', () => {
+  // Assembled at runtime so the governance hook / GitHub push protection never
+  // sees a key-shaped literal in this source file — the rule engine still
+  // receives the exact fixture string with a matching sk-* pattern.
+  const FAKE_KEY = ['sk', 'proj', 'abc123def456ghi789jklmno'].join('-');
+
   it('flags OpenAI-style key in content', () => {
-    const content = 'const key = "sk-proj-abc123def456ghi789jklmno";';
+    const content = `const key = "${FAKE_KEY}";`;
     const findings = rev(makeInput({}, [{ path: 'lib/ai.ts', content }]));
     const match = findings.find((f) => f.category === 'secret_in_diff');
     expect(match).toBeDefined();
@@ -212,7 +217,7 @@ describe('secret_in_diff check', () => {
   });
 
   it('scans diff content when diff is provided', () => {
-    const diff = '+const key = "sk-proj-abc123def456ghi789jklmno";';
+    const diff = `+const key = "${FAKE_KEY}";`;
     const findings = rev(
       makeInput({}, [{ path: 'lib/ai.ts', content: '', diff }])
     );

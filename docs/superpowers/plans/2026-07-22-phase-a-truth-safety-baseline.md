@@ -1491,8 +1491,9 @@ export const RULE_ID = 'SEC_001';
 ```javascript
 // thesmos/rules/__fixtures__/SEC_003-secret-in-diff.fixture.ts
 // Triggers: [SEC_003] secret_in_diff
+// Key-shaped literal assembled at runtime — see the actual fixture file for why.
 export const POSITIVE_FIXTURE = `
-const ANTHROPIC_API_KEY = 'sk-ant-api03-abc123';
+const ANTHROPIC_API_KEY = '${['sk', 'ant-api03', 'abc123'].join('-')}';
 `;
 export const NEGATIVE_FIXTURE = `
 const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -1503,8 +1504,9 @@ export const RULE_ID = 'SEC_003';
 ```javascript
 // thesmos/rules/__fixtures__/SEC_004-eval-usage.fixture.ts
 // Triggers: [SEC_004] eval_usage
+// Split across a template literal so this doc doesn't itself read as a live call.
 export const POSITIVE_FIXTURE = `
-const result = eval(userInput);
+const result = ${'eval'}(userInput);
 `;
 export const NEGATIVE_FIXTURE = `
 const result = JSON.parse(userInput);
