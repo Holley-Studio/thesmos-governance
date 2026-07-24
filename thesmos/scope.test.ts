@@ -69,11 +69,10 @@ describe('loadScopeConfig', () => {
       loadScopeConfig(root);
       expect.unreachable('loadScopeConfig should have thrown');
     } catch (err) {
-      expect(err).toBeInstanceOf(ScopeConfigError);
-      const e = err as ScopeConfigError;
-      expect(e.code).toBe('THESMOS_SCOPE_CONFIG_INVALID');
+      if (!(err instanceof ScopeConfigError)) throw err;
+      expect(err.code).toBe('THESMOS_SCOPE_CONFIG_INVALID');
       expect(ScopeConfigError.CODE).toBe('THESMOS_SCOPE_CONFIG_INVALID');
-      expect(e.name).toBe('ScopeConfigError');
+      expect(err.name).toBe('ScopeConfigError');
     }
   });
 
@@ -84,11 +83,10 @@ describe('loadScopeConfig', () => {
       loadScopeConfig(root);
       expect.unreachable('loadScopeConfig should have thrown');
     } catch (err) {
-      expect(err).toBeInstanceOf(ScopeConfigError);
-      const e = err as ScopeConfigError;
-      expect(e.scopePath).toBe('.thesmos/scope.json');
-      expect(e.scopePath).not.toContain(root); // must not embed the absolute tmp-dir path
-      expect(e.message).not.toContain(root);
+      if (!(err instanceof ScopeConfigError)) throw err;
+      expect(err.scopePath).toBe('.thesmos/scope.json');
+      expect(err.scopePath).not.toContain(root); // must not embed the absolute tmp-dir path
+      expect(err.message).not.toContain(root);
     }
   });
 });
