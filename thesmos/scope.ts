@@ -13,8 +13,8 @@
  * operations are allowed (safe default: don't block when unconfigured).
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, resolve, relative, isAbsolute } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
+import { join, resolve, relative, isAbsolute, basename } from 'node:path';
 import {
   isClaudeAgentsPath,
   isManagedPath,
@@ -94,6 +94,19 @@ export const SCOPE_DEFAULTS: ScopeConfig = {
 
 const SCOPE_FILE = '.thesmos/scope.json';
 
+/**
+ * Governance files that a governed agent must never be able to rewrite.
+ * Checked unconditionally BEFORE any config-driven allow/block logic (F1 fix).
+ * These paths are relative to the project root (relNorm form).
+ */
+const GOVERNANCE_PROTECTED = new Set([
+  '.thesmos/scope.json',
+  '.thesmos/managed-agents.json',
+  '.thesmos/config.json',
+  // .claude/settings.json is intentionally NOT here — users must be able to
+  // ask Claude to update their own Claude Code settings freely.
+]);
+
 // ── Load / save ───────────────────────────────────────────────────────────────
 
 export function loadScopeConfig(root: string): ScopeConfig | null {
@@ -134,14 +147,74 @@ export function saveScopeConfig(root: string, config: ScopeConfig): void {
 
 // ── Path matching ─────────────────────────────────────────────────────────────
 
+/**
+ * Canonicalize a path by resolving symlinks.
+ * For paths that exist on disk, realpathSync resolves all symlinks (e.g. /tmp → /private/tmp on macOS).
+ * For paths that don't yet exist (Write targets), we walk up the directory tree to find the deepest
+ * existing ancestor, resolve that, then re-append the non-existent tail. This ensures that
+ * /tmp/proj/src/new-file.ts → /private/tmp/proj/src/new-file.ts even when new-file.ts doesn't exist yet.
+ */
+function canonical(p: string): string {
+  try { return realpathSync(p); } catch { /* path doesn't exist — walk up */ }
+  // Walk up to find an existing ancestor, resolve it, re-append the tail
+  const parts = p.split('/');
+  for (let i = parts.length - 1; i > 0; i--) {
+    const ancestor = parts.slice(0, i).join('/') || '/';
+    try {
+      const resolvedAncestor = realpathSync(ancestor);
+      const tail = parts.slice(i).join('/');
+      return tail ? `${resolvedAncestor}/${tail}` : resolvedAncestor;
+    } catch { /* keep walking up */ }
+  }
+  return p;
+}
+
 function isPathAllowed(filePath: string, root: string, config: ScopeConfig): ScopeViolation | null {
-  const absPath = isAbsolute(filePath) ? filePath : resolve(root, filePath);
-  const relPath = relative(root, absPath);
+  // F2 fix: always resolve() to canonicalise ../ sequences before any comparison.
+  // resolve() collapses traversal components without requiring the file to exist
+  // (safe for Write targets that don't yet exist on disk).
+  //
+  // canonical() additionally resolves symlinks when the path exists on disk, preventing
+  // symlink-bypass attacks (e.g. /tmp/proj-link → /etc/shadow).
+  // We canonicalize both the target path AND the root so that relPath computation
+  // remains consistent on platforms where /tmp → /private/tmp (macOS).
+  const resolvedRoot = resolve(root);
+  // canonical() resolves symlinks (e.g. macOS /tmp → /private/tmp).
+  // We use canonicalRoot as the authoritative base for all path comparisons
+  // so that relative-path computation remains consistent across symlink boundaries.
+  const canonicalRoot = canonical(resolvedRoot);
+  // Build the absolute target path. For relative paths, anchor to canonicalRoot.
+  // For absolute paths, use them directly — canonical() will resolve any symlinks in the path.
+  const rawTarget = resolve(isAbsolute(filePath) ? filePath : join(canonicalRoot, filePath));
+  const absPath = canonical(rawTarget);
+  // resolvedTarget: the dot-resolved (but not symlink-resolved) version of the original input,
+  // used for absoluteBlockPaths matching so /tmp/../etc/shadow resolves to /etc/shadow and
+  // matches the blocked /etc/ entry (both sides use resolve(), keeping namespaces consistent).
+  const resolvedTarget = resolve(isAbsolute(filePath) ? filePath : join(resolvedRoot, filePath));
+  const relPath = relative(canonicalRoot, absPath);
   const relNorm = normalizeRelPath(relPath.replace(/\\/g, '/'));
 
-  // Check absolute block paths first (always blocked, regardless of allow list)
+  // F1 fix: governance files are immutable from inside a governed session.
+  // Enforced BEFORE any config-driven allow/block logic so scope.json cannot
+  // neuter itself in a single Write call.
+  if (GOVERNANCE_PROTECTED.has(relNorm)) {
+    return {
+      type: 'blocked_path',
+      message: `"${filePath}" is a Thesmos governance file — a governed agent may not modify it.`,
+      suggestion: 'Edit governance config manually outside the agent session.',
+    };
+  }
+
+  // F2 fix (cont.): compare the resolved absolute path against absoluteBlockPaths.
+  // Previously absPath was unresolved when given as absolute, allowing /tmp/../etc/shadow to pass.
+  // We check both the dot-resolved path (resolvedTarget) and the symlink-resolved path (absPath)
+  // against the blocked paths so that both /tmp/../etc/shadow and symlink-to-/etc/ are caught.
   for (const blocked of config.workspace.absoluteBlockPaths) {
-    if (absPath.startsWith(blocked) || absPath === blocked) {
+    const blockedNorm = canonical(resolve(blocked)); // normalize separators, trailing slash, and symlinks
+    if (
+      resolvedTarget.startsWith(blockedNorm) || resolvedTarget === blockedNorm ||
+      absPath.startsWith(blockedNorm) || absPath === blockedNorm
+    ) {
       return {
         type: 'absolute_blocked_path',
         message: `Path "${filePath}" is in an always-blocked system directory "${blocked}".`,
@@ -172,24 +245,40 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
           `or run \`thesmos agent:release <agent-id>\` to stop managing this file before editing it directly.`,
       };
     }
-    // Unmanaged / external agent path — allow even when `.claude/` is blocked
-    // and even when allowedPaths would otherwise exclude it.
-    return null;
+    // Unmanaged / external agent path: allow unless .claude/ or .claude/agents/ is explicitly blocked.
+    // When blocked, fall through so the blocked-paths loop can surface an agent:install suggestion.
+    const isAgentSurfaceBlocked = config.workspace.blockedPaths.some((b) => {
+      const p = b.replace(/\./g, '\\.').replace(/\*/g, '.*');
+      const r = new RegExp(`^${p}`);
+      return r.test(relPath) || r.test(filePath) || r.test(relNorm);
+    });
+    if (!isAgentSurfaceBlocked) return null;
+    // Fall through to the blocked-paths loop for a targeted suggestion.
   }
 
-  // Check blocked paths (glob-style prefix matching)
+  // F3 fix: segment-aware blocked-path matching.
+  // Original anchored `^pattern` only matched root-level names; src/.env bypassed.
+  // Now we test the pattern against: (a) the full relative path [root-level matches],
+  // (b) the basename [nested matches], and (c) the original relPath [compat].
+  const fileBasename = basename(relNorm);
   for (const blocked of config.workspace.blockedPaths) {
     const pattern = blocked.replace(/\./g, '\\.').replace(/\*/g, '.*');
     const re = new RegExp(`^${pattern}`);
-    if (re.test(relPath) || re.test(filePath) || re.test(relNorm)) {
+    if (re.test(relNorm) || re.test(fileBasename) || re.test(relPath) || re.test(filePath)) {
       // Provide targeted, path-specific guidance for each canonical authoring surface.
+      const AGENT_SURFACE   = '.claude/agents/';
       const SKILL_SURFACE   = '.claude/skills/';
       const COMMAND_SURFACE = '.claude/commands/';
+      const isAgentPath   = relNorm.startsWith(AGENT_SURFACE)   || filePath.includes(AGENT_SURFACE);
       const isSkillPath   = relNorm.startsWith(SKILL_SURFACE)   || filePath.includes(SKILL_SURFACE);
       const isCommandPath = relNorm.startsWith(COMMAND_SURFACE) || filePath.includes(COMMAND_SURFACE);
 
       let suggestion: string;
-      if (isSkillPath) {
+      if (isAgentPath) {
+        suggestion =
+          `Author the agent spec under .thesmos/agents/ and run \`thesmos agent:install\` ` +
+          `to register and install it to .claude/agents/.`;
+      } else if (isSkillPath) {
         suggestion =
           `Author the skill outside .claude/skills/ and run \`thesmos skill:create\` ` +
           `or \`thesmos adapters\` to synchronize platform skill files.`;
@@ -231,12 +320,66 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
 
 // ── Command checking ──────────────────────────────────────────────────────────
 
+/**
+ * F10 fix: strip quoted strings and shell comments from a command before
+ * pattern matching to prevent false-positives on commands that merely
+ * *mention* a destructive pattern in a commit message, argument string, or comment.
+ *
+ * git commit -m "removes rm -rf usage"  → safe, rm -rf is inside a quoted string
+ * echo "rm -rf"                          → safe, argument is quoted
+ * rm -rf ./dist                          → blocked, bare token
+ *
+ * Strategy: remove all single/double-quoted spans and # comments, then
+ * test the remaining token stream.
+ */
+function stripQuotedAndComments(cmd: string): string {
+  let out = '';
+  let i = 0;
+  while (i < cmd.length) {
+    const ch = cmd[i];
+    if (ch === '#') break; // rest is a comment
+    if (ch === '"' || ch === "'") {
+      const q = ch;
+      i++;
+      // Skip past the closing quote (or end-of-string)
+      while (i < cmd.length && cmd[i] !== q) {
+        if (cmd[i] === '\\') i++; // skip escaped char
+        i++;
+      }
+      i++; // skip closing quote
+      out += ' '; // replace quoted span with a space so adjacent tokens don't merge
+    } else {
+      out += ch;
+      i++;
+    }
+  }
+  return out;
+}
+
+/**
+ * SECURITY NOTE — Residual Risk (F4, from Argus red-team 2026-07-20):
+ * This function blocks a known set of destructive patterns. It does NOT claim
+ * to block all destructive commands. Equivalent operations via inline interpreters
+ * (node -e 'fs.rmSync(…)', python -c 'shutil.rmtree(…)', perl unlink, find -delete,
+ * rimraf, etc.) are not fully covered. This is an inherent limitation of denylist
+ * matching — no string-based approach can enumerate all equivalent expressions.
+ *
+ * Correct posture: "Thesmos blocks a known set of destructive shell patterns."
+ * NOT: "Thesmos prevents all destructive commands."
+ *
+ * Architectural path to eliminate this: move Bash to a binary allowlist model
+ * (permit only whitelisted command words, deny-by-default on unknown commands).
+ * Until then, this gate provides meaningful friction, not a hard guarantee.
+ */
 function checkCommand(command: string, config: ScopeConfig): ScopeViolation | null {
   const cmd = command.trim().toLowerCase();
+  // F10 fix: match patterns against the unquoted token stream to avoid blocking
+  // commands that only mention a destructive pattern in a string literal or comment.
+  const unquoted = stripQuotedAndComments(cmd);
 
   // Check destructive patterns
   for (const pattern of config.destructivePatterns) {
-    if (cmd.includes(pattern.toLowerCase())) {
+    if (unquoted.includes(pattern.toLowerCase())) {
       return {
         type: 'destructive_command',
         message: `Command contains a destructive pattern "${pattern}".`,
@@ -245,11 +388,10 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
     }
   }
 
-  // Check delete operations
+  // Check delete operations (F10 fix: test unquoted stream)
   if (!config.operations.allowDelete) {
-    if (/\brm\s+(?:-[a-z]*f[a-z]*\s+)?\S/.test(cmd) && !/\brm\s+--/.test(cmd)) {
-      // Allow `rm --help` style, block actual deletion
-      const isHelp = cmd.includes('--help') || cmd.includes('-h');
+    if (/\brm\s+(?:-[a-z]*f[a-z]*\s+)?\S/.test(unquoted) && !/\brm\s+--/.test(unquoted)) {
+      const isHelp = unquoted.includes('--help') || unquoted.includes('-h');
       if (!isHelp) {
         return {
           type: 'destructive_command',
@@ -260,8 +402,8 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
     }
   }
 
-  // Check git push
-  if (!config.operations.allowGitPush && /\bgit\s+push\b/.test(cmd)) {
+  // Check git push (F10 fix: test unquoted stream)
+  if (!config.operations.allowGitPush && /\bgit\s+push\b/.test(unquoted)) {
     return {
       type: 'destructive_command',
       message: 'git push is not allowed in the current scope.',
@@ -306,6 +448,11 @@ export interface ScopeCheckInput {
   root: string;
 }
 
+/** Tools that write or modify files. */
+const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
+/** Tools that read file content — scoped against blockedPaths (F8 fix). */
+const READ_TOOLS = new Set(['Read', 'Grep', 'Glob']);
+
 export function checkScope(input: ScopeCheckInput): ScopeViolation | null {
   const { toolName, filePath, command, root } = input;
   const config = loadScopeConfig(root);
@@ -313,12 +460,11 @@ export function checkScope(input: ScopeCheckInput): ScopeViolation | null {
   // No scope config = allow all (safe default)
   if (!config) return null;
 
-  if ((toolName === 'Write' || toolName === 'Edit') && filePath) {
+  if ((WRITE_TOOLS.has(toolName) || READ_TOOLS.has(toolName)) && filePath) {
     return isPathAllowed(filePath, root, config);
   }
 
   if (toolName === 'Bash' && command) {
-    // Check path-based concerns in command (heuristic: look for file paths)
     const pathViolation = checkCommand(command, config);
     return pathViolation;
   }

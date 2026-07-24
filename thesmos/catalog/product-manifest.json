@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-07-23T20:02:59.739Z",
+  "release": {
+    "version": "5.0.0",
+    "vscodeExtensionVersion": "4.10.0",
+    "prReviewActionVersion": "1.0.0"
+  },
+  "catalog": {
+    "publishedAgentCount": 67,
+    "installedAgentCount": 127,
+    "freeAgentCount": 6,
+    "freeAgentIds": [
+      "zeus-executive-agent",
+      "athena-strategy-agent",
+      "argus-security-agent",
+      "apollo-content-agent",
+      "hephaestus-design-agent",
+      "hebe-support-agent"
+    ]
+  },
+  "governance": {
+    "ruleCount": 1137,
+    "blockerRuleCount": 219,
+    "toolCount": 13
+  },
+  "pricing": {
+    "tiers": [
+      {
+        "id": "essentials",
+        "name": "Essentials",
+        "priceUsd": 0,
+        "model": "free"
+      },
+      {
+        "id": "full-pantheon",
+        "name": "Full Pantheon",
+        "priceUsd": 24,
+        "model": "one-time"
+      }
+    ]
+  }
+}

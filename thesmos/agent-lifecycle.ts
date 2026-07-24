@@ -25,7 +25,6 @@ import { loadRegistryConfig, mergeRegistryConfig, REGISTRY_DEFAULTS, REGISTRY_PA
 import { getActiveCatalog } from './catalog.js';
 import { THESMOS_RULES, writeAllAdapters, ADAPTER_OUTPUT_PATHS, type AdapterTarget } from './adapters.js';
 import { loadConfig } from './config.js';
-import { desiredFromExportsDir, syncManagedClaudeAgents } from './agent-sync.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -211,30 +210,7 @@ export function syncAdapters(root: string): string[] {
       : undefined;
 
   const manifests = writeAllAdapters(root, THESMOS_RULES, config, ALL_ADAPTER_TARGETS, catalog);
-  const paths = manifests.map((m) => m.outputPath);
-
-  // Ownership-aware Claude Code fallback sync (never touches unowned files).
-  try {
-    const exportsDir = join(root, 'pantheon', 'exports', 'claude-code');
-    const fromExports = desiredFromExportsDir(exportsDir);
-    const desired = activeCatalog.agents.map((a) => ({
-      agentId: a.frontmatter.id,
-      content: a.content,
-      source: 'pantheon' as const,
-    }));
-    const syncDesired = desired.length > 0 ? desired : fromExports;
-    if (syncDesired.length > 0) {
-      syncManagedClaudeAgents({
-        root,
-        desired: syncDesired,
-        migrateLegacy: true,
-      });
-    }
-  } catch {
-    // Non-fatal: adapter files already written; managed sync can be retried.
-  }
-
-  return paths;
+  return manifests.map((m) => m.outputPath);
 }
 
 // ── Path safety ───────────────────────────────────────────────────────────────

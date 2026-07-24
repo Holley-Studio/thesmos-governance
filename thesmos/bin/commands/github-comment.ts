@@ -69,7 +69,7 @@ export async function cmdGithubComment(argv: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const allFindings = runReview({ scan, config });
+  const { findings: allFindings } = runReview({ scan, config });
   const baseline = loadBaseline(root);
   const findings = baseline
     ? partitionFindings(allFindings, baseline).newFindings

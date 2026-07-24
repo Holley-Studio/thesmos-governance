@@ -46,19 +46,19 @@ const CONFIG: ThesmosConfig = {
 
 describe('review output formatters', () => {
   it('formatFindingsConsole: no findings shows summary', () => {
-    const findings = runReview({ scan: BASE_SCAN, config: CONFIG });
+    const { findings } = runReview({ scan: BASE_SCAN, config: CONFIG });
     const out = formatFindingsConsole(findings, CONFIG.project, 'Review');
     expect(out).toContain('ReviewTest');
   });
 
   it('formatFindingsMarkdown: returns markdown table', () => {
-    const findings = runReview({ scan: BASE_SCAN, config: CONFIG });
+    const { findings } = runReview({ scan: BASE_SCAN, config: CONFIG });
     const out = formatFindingsMarkdown(findings, CONFIG.project);
     expect(out).toContain('## ');
   });
 
   it('formatFindingsJson: returns valid JSON with findings array', () => {
-    const findings = runReview({ scan: BASE_SCAN, config: CONFIG });
+    const { findings } = runReview({ scan: BASE_SCAN, config: CONFIG });
     const out = formatFindingsJson(findings);
     const parsed = JSON.parse(out) as { total: number; findings: unknown[] };
     expect(Array.isArray(parsed.findings)).toBe(true);
@@ -68,7 +68,7 @@ describe('review output formatters', () => {
 
 describe('runReview with changed files', () => {
   it('accepts changedFiles with content', () => {
-    const findings = runReview({
+    const { findings } = runReview({
       scan: BASE_SCAN,
       config: CONFIG,
       changedFiles: [
@@ -83,7 +83,7 @@ describe('runReview with changed files', () => {
   });
 
   it('findings are sorted deterministically', () => {
-    const findings = runReview({ scan: BASE_SCAN, config: CONFIG });
+    const { findings } = runReview({ scan: BASE_SCAN, config: CONFIG });
     const sorted = [...findings];
     sorted.sort((a, b) =>
       `${a.severity}${a.file}${a.message}`.localeCompare(`${b.severity}${b.file}${b.message}`)

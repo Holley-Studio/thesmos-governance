@@ -15,7 +15,8 @@ import {
   CI_CHECK_GROUPS,
   type CiCheckInput,
 } from './ci-check';
-import type { ThesmosConfig } from './types';
+import { runReview, formatFindingsSarif } from './review';
+import type { ThesmosConfig, ThesmosRule, ScanResult } from './types';
 
 // ── Fixture helpers ───────────────────────────────────────────────────────────
 
@@ -355,5 +356,73 @@ describe('formatCiCheckJson', () => {
     const checks = runCiCheck(makeEmptyInput());
     const parsed = JSON.parse(formatCiCheckJson(checks)) as Record<string, unknown>;
     expect(parsed.pass).toBe(false);
+  });
+});
+
+// ── Regression: A2 fail-closed requirements ───────────────────────────────────
+
+/** Minimal valid ScanResult for regression tests — all required fields present. */
+const EMPTY_SCAN: ScanResult = {
+  _generatedSections: [],
+  generatedAt: '2024-01-01T00:00:00.000Z',
+  scanVersion: '2.0.0',
+  pages: [],
+  apiRoutes: [],
+  componentCount: 0,
+  sharedUiFiles: [],
+  designSystemFiles: [],
+  storeFiles: [],
+  testFiles: [],
+  largeFiles: [],
+  riskyFiles: [],
+  scriptFiles: [],
+  envFiles: [],
+  clientBoundaryRisks: [],
+};
+
+/** Minimal valid ThesmosRule whose detect() always throws. */
+const crashingBlocker: ThesmosRule = {
+  id: 'SEC_001_TEST_CRASH',
+  category: 'admin_client_in_browser',
+  description: 'Simulated crashing BLOCKER rule for regression testing.',
+  severity: 'BLOCKER',
+  tags: ['test'],
+  sinceVersion: '2.0.0',
+  detect: () => { throw new Error('detect() crashed'); },
+};
+
+describe('regression: throwing BLOCKER cannot pass gate (A2 requirement)', () => {
+  it('produces engineErrors (not findings) when BLOCKER crashes', () => {
+    const result = runReview(
+      { scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: [] },
+      [crashingBlocker],
+    );
+    expect(result.findings).toHaveLength(0);
+    expect(result.engineErrors).toHaveLength(1);
+    expect(result.engineErrors[0].ruleId).toBe('SEC_001_TEST_CRASH');
+  });
+
+  it('gate logic on ReviewResult would exit 2, not 0, for engine errors', () => {
+    const result = runReview(
+      { scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: [] },
+      [crashingBlocker],
+    );
+    // Simulate the gate check from validate.ts
+    const wouldFailClosed = result.engineErrors.length > 0;
+    expect(wouldFailClosed).toBe(true);
+    // Exit 0 is impossible: either exit 1 (findings) or exit 2 (engine error)
+    const wouldExitZero = result.findings.length === 0 && result.engineErrors.length === 0;
+    expect(wouldExitZero).toBe(false);
+  });
+});
+
+describe('regression: SARIF output is valid (A2 requirement)', () => {
+  it('formatFindingsSarif produces non-empty valid JSON with required SARIF fields', () => {
+    const sarif = formatFindingsSarif([]);
+    expect(typeof sarif).toBe('string');
+    expect(sarif.length).toBeGreaterThan(0);
+    const parsed = JSON.parse(sarif) as Record<string, unknown>;
+    expect(parsed.version).toBe('2.1.0');
+    expect(Array.isArray(parsed.runs)).toBe(true);
   });
 });

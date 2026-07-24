@@ -134,7 +134,7 @@ describe('mock rule extensibility', () => {
   it('a mock rule passed to runReview produces its findings — no other code changes needed', () => {
     const input = { scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: [] };
     const testRegistry = [...THESMOS_RULES, mockRule];
-    const findings = runReview(input, testRegistry);
+    const { findings } = runReview(input, testRegistry);
     const mockFinding = findings.find((f) => f.category === 'mock_violation');
     expect(mockFinding).toBeDefined();
     expect(mockFinding!.severity).toBe('HIGH');
@@ -142,7 +142,7 @@ describe('mock rule extensibility', () => {
 
   it('mock rule detect() is isolated — does not affect the global registry output', () => {
     const input = { scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: [] };
-    const baseline = runReview(input); // uses global THESMOS_RULES
+    const { findings: baseline } = runReview(input); // uses global THESMOS_RULES
     expect(baseline.find((f) => f.category === 'mock_violation')).toBeUndefined();
   });
 

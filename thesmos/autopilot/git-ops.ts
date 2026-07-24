@@ -88,6 +88,11 @@ export function hasUncommittedChanges(root: string): boolean {
   return result.trim().length > 0;
 }
 
+export function getUntrackedFiles(root: string): string[] {
+  const result = gitSafe(root, ['ls-files', '--others', '--exclude-standard']);
+  return result ? result.split('\n').filter(Boolean) : [];
+}
+
 // ── Session branch management ─────────────────────────────────────────────────
 
 export function createAutopilotBranch(root: string, planTitle: string, sessionId: string): string {

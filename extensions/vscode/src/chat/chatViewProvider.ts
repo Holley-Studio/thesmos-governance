@@ -10,7 +10,7 @@
 
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ClaudeSession, type SessionEvent, type PermissionMode } from './claudeSession.js';
@@ -23,6 +23,7 @@ import { listSessions, loadTranscript } from './sessionHistory.js';
 import { appendSavings, estimateTierSaving, monthSavingsUsd } from './savingsLedger.js';
 import { runReview, ThesmosNotFoundError } from '../runner.js';
 import type { Finding } from '../types.js';
+import { runAdvise, shouldGate, budgetState, type DispatchAdvice } from './dispatchAdvisor.js';
 
 interface GodUiInfo extends GodEntry {}
 
@@ -39,6 +40,8 @@ type UiItem =
   | { kind: 'permission'; requestId: string; toolName: string; label: string; status: 'pending' | 'allowed' | 'denied' }
   | { kind: 'todo'; id: string; todos: TodoEntry[] }
   | { kind: 'governance'; findings: GovernanceFinding[]; fileCount: number }
+  | { kind: 'dispatchOrder'; orderId: string; advice: DispatchAdvice; budgetLine: string | null; status: 'pending' | 'approved' | 'skipped' | 'dismissed' }
+  | { kind: 'turnSummary'; turnId: string; gods: Array<{ emoji: string; name: string }>; model: string; costDeltaUsd: number }
   | { kind: 'error'; text: string }
   | { kind: 'turnFooter'; text: string };
 
@@ -120,6 +123,18 @@ function workspaceKey(root: string): string {
   return root.replace(/[^a-zA-Z0-9]/g, '-').slice(-80);
 }
 
+/** Read sessionMaxCostUSD from .thesmos/config.json → tokenBudget, returning undefined if absent. */
+function readSessionBudget(workspaceRoot: string): number | undefined {
+  try {
+    const raw = JSON.parse(readFileSync(join(workspaceRoot, '.thesmos', 'config.json'), 'utf-8')) as Record<string, unknown>;
+    const tb = raw['tokenBudget'] as Record<string, unknown> | undefined;
+    const v = Number(tb?.['sessionMaxCostUSD']);
+    return isFinite(v) && v > 0 ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Read `model:` pinned in agent definition frontmatter (.claude/agents/*.md,
  * project then user scope) keyed by the god's lowercase first name — so god
@@ -193,6 +208,16 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private currentTodoId: string | undefined;
   private readonly promptQueue: Array<{ text: string; attachments: string[] }> = [];
   private turnRunning = false;
+  /** Prompt held while its Dispatch Order card awaits approval. */
+  private pendingDispatch:
+    | { orderId: string; text: string; attachments: string[]; advice: DispatchAdvice }
+    | undefined;
+  /** True once an 80% budget warning has been shown this session. */
+  private budgetWarned = false;
+  /** Advice from the last approved dispatch order — used to build the post-turn summary card. */
+  private lastApprovedAdvice: DispatchAdvice | undefined;
+  /** Session cost at the start of the current turn — used to compute per-turn cost delta. */
+  private turnStartCostUsd = 0;
   private readonly turnChangedFiles = new Set<string>();
   private governanceUnavailable = false;
   private agentModels: Map<string, string> = new Map();
@@ -208,6 +233,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private savedUsdSession = 0;
   private savingsCacheAt: number | undefined;
   private savingsCacheVal = 0;
+  /** Session cost ceiling from .thesmos/config.json tokenBudget.sessionMaxCostUSD. */
+  private readonly sessionBudgetUsd: number | undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -220,6 +247,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       workspaceRoot,
       vscode.Uri.joinPath(this.context.globalStorageUri, 'checkpoints', workspaceKey(workspaceRoot)).fsPath,
     );
+    this.sessionBudgetUsd = readSessionBudget(workspaceRoot);
     this.restore();
   }
 
@@ -462,6 +490,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         alwaysAllow?: boolean;
         checkpointId?: string;
         model?: string;
+        orderId?: string;
       }) => {
         switch (msg.type) {
           case 'ready':
@@ -506,6 +535,12 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
               this.resolvePermission(msg.requestId, msg.decision, msg.alwaysAllow === true);
             }
             break;
+          case 'dispatchApprove':
+            if (typeof msg.orderId === 'string') this.resolveDispatch(msg.orderId, 'approved');
+            break;
+          case 'dispatchSkip':
+            if (typeof msg.orderId === 'string') this.resolveDispatch(msg.orderId, 'skipped');
+            break;
           case 'pickImage':
             void this.pickImages(webview);
             break;
@@ -520,6 +555,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
             break;
           case 'exportRecord':
             void this.exportCouncilRecord();
+            break;
+          case 'openBudgetConfig':
+            void vscode.workspace.openTextDocument(
+              vscode.Uri.file(join(this.workspaceRoot, '.thesmos', 'config.json'))
+            ).then((doc) => vscode.window.showTextDocument(doc));
             break;
           case 'pasteImage':
             if (typeof msg.data === 'string' && msg.data.length > 0) {
@@ -571,6 +611,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       <button id="export-record" title="Export this session as a Council Record (markdown)">📤</button>
       <button id="open-tab" title="Open in editor tab">↗️</button>
       <button id="new-session" title="New session">⟳ New</button>
+    </div>
+    <div id="budget-bar-wrap" title="Session cost — click to edit budget in .thesmos/config.json">
+      <span id="budget-cost">$0.0000</span>
+      <div id="budget-bar"><div id="budget-fill"></div></div>
+      <span id="budget-ceiling"></span>
     </div>
     <div id="log"></div>
     <div id="empty">
@@ -633,13 +678,79 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   private async sendPrompt(text: string, attachments: string[] = []): Promise<void> {
+    // Budget enforcement (fail-closed): re-read the ceiling each send so the
+    // user can raise it in .thesmos/config.json and immediately continue.
+    const budget = readSessionBudget(this.workspaceRoot);
+    if (budgetState(this.totalCostUsd, budget) === 'exceeded') {
+      this.pushItem({
+        kind: 'error',
+        text:
+          `⛔ Session budget reached (~$${this.totalCostUsd.toFixed(2)} of ~$${budget!.toFixed(2)}). ` +
+          `Raise tokenBudget.sessionMaxCostUSD in .thesmos/config.json (click the budget bar) or start a new session.`,
+      });
+      return;
+    }
+
     if (this.turnRunning) {
       // A turn is live — queue this prompt and dispatch it when the turn ends.
       this.promptQueue.push({ text, attachments });
       this.pushItem({ kind: 'user', text: this.userDisplayText(text, attachments), queued: true });
       return;
     }
+
+    // A newer prompt supersedes any card still awaiting approval.
+    if (this.pendingDispatch) this.resolveDispatch(this.pendingDispatch.orderId, 'dismissed');
+
+    // Dispatch Order gate — deterministic advise heuristic, $0, fail-open.
+    const advice = await runAdvise(this.workspaceRoot, text);
+    if (advice && shouldGate(advice, this.permissionMode)) {
+      const orderId = `do-${Date.now().toString(36)}`;
+      this.pendingDispatch = { orderId, text, attachments, advice };
+      const budgetLine =
+        budget !== undefined
+          ? `~$${this.totalCostUsd.toFixed(2)} of ~$${budget.toFixed(2)} session budget used`
+          : null;
+      this.pushItem({ kind: 'dispatchOrder', orderId, advice, budgetLine, status: 'pending' });
+      return;
+    }
+
     await this.dispatchPrompt(text, attachments, false);
+  }
+
+  /** Resolve a pending Dispatch Order card: approve routes + dispatches, skip dispatches as-is. */
+  private resolveDispatch(orderId: string, status: 'approved' | 'skipped' | 'dismissed'): void {
+    const card = this.history.find(
+      (i): i is Extract<UiItem, { kind: 'dispatchOrder' }> =>
+        i.kind === 'dispatchOrder' && i.orderId === orderId,
+    );
+    if (card && card.status === 'pending') {
+      card.status = status;
+      this.broadcast({ type: 'dispatchResolved', orderId, status });
+      this.schedulePersist();
+    }
+    const pending = this.pendingDispatch;
+    if (!pending || pending.orderId !== orderId) return;
+    this.pendingDispatch = undefined;
+    if (status === 'approved') {
+      this.lastApprovedAdvice = pending.advice;
+    }
+    if (status === 'dismissed') return;
+
+    let prompt = pending.text;
+    if (status === 'approved') {
+      // Approval steers routing: name the approved gods so Zeus dispatches them,
+      // and apply the recommended model tier (AGNT_031) for the whole turn.
+      if (pending.advice.agents.length > 0) {
+        const roster = pending.advice.agents.map((a) => `${a.emoji} ${a.name} (${a.domain})`).join(', ');
+        prompt += `\n\n⚡ Approved dispatch order: engage ${roster} as subagents for their domains.`;
+      }
+      const rec = pending.advice.recommendation.claudeModel;
+      if (rec && rec !== this.modelId && this.providers.active.id === 'anthropic') {
+        void this.setModel(rec).then(() => this.dispatchPrompt(prompt, pending.attachments, false));
+        return;
+      }
+    }
+    void this.dispatchPrompt(prompt, pending.attachments, false);
   }
 
   private async dispatchPrompt(text: string, attachments: string[], dequeued: boolean): Promise<void> {
@@ -649,6 +760,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       if (!this.session) return;
     }
     this.turnRunning = true;
+    this.turnStartCostUsd = this.totalCostUsd;
     this.turnChangedFiles.clear();
 
     const checkpointId = await this.checkpoints.snapshot(text.slice(0, 72));
@@ -802,6 +914,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         this.lastSessionId = undefined;
         this.totalCostUsd = 0;
     this.savedUsdSession = 0;
+        this.lastApprovedAdvice = undefined;
         this.currentTodoId = undefined;
         this.pushItem({ kind: 'turnFooter', text: '— ⟲ Kronos restored the workspace and opened a fresh chapter —' });
         this.broadcast({ type: 'history', items: this.history });
@@ -901,6 +1014,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   stop(): void {
+    if (this.pendingDispatch) this.resolveDispatch(this.pendingDispatch.orderId, 'dismissed');
+    this.lastApprovedAdvice = undefined;
     this.session?.stop();
     this.turnRunning = false;
     this.setActivity(null);
@@ -985,6 +1100,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           lines.push('');
           break;
         }
+        case 'turnSummary': {
+          const godList = item.gods.map((g) => `${g.emoji} ${g.name}`).join(' · ');
+          lines.push(`_⚡ ${godList} · \`${item.model}\` · ~$${item.costDeltaUsd.toFixed(4)}_`, '');
+          break;
+        }
         case 'turnFooter':
           lines.push(`_${item.text}_`, '');
           break;
@@ -1032,6 +1152,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.lastSessionId = picked.sessionId;
     this.totalCostUsd = 0;
     this.savedUsdSession = 0;
+    this.lastApprovedAdvice = undefined;
     this.currentTodoId = undefined;
     this.godStart.clear();
     this.history.length = 0;
@@ -1051,6 +1172,9 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   newSession(): void {
+    if (this.pendingDispatch) this.resolveDispatch(this.pendingDispatch.orderId, 'dismissed');
+    this.budgetWarned = false;
+    this.lastApprovedAdvice = undefined;
     this.session?.dispose();
     this.session = undefined;
     this.model = undefined;
@@ -1256,6 +1380,39 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           }
         }
         if (event.costUsd !== undefined) this.totalCostUsd = event.costUsd; // CLI reports cumulative session cost
+        // Budget guardian: warn once at 80%, hard-notify at 100%. Enforcement
+        // (blocking the next send) happens in sendPrompt, fail-closed.
+        {
+          const budget = readSessionBudget(this.workspaceRoot);
+          const state = budgetState(this.totalCostUsd, budget);
+          if (state === 'warn' && !this.budgetWarned) {
+            this.budgetWarned = true;
+            this.pushItem({
+              kind: 'turnFooter',
+              text: `— ⚠️ ~$${this.totalCostUsd.toFixed(2)} of ~$${budget!.toFixed(2)} session budget used —`,
+            });
+          } else if (state === 'exceeded') {
+            this.pushItem({
+              kind: 'error',
+              text:
+                `⛔ Session budget reached (~$${this.totalCostUsd.toFixed(2)} of ~$${budget!.toFixed(2)}). ` +
+                `New prompts are blocked until you raise tokenBudget.sessionMaxCostUSD or start a new session.`,
+            });
+            try {
+              appendSavings(this.workspaceRoot, {
+                ts: new Date().toISOString(),
+                type: 'budget_stop',
+                detail: `session stopped at ~$${this.totalCostUsd.toFixed(2)} (ceiling ~$${budget!.toFixed(2)})`,
+                costUsd: this.totalCostUsd,
+              });
+            } catch {
+              // Ledger write is best-effort — never break a turn over it.
+            }
+          } else if (state === 'ok' && this.budgetWarned) {
+            // Ceiling was raised mid-session — re-arm the 80% warning.
+            this.budgetWarned = false;
+          }
+        }
         this.setActivity(null);
         this.setPhase(null);
         const fmtTok = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
@@ -1269,6 +1426,18 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           parts.push(`⚡ ${fmtTok(event.cacheReadTokens)} from cache`);
         }
         if (parts.length > 0) this.pushItem({ kind: 'turnFooter', text: `— ${parts.join(' · ')} —` });
+        // Council summary card — appears after approved-dispatch turns only.
+        if (this.lastApprovedAdvice) {
+          const costDeltaUsd = Math.max(0, this.totalCostUsd - this.turnStartCostUsd);
+          this.pushItem({
+            kind: 'turnSummary',
+            turnId: `ts-${Date.now().toString(36)}`,
+            gods: this.lastApprovedAdvice.agents.map((a) => ({ emoji: a.emoji, name: a.name })),
+            model: this.lastApprovedAdvice.recommendation.claudeModel,
+            costDeltaUsd,
+          });
+          this.lastApprovedAdvice = undefined;
+        }
         this.broadcast({
           type: 'status',
           running: false,
@@ -1304,6 +1473,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         break;
 
       case 'exit':
+        this.lastApprovedAdvice = undefined;
         this.turnRunning = false;
         this.setActivity(null);
         this.setPhase(null);
@@ -1386,13 +1556,14 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   private broadcast(message: unknown): void {
-    // Credit Guardian: every status update carries the savings figures so the
-    // header stays current without threading them through ten call sites.
+    // Credit Guardian: every status update carries the savings figures and session budget
+    // so the header bar stays current without threading them through ten call sites.
     if (typeof message === 'object' && message !== null && (message as { type?: string }).type === 'status') {
       message = {
         ...message,
         savedUsdSession: this.savedUsdSession,
         savedUsdMonth: this.monthSavings(),
+        sessionBudgetUsd: this.sessionBudgetUsd,
       };
     }
     for (const webview of this.webviews) this.post(webview, message);

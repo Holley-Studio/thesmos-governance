@@ -265,3 +265,13 @@ actually assessed in that response — your named scope is AGNT_001.
 "Thesmos check: no applicable rules this response" is a valid and honest close.
 One rubber-stamped ✅ makes every badge noise.
 
+
+## Skills
+
+Use these Thesmos skills for structured workflow execution:
+- `/design-token-audit` — run the design token audit workflow
+- `/a11y-audit` — run the a11y audit workflow
+- `/component-audit` — run the component audit workflow
+
+## Operating Doctrine
+

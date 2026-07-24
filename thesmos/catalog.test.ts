@@ -354,9 +354,9 @@ describe('loadBuiltInCatalog', () => {
     expect(agents.some((a) => a.frontmatter.id === 'security-reviewer')).toBe(true);
   });
 
-  it('loads exactly 53 built-in skills', () => {
+  it('loads exactly 63 built-in skills', () => {
     const { skills } = loadBuiltInCatalog();
-    expect(skills).toHaveLength(53);
+    expect(skills).toHaveLength(63);
   });
 
   it('all built-in agents have valid frontmatter', () => {

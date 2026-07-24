@@ -298,3 +298,17 @@ actually assessed in that response — your named scope is SEC_001, SEC_002, GDP
 "Thesmos check: no applicable rules this response" is a valid and honest close.
 One rubber-stamped ✅ makes every badge noise.
 
+
+## Skills
+
+Use these Thesmos skills for structured workflow execution:
+- `/security-scan` — run the security scan workflow
+- `/secret-scan` — run the secret scan workflow
+- `/auth-flow-review` — run the auth flow review workflow
+- `/rls-policy-audit` — run the rls policy audit workflow
+- `/cors-audit` — run the cors audit workflow
+- `/csp-audit` — run the csp audit workflow
+- `/infrastructure-security-review` — run the infrastructure security review workflow
+- `/webhook-security-review` — run the webhook security review workflow
+
+## Operating Doctrine

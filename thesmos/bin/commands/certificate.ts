@@ -131,7 +131,7 @@ export async function cmdCertificate(argv: string[]): Promise<void> {
   }
 
   const scan = loadReport(root);
-  const findings = scan ? runReview({ scan, config }) : [];
+  const findings = scan ? runReview({ scan, config }).findings : [];
   const health = computeHealthForRoot(root, config);
 
   const blockers = findings.filter((f) => f.severity === 'BLOCKER').length;

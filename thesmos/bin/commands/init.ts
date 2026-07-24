@@ -211,7 +211,7 @@ export async function cmdInit(argv: string[]): Promise<void> {
       const { computeHealthForRoot } = await import('../../health.ts');
       const { runReview } = await import('../../review.ts');
       const health = computeHealthForRoot(root, config);
-      const findings = scan ? runReview({ scan, config }) : [];
+      const findings = scan ? runReview({ scan, config }).findings : [];
       const top = findings[0];
       console.log('');
       console.log(formatOracleVerdict({

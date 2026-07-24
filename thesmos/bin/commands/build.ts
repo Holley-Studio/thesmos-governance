@@ -221,7 +221,7 @@ async function runGovernanceScan(root: string, files: string[]): Promise<{ findi
         content: readFileSync(join(root, f), 'utf-8'),
       }));
 
-    const allFindings = await runReview({ scan: {} as import('../../types.js').ScanResult, config, changedFiles });
+    const { findings: allFindings } = await runReview({ scan: {} as import('../../types.js').ScanResult, config, changedFiles });
     const blockers = allFindings.filter((f) => f.severity === 'BLOCKER');
     return { findings: allFindings.length, blockers: blockers.length };
   } catch {
@@ -324,10 +324,9 @@ async function runBuildAgent(argv: string[]): Promise<void> {
     console.log(`  ✅ No findings — all generated files pass governance`);
   }
 
-  console.log(`\n  Agent ready. To run:`);
-  console.log(`    npx thesmos agent:run ${name}`);
-  console.log(`    npx thesmos agent:run ${name} --dry-run`);
-  console.log(`    /${name}              (from Claude Code)\n`);
+  console.log(`\n  Agent ready. To use:`);
+  console.log(`    /${name}              (from Claude Code — install with: thesmos pantheon:install)`);
+  console.log(`    thesmos agents        (list installed agents)\n`);
 
   log.info('build:agent scaffold complete', { name, files: result.files.length, findings });
 }
@@ -364,6 +363,7 @@ async function runBuildSkill(argv: string[]): Promise<void> {
 
   const commandContent = [
     `---`,
+    `name: ${name}`,
     `description: ${purpose}`,
     `---`,
     '',

@@ -10,12 +10,13 @@
  * thesmos pantheon:remove      — remove installed agents
  * thesmos pantheon:mode        — set/get power mode (normal vs god power)
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, mkdtempSync, rmSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, lstatSync, mkdtempSync, rmSync } from 'node:fs';
+import { join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { tmpdir, homedir } from 'node:os';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { platform } from 'node:os';
 import { createContext } from '../lib/context.ts';
 import { parseArgs, flag, flagVal } from '../lib/args.ts';
 import { logAgentSpawn } from '../../agent-activity.ts';
@@ -31,6 +32,15 @@ const _agentsDirCandidates = [
   join(__dirname, '../catalog/agents'),    // bundle: dist/ → thesmos/
 ];
 const AGENTS_DIR = _agentsDirCandidates.find(p => existsSync(p)) ?? _agentsDirCandidates[0];
+
+// pantheon/exports/skills/ — pre-built skill exports, one dir per skill.
+// Skills bundled in the $24 pack live here; --write copies them alongside agents.
+const _skillsExportDirCandidates = [
+  join(__dirname, '../../../pantheon/exports/skills'), // dev: bin/commands/ → repo root
+  join(__dirname, '../../pantheon/exports/skills'),    // bundle: dist/ → thesmos/
+];
+const SKILLS_EXPORT_DIR = _skillsExportDirCandidates.find(p => existsSync(p)) ?? _skillsExportDirCandidates[0];
+
 const PANTHEON_DIR = join(AGENTS_DIR, 'pantheon');
 const FIGMA_DIR = join(AGENTS_DIR, 'figma');
 const MEMORY_DIR_REL = '.thesmos/pantheon/memory';
@@ -70,6 +80,31 @@ function upsellLine(installedGodCount: number): string | null {
     `  ${m.storeUrl}\n`;
 }
 
+/**
+ * Copy skills linked by an agent (via skillIds) from the pre-built export dir
+ * to .claude/skills/ in the project root. Returns count of skills copied.
+ * Skips skills whose export dir doesn't exist (graceful: future skill IDs, dev envs).
+ */
+function installLinkedSkills(skillIds: string[], root: string): number {
+  if (skillIds.length === 0 || !existsSync(SKILLS_EXPORT_DIR)) return 0;
+
+  const targetBase = join(root, '.claude', 'skills');
+  mkdirSync(targetBase, { recursive: true });
+
+  let copied = 0;
+  for (const id of skillIds) {
+    const srcDir = join(SKILLS_EXPORT_DIR, id);
+    const skillMd = join(srcDir, 'SKILL.md');
+    if (!existsSync(skillMd)) continue; // skill not yet exported — skip silently
+
+    const destDir = join(targetBase, id);
+    mkdirSync(destDir, { recursive: true });
+    writeFileSync(join(destDir, 'SKILL.md'), readFileSync(skillMd, 'utf8'), 'utf8');
+    copied++;
+  }
+  return copied;
+}
+
 // Slugs of agent .md files directly in a directory (non-recursive), excluding
 // README.md and any <slug>-README.md companion doc (identified by lacking the
 // --- frontmatter block a real agent file has — see parsePantheonAgent).
@@ -95,6 +130,7 @@ interface PantheonAgent {
   tags: string[];
   governanceRules: string[];
   cursorGlobs: string;
+  skillIds: string[];
   body: string;
 }
 
@@ -170,6 +206,7 @@ function parsePantheonAgent(raw: string, fallbackId: string): PantheonAgent | nu
     tags: getArr('tags'),
     governanceRules,
     cursorGlobs,
+    skillIds: getArr('skills'),
     body: body.includes('## Operating Doctrine')
       ? body
       : `${body}\n\n${buildOperatingDoctrine(god, role, emoji, governanceRules)}`,
@@ -255,6 +292,7 @@ function writeRegistry(root: string, data: Record<string, unknown>): void {
 
 interface ThesmosConfig {
   power?: string;
+  catalogUrl?: string;
   [key: string]: unknown;
 }
 
@@ -299,6 +337,19 @@ export function setPowerMode(root: string, modeInput: string): 'lean' | 'god' {
 
 // ── Export generators ──────────────────────────────────────────────────────────
 
+/** Builds the ## Skills section for agents with bound skills. Returns '' when skillIds is empty. */
+function skillsSection(skillIds: string[]): string {
+  if (skillIds.length === 0) return '';
+  const lines = skillIds.map(id => `- \`/${id}\` — run the ${id.replace(/-/g, ' ')} workflow`);
+  return [
+    '',
+    '## Skills',
+    '',
+    'Use these Thesmos skills for structured workflow execution:',
+    ...lines,
+  ].join('\n');
+}
+
 function exportClaudeCode(agent: PantheonAgent): string {
   const isOrchestrator =
     agent.id === 'zeus-executive-agent' ||
@@ -335,8 +386,13 @@ tools:
 ${tools.map(t => `  - ${t}`).join('\n')}
 ---
 
-${body}
+${agent.body}${skillsSection(agent.skillIds)}
 `;
+}
+
+/** Exported for tests only — not part of the public CLI API. */
+export function exportClaudeCodeForTest(agent: PantheonAgent): string {
+  return exportClaudeCode(agent);
 }
 
 function exportChatGPT(agent: PantheonAgent): string {
@@ -458,16 +514,105 @@ function isAgentFileContent(content: string): boolean {
   return /^name:\s*\S/m.test(fm[1]!) && /^description:\s*\S/m.test(fm[1]!);
 }
 
-/** Resolve the agents directory inside an extracted pack (for-claude/ preferred). */
+/** True when the path exists AND is a real directory (not a symlink — packs must not link outside themselves). */
+function isRealDirectory(path: string): boolean {
+  if (!existsSync(path)) return false;
+  const st = lstatSync(path);
+  return st.isDirectory() && !st.isSymbolicLink();
+}
+
+/**
+ * Copy skills from a pack's `for-claude/skills/` directory to `.claude/skills/` in the project root.
+ * Each skill is a subdirectory containing a SKILL.md file.
+ * Skips symlinks and dirs without a SKILL.md (guards against malicious or malformed packs).
+ */
+function installSkillsFromPackDir(skillsPackDir: string, root: string): number {
+  if (!existsSync(skillsPackDir)) return 0;
+
+  const targetBase = join(root, '.claude', 'skills');
+  mkdirSync(targetBase, { recursive: true });
+
+  let installed = 0;
+  for (const entry of readdirSync(skillsPackDir)) {
+    const srcDir = join(skillsPackDir, entry);
+    // Never follow symlinks — same policy as agent install
+    if (lstatSync(srcDir).isSymbolicLink()) continue;
+    if (!statSync(srcDir).isDirectory()) continue;
+    const skillMdSrc = join(srcDir, 'SKILL.md');
+    // lstat (not stat) so a symlinked SKILL.md is rejected — prevents path-traversal reads via crafted packs
+    const skillMdStat = lstatSync(skillMdSrc, { throwIfNoEntry: false });
+    if (!skillMdStat?.isFile()) continue;
+
+    const destDir = join(targetBase, entry);
+    mkdirSync(destDir, { recursive: true });
+    writeFileSync(join(destDir, 'SKILL.md'), readFileSync(skillMdSrc, 'utf8'), 'utf8');
+    installed++;
+  }
+  return installed;
+}
+
+/**
+ * Cross-platform zip extraction.
+ * - macOS/Linux: uses system `unzip` (fast, available everywhere)
+ * - Windows: falls back to PowerShell Expand-Archive (no extra deps)
+ * Throws on failure so the caller can clean up tempDir.
+ */
+function extractZip(zipPath: string, destDir: string): void {
+  if (platform() === 'win32') {
+    // Pass paths as separate argv elements bound to PowerShell params — never
+    // interpolated into the command string, so paths with quotes/$ can't inject.
+    const result = spawnSync(
+      'powershell.exe',
+      ['-NoProfile', '-Command', '& { param($src, $dst) Expand-Archive -Force -LiteralPath $src -DestinationPath $dst }', '--', zipPath, destDir],
+      { encoding: 'utf8' },
+    );
+    if (result.status !== 0) {
+      throw new Error(result.stderr || result.stdout || 'PowerShell Expand-Archive failed');
+    }
+  } else {
+    execFileSync('unzip', ['-o', '-q', zipPath, '-d', destDir]);
+  }
+}
+
+/**
+ * F7 fix: Post-extraction containment check.
+ * Walks every real file under dir and asserts its resolved path starts with
+ * the canonical prefix of dir. Throws if any file escapes — covers hosts where
+ * the system `unzip` does not sanitise `../` entries (busybox, older builds).
+ */
+function assertContainedInDir(dir: string): void {
+  const canonicalBase = resolve(dir) + sep;
+  const stack: string[] = [resolve(dir)];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    for (const entry of readdirSync(current)) {
+      const abs = join(current, entry);
+      // Use lstat so symlinks are never followed — same policy as the symlink filter below.
+      const st = lstatSync(abs, { throwIfNoEntry: false });
+      if (!st) continue;
+      const canonicalAbs = resolve(abs);
+      if (!canonicalAbs.startsWith(canonicalBase) && canonicalAbs !== resolve(dir)) {
+        throw new Error(
+          `Pack extraction escape detected: "${abs}" resolves outside extraction directory.\n` +
+          `This pack may be malicious. Aborting install.`,
+        );
+      }
+      if (st.isDirectory() && !st.isSymbolicLink()) {
+        stack.push(abs);
+      }
+    }
+  }
+}
+
 function resolvePackAgentsDir(packDir: string): string {
   const direct = join(packDir, 'for-claude');
-  if (existsSync(direct)) return direct;
+  if (isRealDirectory(direct)) return direct;
   // Zips often extract into a single top-level folder — look one level down.
   for (const entry of readdirSync(packDir)) {
     const candidate = join(packDir, entry);
-    if (statSync(candidate).isDirectory()) {
+    if (isRealDirectory(candidate)) {
       const nested = join(candidate, 'for-claude');
-      if (existsSync(nested)) return nested;
+      if (isRealDirectory(nested)) return nested;
     }
   }
   return packDir;
@@ -478,7 +623,7 @@ function resolvePackAgentsDir(packDir: string): string {
  * or .zip). Exported for tests. Throws on missing path / empty pack; individual
  * agent failures are collected, not fatal.
  */
-export function installFromPack(packPath: string, root: string): { installed: number; skipped: number; errors: string[] } {
+export function installFromPack(packPath: string, root: string): { installed: number; skipped: number; errors: string[]; skillsInstalled: number } {
   if (!existsSync(packPath)) {
     throw new Error(`Pack not found: ${packPath}\nDownload it from your Gumroad library, then re-run with the correct path.`);
   }
@@ -489,11 +634,16 @@ export function installFromPack(packPath: string, root: string): { installed: nu
   if (statSync(packPath).isFile() && packPath.endsWith('.zip')) {
     tempDir = mkdtempSync(join(tmpdir(), 'thesmos-pack-'));
     try {
-      execFileSync('unzip', ['-o', '-q', packPath, '-d', tempDir]);
-    } catch {
+      extractZip(packPath, tempDir);
+      // F7 fix: assert every extracted file is inside tempDir regardless of
+      // the host's unzip behaviour — some builds honour `../` traversal entries.
+      assertContainedInDir(tempDir);
+    } catch (err) {
       rmSync(tempDir, { recursive: true, force: true });
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('escape detected')) throw err;
       throw new Error(
-        `Could not extract ${packPath} automatically (is \`unzip\` installed?).\n` +
+        `Could not extract ${packPath}.\n` +
         `Extract it manually, then run: thesmos pantheon:install --pack <extracted-folder>`,
       );
     }
@@ -504,6 +654,8 @@ export function installFromPack(packPath: string, root: string): { installed: nu
     const agentsDir = resolvePackAgentsDir(packDir);
     const candidates = readdirSync(agentsDir)
       .filter(f => f.endsWith('.md') && !isIgnoredAgentFile(f))
+      // Skip symlinked entries — a crafted pack could link to files outside the archive.
+      .filter(f => !lstatSync(join(agentsDir, f)).isSymbolicLink())
       .map(f => ({ file: f, content: readFileSync(join(agentsDir, f), 'utf8') }))
       .filter(({ content }) => isAgentFileContent(content));
 
@@ -534,17 +686,26 @@ export function installFromPack(packPath: string, root: string): { installed: nu
       }
     }
 
+    // Install skills from for-claude/skills/ if present
+    const skillsPackDir = join(agentsDir, 'skills');
+    const skillsInstalled = installSkillsFromPackDir(skillsPackDir, root);
+
     if (installed + skipped > 0) {
       syncAdapters(root);
-      const markerDir = join(homedir(), '.thesmos', 'premium');
-      mkdirSync(markerDir, { recursive: true });
-      writeFileSync(
-        join(markerDir, 'pack.json'),
-        JSON.stringify({ product: 'thesmos-pantheon', installedAt: new Date().toISOString(), source: 'pantheon:install --pack' }, null, 2),
-      );
+      // Skip writing the home-dir purchase marker during test runs — prevents
+      // ~/.thesmos/premium/pack.json from persisting across test suites and
+      // causing resolveTier() to return 'premium' in unrelated tests.
+      if (!process.env['VITEST']) {
+        const markerDir = join(homedir(), '.thesmos', 'premium');
+        mkdirSync(markerDir, { recursive: true });
+        writeFileSync(
+          join(markerDir, 'pack.json'),
+          JSON.stringify({ product: 'thesmos-pantheon', installedAt: new Date().toISOString(), source: 'pantheon:install --pack' }, null, 2),
+        );
+      }
     }
 
-    return { installed, skipped, errors };
+    return { installed, skipped, errors, skillsInstalled };
   } finally {
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   }
@@ -568,7 +729,7 @@ function installCursorRules(agents: PantheonAgent[], toInstall: string[], root: 
 }
 
 function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void {
-  const { flags, positionals } = parseArgs(argv, { valueFlags: ['pack', 'agent'] });
+  const { flags, positionals } = parseArgs(argv);
   const all = flag(flags, 'all');
   const write = flag(flags, 'write');
   const cursor = flag(flags, 'cursor');
@@ -576,12 +737,12 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
   const packPath = flagVal(flags, 'pack');
   if (packPath) {
     try {
-      const { installed, skipped, errors } = installFromPack(packPath, root);
+      const { installed, skipped, errors, skillsInstalled } = installFromPack(packPath, root);
       if (errors.length > 0) {
         console.error(`\n  ✗ ${errors.length} agent(s) failed:\n`);
         for (const e of errors) console.error(`    ${e}`);
       }
-      console.log(`\n  ⚡ Full Pantheon installed: ${installed} new, ${skipped} updated.`);
+      console.log(`\n  ⚡ Full Pantheon installed: ${installed} new, ${skipped} updated${skillsInstalled > 0 ? `, ${skillsInstalled} skills` : ''}.`);
       console.log('  Adapters regenerated. The gods are at your service.\n');
       if (errors.length > 0 && installed + skipped === 0) process.exit(1);
     } catch (err) {
@@ -616,6 +777,7 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
 
     let written = 0;
     let skipped = 0;
+    let skillsWritten = 0;
     const errors: string[] = [];
 
     for (const id of toInstall) {
@@ -637,6 +799,7 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
       } catch (err) {
         errors.push(`${id}: ${err instanceof Error ? err.message : String(err)}`);
       }
+      skillsWritten += installLinkedSkills(agent.skillIds, root);
     }
 
     if (errors.length > 0) {
@@ -647,10 +810,11 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
     if (written + skipped > 0) {
       console.log(`\n  ✓ ${written} agent(s) written to .thesmos/agents/`);
       if (skipped > 0) console.log(`    ${skipped} already present — skipped`);
+      if (skillsWritten > 0) console.log(`  ✓ ${skillsWritten} linked skill(s) written to .claude/skills/`);
 
       try {
         const synced = syncAdapters(root);
-        console.log(`  ✓ Adapters regenerated (${synced.length} file${synced.length === 1 ? '' : 's'})`);
+        console.log(`  ✓ Adapters regenerated (${synced.length} file${synced.length === 1 ? '' : 's'})\n`);
       } catch (err) {
         console.error(`\n  ✗ Adapter sync failed — run \`thesmos adapters\` to retry\n`);
       }
@@ -715,7 +879,7 @@ function cmdStatus(agents: PantheonAgent[], root: string): void {
 // ── pantheon:export ────────────────────────────────────────────────────────────
 
 function cmdExport(agents: PantheonAgent[], argv: string[], root: string): void {
-  const { flags } = parseArgs(argv, { valueFlags: ['target', 'agent', 'out'] });
+  const { flags } = parseArgs(argv);
   const target = flagVal(flags, 'target') ?? 'claude-code';
   const agentFilter = flagVal(flags, 'agent');
   const outDir = flagVal(flags, 'out');
@@ -982,7 +1146,7 @@ function cmdCouncil(agents: PantheonAgent[], argv: string[]): void {
 // ── pantheon:orchestrate ───────────────────────────────────────────────────────
 
 async function cmdOrchestrate(agents: PantheonAgent[], argv: string[]): Promise<void> {
-  const { flags, positionals } = parseArgs(argv, { valueFlags: ['out'] });
+  const { flags, positionals } = parseArgs(argv);
   const task = positionals.join(' ');
   const outFile = flagVal(flags, 'out');
   const shouldExecute = flag(flags, 'execute');
@@ -1092,7 +1256,7 @@ async function cmdOrchestrate(agents: PantheonAgent[], argv: string[]): Promise<
 // ── pantheon:memory ────────────────────────────────────────────────────────────
 
 function cmdMemory(agents: PantheonAgent[], argv: string[], root: string): void {
-  const { flags, positionals } = parseArgs(argv, { valueFlags: ['agent', 'note'] });
+  const { flags, positionals } = parseArgs(argv);
   const sub = positionals[0];
   const agentIdFlag = flagVal(flags, 'agent');
   const note = positionals.slice(1).join(' ') || flagVal(flags, 'note') || '';
@@ -1171,14 +1335,33 @@ function cmdRemove(agents: PantheonAgent[], argv: string[], root: string): void 
 
 // ── pantheon:upgrade ───────────────────────────────────────────────────────────
 
-function cmdUpgrade(agents: PantheonAgent[]): void {
-  console.log('\n  Checking Pantheon agent versions...\n');
-  for (const a of agents) {
-    console.log(`  ✓ [${a.id}] v${a.version} — up to date`);
+async function checkUpgrade(config: ThesmosConfig): Promise<{ status: string; message: string }> {
+  const catalogUrl = config.catalogUrl ?? process.env['THESMOS_CATALOG_URL'];
+  if (!catalogUrl) {
+    return {
+      status: 'not_configured',
+      message: 'No catalog URL configured. Set catalogUrl in .thesmos/config.json or THESMOS_CATALOG_URL env var to enable upgrade checks.',
+    };
   }
-  console.log(`\n  All ${agents.length} agents are at the latest version.\n`);
-  console.log('  To update: npm update -g thesmos-governance\n');
+  return {
+    status: 'not_configured',
+    message: `Catalog URL configured (${catalogUrl}) but remote check is not yet implemented. Run 'npm update thesmos-governance' to update manually.`,
+  };
 }
+
+async function cmdUpgrade(agents: PantheonAgent[], root: string): Promise<void> {
+  const config = readConfig(root);
+  const result = await checkUpgrade(config);
+
+  console.log('\n  Pantheon upgrade check\n');
+  console.log(`  Status:  ${result.status}`);
+  console.log(`  Message: ${result.message}`);
+  console.log(`\n  Installed: ${agents.length} agent(s)`);
+  console.log('  To update: npm update thesmos-governance\n');
+}
+
+/** Exported for tests. */
+export { checkUpgrade };
 
 // ── pantheon:mode ─────────────────────────────────────────────────────────────
 
@@ -1247,7 +1430,7 @@ export async function cmdPantheon(argv: string[]): Promise<void> {
       cmdRemove(agents, rest, root);
       break;
     case 'upgrade':
-      cmdUpgrade(agents);
+      await cmdUpgrade(agents, root);
       break;
     case 'mode':
       cmdMode(rest, root);

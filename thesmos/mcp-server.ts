@@ -29,14 +29,14 @@ import { runReview } from './review.js';
 import { findRule } from './explain.js';
 import { computeHealthForRoot } from './health.js';
 import { loadConfig, CONFIG_DEFAULTS } from './config.js';
+import { loadReport } from './report.js';
 import { COMMIT_RULES } from './rules/commits.js';
 import type { Finding, ScanResult, DetectInput } from './types.js';
 import { modelFor } from './generated/pantheon-models.js';
 import { makeLogger } from './logger.js';
-import { buildBudgetReport, calcCost, getCurrentSessionId, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
+import { buildBudgetReport, getCurrentSessionId, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
 import { logMcpBlock, logMcpPass, logRuleFire } from './governance-log.js';
 import { getAutoModeGovernanceInfo } from './claude-govern.js';
-import { loadReport } from './report.js';
 import {
   assuranceFromRuleCounts,
   formatAssuranceScore,
@@ -61,6 +61,9 @@ interface JsonRpcResponse {
   result?: unknown;
   error?: { code: number; message: string; data?: unknown };
 }
+
+// Maximum age of a scan before compliance status is NOT_ASSESSED.
+const MAX_SCAN_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // ── MCP Protocol constants ────────────────────────────────────────────────────
 
@@ -300,7 +303,7 @@ function handleScanFile(
     { path: params.path, content: params.content },
   ];
 
-  const findings = runReview({ scan: makeEmptyScan(), config, changedFiles });
+  const { findings } = runReview({ scan: makeEmptyScan(), config, changedFiles });
   const blockers = findings.filter((f) => f.severity === 'BLOCKER').length;
   const highs = findings.filter((f) => f.severity === 'HIGH').length;
 
@@ -411,23 +414,12 @@ function handleGetTokenBudget(root: string): unknown {
   return { text: lines.join('\n'), report };
 }
 
-function handleCheckModelCost(params: { tokens: number }): unknown {
-  const t = Math.max(0, params.tokens);
-  const half = Math.round(t / 2);
-  const models = [
-    { name: 'Haiku (claude-haiku-4-5-20251001)', input: 0.25, output: 1.25 },
-    { name: 'Sonnet (claude-sonnet-4-6)', input: 3.00, output: 15.00 },
-    { name: 'Opus (claude-opus-4-8)', input: 15.00, output: 75.00 },
-  ];
-  const rows = models.map((m) => {
-    const cost = calcCost(m.name.split(' ')[0].toLowerCase(), half, half, {
-      haiku:  { inputPer1M: 0.25, outputPer1M: 1.25 },
-      sonnet: { inputPer1M: 3.00, outputPer1M: 15.00 },
-      opus:   { inputPer1M: 15.00, outputPer1M: 75.00 },
-    }) || (half * m.input + half * m.output) / 1_000_000;
-    return `${m.name.padEnd(42)} $${cost.toFixed(4)}`;
-  });
-  return { text: [`Estimated cost for ${t.toLocaleString()} tokens:`, ...rows].join('\n') };
+function handleCheckModelCost(_params: { tokens: number }): unknown {
+  return {
+    status: 'pricing_not_available',
+    message: 'Hardcoded pricing has been removed. Use the Anthropic pricing page for current rates.',
+    learnMoreUrl: 'https://www.anthropic.com/pricing',
+  };
 }
 
 // ── Pantheon agent catalog ────────────────────────────────────────────────────
@@ -521,6 +513,19 @@ function handleResourceRead(root: string, uri: string): unknown {
   return null;
 }
 
+/**
+ * Load the cached report.json for the workspace. Returns null if absent or unparseable.
+ * Compliance tools use this so they report NOT_ASSESSED instead of silently passing
+ * on empty evidence.
+ */
+function getRealScanOrNull(root: string): ScanResult | null {
+  try {
+    return loadReport(root);
+  } catch {
+    return null;
+  }
+}
+
 function handleGetComplianceStatus(root: string, params: { framework: string }): unknown {
   const config = (() => { try { return loadConfig(root); } catch { return CONFIG_DEFAULTS; } })();
   const { framework } = params;
@@ -529,26 +534,34 @@ function handleGetComplianceStatus(root: string, params: { framework: string }):
     r.frameworks?.includes(framework) || r.id.startsWith(framework.toUpperCase().replace(/-/g, '_') + '_'),
   );
 
-  const scan = loadReport(root);
+  const scan = getRealScanOrNull(root);
   const evidenceMissing = scan === null;
+
+  // Reject stale scans — compliance evidence must be fresh.
+  const scanAge = scan ? Date.now() - new Date(scan.generatedAt).getTime() : null;
+  const stale = scanAge !== null && scanAge > MAX_SCAN_AGE_MS;
+  const ageHours = scanAge !== null ? Math.round(scanAge / (60 * 60 * 1000)) : null;
+
   let frameworkFindings: Finding[] = [];
-  if (!evidenceMissing && scan) {
-    const allFindings = runReview({ scan, config, changedFiles: [] });
+  if (!evidenceMissing && !stale && scan) {
+    const { findings: allFindings } = runReview({ scan, config, changedFiles: [] });
     frameworkFindings = allFindings.filter((f) =>
       frameworkRules.some((r) => r.category === f.category),
     );
   }
 
-  const passed = evidenceMissing
+  const passed = evidenceMissing || stale
     ? 0
     : frameworkRules.filter((r) => !frameworkFindings.some((f) => f.category === r.category)).length;
   const total = frameworkRules.length;
   const assurance = assuranceFromRuleCounts(passed, total, {
-    evidenceMissing,
-    evidenceSource: evidenceMissing ? null : join(root, '.thesmos', 'report.json'),
+    evidenceMissing: evidenceMissing || stale,
+    evidenceSource: evidenceMissing || stale ? null : join(root, '.thesmos', 'report.json'),
     reason: evidenceMissing
       ? 'No `.thesmos/report.json` — run `thesmos scan` before claiming compliance'
-      : undefined,
+      : stale
+        ? `Scan data is stale (${ageHours}h old) — run \`thesmos scan\` before claiming compliance`
+        : undefined,
   });
 
   const blockers = frameworkFindings.filter((f) => f.severity === 'BLOCKER');
@@ -564,6 +577,8 @@ function handleGetComplianceStatus(root: string, params: { framework: string }):
     rulesFailed: assurance.rulesFailed,
     reason: assurance.reason,
     evidenceSource: assurance.evidenceSource,
+    scanGeneratedAt: scan?.generatedAt ?? null,
+    scanAgeHours: ageHours,
     findings: frameworkFindings,
     topBlockers: blockers.slice(0, 5).map((f) => ({ category: f.category, file: f.file, message: f.message })),
     topHighs: highs.slice(0, 5).map((f) => ({ category: f.category, file: f.file, message: f.message })),
@@ -581,11 +596,13 @@ function handleCheckFrameworkCoverage(root: string, params: { framework: string 
   const { framework } = params;
 
   const frameworkRules = THESMOS_RULES.filter((r) => r.frameworks?.includes(framework));
-  const scan = loadReport(root);
-  const evidenceMissing = scan === null;
+  const scan = getRealScanOrNull(root);
+  const scanAge = scan ? Date.now() - new Date(scan.generatedAt).getTime() : null;
+  const stale = scanAge !== null && scanAge > MAX_SCAN_AGE_MS;
+  const evidenceMissing = scan === null || stale;
   let allFindings: Finding[] = [];
   if (!evidenceMissing && scan) {
-    allFindings = runReview({ scan, config, changedFiles: [] });
+    allFindings = runReview({ scan, config, changedFiles: [] }).findings;
   }
 
   const coverage = frameworkRules.map((r) => {
@@ -605,6 +622,9 @@ function handleCheckFrameworkCoverage(root: string, params: { framework: string 
   const assurance = assuranceFromRuleCounts(passing, frameworkRules.length, {
     evidenceMissing,
     evidenceSource: evidenceMissing ? null : join(root, '.thesmos', 'report.json'),
+    reason: stale
+      ? `Scan data is stale (${Math.round((scanAge ?? 0) / (60 * 60 * 1000))}h old) — run \`thesmos scan\` before claiming compliance`
+      : undefined,
   });
 
   return {
@@ -616,7 +636,7 @@ function handleCheckFrameworkCoverage(root: string, params: { framework: string 
     coveragePercent: assurance.score,
     rules: coverage,
     note: evidenceMissing
-      ? 'No `.thesmos/report.json` — coverage is INCOMPLETE until you run `thesmos scan`.'
+      ? (assurance.reason ?? 'No `.thesmos/report.json` — coverage is INCOMPLETE until you run `thesmos scan`.')
       : frameworkRules.length === 0
         ? `No rules explicitly tagged with framework "${framework}". Use get_compliance_status for prefix-based matching.`
         : undefined,

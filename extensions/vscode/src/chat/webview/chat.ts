@@ -26,6 +26,8 @@ type UiItem =
   | { kind: 'permission'; requestId: string; toolName: string; label: string; status: 'pending' | 'allowed' | 'denied' }
   | { kind: 'todo'; id: string; todos: TodoEntry[] }
   | { kind: 'governance'; findings: GovernanceFinding[]; fileCount: number }
+  | { kind: 'dispatchOrder'; orderId: string; advice: DispatchAdviceUi; budgetLine: string | null; status: 'pending' | 'approved' | 'skipped' | 'dismissed' }
+  | { kind: 'turnSummary'; turnId: string; gods: Array<{ emoji: string; name: string }>; model: string; costDeltaUsd: number }
   | { kind: 'error'; text: string }
   | { kind: 'turnFooter'; text: string };
 
@@ -35,6 +37,12 @@ interface GovernanceFinding {
   file: string;
   line?: number;
   message: string;
+}
+
+interface DispatchAdviceUi {
+  classification: { mechanicalPct: number; creativePct: number; architecturePct: number; bulkPct: number };
+  recommendation: { model: string; claudeModel: string; costMultiple: string; rationale: string };
+  agents: Array<{ emoji: string; name: string; domain: string }>;
 }
 
 interface TodoEntry {
@@ -50,7 +58,7 @@ type InboundMessage =
   | { type: 'delta'; text: string }
   | { type: 'deltaDone' }
   | { type: 'godComplete'; toolUseId: string; summary: string; isError: boolean; durationMs: number }
-  | { type: 'status'; running: boolean; model?: string; sessionId?: string; permissionMode?: string; totalCostUsd?: number; savedUsdSession?: number; savedUsdMonth?: number }
+  | { type: 'status'; running: boolean; model?: string; sessionId?: string; permissionMode?: string; totalCostUsd?: number; savedUsdSession?: number; savedUsdMonth?: number; sessionBudgetUsd?: number }
   | { type: 'providerInfo'; label: string; models: Array<{ id: string; label: string }>; currentModel: string }
   | { type: 'activity'; text: string | null }
   | { type: 'phase'; text: string | null }
@@ -59,6 +67,7 @@ type InboundMessage =
   | { type: 'removeLive' }
   | { type: 'attachments'; paths: string[] }
   | { type: 'permissionResolved'; requestId: string; status: 'allowed' | 'denied' }
+  | { type: 'dispatchResolved'; orderId: string; status: 'approved' | 'skipped' | 'dismissed' }
   | { type: 'todoUpdate'; id: string; todos: TodoEntry[] }
   | { type: 'fileList'; paths: string[] };
 
@@ -79,8 +88,39 @@ const providerBtn = document.getElementById('provider-btn') as HTMLButtonElement
 const attachBtn = document.getElementById('attach') as HTMLButtonElement;
 const mentionPopup = document.getElementById('mention-popup') as HTMLDivElement;
 const attachmentsRow = document.getElementById('attachments') as HTMLDivElement;
+const budgetBarWrap = document.getElementById('budget-bar-wrap') as HTMLDivElement;
+const budgetCostEl = document.getElementById('budget-cost') as HTMLSpanElement;
+const budgetFill = document.getElementById('budget-fill') as HTMLDivElement;
+const budgetCeilingEl = document.getElementById('budget-ceiling') as HTMLSpanElement;
 
 let pendingAttachments: string[] = [];
+/** Session cost ceiling from .thesmos/config.json — undefined means no limit configured. */
+let sessionBudgetUsd: number | undefined;
+
+/**
+ * Update the always-visible header budget bar.
+ * States: no-limit (bar hidden), healthy (green), warn (amber ≥60%), crit (red ≥85%).
+ */
+function updateBudgetBar(costUsd: number): void {
+  if (!budgetBarWrap) return;
+  if (!sessionBudgetUsd) {
+    // No budget configured — show cost only, no fill bar
+    budgetBarWrap.classList.add('no-limit');
+    budgetCostEl.textContent = `$${costUsd.toFixed(4)}`;
+    budgetCeilingEl.textContent = '';
+    return;
+  }
+  budgetBarWrap.classList.remove('no-limit');
+  const pct = Math.min(100, (costUsd / sessionBudgetUsd) * 100);
+  budgetFill.style.width = `${pct}%`;
+  budgetFill.classList.toggle('warn', pct >= 60 && pct < 85);
+  budgetFill.classList.toggle('crit', pct >= 85);
+  budgetBarWrap.classList.toggle('pulsing', pct >= 100);
+  budgetCostEl.textContent = `$${costUsd.toFixed(4)}`;
+  budgetCeilingEl.textContent = `/ $${sessionBudgetUsd.toFixed(2)}`;
+  const pctLabel = Math.round(pct);
+  budgetBarWrap.title = `Session cost: $${costUsd.toFixed(4)} of $${sessionBudgetUsd.toFixed(2)} budget (${pctLabel}%) — click to edit .thesmos/config.json`;
+}
 
 // ── Thinking indicator ────────────────────────────────────────────────────────
 // Shown instantly on send and whenever the turn is running but nothing has
@@ -433,6 +473,14 @@ function renderItem(item: UiItem): void {
       append(buildGovernanceCard(item));
       break;
     }
+    case 'dispatchOrder': {
+      append(buildDispatchOrderCard(item));
+      break;
+    }
+    case 'turnSummary': {
+      append(buildTurnSummaryCard(item));
+      break;
+    }
     case 'error': {
       const el = div('msg error-note');
       el.textContent = item.text;
@@ -585,6 +633,87 @@ function buildGovernanceCard(item: Extract<UiItem, { kind: 'governance' }>): HTM
   return el;
 }
 
+function buildDispatchOrderCard(item: Extract<UiItem, { kind: 'dispatchOrder' }>): HTMLDivElement {
+  const card = div('dispatch-order');
+  card.dataset.orderId = item.orderId;
+
+  const title = div('dispatch-order-title');
+  title.textContent = `⚡ Dispatch Order — ${item.advice.agents.length || 'no'} specialist${item.advice.agents.length === 1 ? '' : 's'} matched`;
+  card.appendChild(title);
+
+  for (const god of item.advice.agents) {
+    const row = div('dispatch-order-god');
+    row.textContent = `${god.emoji} ${god.name} — ${god.domain}`;
+    card.appendChild(row);
+  }
+
+  const model = div('dispatch-order-model');
+  model.textContent = `Recommended: ${item.advice.recommendation.model} (${item.advice.recommendation.claudeModel}) · ${item.advice.recommendation.costMultiple}`;
+  card.appendChild(model);
+
+  const why = div('dispatch-order-rationale');
+  why.textContent = item.advice.recommendation.rationale;
+  card.appendChild(why);
+
+  if (item.budgetLine) {
+    const budget = div('dispatch-order-budget');
+    budget.textContent = `${item.budgetLine} (estimates vs flagship baseline)`;
+    card.appendChild(budget);
+  }
+
+  const actions = div('dispatch-order-actions');
+  if (item.status === 'pending') {
+    const approve = document.createElement('button');
+    approve.className = 'dispatch-approve';
+    approve.textContent = '⚡ Approve & Execute';
+    approve.addEventListener('click', () => {
+      vscode.postMessage({ type: 'dispatchApprove', orderId: item.orderId });
+    });
+    const skip = document.createElement('button');
+    skip.className = 'dispatch-skip';
+    skip.textContent = 'Send as-is';
+    skip.addEventListener('click', () => {
+      vscode.postMessage({ type: 'dispatchSkip', orderId: item.orderId });
+    });
+    actions.appendChild(approve);
+    actions.appendChild(skip);
+  } else {
+    const done = div('dispatch-order-status');
+    done.textContent =
+      item.status === 'approved' ? '✓ Approved — council dispatched'
+      : item.status === 'skipped' ? '→ Sent as-is'
+      : '· Superseded';
+    actions.appendChild(done);
+  }
+  card.appendChild(actions);
+  return card;
+}
+
+function buildTurnSummaryCard(item: Extract<UiItem, { kind: 'turnSummary' }>): HTMLDivElement {
+  const el = div('turn-summary');
+
+  const godsRow = div('turn-summary-gods');
+  for (const god of item.gods) {
+    const chip = document.createElement('span');
+    chip.className = 'turn-summary-chip';
+    chip.textContent = `${god.emoji} ${god.name}`;
+    godsRow.appendChild(chip);
+  }
+  el.appendChild(godsRow);
+
+  const metaRow = div('turn-summary-meta');
+  const modelSpan = document.createElement('span');
+  modelSpan.className = 'turn-summary-model';
+  modelSpan.textContent = item.model;
+  const costSpan = document.createElement('span');
+  costSpan.className = 'turn-summary-cost';
+  costSpan.textContent = `~$${item.costDeltaUsd.toFixed(4)}`;
+  metaRow.append(modelSpan, costSpan);
+  el.appendChild(metaRow);
+
+  return el;
+}
+
 // ── Streaming ─────────────────────────────────────────────────────────────
 
 function ensureLiveBubble(): HTMLDivElement {
@@ -722,6 +851,7 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       // While a turn runs, Send becomes Queue — messages wait their turn.
       sendBtn.textContent = msg.running ? 'Queue' : 'Send';
       sendBtn.title = msg.running ? 'Queue for when the current turn finishes' : 'Send (Enter)';
+      if (msg.sessionBudgetUsd !== undefined) sessionBudgetUsd = msg.sessionBudgetUsd;
       if (msg.model || msg.sessionId || msg.totalCostUsd !== undefined) {
         meta.textContent = [
           msg.model,
@@ -731,6 +861,7 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
           .filter(Boolean)
           .join(' · ');
       }
+      if (msg.totalCostUsd !== undefined) updateBudgetBar(msg.totalCostUsd);
       if (msg.permissionMode) modeSelect.value = msg.permissionMode;
       break;
     case 'providerInfo': {
@@ -761,6 +892,24 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       const resolved = div('perm-resolved');
       resolved.textContent = msg.status === 'allowed' ? '✓ Approved' : '✕ Denied';
       el.appendChild(resolved);
+      break;
+    }
+    case 'dispatchResolved': {
+      const el = document.querySelector<HTMLDivElement>(
+        `.dispatch-order[data-order-id="${msg.orderId}"]`,
+      );
+      if (el) {
+        const actions = el.querySelector('.dispatch-order-actions');
+        if (actions) {
+          actions.innerHTML = '';
+          const done = div('dispatch-order-status');
+          done.textContent =
+            msg.status === 'approved' ? '✓ Approved — council dispatched'
+            : msg.status === 'skipped' ? '→ Sent as-is'
+            : '· Superseded';
+          actions.appendChild(done);
+        }
+      }
       break;
     }
     case 'todoUpdate': {
@@ -821,6 +970,7 @@ empty.addEventListener('click', (e) => {
 });
 stopBtn.addEventListener('click', () => vscode.postMessage({ type: 'stop' }));
 newBtn.addEventListener('click', () => vscode.postMessage({ type: 'newSession' }));
+if (budgetBarWrap) budgetBarWrap.addEventListener('click', () => vscode.postMessage({ type: 'openBudgetConfig' }));
 attachBtn.addEventListener('click', () => vscode.postMessage({ type: 'pickImage' }));
 modeSelect.addEventListener('change', () =>
   vscode.postMessage({ type: 'setPermissionMode', mode: modeSelect.value }),

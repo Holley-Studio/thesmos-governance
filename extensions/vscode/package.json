@@ -365,16 +365,16 @@
       },
       {
         "view": "thesmos.pantheonChat",
-        "contents": "⚡ Pantheon Chat\n\nSet up Thesmos to unlock the full Pantheon — 68 specialist AI agents orchestrated by Zeus.\n\n[$(cloud-download) Set Up Thesmos](command:thesmos.setup)\n\nAlready installed? [Open Chat in Editor Tab](command:thesmos.pantheon.chat.openInTab)",
+        "contents": "⚡ Pantheon Chat\n\nSet up Thesmos to unlock the full Pantheon — 67 specialist AI agents orchestrated by Zeus.\n\n[$(cloud-download) Set Up Thesmos](command:thesmos.setup)\n\nAlready installed? [Open Chat in Editor Tab](command:thesmos.pantheon.chat.openInTab)",
         "when": "!thesmos.active"
       },
       {
         "view": "thesmos.agentActivity",
-        "contents": "No agent activity yet — god dispatches appear here live.\n\nSummon the full Pantheon: 68 specialist agents orchestrated by Zeus.\n[Get the Full Pantheon](https://holley.studio/thesmos)"
+        "contents": "No agent activity yet — god dispatches appear here live.\n\nSummon the full Pantheon: 67 specialist agents orchestrated by Zeus.\n[Get the Full Pantheon](https://holley.studio/thesmos)"
       },
       {
         "view": "thesmos.agentsView",
-        "contents": "**Starter gods installed?** The free tier ships 6 gods — Zeus, Athena, Argus, Apollo, Hephaestus, and Hebe.\n\n[Install Starter Agents](command:thesmos.installAgents)\n\n**The Full Pantheon** — all 68 specialists, $24 one-time, yours forever.\n\n[Unlock Full Pantheon ($24)](command:thesmos.unlockPantheon)\n\n[Install Pantheon Pack…](command:thesmos.installPantheonPack)\n\nAlready bought? Download the zip from your Gumroad library, then use Install Pantheon Pack."
+        "contents": "**Starter gods installed?** The free tier ships 6 gods — Zeus, Athena, Argus, Apollo, Hephaestus, and Hebe.\n\n[Install Starter Agents](command:thesmos.installAgents)\n\n**The Full Pantheon** — all 67 specialists, $24 one-time, yours forever.\n\n[Unlock Full Pantheon ($24)](command:thesmos.unlockPantheon)\n\n[Install Pantheon Pack…](command:thesmos.installPantheonPack)\n\nAlready bought? Download the zip from your Gumroad library, then use Install Pantheon Pack."
       }
     ],
     "menus": {
