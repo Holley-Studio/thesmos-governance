@@ -2,9 +2,13 @@
 
 ## Unreleased
 
+## 5.0.1
+
 ### Patch Changes
 
-- **Pantheon Chat permission deadlock (macOS):** Unix socket under `os.tmpdir()` exceeded `sun_path` (ENAMETOOLONG) so the bridge never bound and every Edit/Write/Bash was denied. Socket now lives at `/tmp/thesmos-perm/p-<16hex>.sock` with listen error logging. VS Code extension `4.10.1`.
+- **Pantheon Chat permission deadlock (macOS):** Unix socket under `os.tmpdir()` exceeded `sun_path` (ENAMETOOLONG) so the bridge never bound and every Edit/Write/Bash was denied. Socket now lives at `/tmp/thesmos-perm/p-<16hex>.sock` with listen error logging.
+- **VS Code extension** version aligned to `5.0.1` and published with this release (Marketplace / Open VSX).
+- **PR governance review:** ignore `extensions/vscode/dist/` so bundled esbuild output no longer floods false BLOCKER/HIGH findings.
 
 ### Minor Changes
 
@@ -28,6 +32,8 @@
   - Adapter and local installer sync never overwrite or delete untracked files; modified managed files are preserved and reported.
   - Zeus uses unrestricted `Agent` tooling and documents external-agent interoperability.
   - New package layout: `pantheon-plugin/` for Claude Code plugin distribution (fallback copy path remains).
+
+- **Trust Execution Hardening (phases 0–6):** fail-closed assurance, safe Claude execution defaults, real Pantheon `--execute`, builder/`agent:run` repairs, execution receipts + local metrics, release pins, and health/catalog integrity (#111).
 
 ## 5.0.0
 
