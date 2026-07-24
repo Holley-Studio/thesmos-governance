@@ -28,6 +28,15 @@ describe('PermissionBridge', () => {
     bridge = undefined;
   });
 
+  it('keeps the unix socket path under the sun_path limit (/tmp, short name)', () => {
+    if (process.platform === 'win32') return;
+    // 32-byte hex nonce mimics production (randomBytes(16).toString('hex'))
+    const nonce = 'a'.repeat(32);
+    bridge = new PermissionBridge(nonce, () => {});
+    expect(bridge.socketPath).toBe(`/tmp/thesmos-perm/p-${nonce.slice(0, 16)}.sock`);
+    expect(Buffer.byteLength(bridge.socketPath)).toBeLessThan(104);
+  });
+
   it('forwards a request and relays the allow decision back to the caller', async () => {
     const nonce = `test-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     let captured: PermissionRequest | undefined;
