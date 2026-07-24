@@ -513,10 +513,8 @@ function safeCheckScope(input: ScopeCheckInput, failClosed: boolean): ScopeViola
  * PreToolUse JSON schema has no dedicated correlation field (verified
  * against the current protocol; see module doc below), so it's embedded in
  * the human-readable reason text instead of invented as a fake schema
- * field. Uses crypto.randomUUID() (matches this codebase's convention for
- * every other generated id — see agent-lifecycle.ts, execution-receipt.ts)
- * rather than Math.random(), even though this id isn't a security boundary,
- * to avoid ambiguity in this file's own governance review.
+ * field. Uses crypto.randomUUID(), matching this codebase's own convention
+ * for every other generated id (see agent-lifecycle.ts, execution-receipt.ts).
  */
 function makeCorrelationId(): string {
   return randomUUID().slice(0, 8);
