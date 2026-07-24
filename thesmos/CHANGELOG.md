@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Patch Changes
+
+- **Pantheon Chat permission deadlock (macOS):** Unix socket under `os.tmpdir()` exceeded `sun_path` (ENAMETOOLONG) so the bridge never bound and every Edit/Write/Bash was denied. Socket now lives at `/tmp/thesmos-perm/p-<16hex>.sock` with listen error logging. VS Code extension `4.10.1`.
+
 ### Minor Changes
 
 - **Cross-platform Thesmos guard (Operation Aegis):** Claude Code hooks no longer depend on Unix shell (`npx … 2>&1 || true`, Bash wrappers) for governance.

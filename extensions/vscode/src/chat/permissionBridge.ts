@@ -14,8 +14,7 @@
 
 import * as net from 'node:net';
 import { existsSync, mkdirSync, unlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 export interface PermissionRequest {
   requestId: string;
@@ -41,16 +40,19 @@ export class PermissionBridge {
   constructor(sessionNonce: string, private readonly onRequest: (req: PermissionRequest) => void) {
     this.socketPath =
       process.platform === 'win32'
-        ? `\\\\.\\pipe\\thesmos-pantheon-${sessionNonce}`
-        : join(tmpdir(), 'thesmos-pantheon-chat', `perm-${sessionNonce}.sock`);
+        ? `\\\\.\\pipe\\thesmos-perm-${sessionNonce}`
+        // macOS tmpdir() expands to a long user-specific path that routinely
+        // exceeds the 104-byte sun_path limit for Unix domain sockets —
+        // use /tmp directly (always short; kernel follows the symlink).
+        // 16 hex chars (64-bit nonce) is ample for a session-scoped socket.
+        : join('/tmp', 'thesmos-perm', `p-${sessionNonce.slice(0, 16)}.sock`);
   }
 
   start(): void {
     if (this.server) return;
 
     if (process.platform !== 'win32') {
-      const dir = join(tmpdir(), 'thesmos-pantheon-chat');
-      mkdirSync(dir, { recursive: true, mode: 0o700 });
+      mkdirSync(dirname(this.socketPath), { recursive: true, mode: 0o700 });
       if (existsSync(this.socketPath)) {
         try {
           unlinkSync(this.socketPath);
@@ -78,6 +80,11 @@ export class PermissionBridge {
       socket.on('error', () => {
         /* peer went away — the pending timeout will clean up if unresolved */
       });
+    });
+    this.server.on('error', (err) => {
+      // Surface listen() failures (e.g. ENAMETOOLONG, EADDRINUSE) that would
+      // otherwise be silent unhandled events — every connect attempt gets ENOENT.
+      console.error('[PermissionBridge] socket error:', (err as NodeJS.ErrnoException).code, err.message);
     });
     this.server.listen(this.socketPath);
   }
