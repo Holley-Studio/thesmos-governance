@@ -508,41 +508,45 @@ describe('checkScope — ambiguous command syntax requests approval', () => {
   });
   afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /* */ } });
 
-  function expectAsk(command: string, construct: string): void {
+  /** Runs the check and returns the ambiguity sub-code, so each test below
+   *  asserts on the value directly rather than delegating its only
+   *  assertion to a helper (which would make a silently-broken helper turn
+   *  every caller into a vacuous always-passing test). */
+  function askConstructFor(command: string): string | undefined {
     const v = checkScope({ toolName: 'Bash', command, root });
-    expect(v, `expected an ask for: ${command}`).not.toBeNull();
-    expect(v!.type).toBe('requires_confirmation');
-    expect(v!.code).toBe(SCOPE_DECISION_CODES.AMBIGUOUS_COMMAND_SYNTAX);
-    expect(v!.ambiguousConstruct).toBe(construct);
+    if (v === null) return undefined;
+    if (v.type !== 'requires_confirmation') return `NOT_AN_ASK:${v.type}`;
+    if (v.code !== SCOPE_DECISION_CODES.AMBIGUOUS_COMMAND_SYNTAX) return `WRONG_CODE:${v.code}`;
+    return v.ambiguousConstruct;
   }
 
   it('asks for $() command substitution', () => {
-    expectAsk('echo $(rm -rf /tmp/example)', 'COMMAND_SUBSTITUTION');
+    expect(askConstructFor('echo $(rm -rf /tmp/example)')).toBe('COMMAND_SUBSTITUTION');
   });
 
   it('asks for backtick substitution', () => {
-    expectAsk('echo `git push origin main`', 'BACKTICK_SUBSTITUTION');
+    expect(askConstructFor('echo `git push origin main`')).toBe('BACKTICK_SUBSTITUTION');
   });
 
   it('asks for process substitution', () => {
-    expectAsk('cat <(rm -rf /tmp/example)', 'PROCESS_SUBSTITUTION');
+    expect(askConstructFor('cat <(rm -rf /tmp/example)')).toBe('PROCESS_SUBSTITUTION');
   });
 
   it('asks for subshell grouping', () => {
-    expectAsk('(rm -rf /tmp/example)', 'SUBSHELL_GROUPING');
+    expect(askConstructFor('(rm -rf /tmp/example)')).toBe('SUBSHELL_GROUPING');
   });
 
   it('asks for a variable-expanded executable', () => {
-    expectAsk('CMD=rm; $CMD -rf /tmp/example', 'VARIABLE_EXECUTABLE');
+    expect(askConstructFor('CMD=rm; $CMD -rf /tmp/example')).toBe('VARIABLE_EXECUTABLE');
   });
 
   it('asks for arbitrary-code interpreters rather than pretending the denylist inspects them', () => {
-    expectAsk('node -e "require(\'fs\').rmSync(\'/tmp/x\')"', 'ARBITRARY_CODE_INTERPRETER');
-    expectAsk('python3 -c "import shutil"', 'ARBITRARY_CODE_INTERPRETER');
+    expect(askConstructFor('node -e "require(\'fs\').rmSync(\'/tmp/x\')"')).toBe('ARBITRARY_CODE_INTERPRETER');
+    expect(askConstructFor('python3 -c "import shutil"')).toBe('ARBITRARY_CODE_INTERPRETER');
   });
 
   it('asks for malformed interpreter syntax', () => {
-    expectAsk('bash -c', 'MALFORMED_INTERPRETER_SYNTAX');
+    expect(askConstructFor('bash -c')).toBe('MALFORMED_INTERPRETER_SYNTAX');
   });
 
   it('the ask message and suggestion never contain the raw command text', () => {
