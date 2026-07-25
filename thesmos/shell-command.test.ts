@@ -531,57 +531,60 @@ describe('Windows interpreter payload semantics', () => {
 // ── Ambiguous constructs (unresolvable executable syntax) ───────────────────
 
 describe('ambiguous construct detection', () => {
-  function expectAmbiguous(command: string, code: string): void {
+  /** Returns the ambiguity code (or a distinguishable 'RESOLVED' marker) so
+   *  each test asserts on the value directly rather than delegating its only
+   *  assertion to a helper — a silently-broken helper would otherwise turn
+   *  every caller into a vacuous always-passing test. */
+  function ambiguityCodeFor(command: string): string {
     const result = resolveCommandAnalysis(command);
-    expect(result.status, `expected "${command}" to be ambiguous`).toBe('ambiguous');
-    if (result.status === 'ambiguous') expect(result.code).toBe(code);
+    return result.status === 'ambiguous' ? result.code : 'RESOLVED';
   }
 
   it('flags $() command substitution', () => {
-    expectAmbiguous('echo $(rm -rf /tmp/example)', 'COMMAND_SUBSTITUTION');
+    expect(ambiguityCodeFor('echo $(rm -rf /tmp/example)')).toBe('COMMAND_SUBSTITUTION');
   });
 
   it('flags backtick command substitution', () => {
-    expectAmbiguous('echo `git push origin main`', 'BACKTICK_SUBSTITUTION');
+    expect(ambiguityCodeFor('echo `git push origin main`')).toBe('BACKTICK_SUBSTITUTION');
   });
 
   it('flags process substitution', () => {
-    expectAmbiguous('cat <(rm -rf /tmp/example)', 'PROCESS_SUBSTITUTION');
+    expect(ambiguityCodeFor('cat <(rm -rf /tmp/example)')).toBe('PROCESS_SUBSTITUTION');
   });
 
   it('flags subshell grouping', () => {
-    expectAmbiguous('(rm -rf /tmp/example)', 'SUBSHELL_GROUPING');
+    expect(ambiguityCodeFor('(rm -rf /tmp/example)')).toBe('SUBSHELL_GROUPING');
   });
 
   it('flags a variable used as the executable', () => {
-    expectAmbiguous('CMD=rm; $CMD -rf /tmp/example', 'VARIABLE_EXECUTABLE');
+    expect(ambiguityCodeFor('CMD=rm; $CMD -rf /tmp/example')).toBe('VARIABLE_EXECUTABLE');
   });
 
   it('flags ${VAR} form used as the executable', () => {
-    expectAmbiguous('${CMD} -rf /tmp/example', 'VARIABLE_EXECUTABLE');
+    expect(ambiguityCodeFor('${CMD} -rf /tmp/example')).toBe('VARIABLE_EXECUTABLE');
   });
 
   it('flags $() inside DOUBLE quotes — still live shell syntax, not inert', () => {
-    expectAmbiguous('echo "$(rm -rf /tmp/example)"', 'COMMAND_SUBSTITUTION');
+    expect(ambiguityCodeFor('echo "$(rm -rf /tmp/example)"')).toBe('COMMAND_SUBSTITUTION');
   });
 
   it('flags a backtick inside DOUBLE quotes', () => {
-    expectAmbiguous('echo "`git push origin main`"', 'BACKTICK_SUBSTITUTION');
+    expect(ambiguityCodeFor('echo "`git push origin main`"')).toBe('BACKTICK_SUBSTITUTION');
   });
 
   it('flags node -e (arbitrary-code interpreter)', () => {
-    expectAmbiguous('node -e "require(\'fs\').rmSync(\'/tmp/x\')"', 'ARBITRARY_CODE_INTERPRETER');
+    expect(ambiguityCodeFor('node -e "require(\'fs\').rmSync(\'/tmp/x\')"')).toBe('ARBITRARY_CODE_INTERPRETER');
   });
 
   it('flags python -c, python3 -c, perl -e, ruby -e', () => {
-    expectAmbiguous('python -c "import shutil"', 'ARBITRARY_CODE_INTERPRETER');
-    expectAmbiguous('python3 -c "import shutil"', 'ARBITRARY_CODE_INTERPRETER');
-    expectAmbiguous('perl -e "unlink glob q{*}"', 'ARBITRARY_CODE_INTERPRETER');
-    expectAmbiguous('ruby -e "FileUtils.rm_rf(%q{/tmp/x})"', 'ARBITRARY_CODE_INTERPRETER');
+    expect(ambiguityCodeFor('python -c "import shutil"')).toBe('ARBITRARY_CODE_INTERPRETER');
+    expect(ambiguityCodeFor('python3 -c "import shutil"')).toBe('ARBITRARY_CODE_INTERPRETER');
+    expect(ambiguityCodeFor('perl -e "unlink glob q{*}"')).toBe('ARBITRARY_CODE_INTERPRETER');
+    expect(ambiguityCodeFor('ruby -e "FileUtils.rm_rf(%q{/tmp/x})"')).toBe('ARBITRARY_CODE_INTERPRETER');
   });
 
   it('flags an interpreter execution flag with no payload (malformed)', () => {
-    expectAmbiguous('bash -c', 'MALFORMED_INTERPRETER_SYNTAX');
+    expect(ambiguityCodeFor('bash -c')).toBe('MALFORMED_INTERPRETER_SYNTAX');
   });
 
   it('flags excess recursion depth', () => {
@@ -589,11 +592,11 @@ describe('ambiguous construct detection', () => {
     for (let i = 0; i < 4; i++) {
       cmd = `bash -c "${cmd.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
     }
-    expectAmbiguous(cmd, 'ANALYSIS_TOO_DEEP');
+    expect(ambiguityCodeFor(cmd)).toBe('ANALYSIS_TOO_DEEP');
   });
 
   it('flags excess payload size', () => {
-    expectAmbiguous(`bash -c "echo ${'x'.repeat(5000)}"`, 'PAYLOAD_TOO_LARGE');
+    expect(ambiguityCodeFor(`bash -c "echo ${'x'.repeat(5000)}"`)).toBe('PAYLOAD_TOO_LARGE');
   });
 
   it('never includes the user\'s actual command text in the ambiguity reason or construct label', () => {
@@ -610,46 +613,47 @@ describe('ambiguous construct detection', () => {
 });
 
 describe('ambiguity false-positive avoidance', () => {
-  function expectResolved(command: string): void {
-    const result = resolveCommandAnalysis(command);
-    expect(result.status, `expected "${command}" to resolve cleanly`).toBe('resolved');
+  /** Returns the analysis status so each test asserts directly (see
+   *  ambiguityCodeFor above for why the assertion isn't hidden in a helper). */
+  function statusFor(command: string): string {
+    return resolveCommandAnalysis(command).status;
   }
 
   it('single-quoted $() is fully inert (bash never expands inside single quotes)', () => {
-    expectResolved("echo '$(rm -rf /tmp/example)'");
+    expect(statusFor("echo '$(rm -rf /tmp/example)'")).toBe('resolved');
   });
 
   it('escaped \\$( inside double quotes is literal text, not live substitution', () => {
-    expectResolved('echo "\\$(rm -rf /tmp/example)"');
+    expect(statusFor('echo "\\$(rm -rf /tmp/example)"')).toBe('resolved');
   });
 
   it('a git commit message documenting $(rm -rf) is inert', () => {
-    expectResolved("git commit -m 'documents $(rm -rf) behavior'");
+    expect(statusFor("git commit -m 'documents $(rm -rf) behavior'")).toBe('resolved');
   });
 
   it('ordinary commands with no exotic syntax resolve cleanly', () => {
-    expectResolved('npm run build');
-    expectResolved('git status');
-    expectResolved('rm -rf ./dist');
-    expectResolved('psql -c "DROP TABLE users"');
-    expectResolved('cat <<EOF\nbody\nEOF');
+    expect(statusFor('npm run build')).toBe('resolved');
+    expect(statusFor('git status')).toBe('resolved');
+    expect(statusFor('rm -rf ./dist')).toBe('resolved');
+    expect(statusFor('psql -c "DROP TABLE users"')).toBe('resolved');
+    expect(statusFor('cat <<EOF\nbody\nEOF')).toBe('resolved');
   });
 
   it('a variable used as a plain ARGUMENT (not the executable) is not flagged', () => {
-    expectResolved('echo $HOME');
-    expectResolved('cat $CONFIG_FILE');
+    expect(statusFor('echo $HOME')).toBe('resolved');
+    expect(statusFor('cat $CONFIG_FILE')).toBe('resolved');
   });
 
   it('parentheses that are not at a segment start are not treated as a subshell', () => {
-    expectResolved('echo foo(bar)');
+    expect(statusFor('echo foo(bar)')).toBe('resolved');
   });
 
   it('a heredoc body containing $() is inert (body is data, not live syntax)', () => {
-    expectResolved('cat <<EOF\n$(rm -rf /tmp/example)\nEOF');
+    expect(statusFor('cat <<EOF\n$(rm -rf /tmp/example)\nEOF')).toBe('resolved');
   });
 
   it('a # comment containing $() is inert', () => {
-    expectResolved('# $(rm -rf /tmp/example)');
+    expect(statusFor('# $(rm -rf /tmp/example)')).toBe('resolved');
   });
 });
 
