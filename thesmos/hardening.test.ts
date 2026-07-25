@@ -11,7 +11,7 @@
  *   - report.json is idempotent when written twice with the same scan
  */
 import { describe, it, expect } from 'vitest';
-import { THESMOS_RULES, buildAdapterContent } from './adapters';
+import { THESMOS_RULES, buildAdapterContent, parseAdapterMeta } from './adapters';
 import { REVIEW_CATEGORIES } from './review';
 import { CONFIG_DEFAULTS, loadConfig } from './config';
 import { exitCodeFor, shouldWarn, shouldFail } from './severity';
@@ -62,18 +62,15 @@ describe('rule registry completeness', () => {
     }
   });
 
-  it('new rules added to THESMOS_RULES appear in all adapter outputs', () => {
+  it('new rules added to THESMOS_RULES change every adapter output\'s embedded ruleCount', () => {
     const allTargets = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'] as const;
-    const blockerHighRules = THESMOS_RULES.filter(
-      (r) => r.severity === 'BLOCKER' || r.severity === 'HIGH'
-    );
+    // Every adapter target is a thin adapter now (Operation Signal Phase 5) —
+    // none embed individual rule IDs. A registry change surfaces as a
+    // ruleCount mismatch (isAdapterFresh), not as new literal text.
     for (const target of allTargets) {
-      // claude adapter intentionally only embeds BLOCKER+HIGH rules to avoid context thrashing
-      const rulesForTarget = target === 'claude' ? blockerHighRules : THESMOS_RULES;
       const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
-      for (const rule of rulesForTarget) {
-        expect(out, `${target} is missing [${rule.id}]`).toContain(`[${rule.id}]`);
-      }
+      const meta = parseAdapterMeta(out);
+      expect(meta?.ruleCount, `${target} should embed the current registry size`).toBe(THESMOS_RULES.length);
     }
   });
 });
@@ -224,17 +221,14 @@ describe('adapter files are AI-stack-agnostic', () => {
     expect(out.toLowerCase()).not.toContain('claude code only');
   });
 
-  it('all adapters contain only rule IDs from THESMOS_RULES', () => {
-    const blockerHighRules = THESMOS_RULES.filter(
-      (r) => r.severity === 'BLOCKER' || r.severity === 'HIGH'
-    );
+  it('all adapters embed the registry size via ruleCount, not per-rule content', () => {
+    // Every adapter target is a thin adapter now (Operation Signal Phase 5) —
+    // none enumerate individual rule IDs. The full catalog lives in
+    // .thesmos/RULES.md; drift is tracked via the embedded ruleCount instead.
     for (const target of TARGETS) {
-      // claude adapter intentionally only embeds BLOCKER+HIGH rules to avoid context thrashing
-      const rulesForTarget = target === 'claude' ? blockerHighRules : THESMOS_RULES;
       const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
-      for (const rule of rulesForTarget) {
-        expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);
-      }
+      const meta = parseAdapterMeta(out);
+      expect(meta?.ruleCount, `${target} should embed the registry size`).toBe(THESMOS_RULES.length);
     }
   });
 

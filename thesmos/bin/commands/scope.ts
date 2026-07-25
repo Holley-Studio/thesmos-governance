@@ -16,12 +16,27 @@ import {
   getScopeStatus,
   checkScope,
   SCOPE_DEFAULTS,
+  ScopeConfigError,
 } from '../../scope.js';
 
 export async function cmdScope(argv: string[]): Promise<void> {
   const sub = argv[0];
   const root = process.cwd();
 
+  try {
+    await runScopeSubcommand(sub, argv, root);
+  } catch (err) {
+    if (err instanceof ScopeConfigError) {
+      console.error(`\n🛑 ${err.message}\n`);
+      console.error(`  Fix the JSON in ${err.scopePath}, or delete it and run \`thesmos scope:init\` to regenerate defaults.\n`);
+      process.exitCode = 1;
+      return;
+    }
+    throw err;
+  }
+}
+
+async function runScopeSubcommand(sub: string | undefined, argv: string[], root: string): Promise<void> {
   switch (sub) {
     case 'init': {
       const scopePath = join(root, '.thesmos', 'scope.json');

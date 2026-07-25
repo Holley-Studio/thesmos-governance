@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { CONFIG_DEFAULTS } from './config';
-import { ADAPTER_OUTPUT_PATHS } from './adapters';
+import { ADAPTER_OUTPUT_PATHS, THESMOS_RULES, buildAdapterContent } from './adapters';
 import {
   runDoctor,
   formatDoctorConsole,
@@ -203,6 +203,151 @@ describe('adapter files check', () => {
     const claudeCheck = checks.find((c) => c.name === 'adapter:claude');
     expect(claudeCheck).toBeDefined();
     expect(claudeCheck!.pass).toBe(true);
+  });
+});
+
+// ── Adapter portability checks (size, host paths) ────────────────────────────
+// These only run when readFileSafe is provided — without it, doctor can't
+// read adapter content to inspect the generated section.
+
+describe('adapter portability checks', () => {
+  const freshClaude = buildAdapterContent('claude', '', THESMOS_RULES, CONFIG_DEFAULTS);
+
+  function inputWithClaudeContent(content: string): DoctorInput {
+    return makeFullInput({
+      fileExists: (rel) => rel === ADAPTER_OUTPUT_PATHS.claude,
+      readFileSafe: (rel) => (rel === ADAPTER_OUTPUT_PATHS.claude ? content : null),
+    });
+  }
+
+  it('is skipped entirely when readFileSafe is not provided', () => {
+    const checks = runDoctor(makeFullInput({ readFileSafe: undefined }));
+    expect(checks.some((c) => c.name.endsWith(':size'))).toBe(false);
+    expect(checks.some((c) => c.name.endsWith(':portable'))).toBe(false);
+  });
+
+  it('a freshly generated thin adapter passes the size check', () => {
+    const checks = runDoctor(inputWithClaudeContent(freshClaude));
+    const sizeCheck = checks.find((c) => c.name === 'adapter:claude:size');
+    expect(sizeCheck?.pass).toBe(true);
+  });
+
+  it('flags a generated section that exceeds the 8KB budget', () => {
+    const oversized = freshClaude.replace(
+      '<!-- THESMOS:GENERATED START rules -->',
+      `<!-- THESMOS:GENERATED START rules -->\n${'x'.repeat(9000)}`
+    );
+    const checks = runDoctor(inputWithClaudeContent(oversized));
+    const sizeCheck = checks.find((c) => c.name === 'adapter:claude:size');
+    expect(sizeCheck?.pass).toBe(false);
+    expect(sizeCheck?.fixHint).toContain('thesmos adapters');
+  });
+
+  it('a freshly generated thin adapter passes the host-path portability check', () => {
+    const checks = runDoctor(inputWithClaudeContent(freshClaude));
+    const portableCheck = checks.find((c) => c.name === 'adapter:claude:portable');
+    expect(portableCheck?.pass).toBe(true);
+  });
+
+  it('flags a POSIX host-specific absolute path baked into the generated section', () => {
+    const withHostPath = freshClaude.replace(
+      '<!-- THESMOS:GENERATED START rules -->',
+      '<!-- THESMOS:GENERATED START rules -->\nSee /Users/someone/project/notes.md for details.'
+    );
+    const checks = runDoctor(inputWithClaudeContent(withHostPath));
+    const portableCheck = checks.find((c) => c.name === 'adapter:claude:portable');
+    expect(portableCheck?.pass).toBe(false);
+    expect(portableCheck?.message).toContain('/Users/someone');
+  });
+
+  it('flags a Windows host-specific absolute path baked into the generated section', () => {
+    const withHostPath = freshClaude.replace(
+      '<!-- THESMOS:GENERATED START rules -->',
+      '<!-- THESMOS:GENERATED START rules -->\nSee C:\\Users\\someone\\project\\notes.md for details.'
+    );
+    const checks = runDoctor(inputWithClaudeContent(withHostPath));
+    const portableCheck = checks.find((c) => c.name === 'adapter:claude:portable');
+    expect(portableCheck?.pass).toBe(false);
+  });
+
+  it('does not flag a portable relative path reference like .thesmos/RULES.md', () => {
+    const checks = runDoctor(inputWithClaudeContent(freshClaude));
+    const portableCheck = checks.find((c) => c.name === 'adapter:claude:portable');
+    expect(portableCheck?.pass).toBe(true);
+  });
+
+  it('skips size/portable checks for a file with no generated markers (unmanaged) — freshness check covers it instead', () => {
+    const checks = runDoctor(inputWithClaudeContent('# Entirely hand-written, no Thesmos markers at all.'));
+    expect(checks.some((c) => c.name === 'adapter:claude:size')).toBe(false);
+    expect(checks.some((c) => c.name === 'adapter:claude:portable')).toBe(false);
+    const freshnessCheck = checks.find((c) => c.name === 'adapter:claude');
+    expect(freshnessCheck?.pass).toBe(false);
+    expect(freshnessCheck?.message).toContain('stale');
+  });
+});
+
+// ── Adapter sync-status summary ──────────────────────────────────────────────
+
+describe('adapter sync-status summary', () => {
+  it('is skipped when readFileSafe is not provided', () => {
+    const checks = runDoctor(makeFullInput({ readFileSafe: undefined }));
+    expect(checks.some((c) => c.name === 'adapter:sync-status')).toBe(false);
+  });
+
+  it('reports full sync when every target is fresh', () => {
+    const allFresh: Record<string, string> = {};
+    for (const [, relPath] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
+      allFresh[relPath] = buildAdapterContent(
+        // target string isn't checked by buildAdapterContent's output shape here — freshness only cares about ruleCount/version
+        'claude',
+        '',
+        THESMOS_RULES,
+        CONFIG_DEFAULTS
+      );
+    }
+    const input = makeFullInput({
+      fileExists: (rel) => rel in allFresh,
+      readFileSafe: (rel) => allFresh[rel] ?? null,
+    });
+    const checks = runDoctor(input);
+    const syncCheck = checks.find((c) => c.name === 'adapter:sync-status');
+    expect(syncCheck?.pass).toBe(true);
+    expect(syncCheck?.message).toContain('in sync');
+  });
+
+  it('reports partial sync when some targets are stale and others are fresh', () => {
+    const fresh = buildAdapterContent('claude', '', THESMOS_RULES, CONFIG_DEFAULTS);
+    const stale = buildAdapterContent('claude', '', THESMOS_RULES, { ...CONFIG_DEFAULTS, version: '0.0.1' });
+    const contents: Record<string, string> = {};
+    let first = true;
+    for (const [, relPath] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
+      contents[relPath] = first ? stale : fresh;
+      first = false;
+    }
+    const input = makeFullInput({
+      fileExists: (rel) => rel in contents,
+      readFileSafe: (rel) => contents[rel] ?? null,
+    });
+    const checks = runDoctor(input);
+    const syncCheck = checks.find((c) => c.name === 'adapter:sync-status');
+    expect(syncCheck?.pass).toBe(false);
+    expect(syncCheck?.message).toContain('Partial sync');
+  });
+
+  it('reports fully-stale (no partial-sync wording) when every target is stale', () => {
+    const stale = buildAdapterContent('claude', '', THESMOS_RULES, { ...CONFIG_DEFAULTS, version: '0.0.1' });
+    const contents: Record<string, string> = {};
+    for (const [, relPath] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
+      contents[relPath] = stale;
+    }
+    const input = makeFullInput({
+      fileExists: (rel) => rel in contents,
+      readFileSafe: (rel) => contents[rel] ?? null,
+    });
+    const checks = runDoctor(input);
+    const syncCheck = checks.find((c) => c.name === 'adapter:sync-status');
+    expect(syncCheck?.pass).toBe(false);
+    expect(syncCheck?.message).not.toContain('Partial sync');
   });
 });
 

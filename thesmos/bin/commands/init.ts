@@ -23,9 +23,9 @@ import { initFromAiConfig, formatInitFromAiConfigConsole } from '../../ai-lint.t
 import {
   THESMOS_RULES,
   writeAllAdapters,
+  detectAdapterTargets,
   type AdapterCatalog,
   type AdapterManifest,
-  type AdapterTarget,
 } from '../../adapters.ts';
 
 export async function cmdInit(argv: string[]): Promise<void> {
@@ -133,11 +133,7 @@ export async function cmdInit(argv: string[]): Promise<void> {
   // context section) reflects any profile agents/skills just installed.
   let adapterManifests: AdapterManifest[] = [];
   if (!noAdapters && !dryRun) {
-    const detected: AdapterTarget[] = ['claude', 'agents'];
-    if (existsSync(join(root, 'GEMINI.md'))) detected.push('gemini');
-    if (existsSync(join(root, '.cursor')) || existsSync(join(root, '.cursorrules'))) detected.push('cursor');
-    if (existsSync(join(root, '.github', 'copilot-instructions.md'))) detected.push('copilot');
-    if (existsSync(join(root, '.codex'))) detected.push('codex');
+    const detected = detectAdapterTargets(root);
 
     const registryConfig = loadRegistryConfig(root);
     const merged = mergeRegistryConfig(REGISTRY_DEFAULTS, registryConfig);
