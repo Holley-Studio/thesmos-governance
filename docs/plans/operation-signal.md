@@ -444,6 +444,36 @@ user-facing output.
 The "3 pre-existing environmental failures" caveat that appeared throughout earlier sections of this
 ledger **no longer applies** — those tests are hermetic and passing.
 
+### Final-review fix: three live-execution paths that regressed to silent-allow
+
+An independent final review replayed `origin/main`'s `checkCommand` logic against the new analyzer
+and found three constructs that `main` blocked (via raw substring matching) but this branch silently
+allowed. Quote-aware matching is the right fix for false positives, but these three operands are
+genuinely executed:
+
+| Command | `origin/main` | Before fix | After fix |
+|---|---|---|---|
+| `eval "rm -rf /tmp/x"` | blocked | **allowed** | ask (`SHELL_EVAL`) |
+| `bash -lc "rm -rf /tmp/x"` | blocked | **allowed** | blocked (destructive) |
+| `sh <<< "rm -rf /tmp/x"` | blocked | **allowed** | ask (`HERESTRING_REDIRECTION`) |
+
+- **Bundled POSIX short flags** — `bash -lc`, `sh -ec`, `zsh -ic` execute their argument exactly like
+  `-c`, but only the literal `-c` was matched, so the payload was treated as inert. Now recognized
+  for the five known POSIX shells via a single-dash short cluster containing `c`; long options
+  (`--color`) and non-shell executables are deliberately excluded. Full recursive analysis is
+  restored, so these **block** rather than merely ask.
+- **`eval`** — its argument is re-expanded before execution, so pre-expansion analysis can never be
+  authoritative. Flagged `SHELL_EVAL` → ask, consistent with `node -e`/`python -c`. Inert mentions
+  (`echo eval`, a commit message containing "eval", `evaluate-thing`) are not flagged.
+- **Here-strings (`<<<`)** — the operand is fed to the command's stdin and executed when that command
+  is a shell. Flagged `HERESTRING_REDIRECTION` → ask. Here-**docs** (`<<`) are unaffected.
+
+Two adjacent cases were examined and deliberately **not** changed: `echo $'rm -rf'` moving to allow is
+a correct false-positive fix (inert argument to `echo`), and `source`/`.`/`find -delete` are allowed
+on both `main` and this branch — pre-existing denylist limitations, not regressions.
+
+Each fix is independently mutation-verified: reverting any one of the three fails exactly one test.
+
 ### Remaining parser limitations (current, honest)
 
 - `git -c`/`-C` value-ambiguity in a pathological `git -c push` (no `=value`) — narrow; does not
