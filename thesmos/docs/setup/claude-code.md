@@ -75,6 +75,32 @@ thesmos agent:install path/to/my-agent.md
 
 Edit the generated file in `.thesmos/agents/`, then run `thesmos adapters` to propagate changes to `.claude/agents/` and other platforms.
 
+## Governance hooks & fail-closed recovery
+
+`autoMode.failClosed` (default `true`) makes the PreToolUse guard exit `2` and
+block the tool call on malformed hook stdin, an unreadable/malformed
+`.thesmos/config.json`, or an internal guard exception. Diagnose from stderr
+(it prints the resolved path, category, and a checklist).
+
+**Config repair escape hatch.** If `.thesmos/config.json` becomes malformed, the
+guard would otherwise deadlock — every tool blocked, including the Write that
+would fix the file. To avoid that, a `Write` or `Edit` of **that exact file** is
+still allowed while config is broken; all other tools stay blocked until it
+parses again. The exception is deliberately narrow and does **not** weaken
+security:
+
+- Only `.thesmos/config.json` itself qualifies — look-alike names
+  (`config.json.bak`, `config-json`) and `..` traversal never do.
+- A `config.json` reached through a **symlink** is refused (no link-follow
+  write).
+- The content scan still runs on the repair payload, so a "repair" that carries
+  a secret or another BLOCKER is still rejected.
+
+Invalid project `package.json` does **not** trigger this fail-closed path — but
+Node itself may refuse to launch tools when the project cwd has a broken
+`package.json` (`ERR_INVALID_PACKAGE_CONFIG`); fix that file outside the agent
+if hooks never fire.
+
 ## Tips
 
 - Install Zeus first — he orchestrates the other 33 agents

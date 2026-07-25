@@ -18,8 +18,10 @@ import {
   readFileSync,
   writeFileSync,
   mkdirSync,
+  realpathSync,
+  lstatSync,
 } from 'node:fs';
-import { join, dirname, extname } from 'node:path';
+import { join, dirname, extname, resolve, basename } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { activeRulesForTier } from './rules/registry.js';
 import { categoryLabel } from './rule-labels.js';
@@ -471,10 +473,74 @@ export function isFailClosed(config: ThesmosConfig = CONFIG_DEFAULTS): boolean {
 
 /**
  * Load project config for guard paths. Malformed config always blocks (cannot
- * trust an opt-out written in a broken file). Missing config → defaults.
+ * trust an opt-out written in a broken file) — except a Write/Edit that repairs
+ * the config file itself (see {@link isThesmosConfigRepairTarget}). Missing
+ * config → defaults.
  */
 function loadGuardConfig(root: string): ThesmosConfig {
   return loadConfig(root, undefined, { strict: true });
+}
+
+/** Canonicalize a directory (resolving symlinks). null if it does not exist. */
+function realDir(dir: string): string | null {
+  try {
+    return realpathSync(dir);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Decide whether a Write/Edit targets the broken `.thesmos/config.json` so the
+ * agent can self-heal a fail-closed deadlock — WITHOUT opening an arbitrary
+ * write path. Only this exact file is ever granted the exception.
+ *
+ * Threat-modeled comparison (why the final match is safe):
+ *  1. Basename must be exactly `config.json` (case-exact). A differently-cased
+ *     spelling fails safe (blocks) rather than matching a different real file.
+ *  2. The target's PARENT directory and the config's parent directory must
+ *     resolve (realpath, so symlinked dirs are canonicalized) to the SAME real
+ *     directory — this collapses `..`, `.`, separators and relative/absolute
+ *     spellings while refusing paths that merely *look* similar.
+ *  3. The config file itself must NOT be a symlink — repairing through a
+ *     symlink would follow the link and could clobber a file outside
+ *     `.thesmos` (e.g. a planted `config.json → /etc/cron.d/x`).
+ *
+ * Invalid project `package.json` is unrelated — Guard never fail-closes on it,
+ * so it never reaches this helper.
+ *
+ * @param root project root the guard resolved config from
+ * @param filePath the Write/Edit `file_path` (relative or absolute)
+ * @param brokenConfigPath the path the ConfigLoadError reported, when known
+ */
+export function isThesmosConfigRepairTarget(
+  root: string,
+  filePath: string,
+  brokenConfigPath?: string,
+): boolean {
+  if (!filePath || !filePath.trim()) return false;
+
+  const targetAbs = resolve(root, filePath);
+  if (basename(targetAbs) !== 'config.json') return false; // (1) exact basename
+
+  const configAbs = brokenConfigPath
+    ? resolve(brokenConfigPath)
+    : resolve(root, '.thesmos', 'config.json');
+  if (basename(configAbs) !== 'config.json') return false;
+
+  // (2) parent directories must be the SAME real directory
+  const targetDir = realDir(dirname(targetAbs));
+  const configDir = realDir(dirname(configAbs));
+  if (targetDir === null || configDir === null) return false;
+  if (targetDir !== configDir) return false;
+
+  // (3) refuse to repair through a symlinked config file
+  try {
+    if (lstatSync(targetAbs).isSymbolicLink()) return false;
+  } catch {
+    // Target does not exist yet — no link to follow, allowed.
+  }
+  return true;
 }
 
 function exitInfraFailure(
@@ -571,25 +637,33 @@ function emitAskDecision(reason: string): void {
 export async function runPreToolCheck(root: string): Promise<void> {
   let failClosed = isFailClosed(CONFIG_DEFAULTS);
   let config = CONFIG_DEFAULTS;
+  /**
+   * When set, `.thesmos/config.json` is malformed — everything blocks EXCEPT a
+   * Write/Edit that repairs this exact file (fail-closed self-heal hatch).
+   * Deferred (not exited immediately) so we can inspect the tool payload.
+   */
+  let brokenConfigPath: string | undefined;
   try {
     // Load config early so failClosed:false can opt out of infra blocks
-    // (malformed stdin, etc.). Broken config always blocks — cannot trust opt-out.
+    // (malformed stdin, etc.). Broken config blocks everything except a
+    // Write/Edit repair of `.thesmos/config.json` itself.
     try {
       config = loadGuardConfig(root);
       failClosed = isFailClosed(config);
     } catch (err) {
       if (err instanceof ConfigLoadError) {
+        // Defer the block: capture the broken path, keep fail-closed defaults,
+        // and decide below once we know whether this is a repair Write/Edit.
+        brokenConfigPath = err.configPath;
+        config = CONFIG_DEFAULTS;
+        failClosed = true;
+      } else {
         exitInfraFailure(
-          `Config unreadable or malformed: ${err.configPath}`,
+          `Config load failed: ${err instanceof Error ? err.message : String(err)}`,
           'internal',
-          true,
+          failClosed,
         );
       }
-      exitInfraFailure(
-        `Config load failed: ${err instanceof Error ? err.message : String(err)}`,
-        'internal',
-        failClosed,
-      );
     }
 
     let raw = '';
@@ -619,6 +693,31 @@ export async function runPreToolCheck(root: string): Promise<void> {
 
     const toolName = input.tool_name;
     const toolInput = input.tool_input ?? {};
+    const filePathEarly =
+      typeof toolInput['file_path'] === 'string' ? toolInput['file_path'] : '';
+
+    // Broken `.thesmos/config.json`: allow ONLY a Write/Edit that repairs that
+    // exact file so the agent can self-heal. Everything else stays blocked.
+    // The repair still falls through to the content scan below (via
+    // CONFIG_DEFAULTS), so a malicious "repair" payload carrying a secret or
+    // other BLOCKER is still rejected. Invalid project package.json never
+    // reaches here — Guard does not fail-closed on it.
+    if (brokenConfigPath) {
+      const repairing =
+        (toolName === 'Write' || toolName === 'Edit') &&
+        isThesmosConfigRepairTarget(root, filePathEarly, brokenConfigPath);
+      if (!repairing) {
+        exitInfraFailure(
+          `Config unreadable or malformed: ${brokenConfigPath}. ` +
+            `Repair path: Write/Edit that file is allowed; other tools stay blocked. ` +
+            `(Invalid project package.json does not cause this — fix .thesmos/config.json.)`,
+          'internal',
+          true,
+        );
+      }
+      // Fall through — content scan still runs so secrets/BLOCKERs in the
+      // "repair" payload are caught even while config is broken.
+    }
 
     // ── Bash hook: scope check + phantom package detection ──────────────────────
     if (toolName === 'Bash') {
@@ -663,21 +762,25 @@ export async function runPreToolCheck(root: string): Promise<void> {
     // Unknown tool names are not infrastructure failures — allow
     if (toolName !== 'Write' && toolName !== 'Edit') process.exit(0);
 
-    const filePath = typeof toolInput['file_path'] === 'string' ? toolInput['file_path'] : '';
+    const filePath = filePathEarly;
     if (!filePath) process.exit(0);
 
-    // Scope enforcement for Write/Edit
-    const writeScopeViolation = safeCheckScope({ toolName, filePath, root }, failClosed);
-    if (writeScopeViolation) {
-      if (writeScopeViolation.type === 'requires_confirmation') {
-        emitAskDecision(`${writeScopeViolation.message} ${writeScopeViolation.suggestion}`);
-        return;
+    // Scope enforcement for Write/Edit. Skipped during config repair so a
+    // locked-down scope.json cannot re-deadlock the only recovery path — the
+    // content scan below still runs on the repair payload.
+    if (!brokenConfigPath) {
+      const writeScopeViolation = safeCheckScope({ toolName, filePath, root }, failClosed);
+      if (writeScopeViolation) {
+        if (writeScopeViolation.type === 'requires_confirmation') {
+          emitAskDecision(`${writeScopeViolation.message} ${writeScopeViolation.suggestion}`);
+          return;
+        }
+        const lines: string[] = ['🛑 Thesmos scope violation:\n'];
+        lines.push(`  ${writeScopeViolation.message}`);
+        lines.push(`  → ${writeScopeViolation.suggestion}`);
+        process.stderr.write(lines.join('\n') + '\n');
+        process.exit(2);
       }
-      const lines: string[] = ['🛑 Thesmos scope violation:\n'];
-      lines.push(`  ${writeScopeViolation.message}`);
-      lines.push(`  → ${writeScopeViolation.suggestion}`);
-      process.stderr.write(lines.join('\n') + '\n');
-      process.exit(2);
     }
 
     // For Write: scan full content. For Edit: scan only the new_string being introduced.
