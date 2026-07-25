@@ -41,7 +41,7 @@ export async function cmdBaseline(subcommand: string, argv: string[]): Promise<v
     process.exit(1);
   }
 
-  const findings = runReview({ scan, config });
+  const { findings } = runReview({ scan, config });
 
   if (subcommand === 'create') {
     const existing = loadBaseline(root);

@@ -16,7 +16,7 @@
  */
 
 import { execFile } from 'node:child_process';
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -33,6 +33,54 @@ const EXCLUDES = [
   '.next/',
   '.turbo/',
 ];
+
+/**
+ * Files matching these patterns must NEVER be included in a checkpoint
+ * snapshot, regardless of .gitignore status.
+ */
+export const SECRET_DENY_PATTERNS = [
+  /\.env(\.|$)/i,
+  /\.pem$/i,
+  /\.key$/i,
+  /\.p12$/i,
+  /\.pfx$/i,
+  /\.crt$/i,
+  /\.cer$/i,
+  /id_rsa/i,
+  /id_ed25519/i,
+  /id_ecdsa/i,
+  /id_dsa/i,
+  /credentials\.json$/i,
+  /service-account.*\.json$/i,
+  /secrets\.json$/i,
+  /\.npmrc$/i,
+  /\.pypirc$/i,
+  /\.secret$/i,
+  /\.token$/i,
+] as const;
+
+export const MAX_CHECKPOINT_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+export const MAX_CHECKPOINT_FILES = 5000;
+
+/**
+ * Returns true when a file path matches a known secret-class pattern and
+ * should be excluded from every checkpoint snapshot.
+ */
+export function isSecretFile(filePath: string): boolean {
+  const name = filePath.split('/').pop() ?? filePath;
+  return SECRET_DENY_PATTERNS.some(pattern => pattern.test(name));
+}
+
+/**
+ * Thrown when a checkpoint is aborted for security or safety reasons.
+ * Callers that gate autonomous mutation on checkpoints must NOT swallow this.
+ */
+export class CheckpointSecurityError extends Error {
+  override name = 'CheckpointSecurityError';
+  constructor(message: string) {
+    super(message);
+  }
+}
 
 const GIT_TIMEOUT_MS = 60_000;
 const MAX_BUFFER = 32 * 1024 * 1024;
@@ -87,11 +135,60 @@ export class CheckpointManager {
   /**
    * Snapshot the workspace. Returns the checkpoint hash, or undefined when
    * checkpoints are unavailable (no git) — callers degrade gracefully.
+   *
+   * Fails closed: throws a CheckpointSecurityError when secret-class files
+   * would be snapshotted, or when the workspace exceeds size/count limits.
+   * Callers that use checkpoints to gate autonomous mutation must propagate
+   * this error rather than swallowing it.
    */
   async snapshot(label: string): Promise<string | undefined> {
     if (!(await this.ensureInit())) return undefined;
     try {
+      // Stage everything so we can inspect what would be committed.
       await this.git('add', '-A');
+
+      // List all staged files (new + modified; deleted files are not checked).
+      const stagedOutput = await this.git(
+        'diff', '--cached', '--name-only', '--diff-filter=ACMRT',
+      ).catch(() => '');
+      const stagedFiles = stagedOutput ? stagedOutput.split('\n').filter(Boolean) : [];
+
+      // Security gate — reject secret-class files.
+      for (const f of stagedFiles) {
+        if (isSecretFile(f)) {
+          // Unstage everything to leave the shadow index clean before throwing.
+          await this.git('reset', 'HEAD').catch(() => undefined);
+          throw new CheckpointSecurityError(
+            `Checkpoint aborted: secret-class file would be snapshotted: ${f}`,
+          );
+        }
+      }
+
+      // Safety limits — reject oversized workspaces.
+      if (stagedFiles.length > MAX_CHECKPOINT_FILES) {
+        await this.git('reset', 'HEAD').catch(() => undefined);
+        throw new CheckpointSecurityError(
+          `Checkpoint aborted: too many files (${stagedFiles.length} > ${MAX_CHECKPOINT_FILES}).`,
+        );
+      }
+
+      let totalSize = 0;
+      for (const f of stagedFiles) {
+        try {
+          const st = statSync(join(this.workspaceRoot, f));
+          totalSize += st.size;
+          if (totalSize > MAX_CHECKPOINT_SIZE_BYTES) {
+            await this.git('reset', 'HEAD').catch(() => undefined);
+            throw new CheckpointSecurityError(
+              `Checkpoint aborted: workspace size would exceed ${MAX_CHECKPOINT_SIZE_BYTES / (1024 * 1024)} MB limit.`,
+            );
+          }
+        } catch (e) {
+          if (e instanceof CheckpointSecurityError) throw e;
+          // File may have been deleted between discovery and stat — skip.
+        }
+      }
+
       const hadHead = await this.git('rev-parse', '--verify', '--quiet', 'HEAD').then(
         () => true,
         () => false,
@@ -106,7 +203,8 @@ export class CheckpointManager {
         }
       }
       return await this.git('rev-parse', 'HEAD');
-    } catch {
+    } catch (e) {
+      if (e instanceof CheckpointSecurityError) throw e;
       return undefined;
     }
   }

@@ -78,6 +78,7 @@ interface AgentMeta {
   tags: string[]
   /** Rule IDs from the agent's governance.rules frontmatter (e.g. AGNT_001). */
   governanceRules: string[]
+  skillIds: string[]
   enabled: boolean
   rawContent: string
   body: string
@@ -199,6 +200,7 @@ function extractMeta(source: string): AgentMeta {
     openaiModel: (platforms['openai_model'] ?? 'gpt-5.5').replace(/\[1m\]/g, ''),
     tags: Array.isArray(meta['tags']) ? (meta['tags'] as string[]) : [],
     governanceRules: extractGovernanceRules(source),
+    skillIds: Array.isArray(meta['skills']) ? (meta['skills'] as string[]) : [],
     enabled: meta['enabled'] !== false,
     rawContent: source,
     body,
@@ -501,6 +503,16 @@ function toClaudeCodeAgent(agent: AgentMeta): string {
     ? ['Agent', 'Read', 'Write', 'Grep', 'Glob', 'Bash']
     : ['Read', 'Write', 'Bash']
 
+  const skillLines = agent.skillIds.length > 0
+    ? [
+        '',
+        '## Skills',
+        '',
+        'Use these Thesmos skills for structured workflow execution:',
+        ...agent.skillIds.map(id => `- \`/${id}\` — run the ${id.replace(/-/g, ' ')} workflow`),
+      ].join('\n')
+    : ''
+
   return [
     '---',
     `name: ${godEmoji(agent)} ${name} — ${agent.name.replace(/^God Agent \w+ — /, '')}`,
@@ -512,7 +524,7 @@ function toClaudeCodeAgent(agent: AgentMeta): string {
     '',
     `# ${godEmoji(agent)} ${name} — ${domain}`,
     '',
-    body,
+    body + skillLines,
   ].join('\n')
 }
 

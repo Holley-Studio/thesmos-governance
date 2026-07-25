@@ -112,7 +112,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'certificate:verify': (argv) => cmdCertificate(['--verify', ...argv]),
   'mcp:serve': (argv) => cmdMcp(['serve', ...argv]),
   // Documented alias: `thesmos mcp --stdio` (package.json mcp.args) → mcp:serve
-  mcp: async (argv) => {
+  'mcp': async (argv) => {
     const rest = argv.filter((a) => a !== '--stdio');
     if (argv.includes('--stdio') || rest.length === 0 || rest[0] === 'serve') {
       await cmdMcp(['serve', ...rest.filter((a) => a !== 'serve')]);

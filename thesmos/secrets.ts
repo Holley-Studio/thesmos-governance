@@ -84,11 +84,29 @@ export function isClientComponentFile(content: string): boolean {
 }
 
 /**
- * Detect admin client import pattern in a file's content.
- * Only relevant for client components (those with 'use client' directive).
+ * Detect admin/service-role client usage in a 'use client' file (SEC_001).
+ *
+ * F5 fix: original check only matched the literal import path `supabase/admin`.
+ * Real bypasses: renamed local import, inline createClient with SERVICE_ROLE key,
+ * auth.admin accessor, or any local alias containing "admin" or "serviceRole".
+ * Now detects the *capability*, not a single import path.
  */
 export function hasAdminClientInClientFile(content: string): boolean {
-  return isClientComponentFile(content) && content.includes('supabase/admin');
+  if (!isClientComponentFile(content)) return false;
+
+  // Direct import-path match (original check)
+  if (content.includes('supabase/admin')) return true;
+
+  // Service-role key referenced in a client component — the credential IS the capability
+  if (/SERVICE_ROLE|SUPABASE_SERVICE_ROLE_KEY|service_role/i.test(content)) return true;
+
+  // auth.admin accessor — only available on the admin client
+  if (/\.auth\.admin\b/.test(content)) return true;
+
+  // Local symbol named *Admin* or *ServiceRole* imported from a non-public path
+  if (/import\s+\{[^}]*(?:admin|serviceRole|AdminClient)[^}]*\}\s+from\s+['"][^'"]+['"]/i.test(content)) return true;
+
+  return false;
 }
 
 /**

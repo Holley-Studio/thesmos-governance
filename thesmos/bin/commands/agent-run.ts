@@ -85,7 +85,7 @@ export function buildAgentRunPrompt(agentBody: string, extraPrompt?: string): st
 
 export async function cmdAgentRun(argv: string[]): Promise<void> {
   const { root, config } = createContext();
-  const { flags, positionals } = parseArgs(argv, { valueFlags: ['prompt'] });
+  const { flags, positionals } = parseArgs(argv);
   const name = positionals[0];
   const dryRun = flag(flags, 'dry-run');
   const extraPrompt = flagVal(flags, 'prompt') ?? positionals.slice(1).join(' ').trim();

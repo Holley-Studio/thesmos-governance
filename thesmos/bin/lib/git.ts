@@ -76,12 +76,73 @@ export function getChangedFiles(
         log.warn('git diff (per-file) failed', { path, error: e instanceof Error ? e.message : String(e) });
         diff = undefined;
       }
-      return [{ path, content, diff }];
+      // Hunk ranges let runReview scope findings to the actual change — a
+      // 2-line diff must not surface findings on the file's untouched lines.
+      const changedRanges = diff === undefined ? undefined : parseChangedRanges(diff);
+      return [{ path, content, diff, changedRanges }];
     } catch (e) {
       log.warn('file read failed', { path, error: e instanceof Error ? e.message : String(e) });
       return [];
     }
   });
+}
+
+/**
+ * Parse a unified diff into changed line ranges in the NEW file (1-based,
+ * inclusive). Only lines actually added/modified count — context lines are
+ * excluded, so the ranges are exact regardless of the diff's context width.
+ * Deletion-only hunks get a single-point range at the deletion site so edits
+ * that only remove lines still anchor nearby findings.
+ */
+export function parseChangedRanges(diff: string): Array<{ start: number; end: number }> {
+  const ranges: Array<{ start: number; end: number }> = [];
+  // @@ -oldStart[,oldCount] +newStart[,newCount] @@
+  const HUNK_RE = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
+  let newLine = 0; // next new-file line number while walking a hunk body
+  let inHunk = false;
+  let hunkHadAdditions = false;
+  let hunkNewStart = 0;
+
+  const closeHunk = () => {
+    if (inHunk && !hunkHadAdditions) {
+      // Deletion-only hunk: newCount is 0 and newStart points just BEFORE the
+      // deletion site — anchor at max(start, 1) so the range stays valid.
+      ranges.push({ start: Math.max(hunkNewStart, 1), end: Math.max(hunkNewStart, 1) });
+    }
+  };
+
+  for (const line of diff.split('\n')) {
+    const m = HUNK_RE.exec(line);
+    if (m) {
+      closeHunk();
+      inHunk = true;
+      hunkHadAdditions = false;
+      hunkNewStart = Number(m[1]);
+      newLine = hunkNewStart;
+      continue;
+    }
+    if (!inHunk) continue;
+    if (line.startsWith('+')) {
+      const last = ranges[ranges.length - 1];
+      if (last && last.end === newLine - 1 && hunkHadAdditions) {
+        last.end = newLine; // extend a contiguous run of added lines
+      } else {
+        ranges.push({ start: newLine, end: newLine });
+      }
+      hunkHadAdditions = true;
+      newLine++;
+    } else if (line.startsWith('-')) {
+      // removed line — old file only, new-file counter does not advance
+    } else if (line.startsWith(' ') || line === '') {
+      newLine++; // context line
+    } else {
+      // "diff --git", "index", "\ No newline at end of file", etc. — a new
+      // file header ends the current hunk body.
+      if (line.startsWith('diff ')) { closeHunk(); inHunk = false; }
+    }
+  }
+  closeHunk();
+  return ranges;
 }
 
 /**

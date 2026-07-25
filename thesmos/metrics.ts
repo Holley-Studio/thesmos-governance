@@ -216,7 +216,7 @@ export function computeMetrics(input: MetricsInput): ThesmosMetrics {
 
 export function collectMetricsForRoot(root: string, config: ThesmosConfig): ThesmosMetrics {
   const scan = loadReport(root);
-  const findings = scan ? runReview({ scan, config }) : [];
+  const findings = scan ? runReview({ scan, config }).findings : [];
   const baseline = loadBaseline(root);
   const driftFindings = runDriftForRoot(root, config);
   let registry: ResolvedRegistry | null = null;

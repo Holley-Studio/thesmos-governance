@@ -13,14 +13,22 @@
  * operations are allowed (safe default: don't block when unconfigured).
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, resolve, relative, isAbsolute } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
+import { join, resolve, relative, isAbsolute, basename } from 'node:path';
 import {
   isClaudeAgentsPath,
   isManagedPath,
   loadManagedManifest,
   normalizeRelPath,
 } from './agent-ownership.js';
+import {
+  commandMatchesPhrase,
+  commandInvokesDelete,
+  commandInvokesGitPush,
+  commandInvokesDatabaseWrite,
+  resolveCommandAnalysis,
+  type AmbiguousConstructCode,
+} from './shell-command.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,7 +50,9 @@ export interface ScopeOperations {
   allowNetworkHosts: string[];
   /** Whether the agent may run database write commands. Default: false. */
   allowDatabaseWrites: boolean;
-  /** Commands requiring human confirmation — scope check exits 2 with advisory. */
+  /** Commands requiring human confirmation — surfaced as a recoverable
+   *  hookSpecificOutput "ask" decision by the claude:govern PreToolUse hook,
+   *  not a hard block. See thesmos/claude-govern.ts's emitAskDecision(). */
   requireConfirmation: string[];
 }
 
@@ -53,10 +63,38 @@ export interface ScopeConfig {
   destructivePatterns: string[];
 }
 
+/**
+ * Stable, programmatic decision codes. Never renamed across versions —
+ * callers (hooks, CLI, downstream tooling) may branch on `code` instead of
+ * string-matching prose. Config-load failures use ScopeConfigError.CODE
+ * (`THESMOS_SCOPE_CONFIG_INVALID`) instead; these cover per-decision outcomes.
+ */
+export const SCOPE_DECISION_CODES = {
+  BLOCKED_PATH: 'THESMOS_SCOPE_BLOCKED_PATH',
+  ABSOLUTE_BLOCKED_PATH: 'THESMOS_SCOPE_ABSOLUTE_BLOCKED_PATH',
+  DESTRUCTIVE_COMMAND: 'THESMOS_SCOPE_DESTRUCTIVE_COMMAND',
+  REQUIRES_CONFIRMATION: 'THESMOS_SCOPE_REQUIRES_CONFIRMATION',
+  /** Executable syntax the command analyzer cannot safely resolve (command
+   *  substitution, subshell, variable executable, arbitrary-code interpreter
+   *  payload, …). Surfaced as an approval request, never a silent allow and
+   *  never a hard block on its own — see checkCommand(). */
+  AMBIGUOUS_COMMAND_SYNTAX: 'THESMOS_SCOPE_AMBIGUOUS_COMMAND_SYNTAX',
+} as const;
+
+export type ScopeDecisionCode = (typeof SCOPE_DECISION_CODES)[keyof typeof SCOPE_DECISION_CODES];
+
 export interface ScopeViolation {
   type: 'blocked_path' | 'destructive_command' | 'requires_confirmation' | 'absolute_blocked_path';
   message: string;
   suggestion: string;
+  /** Stable programmatic identifier for this decision. Optional only for
+   *  backward compatibility with callers constructing violations directly;
+   *  every violation produced by this module sets it. */
+  code?: ScopeDecisionCode;
+  /** Present only on AMBIGUOUS_COMMAND_SYNTAX decisions: the specific
+   *  unresolvable construct's stable sub-code (see AmbiguousConstructCode).
+   *  Never contains any of the user's actual command text. */
+  ambiguousConstruct?: AmbiguousConstructCode;
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
@@ -94,17 +132,74 @@ export const SCOPE_DEFAULTS: ScopeConfig = {
 
 const SCOPE_FILE = '.thesmos/scope.json';
 
+/**
+ * Governance files that a governed agent must never be able to rewrite.
+ * Checked unconditionally BEFORE any config-driven allow/block logic (F1 fix).
+ * These paths are relative to the project root (relNorm form).
+ */
+const GOVERNANCE_PROTECTED = new Set([
+  '.thesmos/scope.json',
+  '.thesmos/managed-agents.json',
+  '.thesmos/config.json',
+  // .claude/settings.json is intentionally NOT here — users must be able to
+  // ask Claude to update their own Claude Code settings freely.
+]);
+
 // ── Load / save ───────────────────────────────────────────────────────────────
 
+/**
+ * Thrown when `.thesmos/scope.json` EXISTS but cannot be parsed as JSON.
+ * Distinct from the file simply being absent (a safe, intentional "allow
+ * all" default) — a present-but-corrupt scope file must never silently
+ * disable scope enforcement (that would fail OPEN on exactly the config
+ * that's supposed to lock things down). Callers should treat this the same
+ * as any other infrastructure failure (respect `autoMode.failClosed`).
+ *
+ * `code` is a stable, programmatic identifier (never changes across
+ * versions) for callers that want to branch on the error type without
+ * string-matching `message` or `instanceof`-checking across module
+ * boundaries (e.g. a bundled consumer on a different copy of this class).
+ *
+ * `scopePath` is intentionally the PROJECT-RELATIVE path (`.thesmos/scope.json`),
+ * not an absolute filesystem path — this error's message and path both flow
+ * into hook stderr and CLI output, which are shareable diagnostics (transcripts,
+ * bug reports, support bundles); an absolute path would leak the user's home
+ * directory / machine-specific layout for no benefit, since the relative path
+ * is already sufficient to locate the file from the project root.
+ */
+export class ScopeConfigError extends Error {
+  static readonly CODE = 'THESMOS_SCOPE_CONFIG_INVALID' as const;
+  readonly code = ScopeConfigError.CODE;
+
+  constructor(
+    public readonly scopePath: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ScopeConfigError';
+  }
+}
+
+/**
+ * Returns null only when `.thesmos/scope.json` does not exist (the safe,
+ * intentional "unconfigured — allow all" default). Throws `ScopeConfigError`
+ * when the file exists but fails to parse, so callers can fail closed
+ * instead of silently treating a corrupt config as "no config."
+ */
 export function loadScopeConfig(root: string): ScopeConfig | null {
   const scopePath = join(root, SCOPE_FILE);
   if (!existsSync(scopePath)) return null;
+  let raw: Partial<ScopeConfig>;
   try {
-    const raw = JSON.parse(readFileSync(scopePath, 'utf8')) as Partial<ScopeConfig>;
-    return mergeScopeConfig(raw);
-  } catch {
-    return null;
+    raw = JSON.parse(readFileSync(scopePath, 'utf8')) as Partial<ScopeConfig>;
+  } catch (err) {
+    throw new ScopeConfigError(
+      // Relative, not `scopePath` (absolute) — see ScopeConfigError's doc comment.
+      SCOPE_FILE,
+      `.thesmos/scope.json exists but could not be parsed as JSON: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
+  return mergeScopeConfig(raw);
 }
 
 function mergeScopeConfig(partial: Partial<ScopeConfig>): ScopeConfig {
@@ -134,16 +229,78 @@ export function saveScopeConfig(root: string, config: ScopeConfig): void {
 
 // ── Path matching ─────────────────────────────────────────────────────────────
 
+/**
+ * Canonicalize a path by resolving symlinks.
+ * For paths that exist on disk, realpathSync resolves all symlinks (e.g. /tmp → /private/tmp on macOS).
+ * For paths that don't yet exist (Write targets), we walk up the directory tree to find the deepest
+ * existing ancestor, resolve that, then re-append the non-existent tail. This ensures that
+ * /tmp/proj/src/new-file.ts → /private/tmp/proj/src/new-file.ts even when new-file.ts doesn't exist yet.
+ */
+function canonical(p: string): string {
+  try { return realpathSync(p); } catch { /* path doesn't exist — walk up */ }
+  // Walk up to find an existing ancestor, resolve it, re-append the tail
+  const parts = p.split('/');
+  for (let i = parts.length - 1; i > 0; i--) {
+    const ancestor = parts.slice(0, i).join('/') || '/';
+    try {
+      const resolvedAncestor = realpathSync(ancestor);
+      const tail = parts.slice(i).join('/');
+      return tail ? `${resolvedAncestor}/${tail}` : resolvedAncestor;
+    } catch { /* keep walking up */ }
+  }
+  return p;
+}
+
 function isPathAllowed(filePath: string, root: string, config: ScopeConfig): ScopeViolation | null {
-  const absPath = isAbsolute(filePath) ? filePath : resolve(root, filePath);
-  const relPath = relative(root, absPath);
+  // F2 fix: always resolve() to canonicalise ../ sequences before any comparison.
+  // resolve() collapses traversal components without requiring the file to exist
+  // (safe for Write targets that don't yet exist on disk).
+  //
+  // canonical() additionally resolves symlinks when the path exists on disk, preventing
+  // symlink-bypass attacks (e.g. /tmp/proj-link → /etc/shadow).
+  // We canonicalize both the target path AND the root so that relPath computation
+  // remains consistent on platforms where /tmp → /private/tmp (macOS).
+  const resolvedRoot = resolve(root);
+  // canonical() resolves symlinks (e.g. macOS /tmp → /private/tmp).
+  // We use canonicalRoot as the authoritative base for all path comparisons
+  // so that relative-path computation remains consistent across symlink boundaries.
+  const canonicalRoot = canonical(resolvedRoot);
+  // Build the absolute target path. For relative paths, anchor to canonicalRoot.
+  // For absolute paths, use them directly — canonical() will resolve any symlinks in the path.
+  const rawTarget = resolve(isAbsolute(filePath) ? filePath : join(canonicalRoot, filePath));
+  const absPath = canonical(rawTarget);
+  // resolvedTarget: the dot-resolved (but not symlink-resolved) version of the original input,
+  // used for absoluteBlockPaths matching so /tmp/../etc/shadow resolves to /etc/shadow and
+  // matches the blocked /etc/ entry (both sides use resolve(), keeping namespaces consistent).
+  const resolvedTarget = resolve(isAbsolute(filePath) ? filePath : join(resolvedRoot, filePath));
+  const relPath = relative(canonicalRoot, absPath);
   const relNorm = normalizeRelPath(relPath.replace(/\\/g, '/'));
 
-  // Check absolute block paths first (always blocked, regardless of allow list)
+  // F1 fix: governance files are immutable from inside a governed session.
+  // Enforced BEFORE any config-driven allow/block logic so scope.json cannot
+  // neuter itself in a single Write call.
+  if (GOVERNANCE_PROTECTED.has(relNorm)) {
+    return {
+      type: 'blocked_path',
+      code: SCOPE_DECISION_CODES.BLOCKED_PATH,
+      message: `"${filePath}" is a Thesmos governance file — a governed agent may not modify it.`,
+      suggestion: 'Edit governance config manually outside the agent session.',
+    };
+  }
+
+  // F2 fix (cont.): compare the resolved absolute path against absoluteBlockPaths.
+  // Previously absPath was unresolved when given as absolute, allowing /tmp/../etc/shadow to pass.
+  // We check both the dot-resolved path (resolvedTarget) and the symlink-resolved path (absPath)
+  // against the blocked paths so that both /tmp/../etc/shadow and symlink-to-/etc/ are caught.
   for (const blocked of config.workspace.absoluteBlockPaths) {
-    if (absPath.startsWith(blocked) || absPath === blocked) {
+    const blockedNorm = canonical(resolve(blocked)); // normalize separators, trailing slash, and symlinks
+    if (
+      resolvedTarget.startsWith(blockedNorm) || resolvedTarget === blockedNorm ||
+      absPath.startsWith(blockedNorm) || absPath === blockedNorm
+    ) {
       return {
         type: 'absolute_blocked_path',
+        code: SCOPE_DECISION_CODES.ABSOLUTE_BLOCKED_PATH,
         message: `Path "${filePath}" is in an always-blocked system directory "${blocked}".`,
         suggestion: 'This path is outside the project workspace. Confirm this operation is intentional.',
       };
@@ -164,6 +321,7 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
     if (managed) {
       return {
         type: 'blocked_path',
+        code: SCOPE_DECISION_CODES.BLOCKED_PATH,
         message:
           `Path "${filePath}" is a Thesmos-managed agent file. ` +
           `Direct edits are blocked so adapter sync does not lose ownership metadata.`,
@@ -172,24 +330,40 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
           `or run \`thesmos agent:release <agent-id>\` to stop managing this file before editing it directly.`,
       };
     }
-    // Unmanaged / external agent path — allow even when `.claude/` is blocked
-    // and even when allowedPaths would otherwise exclude it.
-    return null;
+    // Unmanaged / external agent path: allow unless .claude/ or .claude/agents/ is explicitly blocked.
+    // When blocked, fall through so the blocked-paths loop can surface an agent:install suggestion.
+    const isAgentSurfaceBlocked = config.workspace.blockedPaths.some((b) => {
+      const p = b.replace(/\./g, '\\.').replace(/\*/g, '.*');
+      const r = new RegExp(`^${p}`);
+      return r.test(relPath) || r.test(filePath) || r.test(relNorm);
+    });
+    if (!isAgentSurfaceBlocked) return null;
+    // Fall through to the blocked-paths loop for a targeted suggestion.
   }
 
-  // Check blocked paths (glob-style prefix matching)
+  // F3 fix: segment-aware blocked-path matching.
+  // Original anchored `^pattern` only matched root-level names; src/.env bypassed.
+  // Now we test the pattern against: (a) the full relative path [root-level matches],
+  // (b) the basename [nested matches], and (c) the original relPath [compat].
+  const fileBasename = basename(relNorm);
   for (const blocked of config.workspace.blockedPaths) {
     const pattern = blocked.replace(/\./g, '\\.').replace(/\*/g, '.*');
     const re = new RegExp(`^${pattern}`);
-    if (re.test(relPath) || re.test(filePath) || re.test(relNorm)) {
+    if (re.test(relNorm) || re.test(fileBasename) || re.test(relPath) || re.test(filePath)) {
       // Provide targeted, path-specific guidance for each canonical authoring surface.
+      const AGENT_SURFACE   = '.claude/agents/';
       const SKILL_SURFACE   = '.claude/skills/';
       const COMMAND_SURFACE = '.claude/commands/';
+      const isAgentPath   = relNorm.startsWith(AGENT_SURFACE)   || filePath.includes(AGENT_SURFACE);
       const isSkillPath   = relNorm.startsWith(SKILL_SURFACE)   || filePath.includes(SKILL_SURFACE);
       const isCommandPath = relNorm.startsWith(COMMAND_SURFACE) || filePath.includes(COMMAND_SURFACE);
 
       let suggestion: string;
-      if (isSkillPath) {
+      if (isAgentPath) {
+        suggestion =
+          `Author the agent spec under .thesmos/agents/ and run \`thesmos agent:install\` ` +
+          `to register and install it to .claude/agents/.`;
+      } else if (isSkillPath) {
         suggestion =
           `Author the skill outside .claude/skills/ and run \`thesmos skill:create\` ` +
           `or \`thesmos adapters\` to synchronize platform skill files.`;
@@ -204,6 +378,7 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
       }
       return {
         type: 'blocked_path',
+        code: SCOPE_DECISION_CODES.BLOCKED_PATH,
         message: `Path "${filePath}" matches blocked pattern "${blocked}".`,
         suggestion,
       };
@@ -220,6 +395,7 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
     if (!isAllowed) {
       return {
         type: 'blocked_path',
+        code: SCOPE_DECISION_CODES.BLOCKED_PATH,
         message: `Path "${filePath}" is outside the allowed workspace paths [${config.workspace.allowedPaths.join(', ')}].`,
         suggestion: `Add "${relPath}" to allowedPaths in .thesmos/scope.json, or restrict the agent's task to files within the allowed scope.`,
       };
@@ -231,67 +407,105 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
 
 // ── Command checking ──────────────────────────────────────────────────────────
 
+/**
+ * SECURITY NOTE — Residual Risk (F4, from Argus red-team 2026-07-20):
+ * This function blocks a known set of destructive patterns. It does NOT claim
+ * to block all destructive commands. Equivalent operations via inline interpreters
+ * (node -e 'fs.rmSync(…)', python -c 'shutil.rmtree(…)', perl unlink, find -delete,
+ * rimraf, etc.) are not fully covered. This is an inherent limitation of denylist
+ * matching — no string-based approach can enumerate all equivalent expressions.
+ *
+ * Correct posture: "Thesmos blocks a known set of destructive shell patterns."
+ * NOT: "Thesmos prevents all destructive commands."
+ *
+ * Architectural path to eliminate this: move Bash to a binary allowlist model
+ * (permit only whitelisted command words, deny-by-default on unknown commands).
+ * Until then, this gate provides meaningful friction, not a hard guarantee.
+ *
+ * All five checks below (destructivePatterns, allowDelete, allowGitPush,
+ * allowDatabaseWrites, requireConfirmation) go through the SAME bounded
+ * command-analysis path in shell-command.ts — one tokenizer, one
+ * quote/heredoc/wrapper/interpreter-payload model, not five separate
+ * fragile regexes. See that module's doc comment for exactly what it
+ * recognizes and its documented residual limits.
+ *
+ * ORDERING IS DELIBERATE. Explicit denylist matches run FIRST, against the
+ * portion of the command that resolved cleanly. Only if none of them fire
+ * do we consider unresolvable syntax (command substitution, subshells, a
+ * variable executable, an arbitrary-code interpreter payload, …), which
+ * becomes a recoverable `requires_confirmation` ask — NOT a hard block.
+ * Rationale: a positively-identified `rm -rf` should be denied outright,
+ * but `echo $(date)` is a perfectly ordinary developer command that this
+ * analyzer simply cannot prove safe. Hard-blocking every such command would
+ * make legitimate work impossible; silently allowing it would let
+ * `echo $(rm -rf /tmp/x)` through. Asking a human is the correct third
+ * option, and is exactly what the PreToolUse hook's "ask" decision exists for.
+ */
 function checkCommand(command: string, config: ScopeConfig): ScopeViolation | null {
-  const cmd = command.trim().toLowerCase();
-
-  // Check destructive patterns
   for (const pattern of config.destructivePatterns) {
-    if (cmd.includes(pattern.toLowerCase())) {
+    if (commandMatchesPhrase(command, pattern)) {
       return {
         type: 'destructive_command',
+        code: SCOPE_DECISION_CODES.DESTRUCTIVE_COMMAND,
         message: `Command contains a destructive pattern "${pattern}".`,
         suggestion: 'Thesmos scope enforcement blocked this command. If this is intentional, run it manually outside the agent session.',
       };
     }
   }
 
-  // Check delete operations
-  if (!config.operations.allowDelete) {
-    if (/\brm\s+(?:-[a-z]*f[a-z]*\s+)?\S/.test(cmd) && !/\brm\s+--/.test(cmd)) {
-      // Allow `rm --help` style, block actual deletion
-      const isHelp = cmd.includes('--help') || cmd.includes('-h');
-      if (!isHelp) {
-        return {
-          type: 'destructive_command',
-          message: 'File deletion is not allowed in the current scope.',
-          suggestion: 'Set operations.allowDelete to true in .thesmos/scope.json to enable file deletion, or delete manually.',
-        };
-      }
-    }
-  }
-
-  // Check git push
-  if (!config.operations.allowGitPush && /\bgit\s+push\b/.test(cmd)) {
+  if (!config.operations.allowDelete && commandInvokesDelete(command)) {
     return {
       type: 'destructive_command',
+      code: SCOPE_DECISION_CODES.DESTRUCTIVE_COMMAND,
+      message: 'File deletion is not allowed in the current scope.',
+      suggestion: 'Set operations.allowDelete to true in .thesmos/scope.json to enable file deletion, or delete manually.',
+    };
+  }
+
+  if (!config.operations.allowGitPush && commandInvokesGitPush(command)) {
+    return {
+      type: 'destructive_command',
+      code: SCOPE_DECISION_CODES.DESTRUCTIVE_COMMAND,
       message: 'git push is not allowed in the current scope.',
       suggestion: 'Set operations.allowGitPush to true in .thesmos/scope.json, or push manually after reviewing the changes.',
     };
   }
 
-  // Check database writes
-  if (!config.operations.allowDatabaseWrites) {
-    const dbWritePatterns = [/\bdrop\s+table\b/i, /\bdelete\s+from\b/i, /\btruncate\s+/i, /\balter\s+table\b/i];
-    for (const re of dbWritePatterns) {
-      if (re.test(command)) {
-        return {
-          type: 'destructive_command',
-          message: 'Database write operation is not allowed in the current scope.',
-          suggestion: 'Set operations.allowDatabaseWrites to true in .thesmos/scope.json, or run database commands manually.',
-        };
-      }
-    }
+  if (!config.operations.allowDatabaseWrites && commandInvokesDatabaseWrite(command)) {
+    return {
+      type: 'destructive_command',
+      code: SCOPE_DECISION_CODES.DESTRUCTIVE_COMMAND,
+      message: 'Database write operation is not allowed in the current scope.',
+      suggestion: 'Set operations.allowDatabaseWrites to true in .thesmos/scope.json, or run database commands manually.',
+    };
   }
 
-  // Check requireConfirmation list
   for (const pattern of config.operations.requireConfirmation) {
-    if (cmd.includes(pattern.toLowerCase())) {
+    if (commandMatchesPhrase(command, pattern)) {
       return {
         type: 'requires_confirmation',
+        code: SCOPE_DECISION_CODES.REQUIRES_CONFIRMATION,
         message: `Command "${pattern}" requires human confirmation before proceeding.`,
         suggestion: 'Run this command manually after reviewing the agent\'s changes, or add it to an exception in .thesmos/scope.json.',
       };
     }
+  }
+
+  // No explicit rule matched. If the command contains executable syntax the
+  // analyzer could not resolve, ask rather than guess. The message names
+  // only the CONSTRUCT KIND — never a snippet of the command itself, which
+  // could carry a secret or a path into a shareable diagnostic.
+  const analysis = resolveCommandAnalysis(command);
+  if (analysis.status === 'ambiguous') {
+    return {
+      type: 'requires_confirmation',
+      code: SCOPE_DECISION_CODES.AMBIGUOUS_COMMAND_SYNTAX,
+      ambiguousConstruct: analysis.code,
+      message: `${analysis.reason} Thesmos is requesting approval rather than guessing at its behavior.`,
+      suggestion:
+        'Review the command yourself and approve it if it is intentional. ' +
+        'Thesmos does not inspect this construct — approving it means you have verified what it does.',
+    };
   }
 
   return null;
@@ -306,6 +520,11 @@ export interface ScopeCheckInput {
   root: string;
 }
 
+/** Tools that write or modify files. */
+const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
+/** Tools that read file content — scoped against blockedPaths (F8 fix). */
+const READ_TOOLS = new Set(['Read', 'Grep', 'Glob']);
+
 export function checkScope(input: ScopeCheckInput): ScopeViolation | null {
   const { toolName, filePath, command, root } = input;
   const config = loadScopeConfig(root);
@@ -313,12 +532,11 @@ export function checkScope(input: ScopeCheckInput): ScopeViolation | null {
   // No scope config = allow all (safe default)
   if (!config) return null;
 
-  if ((toolName === 'Write' || toolName === 'Edit') && filePath) {
+  if ((WRITE_TOOLS.has(toolName) || READ_TOOLS.has(toolName)) && filePath) {
     return isPathAllowed(filePath, root, config);
   }
 
   if (toolName === 'Bash' && command) {
-    // Check path-based concerns in command (heuristic: look for file paths)
     const pathViolation = checkCommand(command, config);
     return pathViolation;
   }

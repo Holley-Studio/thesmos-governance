@@ -108,6 +108,7 @@ jobs:
         with:
           sarif_file: governance.sarif
           category: thesmos-governance
+        continue-on-error: true   # upload service may be unavailable; generation is required above
 
       - name: Fail when governance validate failed
         if: matrix.node-version == '22.x' && steps.sarif_scan.outcome == 'failure'

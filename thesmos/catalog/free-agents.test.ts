@@ -28,7 +28,7 @@ describe('free-agents.json', () => {
   });
 
   it('carries the pricing facts the CLI and store surfaces read', () => {
-    expect(manifest.pantheonTotal).toBe(68);
+    expect(manifest.pantheonTotal).toBe(67);
     expect(manifest.priceUsd).toBe(24);
     expect(manifest.storeUrl).toBe('https://holleystudio.gumroad.com/l/thesmos-pantheon');
   });

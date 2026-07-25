@@ -257,8 +257,16 @@ export const THESMOS_RULES: ThesmosRule[] = [
       const findings: Finding[] = [];
       const patterns = config.secretPatterns;
       for (const { path, content, diff } of changedFiles) {
-        const source = diff ?? content;
-        const lines = source.split('\n');
+        // A unified diff mixes added (+), removed (-), and unchanged context
+        // lines. Only newly ADDED lines represent a secret this PR introduces —
+        // scanning removed/context lines flags secrets being deleted (backwards)
+        // and pre-existing secrets untouched by this PR (unrelated to the diff).
+        const lines = diff !== undefined
+          ? diff
+              .split('\n')
+              .filter((l) => l.startsWith('+') && !l.startsWith('+++'))
+              .map((l) => l.slice(1))
+          : content.split('\n');
         for (let i = 0; i < lines.length; i++) {
           if (matchesSecretPattern(lines[i], patterns)) {
             findings.push({

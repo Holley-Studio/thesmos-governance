@@ -1,0 +1,15 @@
+**/node_modules
+thesmos/dist
+thesmos/coverage
+thesmos/.thesmos
+thesmos/**/*.test.ts
+thesmos/rules/__fixtures__
+extensions/vscode/*
+!extensions/vscode/package.json
+actions/pr-review/*
+!actions/pr-review/package.json
+pantheon
+website
+growth
+docs
+.git

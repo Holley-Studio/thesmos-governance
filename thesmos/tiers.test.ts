@@ -76,13 +76,13 @@ describe('runReview — full engine for every tier (rules are never paywalled)',
   });
 
   it('premium reports both the essential and the formerly-premium rule', () => {
-    const cats = runReview(input('premium')).map((f) => f.category);
+    const cats = runReview(input('premium')).findings.map((f) => f.category);
     expect(cats).toContain('vibe_hardcoded_secret');
     expect(cats).toContain('debugger_statement');
   });
 
   it('free ALSO reports both rules — the tier gate is gone', () => {
-    const cats = runReview(input('free')).map((f) => f.category);
+    const cats = runReview(input('free')).findings.map((f) => f.category);
     expect(cats).toContain('vibe_hardcoded_secret');
     expect(cats).toContain('debugger_statement');
   });

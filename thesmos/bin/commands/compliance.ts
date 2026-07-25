@@ -23,7 +23,7 @@ import {
   type AssuranceResult,
 } from '../../assurance.js';
 import { loadProductFacts } from '../../product-facts.js';
-import type { ScanResult } from '../../types.js';
+import type { ScanResult, Finding } from '../../types.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -233,9 +233,9 @@ function generateGdprReport(root: string): ComplianceReportResult {
   const evidence = loadScanEvidence(root);
   const gdprRules = THESMOS_RULES.filter((r) => r.id.startsWith('GDPR_'));
 
-  let gdprFindings: ReturnType<typeof runReview> = [];
+  let gdprFindings: Finding[] = [];
   if (!evidence.evidenceMissing && evidence.scan) {
-    const allFindings = runReview({ scan: evidence.scan, config, changedFiles: undefined });
+    const { findings: allFindings } = runReview({ scan: evidence.scan, config, changedFiles: undefined });
     gdprFindings = allFindings.filter((f) => f.category.startsWith('gdpr_'));
   }
 
@@ -433,9 +433,9 @@ function generateFrameworkReport(
   const evidence = loadScanEvidence(root);
   const rules = THESMOS_RULES.filter((r) => r.id.startsWith(idPrefix));
 
-  let findings: ReturnType<typeof runReview> = [];
+  let findings: Finding[] = [];
   if (!evidence.evidenceMissing && evidence.scan) {
-    const allFindings = runReview({ scan: evidence.scan, config, changedFiles: undefined });
+    const { findings: allFindings } = runReview({ scan: evidence.scan, config, changedFiles: undefined });
     findings = allFindings.filter((f) => f.category.startsWith(categoryPrefix));
   }
 
@@ -617,9 +617,9 @@ function generateSoc2Report(root: string): ComplianceReportResult {
   const config = loadConfig(root);
   const evidence = loadScanEvidence(root);
   const soc2Rules = THESMOS_RULES.filter((r) => Object.hasOwn(SOC2_CRITERIA_MAP, r.category));
-  let soc2Findings: ReturnType<typeof runReview> = [];
+  let soc2Findings: Finding[] = [];
   if (!evidence.evidenceMissing && evidence.scan) {
-    const allFindings = runReview({ scan: evidence.scan, config, changedFiles: undefined });
+    const { findings: allFindings } = runReview({ scan: evidence.scan, config, changedFiles: undefined });
     soc2Findings = allFindings.filter((f) => Object.hasOwn(SOC2_CRITERIA_MAP, f.category));
   }
   return buildSoc2NistReport(root, 'soc2', soc2Rules, soc2Findings, SOC2_CRITERIA_MAP, evidence);
@@ -629,9 +629,9 @@ function generateNistAiRmfReport(root: string): ComplianceReportResult {
   const config = loadConfig(root);
   const evidence = loadScanEvidence(root);
   const nistRules = THESMOS_RULES.filter((r) => Object.hasOwn(NIST_FUNCTION_MAP, r.category));
-  let nistFindings: ReturnType<typeof runReview> = [];
+  let nistFindings: Finding[] = [];
   if (!evidence.evidenceMissing && evidence.scan) {
-    const allFindings = runReview({ scan: evidence.scan, config, changedFiles: undefined });
+    const { findings: allFindings } = runReview({ scan: evidence.scan, config, changedFiles: undefined });
     nistFindings = allFindings.filter((f) => Object.hasOwn(NIST_FUNCTION_MAP, f.category));
   }
   return buildSoc2NistReport(root, 'nist-ai-rmf', nistRules, nistFindings, NIST_FUNCTION_MAP, evidence);
@@ -641,7 +641,7 @@ function buildSoc2NistReport(
   root: string,
   standard: Standard,
   rules: typeof THESMOS_RULES,
-  findings: ReturnType<typeof runReview>,
+  findings: import('../../types.js').Finding[],
   articleMap: Record<string, string>,
   evidence: ScanEvidence,
 ): ComplianceReportResult {

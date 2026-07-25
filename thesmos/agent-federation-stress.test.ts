@@ -284,15 +284,16 @@ describe('federation stress — never overwrite user content', () => {
 });
 
 describe('federation stress — scope and discovery', () => {
-  it('allows external agents while blocking managed paths under blocked .claude/', () => {
+  it('surfaces agent:install suggestion for external agents under blocked .claude/', () => {
     const root = tmpProject();
     roots.push(root);
     const cfg = writeBlockingScope(root);
 
     void cfg;
-    expect(
-      checkScope({ toolName: 'Write', filePath: '.claude/agents/custom-agent.md', root })
-    ).toBeNull();
+    // External (unmanaged) .claude/agents/ paths now get an agent:install suggestion when .claude/ is blocked.
+    const externalViolation = checkScope({ toolName: 'Write', filePath: '.claude/agents/custom-agent.md', root });
+    expect(externalViolation).not.toBeNull();
+    expect(externalViolation!.suggestion).toContain('thesmos agent:install');
     expect(
       checkScope({ toolName: 'Write', filePath: '.claude/skills/x.md', root })
     ).not.toBeNull();

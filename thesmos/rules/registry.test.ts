@@ -14,7 +14,7 @@ import { describe, it, expect } from 'vitest';
 import { THESMOS_RULES } from './registry';
 import { REVIEW_CATEGORIES, runReview } from '../review';
 import { CONFIG_DEFAULTS } from '../config';
-import { buildAdapterContent } from '../adapters';
+import { buildAdapterContent, parseAdapterMeta } from '../adapters';
 import type { ThesmosRule, DetectInput, Finding, ScanResult } from '../types';
 
 // ── Shared fixture ─────────────────────────────────────────────────────────────
@@ -94,17 +94,16 @@ describe('downstream derivation from registry', () => {
 describe('adapters derive from registry', () => {
   const ALL_TARGETS = ['gemini', 'claude', 'cursor', 'copilot', 'codex', 'agents'] as const;
 
-  it('every adapter target contains all registry rule IDs', () => {
-    const blockerHighRules = THESMOS_RULES.filter(
-      (r) => r.severity === 'BLOCKER' || r.severity === 'HIGH'
-    );
+  it('every adapter target embeds the registry size via ruleCount, not per-rule content', () => {
+    // Thin adapters (Operation Signal Phase 5) never enumerate individual
+    // rule IDs — the full catalog lives in .thesmos/RULES.md, retrievable
+    // via `thesmos explain`. Drift is tracked through the embedded
+    // THESMOS:META ruleCount instead (see isAdapterFresh in adapters.ts).
     for (const target of ALL_TARGETS) {
-      // claude adapter intentionally only embeds BLOCKER+HIGH rules to avoid context thrashing
-      const rulesForTarget = target === 'claude' ? blockerHighRules : THESMOS_RULES;
       const out = buildAdapterContent(target, '', THESMOS_RULES, CONFIG_DEFAULTS);
-      for (const rule of rulesForTarget) {
-        expect(out, `${target} missing [${rule.id}]`).toContain(`[${rule.id}]`);
-      }
+      const meta = parseAdapterMeta(out);
+      expect(meta?.ruleCount, `${target} should embed the registry size`).toBe(THESMOS_RULES.length);
+      expect(out, `${target} should point at the full catalog`).toContain('.thesmos/RULES.md');
     }
   });
 });
@@ -134,7 +133,7 @@ describe('mock rule extensibility', () => {
   it('a mock rule passed to runReview produces its findings — no other code changes needed', () => {
     const input = { scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: [] };
     const testRegistry = [...THESMOS_RULES, mockRule];
-    const findings = runReview(input, testRegistry);
+    const { findings } = runReview(input, testRegistry);
     const mockFinding = findings.find((f) => f.category === 'mock_violation');
     expect(mockFinding).toBeDefined();
     expect(mockFinding!.severity).toBe('HIGH');
@@ -142,14 +141,17 @@ describe('mock rule extensibility', () => {
 
   it('mock rule detect() is isolated — does not affect the global registry output', () => {
     const input = { scan: EMPTY_SCAN, config: CONFIG_DEFAULTS, changedFiles: [] };
-    const baseline = runReview(input); // uses global THESMOS_RULES
+    const { findings: baseline } = runReview(input); // uses global THESMOS_RULES
     expect(baseline.find((f) => f.category === 'mock_violation')).toBeUndefined();
   });
 
-  it('mock rule appears in adapter output when included in the rules list', () => {
+  it('adding a mock rule to the list changes the adapter output\'s embedded ruleCount', () => {
+    // Thin adapters don't enumerate rule IDs, so a new rule shows up as a
+    // ruleCount change (freshness signal), not as literal text in the file.
     const rulesWithMock = [...THESMOS_RULES, mockRule];
     const out = buildAdapterContent('claude', '', rulesWithMock, CONFIG_DEFAULTS);
-    expect(out).toContain('[MOCK_001]');
+    const meta = parseAdapterMeta(out);
+    expect(meta?.ruleCount).toBe(rulesWithMock.length);
   });
 });
 

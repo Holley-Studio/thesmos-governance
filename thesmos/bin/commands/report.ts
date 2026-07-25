@@ -542,7 +542,7 @@ export async function cmdReport(argv: string[]): Promise<void> {
   }
 
   const registry = await getActiveRules(root);
-  const findings = runReview({ scan, config }, registry);
+  const { findings } = runReview({ scan, config }, registry);
 
   if (json) {
     process.stdout.write(formatFindingsJson(findings));

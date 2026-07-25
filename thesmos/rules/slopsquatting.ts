@@ -15,7 +15,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import type { ThesmosRule, DetectInput, Finding } from '../types';
 import { classifySeverity } from '../severity';
 
@@ -112,6 +112,65 @@ const TOP_PACKAGES = [
   'semver', 'glob', 'chokidar', 'nodemon', 'concurrently',
 ];
 
+// Known-legitimate npm packages — typosquat allowlist (SLOP_009).
+// A package on this list is itself a well-known, real package and must never
+// be flagged as a typosquat of another popular package (e.g. tsup vs tsx).
+// Superset of TOP_PACKAGES plus popular tooling, CLI, and ecosystem packages.
+export const KNOWN_LEGIT_PACKAGES = new Set([
+  ...TOP_PACKAGES,
+  // Build / bundler / TS tooling
+  'tsup', 'turbo', 'lerna', 'nx', 'rimraf', 'cross-env', 'husky', 'lint-staged',
+  'ts-node', 'ts-jest', 'tslib', 'type-fest', 'terser', 'babel-loader',
+  'ts-loader', 'css-loader', 'style-loader', 'html-webpack-plugin', 'postcss',
+  'autoprefixer', 'sass', 'less', 'stylus', 'tailwindcss', 'browserify',
+  'swc', 'oxlint', 'knip', 'unbuild', 'mkdist', 'changesets',
+  // CLI / terminal
+  'execa', 'ora', 'inquirer', 'enquirer', 'prompts', 'boxen', 'cli-table3',
+  'picocolors', 'kleur', 'colorette', 'ansi-colors', 'strip-ansi',
+  'string-width', 'wrap-ansi', 'listr2', 'meow', 'cac', 'citty', 'clipanion',
+  // FS / glob / archive
+  'fs-extra', 'globby', 'fast-glob', 'micromatch', 'picomatch', 'tar',
+  'archiver', 'adm-zip', 'jszip', 'yauzl', 'del', 'make-dir', 'find-up',
+  // HTTP / network
+  'node-fetch', 'undici', 'got', 'ky', 'superagent', 'form-data', 'mime',
+  'mime-types', 'busboy', 'formidable', 'http-proxy', 'http-proxy-middleware',
+  // Express ecosystem
+  'body-parser', 'cookie-parser', 'compression', 'serve-static',
+  'express-session', 'express-rate-limit', 'connect', 'qs', 'debug', 'ms',
+  // Async / control flow
+  'p-limit', 'p-queue', 'p-retry', 'p-map', 'async', 'bluebird', 'rxjs',
+  'eventemitter3', 'mitt', 'bullmq', 'bull', 'agenda', 'node-cron', 'cron',
+  // IDs / strings / validation
+  'nanoid', 'ulid', 'slugify', 'validator', 'sanitize-html', 'dompurify',
+  'xss', 'he', 'string-similarity', 'fuse.js', 'change-case', 'camelcase',
+  // Parsing / formats
+  'marked', 'markdown-it', 'remark', 'rehype', 'unified', 'gray-matter',
+  'js-yaml', 'yaml', 'toml', 'ini', 'xml2js', 'fast-xml-parser', 'csv-parse',
+  'papaparse', 'xlsx', 'jsdom', 'happy-dom', 'linkedom', 'node-html-parser',
+  // React ecosystem
+  'preact', 'solid-js', 'lit', 'swr', 'react-query', 'react-router',
+  'react-router-dom', 'react-hook-form', 'formik', 'react-redux',
+  'react-icons', 'lucide-react', 'react-select', 'react-toastify', 'sonner',
+  'immer', 'valtio', 'xstate', 'clsx', 'classnames', 'styled-components',
+  'framer-motion', 'gsap', 'three', 'd3', 'chart.js', 'recharts', 'leaflet',
+  // Databases / drivers
+  'pg', 'mysql', 'mysql2', 'sqlite3', 'better-sqlite3', 'mongodb', 'kysely',
+  'objection', 'slonik', 'postgres', 'drizzle-kit', 'level', 'lowdb',
+  // Auth / crypto
+  'next-auth', 'passport-local', 'jose', 'jwks-rsa', 'argon2', 'oauth',
+  'openid-client', 'cookie', 'iron-session',
+  // Testing
+  'cypress', 'chai', 'sinon', 'supertest', 'msw', 'nock', 'happo', 'tap',
+  'testcontainers', 'selenium-webdriver', 'webdriverio',
+  // Cloud / SDK / AI
+  'aws-sdk', 'firebase', 'firebase-admin', 'twilio', 'resend', 'replicate',
+  'cohere-ai', 'groq-sdk', 'tiktoken', 'ollama', 'electron',
+  // Misc utility
+  'zx', 'dedent', 'deepmerge', 'fast-deep-equal', 'json5', 'jsonc-parser',
+  'dotenv-expand', 'env-var', 'envalid', 'open', 'address', 'get-port',
+  'node-machine-id', 'systeminformation', 'update-notifier', 'latest-version',
+]);
+
 // Legitimate npm organization scopes — unlisted scopes trigger SLOP_010
 const KNOWN_SCOPES = new Set([
   '@types', '@angular', '@vue', '@babel', '@jest', '@vitest',
@@ -194,9 +253,9 @@ export function getLockfilePackages(root: string): Set<string> | null {
 
 // ── Parse package.json for installed packages ─────────────────────────────────
 
-function getInstalledPackages(root: string): Set<string> {
-  const pkgPath = join(root, 'package.json');
-  if (!existsSync(pkgPath)) return new Set();
+function readManifestDeps(dir: string): Set<string> | null {
+  const pkgPath = join(dir, 'package.json');
+  if (!existsSync(pkgPath)) return null;
   try {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
       dependencies?: Record<string, string>;
@@ -211,8 +270,59 @@ function getInstalledPackages(root: string): Set<string> {
       ...Object.keys(pkg.optionalDependencies ?? {}),
     ]);
   } catch {
-    return new Set();
+    return null;
   }
+}
+
+/**
+ * Workspace-aware declared-dependency resolver (pnpm/yarn/npm workspaces).
+ *
+ * For a file at `packages/app/src/x.ts`, a dependency may legitimately be
+ * declared in `packages/app/package.json` (the owning workspace), an
+ * intermediate manifest, OR the repo-root manifest (roots commonly hoist
+ * shared devDeps). Checking only the root manifest flags every
+ * workspace-declared dep as "hallucinated" — so we walk UP from the file's
+ * directory to the repo root and union every package.json found on the way.
+ *
+ * Returns a function mapping a changed-file path (relative to root or
+ * absolute) to the union of declared dependency names. Reads are memoised
+ * per directory for the lifetime of the resolver (one detect() call).
+ */
+export function createDeclaredPackagesResolver(root: string): (filePath: string) => Set<string> {
+  const rootDir = resolve(root);
+  const depsByDir = new Map<string, Set<string> | null>();
+  const unionByDir = new Map<string, Set<string>>();
+
+  const depsAt = (dir: string): Set<string> | null => {
+    let cached = depsByDir.get(dir);
+    if (cached === undefined) {
+      cached = readManifestDeps(dir);
+      depsByDir.set(dir, cached);
+    }
+    return cached;
+  };
+
+  return (filePath: string): Set<string> => {
+    const abs = isAbsolute(filePath) ? resolve(filePath) : resolve(rootDir, filePath);
+    let dir = dirname(abs);
+    // Clamp files outside the root (or the root itself as a "file") to the root manifest.
+    if (dir !== rootDir && !dir.startsWith(rootDir + sep)) dir = rootDir;
+    const startDir = dir;
+    const memo = unionByDir.get(startDir);
+    if (memo) return memo;
+
+    const union = new Set<string>();
+    for (;;) {
+      const deps = depsAt(dir);
+      if (deps) for (const d of deps) union.add(d);
+      if (dir === rootDir) break;
+      const parent = dirname(dir);
+      if (parent === dir) break; // filesystem root safety stop
+      dir = parent;
+    }
+    unionByDir.set(startDir, union);
+    return union;
+  };
 }
 
 // ── Import parser — extract package names from import/require statements ───────
@@ -280,17 +390,18 @@ export const SLOPSQUATTING_RULES: ThesmosRule[] = [
       relatedAgents: ['security-reviewer'],
       relatedSkills: [],
     },
-    detect({ scan, changedFiles = [], config }: DetectInput): Finding[] {
+    detect({ scan, changedFiles = [], config, root }: DetectInput): Finding[] {
       const sev = classifySeverity('slop_phantom_import', config.severityRules);
       const findings: Finding[] = [];
 
-      // Find the repo root by looking for package.json via scan data
-      // We use the riskyFiles / scriptFiles to approximate root, or fall back to cwd
-      const installed = getInstalledPackages(process.cwd());
-      if (installed.size === 0) return []; // can't check without package.json
+      // Workspace-aware: deps may be declared in the file's nearest manifest,
+      // an intermediate manifest, or the hoisted root manifest.
+      const declared = createDeclaredPackagesResolver(root ?? process.cwd());
 
       for (const { path, content } of changedFiles) {
         if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path)) continue;
+        const installed = declared(path);
+        if (installed.size === 0) continue; // can't check without a package.json
         const imports = parseImports(content);
         for (const { pkg, line } of imports) {
           if (NODE_BUILTINS.has(pkg)) continue;
@@ -330,20 +441,21 @@ export const SLOPSQUATTING_RULES: ThesmosRule[] = [
       relatedAgents: ['security-reviewer'],
       relatedSkills: [],
     },
-    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+    detect({ changedFiles = [], config, root }: DetectInput): Finding[] {
       const sev = classifySeverity('slop_undeclared_import', config.severityRules);
       const findings: Finding[] = [];
-      const installed = getInstalledPackages(process.cwd());
-      if (installed.size === 0) return [];
+      const declared = createDeclaredPackagesResolver(root ?? process.cwd());
 
       for (const { path, content } of changedFiles) {
         if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path)) continue;
+        const installed = declared(path);
+        if (installed.size === 0) continue; // no manifest on the walk-up path — can't check
         const imports = parseImports(content);
         for (const { pkg, line } of imports) {
           if (NODE_BUILTINS.has(pkg)) continue;
           if (installed.has(pkg)) continue;
           if (KNOWN_PHANTOMS.has(pkg)) continue; // already caught by SLOP_001
-          // Flag as undeclared — may be legit (monorepo workspace) or phantom
+          // Undeclared in every manifest from the file's dir up to the root — phantom risk
           findings.push({
             severity: sev,
             category: 'slop_undeclared_import',
@@ -377,13 +489,14 @@ export const SLOPSQUATTING_RULES: ThesmosRule[] = [
       relatedAgents: ['security-reviewer'],
       relatedSkills: [],
     },
-    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+    detect({ changedFiles = [], config, root }: DetectInput): Finding[] {
       const sev = classifySeverity('slop_suspicious_package_name', config.severityRules);
       const findings: Finding[] = [];
-      const installed = getInstalledPackages(process.cwd());
+      const declared = createDeclaredPackagesResolver(root ?? process.cwd());
 
       for (const { path, content } of changedFiles) {
         if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path)) continue;
+        const installed = declared(path);
         const imports = parseImports(content);
         for (const { pkg, line } of imports) {
           if (NODE_BUILTINS.has(pkg)) continue;
@@ -462,14 +575,15 @@ export const SLOPSQUATTING_RULES: ThesmosRule[] = [
       relatedAgents: ['security-reviewer'],
       relatedSkills: [],
     },
-    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+    detect({ changedFiles = [], config, root }: DetectInput): Finding[] {
       const sev = classifySeverity('slop_ai_comment_import', config.severityRules);
       const findings: Finding[] = [];
       const AI_COMMENT = /\/\/\s*(?:AI|Generated by|generated|TODO: install|install this|add this package|requires|needs package)/i;
-      const installed = getInstalledPackages(process.cwd());
+      const declared = createDeclaredPackagesResolver(root ?? process.cwd());
 
       for (const { path, content } of changedFiles) {
         if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path)) continue;
+        const installed = declared(path);
         const lines = content.split('\n');
         for (let i = 0; i < lines.length - 1; i++) {
           if (!AI_COMMENT.test(lines[i])) continue;
@@ -512,15 +626,19 @@ export const SLOPSQUATTING_RULES: ThesmosRule[] = [
       relatedAgents: ['security-reviewer'],
       relatedSkills: [],
     },
-    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+    detect({ changedFiles = [], config, root }: DetectInput): Finding[] {
       const sev = classifySeverity('slop_not_in_lockfile', config.severityRules);
       const findings: Finding[] = [];
-      const lockfilePackages = getLockfilePackages(process.cwd());
+      const repoRoot = root ?? process.cwd();
+      // Workspaces (pnpm/yarn/npm) keep ONE lockfile at the repo root — a dep
+      // declared in a workspace manifest but resolved in the root lockfile is fine.
+      const lockfilePackages = getLockfilePackages(repoRoot);
       if (!lockfilePackages) return [];
-      const installed = getInstalledPackages(process.cwd());
+      const declared = createDeclaredPackagesResolver(repoRoot);
 
       for (const { path, content } of changedFiles) {
         if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path)) continue;
+        const installed = declared(path);
         const imports = parseImports(content);
         for (const { pkg, line } of imports) {
           if (NODE_BUILTINS.has(pkg)) continue;
@@ -657,25 +775,61 @@ export const SLOPSQUATTING_RULES: ThesmosRule[] = [
       relatedAgents: ['security-reviewer'],
       relatedSkills: [],
     },
-    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+    detect({ changedFiles = [], config, root }: DetectInput): Finding[] {
       const sev = classifySeverity('slop_typosquat_candidate', config.severityRules);
       const findings: Finding[] = [];
-      const installed = getInstalledPackages(process.cwd());
+      const declared = createDeclaredPackagesResolver(root ?? process.cwd());
 
       for (const { path, content } of changedFiles) {
         if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path)) continue;
+        const installed = declared(path);
         const imports = parseImports(content);
         for (const { pkg, line } of imports) {
           if (NODE_BUILTINS.has(pkg)) continue;
           if (installed.has(pkg)) continue;
           if (KNOWN_PHANTOMS.has(pkg)) continue;
-          if (pkg.startsWith('@')) continue;
           if (pkg.length < 4) continue; // too short to meaningfully check
+
+          // F9 fix (a): BLOCKER for non-ASCII bare package names (homoglyph attack).
+          // Legitimate npm bare package names consist of [a-z0-9._\-] only.
+          // Any non-ASCII codepoint is a confusable-character typosquat signal.
+          // Note: @-scoped names may have non-ASCII orgs — only check bare names.
+          if (!pkg.startsWith('@') && /[^\x00-\x7F]/.test(pkg)) {
+            findings.push({
+              severity: 'BLOCKER',
+              category: 'slop_typosquat_candidate',
+              file: path, line,
+              message: `"${pkg}" contains non-ASCII characters — likely a homoglyph/confusable-character typosquat (e.g. Cyrillic 'а' instead of ASCII 'a').`,
+              suggestion: `Inspect "${pkg}" character-by-character. npm package names must be ASCII-only. Remove or replace this import.`,
+            });
+            continue;
+          }
+
+          // F9 fix (b): NFKC-normalise the package name before edit-distance
+          // comparison so visually-identical unicode sequences are canonicalized.
+          // Also apply edit-distance to the scope-stripped name for @-scoped packages.
+          const bareForDistance = pkg.startsWith('@')
+            ? (pkg.split('/')[1] ?? pkg) // e.g. @types/lodahs → lodahs
+            : pkg;
+          const normalised = bareForDistance.normalize('NFKC');
+
+          if (pkg.startsWith('@')) {
+            // F9 fix (c): apply typosquat check to scope-stripped name of scoped packages.
+            // Original code skipped all @-scoped packages unconditionally.
+            const stripped = pkg.split('/')[1] ?? '';
+            if (!stripped || stripped.length < 4) continue;
+          }
+
+          // A well-known package is never a typosquat of another well-known
+          // package (tsup vs tsx, got vs go, ora vs or) — only unknown names
+          // within edit distance of a popular package are candidates.
+          if (!pkg.startsWith('@') && KNOWN_LEGIT_PACKAGES.has(pkg)) continue;
+
           let minDist = 99;
           let closest = '';
           for (const popular of TOP_PACKAGES) {
-            if (popular === pkg) { minDist = 0; break; }
-            const d = editDistance(pkg, popular);
+            if (popular === normalised) { minDist = 0; break; }
+            const d = editDistance(normalised, popular);
             if (d < minDist) { minDist = d; closest = popular; }
           }
           if (minDist > 0 && minDist <= 2) {
@@ -712,13 +866,14 @@ export const SLOPSQUATTING_RULES: ThesmosRule[] = [
       relatedAgents: ['security-reviewer'],
       relatedSkills: [],
     },
-    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+    detect({ changedFiles = [], config, root }: DetectInput): Finding[] {
       const sev = classifySeverity('slop_unknown_scope', config.severityRules);
       const findings: Finding[] = [];
-      const installed = getInstalledPackages(process.cwd());
+      const declared = createDeclaredPackagesResolver(root ?? process.cwd());
 
       for (const { path, content } of changedFiles) {
         if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path)) continue;
+        const installed = declared(path);
         const imports = parseImports(content);
         for (const { pkg, line } of imports) {
           if (!pkg.startsWith('@')) continue;
@@ -913,14 +1068,15 @@ export const SLOPSQUATTING_RULES: ThesmosRule[] = [
       relatedAgents: ['security-reviewer'],
       relatedSkills: [],
     },
-    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+    detect({ changedFiles = [], config, root }: DetectInput): Finding[] {
       const sev = classifySeverity('slop_version_in_name', config.severityRules);
       const findings: Finding[] = [];
       const VERSION_IN_NAME_RE = /^[a-z][a-z-]*-\d{1,2}(?:-|$)/;
-      const installed = getInstalledPackages(process.cwd());
+      const declared = createDeclaredPackagesResolver(root ?? process.cwd());
 
       for (const { path, content } of changedFiles) {
         if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path)) continue;
+        const installed = declared(path);
         const imports = parseImports(content);
         for (const { pkg, line } of imports) {
           if (NODE_BUILTINS.has(pkg)) continue;
@@ -961,7 +1117,7 @@ export const SLOPSQUATTING_RULES: ThesmosRule[] = [
       relatedAgents: ['security-reviewer'],
       relatedSkills: [],
     },
-    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+    detect({ changedFiles = [], config, root }: DetectInput): Finding[] {
       const sev = classifySeverity('slop_deep_chain_name', config.severityRules);
       const findings: Finding[] = [];
       const FRAMEWORK_PREFIXES = new Set([
@@ -969,10 +1125,11 @@ export const SLOPSQUATTING_RULES: ThesmosRule[] = [
         'fastify', 'hapi', 'koa', 'nest', 'svelte', 'remix', 'astro',
         'graphql', 'drizzle', 'mongoose', 'sequelize',
       ]);
-      const installed = getInstalledPackages(process.cwd());
+      const declared = createDeclaredPackagesResolver(root ?? process.cwd());
 
       for (const { path, content } of changedFiles) {
         if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path)) continue;
+        const installed = declared(path);
         const imports = parseImports(content);
         for (const { pkg, line } of imports) {
           if (pkg.startsWith('@')) continue;

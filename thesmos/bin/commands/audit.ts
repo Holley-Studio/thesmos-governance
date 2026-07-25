@@ -86,7 +86,7 @@ export async function cmdAudit(argv: string[]): Promise<void> {
   }
 
   // No changedFiles — scan-based review only
-  const findings = runReview({ scan, config });
+  const { findings } = runReview({ scan, config });
 
   if (json) {
     process.stdout.write(

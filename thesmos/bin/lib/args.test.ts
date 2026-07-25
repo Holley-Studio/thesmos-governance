@@ -33,20 +33,67 @@ describe('parseArgs', () => {
     expect(r.positionals).toEqual(['src/foo.ts']);
   });
 
-  it('parses space-separated value flags when declared', () => {
-    const r = parseArgs(['--target', 'cursor', '--agent', 'zeus', '--all'], {
-      valueFlags: ['target', 'agent'],
+  describe('space-separated values for value-taking flags', () => {
+    it('--pack /path/x.zip consumes the next token as the value', () => {
+      const r = parseArgs(['--pack', '/path/x.zip']);
+      expect(r.flags['pack']).toBe('/path/x.zip');
+      expect(r.positionals).toEqual([]);
     });
-    expect(r.flags['target']).toBe('cursor');
-    expect(r.flags['agent']).toBe('zeus');
-    expect(r.flags['all']).toBe(true);
-    expect(r.positionals).toEqual([]);
-  });
 
-  it('keeps unknown bare flags boolean so positionals stay positionals', () => {
-    const r = parseArgs(['--write', 'zeus-executive-agent']);
-    expect(r.flags['write']).toBe(true);
-    expect(r.positionals).toEqual(['zeus-executive-agent']);
+    it('--pack=/path/x.zip still works (equals syntax preserved)', () => {
+      const r = parseArgs(['--pack=/path/x.zip']);
+      expect(r.flags['pack']).toBe('/path/x.zip');
+      expect(r.positionals).toEqual([]);
+    });
+
+    it('--target claude-code consumes the value', () => {
+      const r = parseArgs(['--target', 'claude-code']);
+      expect(r.flags['target']).toBe('claude-code');
+      expect(r.positionals).toEqual([]);
+    });
+
+    it('--all --write remain boolean when adjacent', () => {
+      const r = parseArgs(['--all', '--write']);
+      expect(r.flags['all']).toBe(true);
+      expect(r.flags['write']).toBe(true);
+      expect(r.positionals).toEqual([]);
+    });
+
+    it('--write as final arg is boolean true', () => {
+      const r = parseArgs(['--write']);
+      expect(r.flags['write']).toBe(true);
+    });
+
+    it('boolean flag followed by a positional does not eat it', () => {
+      const r = parseArgs(['ares', '--write']);
+      expect(r.flags['write']).toBe(true);
+      expect(r.positionals).toEqual(['ares']);
+    });
+
+    it('--write ares keeps ares as a positional (write is boolean)', () => {
+      const r = parseArgs(['--write', 'ares']);
+      expect(r.flags['write']).toBe(true);
+      expect(r.positionals).toEqual(['ares']);
+    });
+
+    it('value flag as final arg falls back to boolean true', () => {
+      const r = parseArgs(['--pack']);
+      expect(r.flags['pack']).toBe(true);
+    });
+
+    it('value flag followed by another flag does not consume it', () => {
+      const r = parseArgs(['--pack', '--json']);
+      expect(r.flags['pack']).toBe(true);
+      expect(r.flags['json']).toBe(true);
+    });
+
+    it('mixed: pantheon-style install invocation', () => {
+      const r = parseArgs(['--pack', '/tmp/p.zip', '--target', 'claude-code', '--force', 'extra']);
+      expect(r.flags['pack']).toBe('/tmp/p.zip');
+      expect(r.flags['target']).toBe('claude-code');
+      expect(r.flags['force']).toBe(true);
+      expect(r.positionals).toEqual(['extra']);
+    });
   });
 });
 

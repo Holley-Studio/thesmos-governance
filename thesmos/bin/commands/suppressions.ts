@@ -88,7 +88,7 @@ export async function cmdSuppressions(subcommand: string, argv: string[]): Promi
 
   // Get current findings to detect unused suppressions
   const scan = loadReport(root);
-  const findings = scan ? runReview({ scan, config }) : [];
+  const findings = scan ? runReview({ scan, config }).findings : [];
 
   if (!scan) {
     process.stderr.write(

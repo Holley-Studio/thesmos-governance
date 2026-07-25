@@ -222,7 +222,7 @@ export async function cmdDiff(argv: string[]): Promise<void> {
   }
 
   const registry = await getActiveRules(root);
-  const currentFindings = runReview({ scan, config, changedFiles }, registry);
+  const { findings: currentFindings } = runReview({ scan, config, changedFiles }, registry);
 
   // ── Diff ─────────────────────────────────────────────────────────────────
 

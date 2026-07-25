@@ -107,16 +107,30 @@ describe('scope: federated .claude/agents/', () => {
     }
   });
 
-  it('allows creating an external project agent', () => {
-    const v = checkScope({
-      toolName: 'Write',
-      filePath: '.claude/agents/custom-agent.md',
-      root,
-    });
+  it('allows creating an external project agent when .claude/ is not blocked', () => {
+    // Use a scope without .claude/ in blockedPaths — external agents are always allowed there.
+    const permissiveCfg: ScopeConfig = {
+      ...SCOPE_DEFAULTS,
+      workspace: { ...SCOPE_DEFAULTS.workspace, allowedPaths: ['src/'], blockedPaths: ['node_modules/', '.env'] },
+    };
+    saveScopeConfig(root, permissiveCfg);
+    const v = checkScope({ toolName: 'Write', filePath: '.claude/agents/custom-agent.md', root });
     expect(v).toBeNull();
   });
 
-  it('allows editing an external agent', () => {
+  it('returns agent:install suggestion for .claude/agents/ when .claude/ is blocked', () => {
+    // When .claude/ is explicitly blocked, external agents still get a targeted suggestion.
+    const v = checkScope({ toolName: 'Write', filePath: '.claude/agents/custom-agent.md', root });
+    expect(v).not.toBeNull();
+    expect(v!.suggestion).toContain('thesmos agent:install');
+  });
+
+  it('allows editing an external agent when .claude/ is not blocked', () => {
+    const permissiveCfg: ScopeConfig = {
+      ...SCOPE_DEFAULTS,
+      workspace: { ...SCOPE_DEFAULTS.workspace, allowedPaths: ['src/'], blockedPaths: ['node_modules/', '.env'] },
+    };
+    saveScopeConfig(root, permissiveCfg);
     mkdirSync(join(root, '.claude', 'agents'), { recursive: true });
     writeFileSync(join(root, '.claude', 'agents', 'custom-agent.md'), '# hi\n', 'utf8');
     expect(

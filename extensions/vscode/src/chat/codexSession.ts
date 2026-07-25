@@ -24,6 +24,31 @@ import type { Readable } from 'node:stream';
 import { resolveBinary } from './binaryResolver.js';
 import type { SessionEvent } from './claudeSession.js';
 
+/** Codex JSONL event types that this implementation handles. */
+export const KNOWN_EVENT_TYPES: ReadonlySet<string> = new Set([
+  'thread.started',
+  'item.completed',
+  'turn.completed',
+  'turn.failed',
+]);
+
+/**
+ * In guarded mode, unknown events fail closed rather than being silently
+ * ignored. This prevents a newer Codex CLI version from bypassing authorization
+ * by emitting event types not listed in KNOWN_EVENT_TYPES.
+ */
+export function assertKnownEvent(type: string, guardedMode: boolean): void {
+  if (!KNOWN_EVENT_TYPES.has(type)) {
+    if (guardedMode) {
+      throw new Error(
+        `Codex emitted unknown event type '${type}' — this may indicate a version mismatch or prompt injection attempt`,
+      );
+    } else {
+      console.warn(`[thesmos codex] unknown event type: '${type}'`);
+    }
+  }
+}
+
 export function resolveCodexBinary(): string {
   return resolveBinary('codex');
 }
@@ -45,14 +70,16 @@ export class CodexSession {
   private threadId: string | undefined;
   private turnStartedAt = 0;
   private disposed = false;
+  private readonly guardedMode: boolean;
 
   constructor(
     private readonly workspaceRoot: string,
     private readonly onEvent: (event: SessionEvent) => void,
     resumeThreadId?: string,
-    private readonly modelConfig?: { model?: string },
+    private readonly modelConfig?: { model?: string; guardedMode?: boolean },
   ) {
     this.threadId = resumeThreadId;
+    this.guardedMode = modelConfig?.guardedMode ?? true;
   }
 
   get id(): string | undefined {
@@ -142,6 +169,7 @@ export class CodexSession {
       return; // Non-JSON noise on stdout — ignore.
     }
 
+    assertKnownEvent(typeof event.type === 'string' ? event.type : String(event.type ?? ''), this.guardedMode);
     switch (event.type) {
       case 'thread.started':
         if (typeof event.thread_id === 'string') this.threadId = event.thread_id;
@@ -176,7 +204,7 @@ export class CodexSession {
       }
 
       default:
-        break; // Unknown event type — schema not fully verified, skip quietly.
+        break; // assertKnownEvent() above already warned/threw on unknown types.
     }
   }
 

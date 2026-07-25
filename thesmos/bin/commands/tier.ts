@@ -3,7 +3,7 @@
  * thesmos tier — show the active licensing tier and what it unlocks.
  *
  * FREE (Essentials): all BLOCKERs + the AI-code net (VIBE/AI/SLOP).
- * PREMIUM ($24 lifetime): the full 68-god agent pack for every LLM. Every rule is free.
+ * PREMIUM ($24 lifetime): the full 67-god agent pack for every LLM. Every rule is free.
  *
  * Flags:
  *   --json   machine-readable output
@@ -43,7 +43,7 @@ export async function cmdTier(argv: string[]): Promise<void> {
     lines.push(`   ALL ${THESMOS_RULES.length} rules active — the complete engine is free. Every framework,`);
     lines.push('   every compliance pack, every BLOCKER. Rules are never paywalled.');
     lines.push('');
-    lines.push('   The Full Pantheon — 68 specialist agents orchestrated by Zeus —');
+    lines.push('   The Full Pantheon — 67 specialist agents orchestrated by Zeus —');
     lines.push(`   is $24, one-time, yours forever:  ${UPGRADE_URL}`);
     lines.push('   Already bought? thesmos pantheon:install --pack <downloaded-zip>');
   }

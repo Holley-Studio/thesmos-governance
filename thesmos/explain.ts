@@ -60,6 +60,40 @@ export function listRules(): ThesmosRule[] {
   });
 }
 
+/**
+ * Keyword search across id, category, description, and tags — the minimal
+ * "find a rule without knowing its exact id" surface a thin adapter needs
+ * (`thesmos explain search <query>`), since a thin adapter can no longer
+ * embed the full catalog for a human/AI to scan visually.
+ * Matches are ranked: id/category prefix matches first, then substring
+ * matches anywhere in description/tags — deterministic (stable id tiebreak).
+ */
+export function searchRules(query: string): ThesmosRule[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
+
+  const scored: Array<{ rule: ThesmosRule; score: number }> = [];
+  for (const rule of THESMOS_RULES) {
+    const id = rule.id.toLowerCase();
+    const category = rule.category.toLowerCase();
+    const description = rule.description.toLowerCase();
+    const tags = rule.tags.map((t) => t.toLowerCase());
+
+    let score = 0;
+    if (id === needle || category === needle) score = 100;
+    else if (id.startsWith(needle) || category.startsWith(needle)) score = 80;
+    else if (tags.includes(needle)) score = 60;
+    else if (category.includes(needle) || id.includes(needle)) score = 40;
+    else if (description.includes(needle)) score = 20;
+    else if (tags.some((t) => t.includes(needle))) score = 10;
+
+    if (score > 0) scored.push({ rule, score });
+  }
+
+  scored.sort((a, b) => (b.score - a.score) || a.rule.id.localeCompare(b.rule.id));
+  return scored.map((s) => s.rule);
+}
+
 // ── Formatters ────────────────────────────────────────────────────────────────
 
 const MISSING_EXPLANATION = '(no explanation defined for this rule)';

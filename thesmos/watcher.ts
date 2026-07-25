@@ -189,7 +189,7 @@ export function startWatcher(
 
     if (changedFiles.length === 0) return;
 
-    const allFindings = runReview({ scan, config, changedFiles });
+    const { findings: allFindings } = runReview({ scan, config, changedFiles });
     const diff = diffFindings(prevFindings, allFindings);
     prevFindings = allFindings;
 
