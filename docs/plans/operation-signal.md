@@ -303,7 +303,9 @@ npx tsc --noEmit -p thesmos/tsconfig.json                       # clean
 npm run typecheck --workspace=extensions/vscode                 # clean
 npm run build --workspace=thesmos                                # clean (tsup)
 npm run typecheck --workspace=actions/pr-review                  # clean
-npm run test --workspace=thesmos                                  # 3562/3565 passing
+npm run test --workspace=thesmos                                  # 3562/3565 at the time of that pass;
+                                                                   #  now 3698/3698 — see the final
+                                                                   #  hardening pass section below
 npm run build --workspace=extensions/vscode                       # clean (esbuild)
 npm run test --workspace=actions/pr-review                        # 108/108 passing
 npm run build --workspace=actions/pr-review                       # clean (esbuild)
@@ -314,7 +316,10 @@ npm run thesmos:doctor                                             # 39/39 check
                                                                     #  new adapter checks
 ```
 
-**3 failing tests, and why they are not new / not repo-caused:**
+**3 failing tests at the time of that pass — SUPERSEDED: now fixed, see the final hardening pass
+below. The diagnosis recorded here (this repo's own dogfooding `.thesmos/scope.json` preempting the
+content scan) was correct; the conclusion that it was merely environmental rather than a repairable
+test-isolation defect was not.**
 
 All 3 are in `thesmos/guard.cross-platform.test.ts`, all spawn the real built
 `dist/thesmos-guard.js` with `cwd` set to the `thesmos/` package directory (inside this actual
@@ -341,16 +346,119 @@ suite that assumes an unrestricted one, not a regression from this session's cha
   `DoctorInput` — `runDoctorForRoot()` (the real CLI entry point) always does, but any other caller
   constructing `DoctorInput` by hand without it silently skips these two checks (by design — same
   pattern the pre-existing freshness check already used).
-- `allowDelete`/`allowGitPush` regex checks in `scope.ts` still use the older
-  `stripQuotedAndComments` approach, not the new tokenizer — noted as a known, separate, smaller
-  residual gap in Deliverable 1's own scope, not touched this pass to avoid expanding beyond what
-  was asked.
+- ~~`allowDelete`/`allowGitPush` regex checks in `scope.ts` still use the older
+  `stripQuotedAndComments` approach~~ — **OBSOLETE.** Fixed in `1af3e62`: `stripQuotedAndComments`
+  was removed entirely and all five checks now share one bounded analysis path.
 - No CI-enforced size-budget gate exists yet (a lint/CI step that fails a PR if a generated section
   exceeds 8KB) — the test suite proves the generators themselves stay under budget, but nothing
   stops a future hand-edit of `generateThinAdapterBody()` from silently growing past it without a
   human noticing outside of a code review. Worth a follow-up `thesmos:ci-check` addition.
-- Windows/Linux execution of any of this remains unverified in this environment (single macOS
-  machine) — same limitation already documented above for the rest of Operation Signal.
+- Windows/Linux execution remains unverified *locally* (single macOS machine). **Partially
+  addressed since:** the final hardening pass added Windows-interpreter fixtures that the
+  `Guard (Windows)` CI job executes on a real `windows-latest` runner against the built guard —
+  not `process.platform` mocks. Linux is covered by the Node 20/22/24 CI matrix.
+
+## Final bounded hardening pass (supersedes several items above)
+
+A follow-up security review found four concrete gaps in the work described above. All are now
+fixed. **Where this section conflicts with anything earlier in this ledger, this section is
+current.**
+
+### Corrections to earlier claims in this document
+
+- **"Unsupported shell constructs can only over-flag" was WRONG.** Earlier text in this ledger
+  claimed command substitution, process substitution, subshells, and variable expansion could only
+  make the analyzer more conservative. That is false: `echo $(rm -rf /tmp/x)`, ``echo `git push` ``,
+  `cat <(rm -rf /tmp/x)`, `(rm -rf /tmp/x)`, and `CMD=rm; $CMD -rf /tmp/x` all **hide live
+  operations** the tokenizer would not otherwise see. Corrected and fixed (below).
+- **The three `guard.cross-platform.test.ts` failures were NOT merely environmental.** They were a
+  real, repairable test-isolation defect. Fixed — the local suite is now fully green with no
+  standing failure caveat.
+
+### 1. Windows interpreter semantics
+
+`cmd /c` and `powershell`/`pwsh -Command` re-join **everything** after the execution flag into one
+command line, quoted or not — unlike POSIX `-c`, which takes exactly one argument.
+`findStringPayload` now captures the full remaining segment for those executables
+(`FULL_SEGMENT_PAYLOAD_EXECUTABLES`) while POSIX shells and database clients keep single-token
+capture. `cmd /c del /s /q build` and `cmd /c "del /s /q build"` resolve identically; `cmd.exe /C`,
+`powershell.exe -Command`, and `pwsh -Command` are all recognized.
+
+### 2. Ambiguous constructs → approval request, never a silent allow
+
+New `CommandAnalysisResult` (`{status:'resolved'} | {status:'ambiguous', code, reason, construct}`)
+with stable `AmbiguousConstructCode` values: `COMMAND_SUBSTITUTION`, `BACKTICK_SUBSTITUTION`,
+`PROCESS_SUBSTITUTION`, `SUBSHELL_GROUPING`, `VARIABLE_EXECUTABLE`, `ARBITRARY_CODE_INTERPRETER`,
+`MALFORMED_INTERPRETER_SYNTAX`, `ANALYSIS_TOO_DEEP`, `PAYLOAD_TOO_LARGE`.
+
+`scope.ts` routes ambiguity to `requires_confirmation` (Claude Code "ask") — **never** a silent
+allow, and **never** a hard block on its own. A positively-matched destructive rule still
+hard-blocks and takes priority. This deliberately keeps legitimate-but-unanalyzable developer
+commands usable rather than permanently blocked.
+
+Arbitrary-code interpreters (`node -e`, `python`/`python3 -c`, `perl -e`, `ruby -e`) are treated as
+ambiguous rather than pretending the denylist inspects their behavior.
+
+Quote handling is precise: single-quoted spans are fully inert; double-quoted `$()`/backticks stay
+live unless escaped. `echo '$(rm -rf x)'`, `echo "\$(rm -rf x)"`, and
+`git commit -m 'documents $(rm -rf) behavior'` all resolve cleanly.
+
+### 3. CRLF heredoc normalization
+
+Line-ending detection (header end, terminator matching) is CRLF-aware via `findLineEnd`, **without
+mutating the command string shown to the user**. LF bodies, CRLF bodies, CRLF with a chained header
+command, and unterminated CRLF heredocs all behave identically.
+
+### 4. Hermetic guard tests — the three failures are fixed, not waived
+
+Root cause: `runGuard` defaulted `cwd` to the `thesmos/` package directory, so the guard walked up
+and picked up **this repo's own** restrictive dogfooding `.thesmos/scope.json`. Synthetic
+`/proj/...` fixture paths were rejected as *scope* violations before the content scan under test
+ever ran — the assertions were silently exercising the wrong code path.
+
+Fixed by running against a hermetic temp consumer repo with explicit fixture config. Assertions are
+unchanged; production scope config is untouched. The two wrapper-parity tests were passing only
+because *both* sides were equally broken — both now share the hermetic root and additionally assert
+the shared baseline is a real allow.
+
+### 5. Stable decision codes
+
+`SCOPE_DECISION_CODES` covers every violation type — `THESMOS_SCOPE_BLOCKED_PATH`,
+`THESMOS_SCOPE_ABSOLUTE_BLOCKED_PATH`, `THESMOS_SCOPE_DESTRUCTIVE_COMMAND`,
+`THESMOS_SCOPE_REQUIRES_CONFIRMATION`, `THESMOS_SCOPE_AMBIGUOUS_COMMAND_SYNTAX` — alongside the
+retained `THESMOS_SCOPE_CONFIG_INVALID`. Ambiguity messages name only the construct **kind**, never
+a snippet of the user's command; tested for absence of paths, payload contents, and secrets in
+user-facing output.
+
+### Final local results (this pass)
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` × 3 packages | clean |
+| Core suite | **3698 / 3698 — zero failures** |
+| pr-review suite | 108 / 108 |
+| VS Code suite | 93 / 93 |
+| Builds × 3 | clean |
+| `thesmos doctor` | 39 / 39 |
+
+The "3 pre-existing environmental failures" caveat that appeared throughout earlier sections of this
+ledger **no longer applies** — those tests are hermetic and passing.
+
+### Remaining parser limitations (current, honest)
+
+- `git -c`/`-C` value-ambiguity in a pathological `git -c push` (no `=value`) — narrow; does not
+  affect the `git -C <dir> push` case.
+- POSIX interpreter/db-client payload capture takes exactly one token after the flag (correct `-c`
+  semantics). Windows interpreters take the full remainder. An unquoted multi-word POSIX payload
+  with no quoting at all only has its first word captured.
+- `$VAR`/`${VAR}` used as a plain **argument** is not expanded (kept literal). Only a variable in
+  the **executable** position is flagged.
+- Heredoc handling is `\n`/`\r\n` aware; other exotic line endings are not normalized.
+- **This is a governance gate, not a security sandbox.** It recognizes a documented set of
+  executables, flags, and wrapper patterns — not arbitrary interpreter or CLI grammars. Novel
+  interpreters and obscure flags on tools absent from the lookup tables remain a residual,
+  inherent limitation of denylist matching. Ambiguity detection narrows this meaningfully by
+  refusing to guess, but does not eliminate it.
 
 ### Remaining Operation Signal phases (unchanged, still deferred)
 
