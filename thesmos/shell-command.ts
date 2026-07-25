@@ -400,6 +400,23 @@ const STRING_PAYLOAD_FLAGS: Record<string, Set<string>> = {
  */
 const FULL_SEGMENT_PAYLOAD_EXECUTABLES = new Set(['cmd', 'powershell', 'pwsh']);
 
+/**
+ * POSIX shells accept BUNDLED short options, so the execution flag is not
+ * always the bare token `-c`: `bash -lc '…'`, `sh -ec '…'`, and `zsh -ic '…'`
+ * all execute the following argument exactly like `-c` does. Matching only
+ * the literal `-c` left those forms unrecognized, so their (quoted) payload
+ * was treated as an inert argument and never analyzed — a silent bypass.
+ * Matches a single-dash cluster of short letters containing `c`, and
+ * deliberately NOT long options (`--color` must not be mistaken for `-c`).
+ */
+const POSIX_SHELL_EXECUTABLES = new Set(['bash', 'sh', 'zsh', 'ksh', 'dash']);
+const BUNDLED_SHORT_EXEC_FLAG = /^-[a-z]*c[a-z]*$/;
+
+function isExecutionFlag(executable: string, flagText: string, flags: Set<string>): boolean {
+  if (flags.has(flagText)) return true;
+  return POSIX_SHELL_EXECUTABLES.has(executable) && BUNDLED_SHORT_EXEC_FLAG.test(flagText);
+}
+
 export type StringPayloadResult =
   | { kind: 'found'; payload: string }
   /** A recognized (executable, flag) pair was found, but nothing follows it
@@ -424,7 +441,7 @@ export function findStringPayload(segment: CommandSegment, invocation: ResolvedI
   const tokens = segment.tokens;
   for (let i = invocation.index + 1; i < tokens.length; i++) {
     const tok = tokens[i]!;
-    if (tok.quoted || !flags.has(tok.text.toLowerCase())) continue;
+    if (tok.quoted || !isExecutionFlag(invocation.executable, tok.text.toLowerCase(), flags)) continue;
     if (i + 1 >= tokens.length) return { kind: 'malformed' };
     if (FULL_SEGMENT_PAYLOAD_EXECUTABLES.has(invocation.executable)) {
       return { kind: 'found', payload: tokens.slice(i + 1).map((t) => t.text).join(' ') };
@@ -471,6 +488,8 @@ export type AmbiguousConstructCode =
   | 'VARIABLE_EXECUTABLE'
   | 'ARBITRARY_CODE_INTERPRETER'
   | 'MALFORMED_INTERPRETER_SYNTAX'
+  | 'SHELL_EVAL'
+  | 'HERESTRING_REDIRECTION'
   | 'ANALYSIS_TOO_DEEP'
   | 'PAYLOAD_TOO_LARGE';
 
@@ -491,6 +510,8 @@ const AMBIGUOUS_CONSTRUCT_LABELS: Record<AmbiguousConstructCode, string> = {
   VARIABLE_EXECUTABLE: 'a variable used as the executable ($VAR ...)',
   ARBITRARY_CODE_INTERPRETER: 'an arbitrary-code interpreter payload (node/python/perl/ruby) whose content cannot be classified',
   MALFORMED_INTERPRETER_SYNTAX: 'an interpreter execution flag with no resolvable payload following it',
+  SHELL_EVAL: 'an eval of a shell string (its argument is re-expanded and executed)',
+  HERESTRING_REDIRECTION: 'a here-string redirection (<<<) feeding text into a command',
   ANALYSIS_TOO_DEEP: 'a nested interpreter payload exceeding the analysis depth limit',
   PAYLOAD_TOO_LARGE: 'a payload exceeding the analysis size limit',
 };
@@ -606,6 +627,16 @@ function findAmbiguousConstructs(command: string): AmbiguousConstruct[] {
       i += 2;
       continue;
     }
+    // Here-string (`<<<`): feeds text straight into the command's stdin. When
+    // that command is a shell the text is executed, so the (typically quoted)
+    // operand is live code rather than an inert argument. Reached because
+    // tryParseHeredocHeader above rejects `<<<` (its delimiter scan stops
+    // immediately on the third `<`), leaving it to this dispatch.
+    if (command.slice(i, i + 3) === '<<<') {
+      push('HERESTRING_REDIRECTION');
+      i += 3;
+      continue;
+    }
     if (ch === '(' && isSegmentStart) {
       push('SUBSHELL_GROUPING');
       i++;
@@ -662,6 +693,15 @@ export function analyzeCommand(command: string, depth = 0): CommandAnalysis {
   for (const segment of segments) {
     const invocation = resolveInvocation(segment);
     if (!invocation) continue;
+
+    // `eval` re-expands and executes its argument, so a QUOTED argument here
+    // is live code, not inert text — but that second expansion round means
+    // analyzing the pre-expansion text can never be authoritative. Refuse to
+    // guess (ask) rather than treat it as an ordinary inert argument.
+    if (invocation.executable === 'eval' && segment.tokens.length > invocation.index + 1) {
+      ambiguousConstructs.push({ code: 'SHELL_EVAL', construct: AMBIGUOUS_CONSTRUCT_LABELS.SHELL_EVAL });
+      continue;
+    }
 
     const arbitraryFlags = ARBITRARY_CODE_INTERPRETER_FLAGS[invocation.executable];
     if (arbitraryFlags && segmentHasFlag(segment, arbitraryFlags)) {

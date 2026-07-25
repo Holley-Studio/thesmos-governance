@@ -545,6 +545,14 @@ describe('checkScope — ambiguous command syntax requests approval', () => {
     expect(askConstructFor('python3 -c "import shutil"')).toBe('ARBITRARY_CODE_INTERPRETER');
   });
 
+  it('asks for eval of a shell string (regressed to silent-allow before review fix)', () => {
+    expect(askConstructFor('eval "rm -rf /tmp/example"')).toBe('SHELL_EVAL');
+  });
+
+  it('asks for a here-string redirection (regressed to silent-allow before review fix)', () => {
+    expect(askConstructFor('sh <<< "rm -rf /tmp/example"')).toBe('HERESTRING_REDIRECTION');
+  });
+
   it('asks for malformed interpreter syntax', () => {
     expect(askConstructFor('bash -c')).toBe('MALFORMED_INTERPRETER_SYNTAX');
   });
@@ -594,6 +602,32 @@ describe('checkScope — explicit destructive matches take priority over ambigui
   it('ambiguity alone (no positive match) is never a hard block', () => {
     const v = checkScope({ toolName: 'Bash', command: 'echo $(date)', root })!;
     expect(v.type).toBe('requires_confirmation');
+  });
+});
+
+describe('checkScope — bundled POSIX shell execution flags are still enforced', () => {
+  let root: string;
+  beforeEach(() => {
+    root = makeTmpDir();
+    writeScope(root, {
+      operations: {
+        allowDelete: false, allowGitPush: false, allowNetworkHosts: [],
+        allowDatabaseWrites: false, requireConfirmation: [],
+      },
+      destructivePatterns: ['rm -rf'],
+    });
+  });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /* */ } });
+
+  it('blocks bash -lc "rm -rf ..." as destructive, not merely an ask', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'bash -lc "rm -rf ./build"', root })!;
+    expect(v.type).toBe('destructive_command');
+    expect(v.code).toBe(SCOPE_DECISION_CODES.DESTRUCTIVE_COMMAND);
+  });
+
+  it('blocks sh -ec "git push ..." via allowGitPush', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'sh -ec "git push origin main"', root })!;
+    expect(v.type).toBe('destructive_command');
   });
 });
 

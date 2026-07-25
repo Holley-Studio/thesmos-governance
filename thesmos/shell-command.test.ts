@@ -690,3 +690,71 @@ describe('CRLF heredoc handling', () => {
     expect(shape(crlf)).toEqual(shape(lf));
   });
 });
+
+// ── Regressions found in final review: live-execution constructs that were
+// BLOCKED on origin/main (via raw substring matching) but became SILENTLY
+// ALLOWED once quote-aware matching landed. Quote-awareness is the right
+// fix for false positives like `git commit -m "...rm -rf..."`, but these
+// three are genuinely executed, so they must not fall through to allow.
+
+describe('review regressions — live execution must never silently allow', () => {
+  /** Local copies (the identically-named helpers above are describe-scoped). */
+  function ambiguityCodeFor(command: string): string {
+    const r = resolveCommandAnalysis(command);
+    return r.status === 'ambiguous' ? r.code : 'RESOLVED';
+  }
+  function statusFor(command: string): string {
+    return resolveCommandAnalysis(command).status;
+  }
+
+  it('eval of a quoted shell string is ambiguous (its argument is re-expanded and executed)', () => {
+    expect(ambiguityCodeFor('eval "rm -rf /tmp/example"')).toBe('SHELL_EVAL');
+    expect(ambiguityCodeFor("eval 'git push origin main'")).toBe('SHELL_EVAL');
+  });
+
+  it('bare `eval` with no argument is not flagged (nothing is executed)', () => {
+    expect(statusFor('eval')).toBe('resolved');
+  });
+
+  it('eval mentioned as inert text is not flagged', () => {
+    expect(statusFor('echo eval')).toBe('resolved');
+    expect(statusFor('git commit -m "eval the results"')).toBe('resolved');
+    expect(statusFor('evaluate-thing --run')).toBe('resolved');
+  });
+
+  it('a here-string (<<<) is ambiguous — its operand is fed to the command and may be executed', () => {
+    expect(ambiguityCodeFor('sh <<< "rm -rf /tmp/example"')).toBe('HERESTRING_REDIRECTION');
+    expect(ambiguityCodeFor('bash <<< "git push origin main"')).toBe('HERESTRING_REDIRECTION');
+  });
+
+  it('a here-DOC (<<) is still inert body data and is NOT confused with a here-string', () => {
+    expect(statusFor('cat <<EOF\nbody\nEOF')).toBe('resolved');
+    expect(commandMatchesPhrase('cat <<EOF\nrm -rf /tmp/example\nEOF', 'rm -rf')).toBe(false);
+  });
+
+  it('POSIX shells accept BUNDLED short execution flags — payload must still be analyzed', () => {
+    // `bash -lc '…'` executes the argument exactly like `bash -c '…'`.
+    // Matching only the literal "-c" left the quoted payload treated as inert.
+    expect(commandMatchesPhrase('bash -lc "rm -rf /tmp/example"', 'rm -rf')).toBe(true);
+    expect(commandInvokesDelete('bash -lc "rm -rf /tmp/example"')).toBe(true);
+    expect(commandInvokesGitPush('sh -ec "git push origin main"')).toBe(true);
+    expect(commandMatchesPhrase('zsh -ic "npm publish"', 'npm publish')).toBe(true);
+  });
+
+  it('bundled-flag matching does not misfire on non-execution flags or long options', () => {
+    expect(statusFor('bash -x script.sh')).toBe('resolved');
+    expect(statusFor('bash -l')).toBe('resolved');
+    expect(statusFor('bash --version')).toBe('resolved');
+    // A long option that merely contains "c" must not be treated as -c.
+    const [seg] = tokenizeShellCommand('bash --color script.sh');
+    const inv = resolveInvocation(seg!)!;
+    expect(findStringPayload(seg!, inv)).toEqual({ kind: 'none' });
+  });
+
+  it('the bundled-flag path is limited to POSIX shells, not arbitrary executables', () => {
+    // `somecmd -lc x` must not be treated as shell execution.
+    const [seg] = tokenizeShellCommand('somecmd -lc "rm -rf /tmp/example"');
+    const inv = resolveInvocation(seg!)!;
+    expect(findStringPayload(seg!, inv)).toEqual({ kind: 'none' });
+  });
+});
