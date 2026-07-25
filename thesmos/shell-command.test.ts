@@ -7,6 +7,7 @@ import {
   commandMatchesPhrase,
   normalizeExecutableName,
   analyzeCommand,
+  resolveCommandAnalysis,
   resolveInvocation,
   findStringPayload,
   commandInvokesDelete,
@@ -341,16 +342,29 @@ describe('bounded recursive analysis — depth and size limits', () => {
     expect(analysis.ambiguous).toBe(true);
   });
 
-  it('an ambiguous (too-deep) analysis is treated as a match by commandMatchesPhrase — fail closed', () => {
-    const cmd = nestBashC('echo hello', 4); // no destructive text anywhere, but too deep to prove it
-    expect(commandMatchesPhrase(cmd, 'rm -rf')).toBe(true);
+  it('an ambiguous (too-deep) analysis is NOT auto-matched by the denylist matchers — it routes to an ask instead', () => {
+    // Architecture change: ambiguity used to be treated as an automatic
+    // match by these four functions (a blunt fail-closed-as-hard-block).
+    // It's now scope.ts's job (via resolveCommandAnalysis) to route
+    // ambiguous commands to a requires_confirmation ask — these matchers
+    // only report genuine positive matches in the RESOLVED portion, so a
+    // benign command that merely happens to be too deeply nested to fully
+    // resolve is not conflated with an actual "rm -rf" hit.
+    const cmd = nestBashC('echo hello', 4);
+    expect(commandMatchesPhrase(cmd, 'rm -rf')).toBe(false);
+    expect(commandInvokesDelete(cmd)).toBe(false);
+    expect(commandInvokesGitPush(cmd)).toBe(false);
+    expect(commandInvokesDatabaseWrite(cmd)).toBe(false);
+    // The ambiguity itself is still surfaced — never silently allowed.
+    const resolved = resolveCommandAnalysis(cmd);
+    expect(resolved.status).toBe('ambiguous');
+    if (resolved.status === 'ambiguous') expect(resolved.code).toBe('ANALYSIS_TOO_DEEP');
   });
 
-  it('an ambiguous (too-deep) analysis is treated as a match by commandInvokesDelete/GitPush/DatabaseWrite', () => {
-    const cmd = nestBashC('echo hello', 4);
+  it('a genuine positive match in the resolved portion still counts even when ambiguity exists elsewhere', () => {
+    const cmd = `rm -rf /tmp/example; ${nestBashC('echo hello', 4)}`;
+    expect(commandMatchesPhrase(cmd, 'rm -rf')).toBe(true);
     expect(commandInvokesDelete(cmd)).toBe(true);
-    expect(commandInvokesGitPush(cmd)).toBe(true);
-    expect(commandInvokesDatabaseWrite(cmd)).toBe(true);
   });
 
   it('marks the analysis ambiguous when a single payload exceeds the size limit', () => {
@@ -411,21 +425,264 @@ describe('resolveInvocation', () => {
 });
 
 describe('findStringPayload', () => {
-  it('returns the reconstructed payload text after a recognized flag', () => {
+  it('returns kind:"found" with the reconstructed payload text after a recognized POSIX flag', () => {
     const [seg] = tokenizeShellCommand('bash -c "rm -rf /tmp"');
     const invocation = resolveInvocation(seg!)!;
-    expect(findStringPayload(seg!, invocation)).toBe('rm -rf /tmp');
+    expect(findStringPayload(seg!, invocation)).toEqual({ kind: 'found', payload: 'rm -rf /tmp' });
   });
 
-  it('returns null for an executable with no recognized string-payload flags', () => {
+  it('returns kind:"none" for an executable with no recognized string-payload flags', () => {
     const [seg] = tokenizeShellCommand('echo "rm -rf /tmp"');
     const invocation = resolveInvocation(seg!)!;
-    expect(findStringPayload(seg!, invocation)).toBeNull();
+    expect(findStringPayload(seg!, invocation)).toEqual({ kind: 'none' });
   });
 
-  it('returns null when the recognized flag has no following token', () => {
+  it('returns kind:"malformed" when the recognized flag has no following token', () => {
+    // Not "none" — a recognized interpreter WAS invoked with an execution
+    // flag; we simply can't tell what it would run. That's ambiguity, not
+    // absence, and must not be silently treated as a no-op.
     const [seg] = tokenizeShellCommand('bash -c');
     const invocation = resolveInvocation(seg!)!;
-    expect(findStringPayload(seg!, invocation)).toBeNull();
+    expect(findStringPayload(seg!, invocation)).toEqual({ kind: 'malformed' });
+  });
+
+  it('POSIX interpreters capture only the single token after -c (real -c semantics)', () => {
+    const [seg] = tokenizeShellCommand('bash -c "echo one" two three');
+    const invocation = resolveInvocation(seg!)!;
+    expect(findStringPayload(seg!, invocation)).toEqual({ kind: 'found', payload: 'echo one' });
+  });
+
+  it('Windows interpreters capture the ENTIRE remainder of the segment after the execution flag', () => {
+    const [seg] = tokenizeShellCommand('cmd /c del /s /q build');
+    const invocation = resolveInvocation(seg!)!;
+    expect(findStringPayload(seg!, invocation)).toEqual({ kind: 'found', payload: 'del /s /q build' });
+  });
+});
+
+// ── Windows interpreter semantics ────────────────────────────────────────────
+// cmd.exe and PowerShell re-join everything after the execution flag into one
+// command line, whether or not it is quoted. These are pure string-analysis
+// assertions — deterministic on every platform, no process.platform mocking
+// (see the Windows-CI-executed block at the end of this file for the real
+// on-Windows coverage).
+
+describe('Windows interpreter payload semantics', () => {
+  it('cmd /c captures the whole remaining segment, unquoted', () => {
+    const { segments } = analyzeCommand('cmd /c del /s /q build');
+    const bare = segments.flatMap((s) => s.tokens.filter((t) => !t.quoted).map((t) => t.text.toLowerCase()));
+    expect(bare).toContain('del');
+    expect(bare).toContain('/s');
+    expect(bare).toContain('build');
+  });
+
+  it('cmd /c quoted and unquoted forms behave identically for governance decisions', () => {
+    // The two forms differ in TOP-LEVEL token shape (quoted keeps the
+    // payload as one token; unquoted splits it), but the payload is
+    // re-analyzed either way — so every governance question must get the
+    // same answer. That behavioral equivalence is the contract, not
+    // token-for-token structural identity.
+    const pairs: Array<[string, string]> = [
+      ['cmd /c git push origin main', 'cmd /c "git push origin main"'],
+      ['cmd /c npm publish', 'cmd /c "npm publish"'],
+    ];
+    for (const [unquoted, quoted] of pairs) {
+      expect(commandInvokesGitPush(quoted), quoted).toBe(commandInvokesGitPush(unquoted));
+      expect(commandMatchesPhrase(quoted, 'npm publish'), quoted).toBe(
+        commandMatchesPhrase(unquoted, 'npm publish'),
+      );
+      expect(resolveCommandAnalysis(quoted).status, quoted).toBe(resolveCommandAnalysis(unquoted).status);
+    }
+  });
+
+  it('cmd.exe /C (capital flag, .exe suffix) is recognized and matches git push', () => {
+    expect(commandInvokesGitPush('cmd.exe /C git push origin main')).toBe(true);
+  });
+
+  it('powershell -Command captures the whole remaining segment, unquoted', () => {
+    const { segments } = analyzeCommand('powershell -Command Remove-Item -Recurse build');
+    const bare = segments.flatMap((s) => s.tokens.filter((t) => !t.quoted).map((t) => t.text.toLowerCase()));
+    expect(bare).toContain('remove-item');
+    expect(bare).toContain('-recurse');
+    expect(bare).toContain('build');
+  });
+
+  it('powershell.exe -Command git push is detected (unquoted payload)', () => {
+    expect(commandInvokesGitPush('powershell.exe -Command git push origin main')).toBe(true);
+  });
+
+  it('pwsh -Command npm publish is detected (unquoted payload)', () => {
+    expect(commandMatchesPhrase('pwsh -Command npm publish', 'npm publish')).toBe(true);
+  });
+
+  it('powershell -Command quoted and unquoted git push resolve identically', () => {
+    expect(commandInvokesGitPush('powershell -Command "git push origin main"')).toBe(true);
+    expect(commandInvokesGitPush('powershell -Command git push origin main')).toBe(true);
+  });
+
+  it('POSIX sh -c still captures only the single token (unchanged semantics)', () => {
+    // `sh -c "echo one" rm -rf /tmp` — in a real shell, "rm" and "-rf" become
+    // positional parameters ($0, $1), NOT part of the executed command.
+    const [seg] = tokenizeShellCommand('sh -c "echo one" rm -rf /tmp');
+    const invocation = resolveInvocation(seg!)!;
+    expect(findStringPayload(seg!, invocation)).toEqual({ kind: 'found', payload: 'echo one' });
+  });
+});
+
+// ── Ambiguous constructs (unresolvable executable syntax) ───────────────────
+
+describe('ambiguous construct detection', () => {
+  function expectAmbiguous(command: string, code: string): void {
+    const result = resolveCommandAnalysis(command);
+    expect(result.status, `expected "${command}" to be ambiguous`).toBe('ambiguous');
+    if (result.status === 'ambiguous') expect(result.code).toBe(code);
+  }
+
+  it('flags $() command substitution', () => {
+    expectAmbiguous('echo $(rm -rf /tmp/example)', 'COMMAND_SUBSTITUTION');
+  });
+
+  it('flags backtick command substitution', () => {
+    expectAmbiguous('echo `git push origin main`', 'BACKTICK_SUBSTITUTION');
+  });
+
+  it('flags process substitution', () => {
+    expectAmbiguous('cat <(rm -rf /tmp/example)', 'PROCESS_SUBSTITUTION');
+  });
+
+  it('flags subshell grouping', () => {
+    expectAmbiguous('(rm -rf /tmp/example)', 'SUBSHELL_GROUPING');
+  });
+
+  it('flags a variable used as the executable', () => {
+    expectAmbiguous('CMD=rm; $CMD -rf /tmp/example', 'VARIABLE_EXECUTABLE');
+  });
+
+  it('flags ${VAR} form used as the executable', () => {
+    expectAmbiguous('${CMD} -rf /tmp/example', 'VARIABLE_EXECUTABLE');
+  });
+
+  it('flags $() inside DOUBLE quotes — still live shell syntax, not inert', () => {
+    expectAmbiguous('echo "$(rm -rf /tmp/example)"', 'COMMAND_SUBSTITUTION');
+  });
+
+  it('flags a backtick inside DOUBLE quotes', () => {
+    expectAmbiguous('echo "`git push origin main`"', 'BACKTICK_SUBSTITUTION');
+  });
+
+  it('flags node -e (arbitrary-code interpreter)', () => {
+    expectAmbiguous('node -e "require(\'fs\').rmSync(\'/tmp/x\')"', 'ARBITRARY_CODE_INTERPRETER');
+  });
+
+  it('flags python -c, python3 -c, perl -e, ruby -e', () => {
+    expectAmbiguous('python -c "import shutil"', 'ARBITRARY_CODE_INTERPRETER');
+    expectAmbiguous('python3 -c "import shutil"', 'ARBITRARY_CODE_INTERPRETER');
+    expectAmbiguous('perl -e "unlink glob q{*}"', 'ARBITRARY_CODE_INTERPRETER');
+    expectAmbiguous('ruby -e "FileUtils.rm_rf(%q{/tmp/x})"', 'ARBITRARY_CODE_INTERPRETER');
+  });
+
+  it('flags an interpreter execution flag with no payload (malformed)', () => {
+    expectAmbiguous('bash -c', 'MALFORMED_INTERPRETER_SYNTAX');
+  });
+
+  it('flags excess recursion depth', () => {
+    let cmd = 'echo hello';
+    for (let i = 0; i < 4; i++) {
+      cmd = `bash -c "${cmd.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+    }
+    expectAmbiguous(cmd, 'ANALYSIS_TOO_DEEP');
+  });
+
+  it('flags excess payload size', () => {
+    expectAmbiguous(`bash -c "echo ${'x'.repeat(5000)}"`, 'PAYLOAD_TOO_LARGE');
+  });
+
+  it('never includes the user\'s actual command text in the ambiguity reason or construct label', () => {
+    const secretish = 'echo $(cat /home/someone/.ssh/id_rsa)';
+    const result = resolveCommandAnalysis(secretish);
+    expect(result.status).toBe('ambiguous');
+    if (result.status === 'ambiguous') {
+      expect(result.construct).not.toContain('id_rsa');
+      expect(result.construct).not.toContain('/home/someone');
+      expect(result.reason).not.toContain('id_rsa');
+      expect(result.reason).not.toContain('/home/someone');
+    }
+  });
+});
+
+describe('ambiguity false-positive avoidance', () => {
+  function expectResolved(command: string): void {
+    const result = resolveCommandAnalysis(command);
+    expect(result.status, `expected "${command}" to resolve cleanly`).toBe('resolved');
+  }
+
+  it('single-quoted $() is fully inert (bash never expands inside single quotes)', () => {
+    expectResolved("echo '$(rm -rf /tmp/example)'");
+  });
+
+  it('escaped \\$( inside double quotes is literal text, not live substitution', () => {
+    expectResolved('echo "\\$(rm -rf /tmp/example)"');
+  });
+
+  it('a git commit message documenting $(rm -rf) is inert', () => {
+    expectResolved("git commit -m 'documents $(rm -rf) behavior'");
+  });
+
+  it('ordinary commands with no exotic syntax resolve cleanly', () => {
+    expectResolved('npm run build');
+    expectResolved('git status');
+    expectResolved('rm -rf ./dist');
+    expectResolved('psql -c "DROP TABLE users"');
+    expectResolved('cat <<EOF\nbody\nEOF');
+  });
+
+  it('a variable used as a plain ARGUMENT (not the executable) is not flagged', () => {
+    expectResolved('echo $HOME');
+    expectResolved('cat $CONFIG_FILE');
+  });
+
+  it('parentheses that are not at a segment start are not treated as a subshell', () => {
+    expectResolved('echo foo(bar)');
+  });
+
+  it('a heredoc body containing $() is inert (body is data, not live syntax)', () => {
+    expectResolved('cat <<EOF\n$(rm -rf /tmp/example)\nEOF');
+  });
+
+  it('a # comment containing $() is inert', () => {
+    expectResolved('# $(rm -rf /tmp/example)');
+  });
+});
+
+// ── CRLF heredoc normalization ──────────────────────────────────────────────
+// Line-ending handling must be identical for LF and CRLF without ever
+// mutating the command text a user sees.
+
+describe('CRLF heredoc handling', () => {
+  it('LF heredoc body is inert', () => {
+    expect(commandMatchesPhrase('cat <<EOF\nrm -rf /tmp/example\nEOF', 'rm -rf')).toBe(false);
+  });
+
+  it('CRLF heredoc body is inert (same as LF)', () => {
+    expect(commandMatchesPhrase('cat <<EOF\r\nrm -rf /tmp/example\r\nEOF\r\n', 'rm -rf')).toBe(false);
+  });
+
+  it('CRLF heredoc with a chained command on the header line still flags the chained command', () => {
+    expect(commandMatchesPhrase('cat <<EOF; rm -rf /tmp/example\r\nbody\r\nEOF\r\n', 'rm -rf')).toBe(true);
+  });
+
+  it('unterminated CRLF heredoc consumes to end-of-string (nothing after it misread as live)', () => {
+    expect(commandMatchesPhrase('cat <<EOF\r\nrm -rf /tmp/example', 'rm -rf')).toBe(false);
+  });
+
+  it('a live command AFTER a properly terminated CRLF heredoc is still detected', () => {
+    expect(commandMatchesPhrase('cat <<EOF\r\nbody\r\nEOF\r\ngit push origin main', 'git push')).toBe(true);
+  });
+
+  it('CRLF and LF forms of the same heredoc produce identical segment structure', () => {
+    const lf = tokenizeShellCommand('cat <<EOF; echo after\nbody\nEOF\ngit status');
+    const crlf = tokenizeShellCommand('cat <<EOF; echo after\r\nbody\r\nEOF\r\ngit status');
+    const shape = (segs: ReturnType<typeof tokenizeShellCommand>) =>
+      segs.map((s) => s.tokens.map((t) => t.text.replace(/\r$/, '')));
+    expect(shape(crlf)).toEqual(shape(lf));
   });
 });

@@ -26,6 +26,8 @@ import {
   commandInvokesDelete,
   commandInvokesGitPush,
   commandInvokesDatabaseWrite,
+  resolveCommandAnalysis,
+  type AmbiguousConstructCode,
 } from './shell-command.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -61,10 +63,38 @@ export interface ScopeConfig {
   destructivePatterns: string[];
 }
 
+/**
+ * Stable, programmatic decision codes. Never renamed across versions —
+ * callers (hooks, CLI, downstream tooling) may branch on `code` instead of
+ * string-matching prose. Config-load failures use ScopeConfigError.CODE
+ * (`THESMOS_SCOPE_CONFIG_INVALID`) instead; these cover per-decision outcomes.
+ */
+export const SCOPE_DECISION_CODES = {
+  BLOCKED_PATH: 'THESMOS_SCOPE_BLOCKED_PATH',
+  ABSOLUTE_BLOCKED_PATH: 'THESMOS_SCOPE_ABSOLUTE_BLOCKED_PATH',
+  DESTRUCTIVE_COMMAND: 'THESMOS_SCOPE_DESTRUCTIVE_COMMAND',
+  REQUIRES_CONFIRMATION: 'THESMOS_SCOPE_REQUIRES_CONFIRMATION',
+  /** Executable syntax the command analyzer cannot safely resolve (command
+   *  substitution, subshell, variable executable, arbitrary-code interpreter
+   *  payload, …). Surfaced as an approval request, never a silent allow and
+   *  never a hard block on its own — see checkCommand(). */
+  AMBIGUOUS_COMMAND_SYNTAX: 'THESMOS_SCOPE_AMBIGUOUS_COMMAND_SYNTAX',
+} as const;
+
+export type ScopeDecisionCode = (typeof SCOPE_DECISION_CODES)[keyof typeof SCOPE_DECISION_CODES];
+
 export interface ScopeViolation {
   type: 'blocked_path' | 'destructive_command' | 'requires_confirmation' | 'absolute_blocked_path';
   message: string;
   suggestion: string;
+  /** Stable programmatic identifier for this decision. Optional only for
+   *  backward compatibility with callers constructing violations directly;
+   *  every violation produced by this module sets it. */
+  code?: ScopeDecisionCode;
+  /** Present only on AMBIGUOUS_COMMAND_SYNTAX decisions: the specific
+   *  unresolvable construct's stable sub-code (see AmbiguousConstructCode).
+   *  Never contains any of the user's actual command text. */
+  ambiguousConstruct?: AmbiguousConstructCode;
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
@@ -252,6 +282,7 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
   if (GOVERNANCE_PROTECTED.has(relNorm)) {
     return {
       type: 'blocked_path',
+      code: SCOPE_DECISION_CODES.BLOCKED_PATH,
       message: `"${filePath}" is a Thesmos governance file — a governed agent may not modify it.`,
       suggestion: 'Edit governance config manually outside the agent session.',
     };
@@ -269,6 +300,7 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
     ) {
       return {
         type: 'absolute_blocked_path',
+        code: SCOPE_DECISION_CODES.ABSOLUTE_BLOCKED_PATH,
         message: `Path "${filePath}" is in an always-blocked system directory "${blocked}".`,
         suggestion: 'This path is outside the project workspace. Confirm this operation is intentional.',
       };
@@ -289,6 +321,7 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
     if (managed) {
       return {
         type: 'blocked_path',
+        code: SCOPE_DECISION_CODES.BLOCKED_PATH,
         message:
           `Path "${filePath}" is a Thesmos-managed agent file. ` +
           `Direct edits are blocked so adapter sync does not lose ownership metadata.`,
@@ -345,6 +378,7 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
       }
       return {
         type: 'blocked_path',
+        code: SCOPE_DECISION_CODES.BLOCKED_PATH,
         message: `Path "${filePath}" matches blocked pattern "${blocked}".`,
         suggestion,
       };
@@ -361,6 +395,7 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
     if (!isAllowed) {
       return {
         type: 'blocked_path',
+        code: SCOPE_DECISION_CODES.BLOCKED_PATH,
         message: `Path "${filePath}" is outside the allowed workspace paths [${config.workspace.allowedPaths.join(', ')}].`,
         suggestion: `Add "${relPath}" to allowedPaths in .thesmos/scope.json, or restrict the agent's task to files within the allowed scope.`,
       };
@@ -393,12 +428,25 @@ function isPathAllowed(filePath: string, root: string, config: ScopeConfig): Sco
  * quote/heredoc/wrapper/interpreter-payload model, not five separate
  * fragile regexes. See that module's doc comment for exactly what it
  * recognizes and its documented residual limits.
+ *
+ * ORDERING IS DELIBERATE. Explicit denylist matches run FIRST, against the
+ * portion of the command that resolved cleanly. Only if none of them fire
+ * do we consider unresolvable syntax (command substitution, subshells, a
+ * variable executable, an arbitrary-code interpreter payload, …), which
+ * becomes a recoverable `requires_confirmation` ask — NOT a hard block.
+ * Rationale: a positively-identified `rm -rf` should be denied outright,
+ * but `echo $(date)` is a perfectly ordinary developer command that this
+ * analyzer simply cannot prove safe. Hard-blocking every such command would
+ * make legitimate work impossible; silently allowing it would let
+ * `echo $(rm -rf /tmp/x)` through. Asking a human is the correct third
+ * option, and is exactly what the PreToolUse hook's "ask" decision exists for.
  */
 function checkCommand(command: string, config: ScopeConfig): ScopeViolation | null {
   for (const pattern of config.destructivePatterns) {
     if (commandMatchesPhrase(command, pattern)) {
       return {
         type: 'destructive_command',
+        code: SCOPE_DECISION_CODES.DESTRUCTIVE_COMMAND,
         message: `Command contains a destructive pattern "${pattern}".`,
         suggestion: 'Thesmos scope enforcement blocked this command. If this is intentional, run it manually outside the agent session.',
       };
@@ -408,6 +456,7 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
   if (!config.operations.allowDelete && commandInvokesDelete(command)) {
     return {
       type: 'destructive_command',
+      code: SCOPE_DECISION_CODES.DESTRUCTIVE_COMMAND,
       message: 'File deletion is not allowed in the current scope.',
       suggestion: 'Set operations.allowDelete to true in .thesmos/scope.json to enable file deletion, or delete manually.',
     };
@@ -416,6 +465,7 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
   if (!config.operations.allowGitPush && commandInvokesGitPush(command)) {
     return {
       type: 'destructive_command',
+      code: SCOPE_DECISION_CODES.DESTRUCTIVE_COMMAND,
       message: 'git push is not allowed in the current scope.',
       suggestion: 'Set operations.allowGitPush to true in .thesmos/scope.json, or push manually after reviewing the changes.',
     };
@@ -424,6 +474,7 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
   if (!config.operations.allowDatabaseWrites && commandInvokesDatabaseWrite(command)) {
     return {
       type: 'destructive_command',
+      code: SCOPE_DECISION_CODES.DESTRUCTIVE_COMMAND,
       message: 'Database write operation is not allowed in the current scope.',
       suggestion: 'Set operations.allowDatabaseWrites to true in .thesmos/scope.json, or run database commands manually.',
     };
@@ -433,10 +484,28 @@ function checkCommand(command: string, config: ScopeConfig): ScopeViolation | nu
     if (commandMatchesPhrase(command, pattern)) {
       return {
         type: 'requires_confirmation',
+        code: SCOPE_DECISION_CODES.REQUIRES_CONFIRMATION,
         message: `Command "${pattern}" requires human confirmation before proceeding.`,
         suggestion: 'Run this command manually after reviewing the agent\'s changes, or add it to an exception in .thesmos/scope.json.',
       };
     }
+  }
+
+  // No explicit rule matched. If the command contains executable syntax the
+  // analyzer could not resolve, ask rather than guess. The message names
+  // only the CONSTRUCT KIND — never a snippet of the command itself, which
+  // could carry a secret or a path into a shareable diagnostic.
+  const analysis = resolveCommandAnalysis(command);
+  if (analysis.status === 'ambiguous') {
+    return {
+      type: 'requires_confirmation',
+      code: SCOPE_DECISION_CODES.AMBIGUOUS_COMMAND_SYNTAX,
+      ambiguousConstruct: analysis.code,
+      message: `${analysis.reason} Thesmos is requesting approval rather than guessing at its behavior.`,
+      suggestion:
+        'Review the command yourself and approve it if it is intentional. ' +
+        'Thesmos does not inspect this construct — approving it means you have verified what it does.',
+    };
   }
 
   return null;

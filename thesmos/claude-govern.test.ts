@@ -267,3 +267,76 @@ describe('runPreToolCheck — requires_confirmation vs. hard block (Bash)', () =
     rmSync(root, { recursive: true, force: true });
   });
 });
+
+// ── Ambiguous command syntax surfaces as a real, recoverable "ask" ──────────
+// End-to-end through the real spawned hook: unresolvable executable syntax
+// must reach Claude Code as a permission request, never a silent allow and
+// never an unrecoverable hard block.
+
+describe('runPreToolCheck — ambiguous command syntax (end-to-end)', () => {
+  it('$() command substitution emits an "ask" decision (exit 0), not a hard block', () => {
+    const root = makeScopeFixture([]);
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'echo $(rm -rf /tmp/example)' } }),
+    );
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout);
+    expect(output.hookSpecificOutput.permissionDecision).toBe('ask');
+    expect(output.hookSpecificOutput.permissionDecisionReason).toMatch(/command substitution/i);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('an arbitrary-code interpreter payload asks rather than pretending to inspect it', () => {
+    const root = makeScopeFixture([]);
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'node -e "console.log(1)"' } }),
+    );
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout);
+    expect(output.hookSpecificOutput.permissionDecision).toBe('ask');
+    expect(output.hookSpecificOutput.permissionDecisionReason).toMatch(/interpreter/i);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('the ask reason never leaks the raw command text (no paths, no payload contents)', () => {
+    const root = makeScopeFixture([]);
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({
+        tool_name: 'Bash',
+        tool_input: { command: 'echo $(cat /home/someone/.ssh/id_rsa)' },
+      }),
+    );
+    expect(result.status).toBe(0);
+    const reason = JSON.parse(result.stdout).hookSpecificOutput.permissionDecisionReason as string;
+    expect(reason).not.toContain('id_rsa');
+    expect(reason).not.toContain('/home/someone');
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('an ordinary resolvable command is still allowed outright (no spurious ask)', () => {
+    const root = makeScopeFixture([]);
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'npm run build' } }),
+    );
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe('');
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('a genuine destructive match still hard-blocks even when ambiguous syntax is also present', () => {
+    const root = makeScopeFixture([], ['zzz-test-destructive-pattern']);
+    const result = runPreToolHook(
+      root,
+      JSON.stringify({
+        tool_name: 'Bash',
+        tool_input: { command: 'zzz-test-destructive-pattern && echo $(date)' },
+      }),
+    );
+    expect(result.status).toBe(2);
+    rmSync(root, { recursive: true, force: true });
+  });
+});

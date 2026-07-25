@@ -11,6 +11,7 @@ import {
   SCOPE_DEFAULTS,
   ScopeConfigError,
   type ScopeConfig,
+  SCOPE_DECISION_CODES,
 } from './scope.js';
 
 function makeTmpDir(): string {
@@ -482,5 +483,157 @@ describe('getScopeStatus', () => {
     const status = getScopeStatus(root);
     expect(status.scopeFilePath).toContain('.thesmos');
     expect(status.scopeFilePath).toContain('scope.json');
+  });
+});
+
+// ── Ambiguous command syntax → recoverable ask, not a silent allow ──────────
+// Executable syntax the analyzer cannot resolve becomes requires_confirmation
+// (Claude Code's "ask"), so legitimate-but-unanalyzable developer commands
+// stay usable while nothing dangerous slips through unreviewed.
+
+describe('checkScope — ambiguous command syntax requests approval', () => {
+  let root: string;
+  beforeEach(() => {
+    root = makeTmpDir();
+    writeScope(root, {
+      operations: {
+        allowDelete: true,
+        allowGitPush: true,
+        allowNetworkHosts: [],
+        allowDatabaseWrites: true,
+        requireConfirmation: [],
+      },
+      destructivePatterns: [],
+    });
+  });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /* */ } });
+
+  function expectAsk(command: string, construct: string): void {
+    const v = checkScope({ toolName: 'Bash', command, root });
+    expect(v, `expected an ask for: ${command}`).not.toBeNull();
+    expect(v!.type).toBe('requires_confirmation');
+    expect(v!.code).toBe(SCOPE_DECISION_CODES.AMBIGUOUS_COMMAND_SYNTAX);
+    expect(v!.ambiguousConstruct).toBe(construct);
+  }
+
+  it('asks for $() command substitution', () => {
+    expectAsk('echo $(rm -rf /tmp/example)', 'COMMAND_SUBSTITUTION');
+  });
+
+  it('asks for backtick substitution', () => {
+    expectAsk('echo `git push origin main`', 'BACKTICK_SUBSTITUTION');
+  });
+
+  it('asks for process substitution', () => {
+    expectAsk('cat <(rm -rf /tmp/example)', 'PROCESS_SUBSTITUTION');
+  });
+
+  it('asks for subshell grouping', () => {
+    expectAsk('(rm -rf /tmp/example)', 'SUBSHELL_GROUPING');
+  });
+
+  it('asks for a variable-expanded executable', () => {
+    expectAsk('CMD=rm; $CMD -rf /tmp/example', 'VARIABLE_EXECUTABLE');
+  });
+
+  it('asks for arbitrary-code interpreters rather than pretending the denylist inspects them', () => {
+    expectAsk('node -e "require(\'fs\').rmSync(\'/tmp/x\')"', 'ARBITRARY_CODE_INTERPRETER');
+    expectAsk('python3 -c "import shutil"', 'ARBITRARY_CODE_INTERPRETER');
+  });
+
+  it('asks for malformed interpreter syntax', () => {
+    expectAsk('bash -c', 'MALFORMED_INTERPRETER_SYNTAX');
+  });
+
+  it('the ask message and suggestion never contain the raw command text', () => {
+    const v = checkScope({
+      toolName: 'Bash',
+      command: 'echo $(cat /home/someone/.ssh/id_rsa)',
+      root,
+    })!;
+    expect(v.message).not.toContain('id_rsa');
+    expect(v.message).not.toContain('/home/someone');
+    expect(v.suggestion).not.toContain('id_rsa');
+    expect(v.suggestion).not.toContain('/home/someone');
+  });
+
+  it('does NOT ask for ordinary resolvable commands', () => {
+    expect(checkScope({ toolName: 'Bash', command: 'npm run build', root })).toBeNull();
+    expect(checkScope({ toolName: 'Bash', command: "echo '$(rm -rf /tmp/example)'", root })).toBeNull();
+    expect(checkScope({ toolName: 'Bash', command: 'git commit -m \'documents $(rm -rf) behavior\'', root })).toBeNull();
+  });
+});
+
+describe('checkScope — explicit destructive matches take priority over ambiguity', () => {
+  let root: string;
+  beforeEach(() => {
+    root = makeTmpDir();
+    writeScope(root, {
+      operations: {
+        allowDelete: false,
+        allowGitPush: false,
+        allowNetworkHosts: [],
+        allowDatabaseWrites: false,
+        requireConfirmation: [],
+      },
+      destructivePatterns: ['rm -rf'],
+    });
+  });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /* */ } });
+
+  it('a positively-matched destructive pattern is a hard block, not an ask, even alongside ambiguous syntax', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'rm -rf ./build && echo $(date)', root })!;
+    expect(v.type).toBe('destructive_command');
+    expect(v.code).toBe(SCOPE_DECISION_CODES.DESTRUCTIVE_COMMAND);
+  });
+
+  it('ambiguity alone (no positive match) is never a hard block', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'echo $(date)', root })!;
+    expect(v.type).toBe('requires_confirmation');
+  });
+});
+
+describe('scope decision codes are attached to every violation type', () => {
+  let root: string;
+  beforeEach(() => {
+    root = makeTmpDir();
+    writeScope(root, {
+      workspace: { allowedPaths: ['src/'], blockedPaths: ['node_modules/'], absoluteBlockPaths: ['/etc/'] },
+      operations: {
+        allowDelete: false,
+        allowGitPush: false,
+        allowNetworkHosts: [],
+        allowDatabaseWrites: false,
+        requireConfirmation: ['npm publish'],
+      },
+      destructivePatterns: ['rm -rf'],
+    });
+  });
+  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /* */ } });
+
+  it('blocked_path carries BLOCKED_PATH', () => {
+    const v = checkScope({ toolName: 'Write', filePath: 'node_modules/x.js', root })!;
+    expect(v.code).toBe(SCOPE_DECISION_CODES.BLOCKED_PATH);
+  });
+
+  it('absolute_blocked_path carries ABSOLUTE_BLOCKED_PATH', () => {
+    const v = checkScope({ toolName: 'Write', filePath: '/etc/hosts', root })!;
+    expect(v.code).toBe(SCOPE_DECISION_CODES.ABSOLUTE_BLOCKED_PATH);
+  });
+
+  it('destructive_command carries DESTRUCTIVE_COMMAND', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'rm -rf ./dist', root })!;
+    expect(v.code).toBe(SCOPE_DECISION_CODES.DESTRUCTIVE_COMMAND);
+  });
+
+  it('requires_confirmation (configured phrase) carries REQUIRES_CONFIRMATION', () => {
+    const v = checkScope({ toolName: 'Bash', command: 'npm publish', root })!;
+    expect(v.code).toBe(SCOPE_DECISION_CODES.REQUIRES_CONFIRMATION);
+  });
+
+  it('every code value is a stable THESMOS_SCOPE_* string', () => {
+    for (const code of Object.values(SCOPE_DECISION_CODES)) {
+      expect(code).toMatch(/^THESMOS_SCOPE_[A-Z_]+$/);
+    }
   });
 });

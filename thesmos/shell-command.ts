@@ -33,9 +33,9 @@
  *    BODY (the lines between the header and the terminator) is excluded from
  *    tokens — text on the header line itself, before or after the redirect,
  *    including anything chained after a `;`/`&&`/etc. on that same line,
- *    remains live and is tokenized normally. `cat <<EOF; rm -rf /tmp/x` must
- *    still flag the `rm -rf` — only the heredoc body between `EOF` markers
- *    is data, never the rest of that command line.
+ *    remains live and is tokenized normally. Line-ending detection (header
+ *    end / terminator matching) is CRLF-aware: `\r\n` and `\n` heredocs both
+ *    work, without ever mutating the command string shown to a user.
  *  - executable recognition: POSIX/Windows path prefixes and Windows
  *    extensions (.exe/.cmd/.bat/.ps1/.sh) are stripped before comparison,
  *    and common wrapper executables (`sudo`, `env`, `command`) are skipped
@@ -44,40 +44,46 @@
  *    push`, `npm --silent publish`) are skipped when matching a configured
  *    phrase, not just adjacent words
  *  - interpreter/database-client string payloads: a recognized (executable,
- *    flag) pair's next token — quoted or not — is treated as further
+ *    flag) pair's remaining text — quoted or not — is treated as further
  *    command/SQL text and recursively analyzed with this same tokenizer,
- *    bounded by MAX_ANALYSIS_DEPTH and MAX_PAYLOAD_LENGTH; hitting either
- *    bound marks the analysis `ambiguous`, and every phrase/delete/git-push/
- *    database-write check below treats an ambiguous analysis as a match
- *    (fail closed — we cannot rule out a hidden dangerous payload)
+ *    bounded by MAX_ANALYSIS_DEPTH and MAX_PAYLOAD_LENGTH. POSIX shells
+ *    (`bash`/`sh`/`zsh`/`ksh`/`dash -c`) and database clients capture only
+ *    the SINGLE token after the flag (matching real -c semantics, where
+ *    everything after that one argument becomes positional parameters).
+ *    Windows interpreters (`cmd /c`, `powershell`/`pwsh -Command`) capture
+ *    the ENTIRE remainder of the segment instead — real cmd.exe/PowerShell
+ *    re-joins everything after the flag into one command line whether or
+ *    not it's quoted, so `cmd /c del /s /q build` and
+ *    `cmd /c "del /s /q build"` must (and do) resolve identically.
+ *  - executable syntax this analyzer cannot safely resolve — command
+ *    substitution ($(...) / `...`), process substitution (<(...) / >(...)),
+ *    subshell grouping ((...)), a variable used as the executable itself
+ *    ($CMD ...), and arbitrary-code interpreter payloads (node -e,
+ *    python/python3 -c, perl -e, ruby -e) whose content isn't shell syntax
+ *    at all — is flagged as an AMBIGUOUS CONSTRUCT with a stable code
+ *    (see AmbiguousConstruct / resolveCommandAnalysis) rather than silently
+ *    treated as inert or guessed at. Quote-aware: single-quoted spans are
+ *    fully inert (real bash never expands anything inside them); double
+ *    quotes still allow $()/backtick expansion UNLESS escaped (\$, \`).
  *
- * Documented limits (deliberately not handled — see rationale inline where
- * relevant; omissions here only make the analyzer MORE conservative, i.e.
- * more likely to flag something, never less safe):
- *  - command substitution $(...) / `...` is not expanded — its contents are
- *    kept as literal bare text of the enclosing token
- *  - process substitution <(...) / >(...) is not specially recognized
- *  - parentheses for subshells/grouping are not recursively parsed — `(` /
- *    `)` are ordinary bare characters
- *  - `$VAR` / `${VAR}` expansion is not resolved (kept as literal text)
+ * Documented limits (deliberately not handled — this is a governance gate,
+ * not a full shell-language sandbox):
+ *  - `$VAR`/`${VAR}` expansion of a plain ARGUMENT (not the executable
+ *    position) is not resolved — kept as literal text; only a variable used
+ *    AS the executable itself is flagged (see VARIABLE_EXECUTABLE above)
  *  - this is NOT a complete shell-language enforcement engine: it recognizes
  *    a specific, documented set of executables, flags, and wrapper patterns,
  *    not arbitrary interpreter/CLI grammars. New wrappers, interpreters, or
  *    database clients must be added to the lookup tables below by name.
- *  - interpreter/db-client string-payload recognition takes exactly the
- *    SINGLE token immediately following the recognized flag as the payload
- *    (matching real -c/-Command semantics, where everything after that one
- *    argument becomes positional parameters, not more command text) — an
- *    unquoted multi-word payload with no surrounding quotes at all will only
- *    have its first word captured; this is a known, narrow gap for that
- *    unusual (and already fragile in real shells) invocation shape
  *  - git's `-c`/`-C` are treated as value-taking for the purpose of skipping
  *    past them to find a later subcommand word; this cannot disambiguate a
  *    pathological `git -c push` (with no `=value` and no real subcommand)
  *    from `-c`'s value happening to be the literal word "push" — documented,
  *    narrow, and does not affect the required `git -C <dir> push` case
- *  - heredoc body detection is `\n`-based (POSIX line endings); CRLF-only
- *    heredoc bodies are not specially normalized
+ *  - this is a denylist/pattern-matching gate, not a shell sandbox — other
+ *    ways to cause equivalent damage that this module does not attempt to
+ *    enumerate (novel interpreters, obscure flags on tools not in the
+ *    lookup tables) remain a residual, inherent limitation of the approach
  */
 
 export interface CommandToken {
@@ -155,24 +161,38 @@ function tryParseHeredocHeader(command: string, at: number): { delimiter: string
 }
 
 /**
- * Given a position right after a `\n` (the start of a here-doc body), finds
- * where THIS body ends: the next line that, trimmed, exactly equals
- * `delimiter`. Returns the index just past that terminator line's newline.
- * An unterminated here-doc (no matching delimiter line found) consumes to
- * end-of-string — conservative: it can only exclude MORE text from
- * matching, never less, so it cannot hide a live command outside the
- * here-doc.
+ * Finds the end of the current line starting at `pos`: the index of the
+ * next `\n` (CRLF or LF — a `\r` immediately before it is part of the same
+ * line ending either way) or the end of the string. Returns
+ * `{ lineEnd, nextLineStart }` — `lineEnd` excludes the line-ending
+ * character(s) themselves (used for content comparison), `nextLineStart` is
+ * where the FOLLOWING line begins (or the string length at EOF). CRLF-aware
+ * without ever rewriting `command` — only how boundaries are located changes.
+ */
+function findLineEnd(command: string, pos: number): { lineEnd: number; nextLineStart: number } {
+  const nl = command.indexOf('\n', pos);
+  if (nl === -1) return { lineEnd: command.length, nextLineStart: command.length };
+  const lineEnd = nl > pos && command[nl - 1] === '\r' ? nl - 1 : nl;
+  return { lineEnd, nextLineStart: nl + 1 };
+}
+
+/**
+ * Given a position right after a line ending (the start of a here-doc
+ * body), finds where THIS body ends: the next line that, trimmed, exactly
+ * equals `delimiter`. Returns the index just past that terminator line's
+ * line ending. An unterminated here-doc (no matching delimiter line found)
+ * consumes to end-of-string — conservative: it can only exclude MORE text
+ * from matching, never less, so it cannot hide a live command outside the
+ * here-doc. CRLF- and LF-terminated bodies both work identically.
  */
 function findHeredocBodyEnd(command: string, bodyStart: number, delimiter: string): number {
   let pos = bodyStart;
   while (pos <= command.length) {
-    const nextNewline = command.indexOf('\n', pos);
-    const line = nextNewline === -1 ? command.slice(pos) : command.slice(pos, nextNewline);
-    if (line.trim() === delimiter) {
-      return nextNewline === -1 ? command.length : nextNewline + 1;
-    }
-    if (nextNewline === -1) return command.length; // unterminated
-    pos = nextNewline + 1;
+    const { lineEnd, nextLineStart } = findLineEnd(command, pos);
+    const line = command.slice(pos, lineEnd);
+    if (line.trim() === delimiter) return nextLineStart;
+    if (nextLineStart === command.length && lineEnd === command.length) return command.length; // unterminated
+    pos = nextLineStart;
   }
   return command.length;
 }
@@ -186,9 +206,10 @@ function findHeredocBodyEnd(command: string, bodyStart: number, delimiter: strin
  * Here-doc handling: a `<<DELIM` header does NOT end tokenization of the
  * current line — text before AND after the header (including chained
  * commands like `; rm -rf x`) is tokenized normally. Only the BODY, from
- * the next newline through the line where `DELIM` appears alone, is
- * excluded from tokens. Multiple here-docs opened on one line have their
- * bodies consumed in order, immediately after that line ends.
+ * the next line through the line where `DELIM` appears alone, is excluded
+ * from tokens. Multiple here-docs opened on one line have their bodies
+ * consumed in order, immediately after that line ends. CRLF and LF line
+ * endings are both recognized.
  */
 export function tokenizeShellCommand(command: string): CommandSegment[] {
   const segments: CommandSegment[] = [];
@@ -218,8 +239,8 @@ export function tokenizeShellCommand(command: string): CommandSegment[] {
     // A `#` at a token boundary starts a comment running to end of string.
     if (ch === '#' && !hasContent) break;
 
-    // Here-doc HEADER: record the delimiter to be consumed at the next
-    // newline, but keep tokenizing the rest of THIS line normally — the
+    // Here-doc HEADER: record the delimiter to be consumed at the next line
+    // ending, but keep tokenizing the rest of THIS line normally — the
     // header is redirection syntax, not command text, so it contributes no
     // token itself, but nothing else on the line is excluded because of it.
     const heredoc = tryParseHeredocHeader(command, i);
@@ -275,7 +296,7 @@ export function tokenizeShellCommand(command: string): CommandSegment[] {
 
     if (ch === '\n' && pendingHeredocs.length > 0) {
       // End of the header line(s): consume each pending here-doc's body in
-      // order, starting right after this newline. Only the body text is
+      // order, starting right after this line ending. Only the body text is
       // excluded — once every pending here-doc is consumed, whatever
       // follows is a genuinely new statement (that's what real shells do
       // too: a here-doc body is delimited input for the PRECEDING command,
@@ -350,11 +371,11 @@ export function resolveInvocation(segment: CommandSegment): ResolvedInvocation |
 }
 
 /**
- * Executables whose flag (as the key's value set) takes the SINGLE
- * following token as a string of further command/SQL text — recognized so
- * that a quoted payload to `bash -c "..."` or `psql -c "..."` is treated as
- * live text to recursively analyze, not inert quoted content. Flag lookups
- * are case-insensitive (the token text is lowercased before comparison).
+ * Executables whose flag (as the key's value set) introduces further
+ * command/SQL text as a string payload — recognized so that a quoted
+ * argument to `bash -c "..."` or `psql -c "..."` is treated as live text to
+ * recursively analyze, not inert quoted content. Flag lookups are
+ * case-insensitive (the token text is lowercased before comparison).
  */
 const STRING_PAYLOAD_FLAGS: Record<string, Set<string>> = {
   bash: new Set(['-c']),
@@ -370,25 +391,235 @@ const STRING_PAYLOAD_FLAGS: Record<string, Set<string>> = {
 };
 
 /**
+ * Windows interpreters re-join EVERYTHING after their execution flag into
+ * one command line, whether or not any of it is quoted — unlike POSIX -c,
+ * which takes exactly one argument. `cmd /c del /s /q build` and
+ * `cmd /c "del /s /q build"` must resolve identically, so these executables
+ * capture the rest of the segment (all remaining tokens, joined with a
+ * single space) instead of just the one token after the flag.
+ */
+const FULL_SEGMENT_PAYLOAD_EXECUTABLES = new Set(['cmd', 'powershell', 'pwsh']);
+
+export type StringPayloadResult =
+  | { kind: 'found'; payload: string }
+  /** A recognized (executable, flag) pair was found, but nothing follows it
+   *  to serve as the payload — the invocation's actual behavior can't be
+   *  determined, so this is treated as ambiguous rather than silently
+   *  assumed to be a no-op. */
+  | { kind: 'malformed' }
+  | { kind: 'none' };
+
+/**
  * If `invocation`'s executable is a recognized interpreter/database-client
  * AND one of its recognized string-payload flags appears later in this
- * segment, returns the reconstructed literal text of the token immediately
- * after that flag — regardless of whether that token is quoted, since this
- * is exactly the narrow case where quoted content is live, not inert.
- * Returns null when there's no recognized flag or no following token.
+ * segment, returns the reconstructed literal text following that flag —
+ * regardless of whether any of it is quoted, since this is exactly the
+ * narrow case where quoted content is live, not inert. See
+ * FULL_SEGMENT_PAYLOAD_EXECUTABLES for the Windows-vs-POSIX capture
+ * difference.
  */
-export function findStringPayload(segment: CommandSegment, invocation: ResolvedInvocation): string | null {
+export function findStringPayload(segment: CommandSegment, invocation: ResolvedInvocation): StringPayloadResult {
   const flags = STRING_PAYLOAD_FLAGS[invocation.executable];
-  if (!flags) return null;
+  if (!flags) return { kind: 'none' };
   const tokens = segment.tokens;
   for (let i = invocation.index + 1; i < tokens.length; i++) {
     const tok = tokens[i]!;
-    if (!tok.quoted && flags.has(tok.text.toLowerCase())) {
-      const next = tokens[i + 1];
-      return next ? next.text : null;
+    if (tok.quoted || !flags.has(tok.text.toLowerCase())) continue;
+    if (i + 1 >= tokens.length) return { kind: 'malformed' };
+    if (FULL_SEGMENT_PAYLOAD_EXECUTABLES.has(invocation.executable)) {
+      return { kind: 'found', payload: tokens.slice(i + 1).map((t) => t.text).join(' ') };
     }
+    return { kind: 'found', payload: tokens[i + 1]!.text };
   }
-  return null;
+  return { kind: 'none' };
+}
+
+// ── Arbitrary-code interpreters ───────────────────────────────────────────────
+
+/**
+ * Interpreters whose inline-code flag introduces a payload that is NOT
+ * shell syntax at all (JavaScript, Python, Perl, Ruby) — this analyzer has
+ * no way to inspect what that code actually does, so it is never treated as
+ * either inert or further-analyzable. Recognizing the invocation and
+ * refusing to guess is the correct, honest behavior (see
+ * AMBIGUOUS_CONSTRUCT_LABELS.ARBITRARY_CODE_INTERPRETER).
+ */
+const ARBITRARY_CODE_INTERPRETER_FLAGS: Record<string, Set<string>> = {
+  node: new Set(['-e', '--eval']),
+  python: new Set(['-c']),
+  python3: new Set(['-c']),
+  perl: new Set(['-e']),
+  ruby: new Set(['-e']),
+};
+
+function segmentHasFlag(segment: CommandSegment, flags: Set<string>): boolean {
+  return segment.tokens.some((t) => !t.quoted && flags.has(t.text.toLowerCase()));
+}
+
+// ── Ambiguous constructs (unresolvable executable syntax) ────────────────────
+
+/**
+ * A stable, programmatic reason code for a construct this analyzer cannot
+ * safely resolve — never invented per-call, always one of the fixed values
+ * below, so callers can branch on `code` without string-matching prose.
+ */
+export type AmbiguousConstructCode =
+  | 'COMMAND_SUBSTITUTION'
+  | 'BACKTICK_SUBSTITUTION'
+  | 'PROCESS_SUBSTITUTION'
+  | 'SUBSHELL_GROUPING'
+  | 'VARIABLE_EXECUTABLE'
+  | 'ARBITRARY_CODE_INTERPRETER'
+  | 'MALFORMED_INTERPRETER_SYNTAX'
+  | 'ANALYSIS_TOO_DEEP'
+  | 'PAYLOAD_TOO_LARGE';
+
+export interface AmbiguousConstruct {
+  code: AmbiguousConstructCode;
+  /** Generic, human-readable label for the construct kind — NEVER a
+   *  snippet of the user's actual command text (which could contain a
+   *  secret, a path, or other content that shouldn't appear in a
+   *  shareable diagnostic). */
+  construct: string;
+}
+
+const AMBIGUOUS_CONSTRUCT_LABELS: Record<AmbiguousConstructCode, string> = {
+  COMMAND_SUBSTITUTION: 'command substitution ($(...))',
+  BACKTICK_SUBSTITUTION: 'backtick command substitution (`...`)',
+  PROCESS_SUBSTITUTION: 'process substitution (<(...) or >(...))',
+  SUBSHELL_GROUPING: 'subshell grouping ((...))',
+  VARIABLE_EXECUTABLE: 'a variable used as the executable ($VAR ...)',
+  ARBITRARY_CODE_INTERPRETER: 'an arbitrary-code interpreter payload (node/python/perl/ruby) whose content cannot be classified',
+  MALFORMED_INTERPRETER_SYNTAX: 'an interpreter execution flag with no resolvable payload following it',
+  ANALYSIS_TOO_DEEP: 'a nested interpreter payload exceeding the analysis depth limit',
+  PAYLOAD_TOO_LARGE: 'a payload exceeding the analysis size limit',
+};
+
+/**
+ * Scans `command` for live occurrences of shell constructs this analyzer
+ * cannot safely resolve: command substitution ($(...) or `...`), process
+ * substitution (<(...) or >(...)), subshell grouping ((...) at the start of
+ * a segment), and a variable used AS the executable itself ($VAR at the
+ * start of a segment — not a variable used as a plain argument, which is
+ * inert for this purpose). Quote-aware:
+ *  - single-quoted spans are fully inert (real bash never expands anything
+ *    inside them) and are skipped without scanning their contents
+ *  - double-quoted spans still allow $()/backtick expansion UNLESS escaped
+ *    (\$, \`) — an escaped `\$(...)` inside double quotes is literal text
+ *  - here-doc bodies and `#` comments are skipped (already inert / not live)
+ * Returns every live occurrence found — empty when none exist. Never
+ * includes a snippet of the actual command text (see AmbiguousConstruct).
+ */
+function findAmbiguousConstructs(command: string): AmbiguousConstruct[] {
+  const found: AmbiguousConstruct[] = [];
+  const push = (code: AmbiguousConstructCode): void => {
+    found.push({ code, construct: AMBIGUOUS_CONSTRUCT_LABELS[code] });
+  };
+
+  let i = 0;
+  const n = command.length;
+  let atSegmentStart = true;
+  let pendingHeredocs: string[] = [];
+
+  while (i < n) {
+    const ch = command[i]!;
+
+    if (ch === '#' && atSegmentStart) break;
+
+    const heredoc = tryParseHeredocHeader(command, i);
+    if (heredoc) {
+      pendingHeredocs.push(heredoc.delimiter);
+      i = heredoc.headerEnd;
+      continue;
+    }
+
+    if (/\s/.test(ch) && ch !== '\n') {
+      i++;
+      continue;
+    }
+
+    if (ch === '\n' && pendingHeredocs.length > 0) {
+      let pos = i + 1;
+      for (const delimiter of pendingHeredocs) pos = findHeredocBodyEnd(command, pos, delimiter);
+      pendingHeredocs = [];
+      i = pos;
+      atSegmentStart = true;
+      continue;
+    }
+    if (ch === '\n') {
+      i++;
+      continue;
+    }
+
+    if (ch === ';' || ch === '|' || ch === '&') {
+      i += command.slice(i, i + 2) === '&&' || command.slice(i, i + 2) === '||' ? 2 : 1;
+      atSegmentStart = true;
+      continue;
+    }
+
+    // From here on we're consuming real content — capture whether THIS
+    // position was the segment start before flipping the flag.
+    const isSegmentStart = atSegmentStart;
+    atSegmentStart = false;
+
+    if (ch === "'") {
+      // Fully inert — real bash never expands anything inside single
+      // quotes, so its contents are never scanned for live substitution.
+      i++;
+      while (i < n && command[i] !== "'") i++;
+      i++;
+      continue;
+    }
+
+    if (ch === '"') {
+      i++;
+      while (i < n && command[i] !== '"') {
+        if (command[i] === '\\' && i + 1 < n) {
+          i += 2; // \$ , \` , etc. stay literal inside double quotes — not live
+          continue;
+        }
+        if (command[i] === '$' && command[i + 1] === '(') push('COMMAND_SUBSTITUTION');
+        if (command[i] === '`') push('BACKTICK_SUBSTITUTION');
+        i++;
+      }
+      i++;
+      continue;
+    }
+
+    if (ch === '\\' && i + 1 < n) {
+      i += 2;
+      continue;
+    }
+
+    if (ch === '$' && command[i + 1] === '(') {
+      push('COMMAND_SUBSTITUTION');
+      i += 2;
+      continue;
+    }
+    if (ch === '`') {
+      push('BACKTICK_SUBSTITUTION');
+      i++;
+      continue;
+    }
+    if ((ch === '<' || ch === '>') && command[i + 1] === '(') {
+      push('PROCESS_SUBSTITUTION');
+      i += 2;
+      continue;
+    }
+    if (ch === '(' && isSegmentStart) {
+      push('SUBSHELL_GROUPING');
+      i++;
+      continue;
+    }
+    if (ch === '$' && isSegmentStart && /[A-Za-z_{]/.test(command[i + 1] ?? '')) {
+      push('VARIABLE_EXECUTABLE');
+      i++;
+      continue;
+    }
+
+    i++;
+  }
+  return found;
 }
 
 // ── Bounded recursive analysis ────────────────────────────────────────────────
@@ -397,14 +628,14 @@ export interface CommandAnalysis {
   /** All segments across the top-level command AND every recursively
    *  analyzed interpreter/database-client payload, flattened into one list. */
   segments: CommandSegment[];
-  /**
-   * True when a recognized interpreter/database-client payload could not be
-   * fully analyzed because it exceeded MAX_ANALYSIS_DEPTH or
-   * MAX_PAYLOAD_LENGTH. Every matcher below treats an ambiguous analysis as
-   * a match — we cannot rule out a hidden dangerous payload, so the
-   * conservative (fail-closed) answer is to flag it.
-   */
+  /** True when `ambiguousConstructs` is non-empty — kept as a convenience
+   *  boolean alongside the detailed list. */
   ambiguous: boolean;
+  /** Every unresolvable construct found, at any recursion depth, each with
+   *  a stable code (see AmbiguousConstructCode). Empty when the command
+   *  (and everything reachable via interpreter payloads within the bounds
+   *  below) decomposed cleanly into ordinary tokens. */
+  ambiguousConstructs: AmbiguousConstruct[];
 }
 
 /** Recursion bound for nested interpreter/database-client payloads
@@ -416,31 +647,83 @@ const MAX_ANALYSIS_DEPTH = 3;
 const MAX_PAYLOAD_LENGTH = 4096;
 
 /**
- * Tokenizes `command` and recursively re-analyzes any interpreter/database-
- * client string payload found in it (see findStringPayload), bounded by
+ * Tokenizes `command`, recursively re-analyzes any interpreter/database-
+ * client string payload found in it (see findStringPayload), and collects
+ * every unresolvable construct found (see findAmbiguousConstructs and
+ * ARBITRARY_CODE_INTERPRETER_FLAGS) at every depth. Bounded by
  * MAX_ANALYSIS_DEPTH and MAX_PAYLOAD_LENGTH. Never invokes an actual shell —
  * this is pure string analysis, deterministic on any platform.
  */
 export function analyzeCommand(command: string, depth = 0): CommandAnalysis {
   const segments = tokenizeShellCommand(command);
   const allSegments: CommandSegment[] = [...segments];
-  let ambiguous = false;
+  const ambiguousConstructs: AmbiguousConstruct[] = findAmbiguousConstructs(command);
 
   for (const segment of segments) {
     const invocation = resolveInvocation(segment);
     if (!invocation) continue;
-    const payload = findStringPayload(segment, invocation);
-    if (payload === null) continue;
-    if (depth >= MAX_ANALYSIS_DEPTH || payload.length > MAX_PAYLOAD_LENGTH) {
-      ambiguous = true;
+
+    const arbitraryFlags = ARBITRARY_CODE_INTERPRETER_FLAGS[invocation.executable];
+    if (arbitraryFlags && segmentHasFlag(segment, arbitraryFlags)) {
+      ambiguousConstructs.push({
+        code: 'ARBITRARY_CODE_INTERPRETER',
+        construct: AMBIGUOUS_CONSTRUCT_LABELS.ARBITRARY_CODE_INTERPRETER,
+      });
       continue;
     }
-    const nested = analyzeCommand(payload, depth + 1);
+
+    const result = findStringPayload(segment, invocation);
+    if (result.kind === 'none') continue;
+    if (result.kind === 'malformed') {
+      ambiguousConstructs.push({
+        code: 'MALFORMED_INTERPRETER_SYNTAX',
+        construct: AMBIGUOUS_CONSTRUCT_LABELS.MALFORMED_INTERPRETER_SYNTAX,
+      });
+      continue;
+    }
+    if (depth >= MAX_ANALYSIS_DEPTH) {
+      ambiguousConstructs.push({ code: 'ANALYSIS_TOO_DEEP', construct: AMBIGUOUS_CONSTRUCT_LABELS.ANALYSIS_TOO_DEEP });
+      continue;
+    }
+    if (result.payload.length > MAX_PAYLOAD_LENGTH) {
+      ambiguousConstructs.push({ code: 'PAYLOAD_TOO_LARGE', construct: AMBIGUOUS_CONSTRUCT_LABELS.PAYLOAD_TOO_LARGE });
+      continue;
+    }
+    const nested = analyzeCommand(result.payload, depth + 1);
     allSegments.push(...nested.segments);
-    if (nested.ambiguous) ambiguous = true;
+    ambiguousConstructs.push(...nested.ambiguousConstructs);
   }
 
-  return { segments: allSegments, ambiguous };
+  return { segments: allSegments, ambiguous: ambiguousConstructs.length > 0, ambiguousConstructs };
+}
+
+// ── Public resolved/ambiguous result ──────────────────────────────────────────
+
+export type AnalyzedCommand = CommandSegment;
+
+export type CommandAnalysisResult =
+  | { status: 'resolved'; commands: AnalyzedCommand[] }
+  | { status: 'ambiguous'; code: AmbiguousConstructCode; reason: string; construct: string };
+
+/**
+ * Public entry point for "can this command's executable syntax be safely
+ * resolved at all?" — used by scope.ts to decide between the normal
+ * denylist checks (which only ever see cleanly resolved segments) and an
+ * `requires_confirmation` ask when it can't. Returns the FIRST ambiguous
+ * construct found (there may be more; one is enough to require a human).
+ */
+export function resolveCommandAnalysis(command: string): CommandAnalysisResult {
+  const analysis = analyzeCommand(command);
+  const first = analysis.ambiguousConstructs[0];
+  if (first) {
+    return {
+      status: 'ambiguous',
+      code: first.code,
+      construct: first.construct,
+      reason: `This command contains ${first.construct}, which cannot be safely analyzed for destructive or confirmation-required patterns.`,
+    };
+  }
+  return { status: 'resolved', commands: analysis.segments };
 }
 
 // ── Phrase matching ───────────────────────────────────────────────────────────
@@ -565,18 +848,19 @@ function isExoticSyntaxPattern(phrase: string): boolean {
  * segment matcher above (quote-adjacency-safe, Windows-executable-aware,
  * global-flag-skip-aware, ignores purely decorative quoted content) run
  * over every segment `analyzeCommand` produces, including segments from
- * recursively-analyzed interpreter/database-client payloads. An ambiguous
- * analysis (a payload too deep or too large to safely recurse into) is
- * treated as a match — conservative, since we can't rule out a hidden one.
- * For patterns that are themselves shell metacharacters and so cannot
- * decompose into segment tokens (see `isExoticSyntaxPattern`), falls back
- * to a quote-blanked substring check so exact-syntax signatures are still
- * caught.
+ * recursively-analyzed interpreter/database-client payloads. Note this does
+ * NOT special-case an ambiguous analysis (unresolvable executable syntax
+ * elsewhere in the command) as an automatic match — an explicit denylist
+ * hit found in the resolved portion still counts, but ambiguity on its own
+ * is scope.ts's job to route to a confirmation ask via
+ * `resolveCommandAnalysis`, not this function's job to hard-block. For
+ * patterns that are themselves shell metacharacters and so cannot decompose
+ * into segment tokens (see `isExoticSyntaxPattern`), falls back to a
+ * quote-blanked substring check so exact-syntax signatures are still caught.
  */
 export function commandMatchesPhrase(command: string, phrase: string): boolean {
-  const { segments, ambiguous } = analyzeCommand(command);
+  const { segments } = analyzeCommand(command);
   if (segments.some((seg) => segmentMatchesPhrase(seg, phrase))) return true;
-  if (ambiguous) return true;
   if (!isExoticSyntaxPattern(phrase)) return false;
   return blankQuotedSpans(command).toLowerCase().includes(phrase.trim().toLowerCase());
 }
@@ -587,12 +871,11 @@ export function commandMatchesPhrase(command: string, phrase: string): boolean {
  * Does this command invoke `rm` (any path/wrapper form: `rm`, `/bin/rm`,
  * `sudo rm`, `env rm`, `command rm`) with a real target — i.e. anything
  * other than `--help`/`-h`? Runs over every segment `analyzeCommand`
- * produces (including recursively-analyzed interpreter payloads), and
- * treats an ambiguous analysis as a match.
+ * produces (including recursively-analyzed interpreter payloads). Does not
+ * treat an ambiguous analysis as an automatic match — see commandMatchesPhrase.
  */
 export function commandInvokesDelete(command: string): boolean {
-  const { segments, ambiguous } = analyzeCommand(command);
-  if (ambiguous) return true;
+  const { segments } = analyzeCommand(command);
   for (const segment of segments) {
     const invocation = resolveInvocation(segment);
     if (!invocation || invocation.executable !== 'rm') continue;
@@ -613,8 +896,7 @@ export function commandInvokesDelete(command: string): boolean {
  * flag between `git` and `push` (`git -C ./repo push origin main`)?
  */
 export function commandInvokesGitPush(command: string): boolean {
-  const { segments, ambiguous } = analyzeCommand(command);
-  if (ambiguous) return true;
+  const { segments } = analyzeCommand(command);
   return segments.some((segment) => segmentMatchesPhrase(segment, 'git push'));
 }
 
@@ -629,8 +911,7 @@ const DATABASE_WRITE_PATTERNS = [/\bdrop\s+table\b/i, /\bdelete\s+from\b/i, /\bt
  * (`echo "DROP TABLE users"`) stays inert — its text is never scanned.
  */
 export function commandInvokesDatabaseWrite(command: string): boolean {
-  const { segments, ambiguous } = analyzeCommand(command);
-  if (ambiguous) return true;
+  const { segments } = analyzeCommand(command);
   for (const segment of segments) {
     const liveText = segment.tokens
       .filter((t) => !t.quoted)
