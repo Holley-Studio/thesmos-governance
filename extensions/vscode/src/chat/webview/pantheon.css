@@ -94,6 +94,19 @@ html, body {
   min-height: 22px;
 }
 #budget-bar-wrap:hover { background: rgba(212, 169, 65, 0.09); }
+#budget-bar-wrap:focus-visible {
+  outline: 1px solid var(--pc-gold, #d4a941);
+  outline-offset: -1px;
+}
+/* Billing-mode chip — the mode is a first-class label, not tooltip trivia */
+#budget-mode {
+  font-size: 0.72em;
+  color: var(--pc-dim);
+  border: 1px solid var(--pc-border);
+  border-radius: 8px;
+  padding: 0 6px;
+  white-space: nowrap;
+}
 #budget-cost {
   font-size: 0.78em;
   color: var(--pc-dim);
