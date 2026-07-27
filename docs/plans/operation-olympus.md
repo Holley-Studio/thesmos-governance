@@ -307,33 +307,41 @@ One focused branch per PR. Create a branch only when its prerequisite is ready o
 
 ## 12. Exact next action
 
-**PR 1 is implemented** (§14) and open as a draft awaiting independent review. It is not merged.
+**PR 1 is implemented** (§14) and open as a draft. **PR 2 is implemented** (§15) and open as a
+draft. Neither is merged.
 
-**Next: PR 2 — Mission Graph Runtime**, on branch `feat/mission-graph-runtime`.
+**Precondition 1 for PR 2 was waived by the repository owner, not satisfied.** PR 1 (#126) had
+zero submitted reviews when PR 2 began, and still has none. The owner was shown that evidence,
+reaffirmed twice ("can we merge 126 on main and kickoff the next steps", then "do it"), and PR 2
+proceeded on that instruction. This is recorded rather than smoothed over: if review of #126 later
+changes the contract's shape, PR 2's runtime is the thing that pays for it, and whoever picks this
+up should know the risk was taken deliberately rather than missed.
 
-**Preconditions for PR 2, all of which must hold before a branch is created:**
+The merge of #126 itself could not be performed — `gh pr ready` and `gh pr merge` are blocked by
+the local tool-permission gate. PR 2 therefore took the path §12/2 prescribes for the unmerged
+case: branched from `origin/main` (`1a495e8`) and rebased onto `feat/council-contract`, never
+forked from it. **When #126 merges, rebase `feat/mission-graph-runtime` onto `main`** and its diff
+reduces to `thesmos/mission/` plus the two touched files.
 
-1. **PR 1 has been independently reviewed.** PR 2 consumes `CouncilAgentContract`,
-   `AgentHandoff`, and `resolvePermission` directly; building on an unreviewed contract means
-   reworking the runtime if review changes the shape.
-2. **Branch from the latest `origin/main` at that time** — not from `feat/council-contract`, and
-   not from #121/#122/#123. If PR 1 has merged, `main` already carries it; if it has not, PR 2
-   must rebase onto it rather than fork it.
-3. **The public API question is settled.** PR 1 deliberately did *not* export `council/` from
-   `thesmos/index.ts`, to keep the published surface unchanged. PR 2 needs programmatic access, so
-   its first decision is whether to export the barrel (and add it to `tsconfig.build.json`'s
-   include list) or to keep the runtime CLI-internal.
-4. **`.thesmos/config.json` is still guard-protected.** Any runtime configuration PR 2 wants must
-   be designed as absent-key defaults, not as a config edit.
+**Next: PR 3 — Council Records**, on branch `feat/council-records`.
 
-**Scope for PR 2** (from §5/§9 — do not expand): a mission graph that turns a request into a
-DAG of tasks, each bound to one compiled contract, executing under resolved permissions with
-bounded steps and delegation, producing typed handoffs. No Chat UI, no records, no model
-intelligence.
+**Preconditions for PR 3, all of which must hold before a branch is created:**
 
-**Out of scope, still:** Pantheon Chat redesign, model intelligence, Council Records, governed
-packs, checkpoints, semantic indexing, browser automation, incident systems, unified health,
-release proof.
+1. **#126 and the PR 2 draft are both merged, or both reviewed.** PR 3 persists what PR 2
+   produces; building a record format against two unreviewed schemas compounds the risk that
+   §12 has already taken once.
+2. **Branch from the latest `origin/main` at that time.** Same rule as before — never fork from
+   `feat/mission-graph-runtime`.
+3. **The mission state schema is treated as frozen for the record format**, or PR 3 owns the
+   migration. `MISSION_SCHEMA_VERSION` is `1.0.0` and `missionStateHash()` is content-addressed;
+   a record written against one shape must not silently re-hash under another.
+4. **`.thesmos/config.json` is still guard-protected.** Unchanged.
+
+**Scope for PR 3** (from §5/§9 — do not expand): durable, content-addressed records of what a
+mission did — no UI, no model intelligence, no marketplace.
+
+**Out of scope, still:** Pantheon Chat redesign, model intelligence, governed packs, checkpoints,
+semantic indexing, browser automation, incident systems, unified health, release proof.
 
 ---
 
@@ -351,8 +359,10 @@ split into four independently reviewable draft PRs.
 | [#123](https://github.com/Holley-Studio/thesmos-governance/pull/123) | `hardening/proof-gate-blocker-fixtures` | BLOCKER fixture coverage |
 | [#124](https://github.com/Holley-Studio/thesmos-governance/pull/124) | `docs/operation-olympus-ledger` | This ledger (docs-only) |
 
-**Deferred:** PR 2–11. Merging any of #121–#123 (independent review required). Disposition of
-the 29 scanner gaps. Nothing has been tagged, published, or released.
+**Deferred:** PR 3–11. Merging any of #121–#123, #126, and the PR 2 draft (independent review
+required for each). Disposition of the 29 scanner gaps. The `unhandled_promise_rejection`
+heuristic defect recorded in §14.9, which PR 2 re-confirmed independently (§15.7). Nothing has
+been tagged, published, or released.
 
 **Merged since:** #124 (this ledger) as `1a495e8`, which satisfied the PR 1 precondition.
 
@@ -525,3 +535,161 @@ reaches a generated adapter: no agent named individually, no contract field name
 pattern, no evidence category, the 8KB generated-section budget intact for all six targets, and
 adapter output that does not grow when the roster does. Adapters remain thin and deterministic,
 and user content outside the generated markers is preserved.
+
+---
+
+## 15. PR 2 — Mission Graph Runtime (implemented, awaiting review)
+
+Branch `feat/mission-graph-runtime`, based on `origin/main` (`1a495e8`) and rebased onto
+`feat/council-contract` per §12/2. One new module, `thesmos/mission/`, plus two touched files.
+
+### 15.1 What it builds
+
+| File | Responsibility |
+|---|---|
+| `mission/types.ts` | `Mission`, `MissionTask`, `MissionGraph`, `MissionState`, `MISSION_CODES`, issue sorting |
+| `mission/graph.ts` | DAG construction, cycle detection, deterministic topological order and execution layers |
+| `mission/limits.ts` | Minimum-wins bound combination, `StepBudget`, ceiling clamping |
+| `mission/authority.ts` | Task→contract binding, `authorizeTaskAction`, escalation reporting |
+| `mission/state.ts` | Content-addressed mission id and state hash, status rollup |
+| `mission/create.ts` | Request → validated `Mission` |
+| `mission/execute.ts` | The runtime: ordered execution, budget charging, delegation, handoff validation |
+| `mission/index.ts` | Internal barrel |
+
+### 15.2 The public API decision (§12/3 — settled)
+
+**The runtime stays CLI-internal. `council/` is still not exported from `thesmos/index.ts`, and
+`tsconfig.build.json`'s include list is unchanged.**
+
+The decision rests on how the build actually works, not on preference. `thesmos` builds with
+`tsup`, not `tsc`, from three entries: `index.ts` (`dts: true` — the published library), and the
+two bin entries (`dts: false`). Because tsup bundles by following imports, and
+`bin/commands/council.ts` imports `../../council/*.ts` directly, **`council/` already ships inside
+`dist/cli.js` today**. What it is not in is `dist/index.d.ts`.
+
+Four reasons to leave it that way:
+
+1. **No consumer needs it.** The only cross-workspace import of the published library is one
+   symbol — `stripGeneratedRegions`, in `actions/pr-review/src/github.ts:15`. The VS Code
+   extension does not import the library at all; it drives the CLI.
+2. **The CLI already has full access.** Exporting buys the mission runtime nothing it lacks.
+3. **The cost is permanent.** Exporting the barrel adds ~150 symbols to `dist/index.d.ts` on a
+   published `v5.1.0` package — a semver commitment to a contract that is one day old and that
+   PR 3 is likely to move.
+4. **The asymmetry favours waiting.** Exporting later is a minor bump; un-exporting later is a
+   breaking change.
+
+Revisit when a consumer outside the CLI actually needs programmatic access — not before.
+
+### 15.3 A task can never exceed its mission
+
+Every authority question goes through one call: `resolveInheritedPermission(mission.permissions,
+contract.permissions, channel, target)`. There is no second resolver, and no path that consults an
+agent's policy alone. Because the combinator is `mostRestrictive`, the property is structural
+rather than tested-into-place — no rule an agent can write produces a laxer result than its
+mission.
+
+Two consequences worth stating, both pinned by tests:
+
+- **`ask` is not permission.** `TaskAuthorization.permitted` is true only for an outright `allow`.
+- **Silence does not inherit.** A mission that allows `edit:**` does not grant `edit` to an agent
+  whose own policy is silent — silence resolves to `ask`, and `mostRestrictive(allow, ask)` is
+  `ask`. Permission is the intersection of two grants, never the mission's grant alone.
+
+`detectPermissionEscalation` runs at bind time and reports every place a contract claims more than
+its mission. Those are **warnings, not errors**: the resolver has already made the widening
+impossible at execution time, so an escalation is an authoring smell — a rule that will never fire
+— and failing the mission on it would punish an author for a claim the runtime already neutralized.
+
+### 15.4 Bounds
+
+Bounds combine by minimum, in the same spirit as the permission resolver, so combination is
+order-independent — `effectiveTaskLimits(a, b)` equals `effectiveTaskLimits(b, a)`, asserted
+directly. Missions clamp into `COUNCIL_LIMIT_CEILINGS`; contracts clamp into their mission.
+
+`.thesmos/config.json` is guard-protected and was not touched. Absent, malformed, zero, negative,
+`NaN`, and infinite limits all fall back to the published ceiling rather than to zero — a
+malformed limit must not silently disable a task.
+
+Delegation is bounded three ways: `maximumChildren` per task (over-delegation truncates and
+reports, so the tasks that fit still run), `maximumParallelChildren` per wave, and a hard
+`MAX_DELEGATION_DEPTH` of 16 on the parent chain. Delegated ids are checked against every id the
+mission knows about, not only the ones that have already executed.
+
+### 15.5 Determinism
+
+Nothing in a hashed structure reads a clock, a random source, or an environment value.
+
+- **Mission ids** are `sha256:<hex>` over a normalized projection that deliberately excludes
+  everything derived — order, layers, depth. Reordering the declared task list, reordering a
+  `dependsOn` array, or padding the goal with whitespace does not mint a new mission.
+- **State hashes** sort tasks, child ids, and issues before hashing. Asserted explicitly: two runs
+  whose tasks *finish in opposite orders* produce the same state hash. Tasks in a wave may run
+  concurrently, but results are folded back in sorted id order and the budget is charged in that
+  same order, so scheduling cannot leak into the outcome.
+- One hasher — `contentHash` from `agent-ownership.ts`, the same `sha256:<hex>` the contracts use.
+  No second hash format was introduced.
+
+### 15.6 Handoffs
+
+Every task's return value is normalized through `normalizeHandoff` and validated with
+`validateHandoff`, given the executing contract and the known agent roster. A handoff claiming
+`complete` without the evidence its role requires is recorded at its `effectiveStatus`, not the
+status it asserted — and because a dependency is only satisfied by `complete`, a downgraded task
+does not unblock what waits on it. That is asserted directly: a thin handoff downgrades to
+`partial` and its dependent is skipped rather than run.
+
+A handoff naming a different task fails the task outright. A runner that throws is recorded as a
+failed task and the mission continues, so one broken agent cannot take down the report for
+everything that did work. Absolute machine paths are stripped via the `root` option, reusing
+`council/sanitize` rather than reimplementing redaction.
+
+### 15.7 Findings against PR 2
+
+`thesmos review --base=main --severity=BLOCKER`: **0 BLOCKER**. Nothing baselined, nothing
+suppressed — the suppressed-baseline count is 43 both before and after this branch, and
+`.thesmos/baseline.json` is untouched.
+
+PR 2 independently re-derived §14.9's conclusion before writing any code, by reading the source at
+every flagged site rather than trusting the labels: all 109 HIGH findings on the council PR are
+false positives from three heuristics — `unhandled_promise_rejection` firing on `expect(...)`,
+`it('…', async () => {`, and the `*Sync` fs calls; `timing_attack*` firing on the loop variable
+`key` and the function name `sanitizeToken`. That agreement is recorded because it was reached
+independently, not inherited from §14.9. The heuristic defect remains deferred and unbundled, for
+the reason §14.9 gives.
+
+### 15.8 Prompt-context protection, extended (D7)
+
+`council/adapter-context.test.ts` gains a second boundary: a real mission is created, executed, and
+its identifiers, intents, goal, handoff summaries, commands, risks, and state hash are asserted
+absent from all six generated adapters. Adapter output is byte-identical whether or not a mission
+has run, and mission-runtime vocabulary (`MISSION_`, `missionId`, `taskId`, `stepsUsed`,
+`parentTaskId`, `AGENT_HANDOFF`, …) never appears. A mission is richer than a contract; if it
+reached prompt context, every session would pay for state belonging to one run.
+
+### 15.9 Verification
+
+| Gate | Result |
+|---|---|
+| `npm run typecheck` | clean — `thesmos`, `actions/pr-review`, `extensions/vscode` |
+| `npm test` | **4132 passed / 4132**, 133 files |
+| `npm run build` | clean — all three workspaces |
+| `npm run thesmos:validate` | 7 findings, all TECH_DEBT — **0 BLOCKER** |
+| `npm run thesmos:doctor` | 39 checks, all passed |
+| `npm run thesmos:ci-check` | 20 checks, all passed |
+| `git diff --check` | clean |
+
+**105 tests are new**: 93 across the five `mission/` suites, 12 added to
+`council/adapter-context.test.ts` (32 → 44).
+
+**Windows was not executed.** The Windows CI job runs only `guard.cross-platform.test.ts`. Path
+semantics in `mission/` are asserted in unit tests on this platform, not on Windows. That remains
+PR 11 scope, exactly as §14.8 said of PR 1.
+
+### 15.10 What PR 2 deliberately did not do
+
+No CLI command, no Chat UI, no model intelligence, no Council Records, no persistence. The runtime
+is a library with a task-runner seam (`TaskRunner`) that a later PR fills. `executeMission` never
+invokes a model — it schedules, authorizes, bounds, and validates, and calls whatever runner it is
+given. That seam is what keeps model intelligence out of PR 2 while leaving PR 3 somewhere to
+stand.
