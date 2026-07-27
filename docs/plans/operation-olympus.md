@@ -647,16 +647,38 @@ everything that did work. Absolute machine paths are stripped via the `root` opt
 ### 15.7 Findings against PR 2
 
 `thesmos review --base=main --severity=BLOCKER`: **0 BLOCKER**. Nothing baselined, nothing
-suppressed — the suppressed-baseline count is 43 both before and after this branch, and
-`.thesmos/baseline.json` is untouched.
+suppressed, no rule disabled. This branch's own commits touch 15 files — the new `mission/` module,
+`council/adapter-context.test.ts`, and this ledger. No baseline, config, or suppression file is
+among them.
 
-PR 2 independently re-derived §14.9's conclusion before writing any code, by reading the source at
-every flagged site rather than trusting the labels: all 109 HIGH findings on the council PR are
-false positives from three heuristics — `unhandled_promise_rejection` firing on `expect(...)`,
-`it('…', async () => {`, and the `*Sync` fs calls; `timing_attack*` firing on the loop variable
-`key` and the function name `sanitizeToken`. That agreement is recorded because it was reached
-independently, not inherited from §14.9. The heuristic defect remains deferred and unbundled, for
-the reason §14.9 gives.
+Because #126 is unmerged, `--base=main` reports PR 1 and PR 2 together: **499 findings (169 HIGH,
+56 MEDIUM, 267 LOW, 7 TECH_DEBT)**. PR 1 alone accounts for 341 of them (§14.9).
+
+**The scanner caught one real defect, and it was fixed at the cause.**
+`promise_all_no_error_handling` on `mission/execute.ts` was correct: the `try` guarded only the
+runner call, leaving the dependency check, upstream assembly, and context construction outside it.
+A throw from any of those would have rejected the enclosing `Promise.all` and propagated out of
+`executeMission`, destroying the report for every task that had already succeeded — exactly the
+behaviour the executor documents that it will never exhibit. Fixed by guarding the whole callback
+body, plus a wave-level backstop, with two tests pinning the contract. This is the governance
+engine finding a genuine bug in the runtime built to be governed by it, which is the outcome
+dogfooding is for.
+
+**Everything else is the §14.9 heuristic, re-derived independently.** Before writing any code, PR 2
+read the source at every flagged site on PR 1 rather than trusting the labels, and reached §14.9's
+conclusion by itself: `unhandled_promise_rejection` fires on `expect(...)`, `it('…', async () => {`
+and `*Sync` fs calls; `timing_attack*` fires on the loop variable `key` and on the *function name*
+`sanitizeToken`. In `mission/`, the same rules fire on `issues.push(...)` and on
+`sanitizeToken(input.parentTaskId, 64)`; `debt_exponential_loop` fires on `orderTasks`, which is
+Kahn's algorithm at O(V+E) with `Map`-backed lookups, not O(n²).
+
+**A new datum on the heuristic's blast radius,** worth carrying into the fix: adding a single line
+containing `Promise.reject(` to `mission/execute.test.ts` raised that one file's
+`unhandled_promise_rejection` count from ~8 to 41, and the branch total from 127 HIGH to 169. Every
+one of the 41 is an `expect(...)`, an `it('…', async () => {`, or an awaited call, and all of them
+sit *below* the added line. The rule appears to treat one async marker as poisoning the remainder
+of the file. The test was not contorted to avoid it — §14.9's reasoning holds, and loosening a HIGH
+rule inside an unrelated PR is how real findings get lost.
 
 ### 15.8 Prompt-context protection, extended (D7)
 
@@ -672,15 +694,23 @@ reached prompt context, every session would pay for state belonging to one run.
 | Gate | Result |
 |---|---|
 | `npm run typecheck` | clean — `thesmos`, `actions/pr-review`, `extensions/vscode` |
-| `npm test` | **4132 passed / 4132**, 133 files |
+| `npm test` | **4134 passed / 4134**, 133 files |
 | `npm run build` | clean — all three workspaces |
 | `npm run thesmos:validate` | 7 findings, all TECH_DEBT — **0 BLOCKER** |
 | `npm run thesmos:doctor` | 39 checks, all passed |
 | `npm run thesmos:ci-check` | 20 checks, all passed |
+| `thesmos review --base=main --severity=BLOCKER` | **0 BLOCKER** |
 | `git diff --check` | clean |
+| `git status --short` | clean |
 
-**105 tests are new**: 93 across the five `mission/` suites, 12 added to
+**107 tests are new**: 95 across the five `mission/` suites, 12 added to
 `council/adapter-context.test.ts` (32 → 44).
+
+One caveat on the review gate, stated because it nearly produced a false clean: `thesmos review
+--base=main` resolves changed files from the **commit range**, so an uncommitted or untracked
+module is invisible to it. The first run of this branch's review reported zero findings against
+`mission/` for exactly that reason. The numbers in §15.7 are from a run after the module was
+committed. Anyone verifying this branch should commit first, then review.
 
 **Windows was not executed.** The Windows CI job runs only `guard.cross-platform.test.ts`. Path
 semantics in `mission/` are asserted in unit tests on this platform, not on Windows. That remains
