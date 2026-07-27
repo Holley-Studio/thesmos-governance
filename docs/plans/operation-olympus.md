@@ -3,13 +3,13 @@
 > **Single source of truth for the Olympus program.** Do not create competing planning docs.
 > Update this file after every PR. A fresh session should be able to resume from §12 alone.
 >
-> Created 2026-07-27. Status: **Phase 0 / 0A / 0B complete. PR 1 (Council Contract) NOT STARTED.**
+> Created 2026-07-27. Status: **Phase 0 / 0A / 0B complete. PR 1 (Council Contract) IMPLEMENTED —
+> draft PR open, awaiting independent review.** See §14.
 >
-> The pre-Olympus work has been split into four independent draft PRs off `origin/main`:
+> The pre-Olympus work was split into four independent draft PRs off `origin/main`:
 > **#121** Billing Guardian · **#122** config repair hatch (supersedes #115) ·
 > **#123** BLOCKER fixture coverage · **#124** this ledger.
-> None are merged. Council Contract work begins only after this ledger is merged or explicitly
-> approved as the canonical plan.
+> **#124 merged 2026-07-27 as `1a495e8`**, satisfying the PR 1 precondition. #121–#123 remain open.
 
 ---
 
@@ -246,8 +246,8 @@ One focused branch per PR. Create a branch only when its prerequisite is ready o
 
 | PR | Branch | Status |
 |---|---|---|
-| 1 | `feat/council-contract` | **NOT STARTED** ← next |
-| 2 | `feat/mission-graph-runtime` | blocked on PR1 review |
+| 1 | `feat/council-contract` | **IMPLEMENTED — draft PR open, awaiting review** (§14) |
+| 2 | `feat/mission-graph-runtime` | **unblocked once PR1 is reviewed** ← next |
 | 3 | `feat/pantheon-mission-control` | blocked on PR2 |
 | 4 | `feat/model-intelligence` | blocked on PR1 |
 | 5 | `feat/council-records` | blocked on PR2 |
@@ -292,49 +292,48 @@ One focused branch per PR. Create a branch only when its prerequisite is ready o
 3. **`GDPR_007` has no PII check at all** — flags every Sentry call as BLOCKER.
 4. **Cross-platform gates cannot be executed on this host** (macOS/arm64 only). Any such work is
    "implemented; not yet executed on platform X" — never "tested on X".
-5. **Four draft PRs (#121–#124) are awaiting independent review and are unmerged.** Long-lived
-   divergence is exactly what caused the §3.1 near-miss; do not let it recur.
+5. **Three draft PRs (#121–#123) are awaiting independent review and are unmerged** (#124 merged).
+   Long-lived divergence is exactly what caused the §3.1 near-miss; do not let it recur.
 6. **Windows/Linux behavior is unverified.** All work was executed on macOS/arm64. PR #122's Windows
-   path semantics are asserted in unit tests but **not executed on Windows**. Cross-platform CI is
-   PR 11 scope.
+   path semantics, and PR 1's, are asserted in unit tests but **not executed on Windows**.
+   Cross-platform CI is PR 11 scope.
+7. **PR 1 leaves 128 of 128 shipped agents on compatibility-compiled metadata** (§14.7). They are
+   governed and safe, but their safety-critical fields are Thesmos's conservative baseline rather
+   than an author's declared intent. Enrichment is incremental and explicitly not PR 1 scope.
+8. **Role classification is heuristic** (§14.3). It is deterministic and tag-weighted, but a
+   mis-tagged agent lands in the wrong role — visibly, in `agents:list`, not silently.
 
 ---
 
 ## 12. Exact next action
 
-**Execute PR 1 — Council Contract Foundation.** Nothing of PR 1 has been written yet.
+**PR 1 is implemented** (§14) and open as a draft awaiting independent review. It is not merged.
 
-**Precondition:** start only after this ledger (#124) is merged or explicitly approved as the
-canonical plan. Branch from the **latest** `origin/main` at that time — **not** from #121/#122/#123:
+**Next: PR 2 — Mission Graph Runtime**, on branch `feat/mission-graph-runtime`.
 
-```bash
-git checkout -b feat/council-contract origin/main
-```
+**Preconditions for PR 2, all of which must hold before a branch is created:**
 
-Scope (see the Operation Olympus brief for the full type sketch):
+1. **PR 1 has been independently reviewed.** PR 2 consumes `CouncilAgentContract`,
+   `AgentHandoff`, and `resolvePermission` directly; building on an unreviewed contract means
+   reworking the runtime if review changes the shape.
+2. **Branch from the latest `origin/main` at that time** — not from `feat/council-contract`, and
+   not from #121/#122/#123. If PR 1 has merged, `main` already carries it; if it has not, PR 2
+   must rebase onto it rather than fork it.
+3. **The public API question is settled.** PR 1 deliberately did *not* export `council/` from
+   `thesmos/index.ts`, to keep the published surface unchanged. PR 2 needs programmatic access, so
+   its first decision is whether to export the barrel (and add it to `tsconfig.build.json`'s
+   include list) or to keep the runtime CLI-internal.
+4. **`.thesmos/config.json` is still guard-protected.** Any runtime configuration PR 2 wants must
+   be designed as absent-key defaults, not as a config edit.
 
-1. `CouncilAgentContract` types — versioned schema, conservative defaults, `AgentMode`
-   (`primary|subagent|all`), `PermissionDecision` (`allow|ask|deny`), modelPolicy, permissions,
-   limits, scope, risk, evidence, handoff, provenance.
-2. A **backward-compatible compiler** from existing `CatalogFrontmatter` + body → contract, honoring
-   D2/D4/D6.
-3. A deterministic **validator** with stable error codes.
-4. Typed `AgentHandoff` envelope.
-5. CLI: extend `thesmos agents:list` with `--primary` / `--specialists`; add `agent:show`,
-   `agent:validate`, `agents:validate`; all mutations `--dry-run`, atomic, rollback-safe, audited.
-6. Prove the contract on: the 8 primary roles, Zeus, Argus, Athena, Hephaestus, Themis, and **one
-   external user-owned agent fixture**. Do **not** migrate all 67 specialists — document the process.
-7. Tests for all 21 categories in the brief (valid primary, valid subagent, hidden specialist,
-   migration, missing/invalid/unsafe permissions, limits, evidence, provenance, duplicate IDs,
-   external vs managed, determinism, stable hashing, no secret serialization, Windows + POSIX paths,
-   adapter compatibility, round-trip, **no roster payload regression**).
+**Scope for PR 2** (from §5/§9 — do not expand): a mission graph that turns a request into a
+DAG of tasks, each bound to one compiled contract, executing under resolved permissions with
+bounded steps and delegation, producing typed handoffs. No Chat UI, no records, no model
+intelligence.
 
-**Out of scope for PR 1:** mission graph, any Pantheon Chat UI, model intelligence, records, packs,
-checkpoints, indexing, browser, incidents, release proof. Do not bundle later phases.
-
-**Validation required before `READY FOR INDEPENDENT REVIEW`:** the full command battery in the brief
-with **exact counts reported**, plus `git diff --check` and `git status --short`. Nothing merged,
-tagged, published, or released.
+**Out of scope, still:** Pantheon Chat redesign, model intelligence, Council Records, governed
+packs, checkpoints, semantic indexing, browser automation, incident systems, unified health,
+release proof.
 
 ---
 
@@ -352,5 +351,143 @@ split into four independently reviewable draft PRs.
 | [#123](https://github.com/Holley-Studio/thesmos-governance/pull/123) | `hardening/proof-gate-blocker-fixtures` | BLOCKER fixture coverage |
 | [#124](https://github.com/Holley-Studio/thesmos-governance/pull/124) | `docs/operation-olympus-ledger` | This ledger (docs-only) |
 
-**Deferred:** all of PR 1–11. Merging any of #121–#124 (independent review required). Disposition of
-the 29 scanner gaps. Nothing has been merged, tagged, published, or released.
+**Deferred:** PR 2–11. Merging any of #121–#123 (independent review required). Disposition of
+the 29 scanner gaps. Nothing has been tagged, published, or released.
+
+**Merged since:** #124 (this ledger) as `1a495e8`, which satisfied the PR 1 precondition.
+
+---
+
+## 14. PR 1 — Council Contract Foundation (implemented, awaiting review)
+
+Branch `feat/council-contract`, off `origin/main` at `1a495e8`. Draft PR — **not merged**.
+
+### 14.1 What was built
+
+A narrow module family under `thesmos/council/`, plus one CLI command file. Nothing else in the
+repo changed except three CLI wiring files.
+
+| Module | Responsibility |
+|---|---|
+| `contract.ts` | Versioned types, role/mode/decision enums, hard limit ceilings, stable serialization |
+| `matching.ts` | Host-independent path and command normalization, glob matcher, dangerous-shape table |
+| `permissions.ts` | Resolution, inheritance, escalation detection, stable decision codes |
+| `baselines.ts` | Conservative per-role/per-mode permission, limit, and risk baselines |
+| `evidence.ts` | Role-aware evidence categories and handoff field mapping |
+| `roles.ts` | The eight roles, their leads, and deterministic tag-weighted classification |
+| `sanitize.ts` | Untrusted-text handling, secret redaction, machine-path redaction |
+| `compiler.ts` | Frontmatter + ownership + registry → contract |
+| `validate.ts` | Deterministic validation with stable codes |
+| `handoff.ts` | Typed `AgentHandoff`, normalization, validation, Markdown rendering |
+| `load.ts` | Discovery → compilation bridge |
+
+### 14.2 Permission-resolution decision (D3, implemented)
+
+**Most restrictive wins; order-independent.** `deny > ask > allow`. Unmatched → `ask`.
+Unparsable restriction → `deny`. A child may narrow inherited permissions and can never widen
+them, structurally — the combinator is `mostRestrictive`, so no child rule shape produces a laxer
+result than its parent.
+
+Two decisions worth recording because they are not obvious:
+
+- **Restrictive rules match case-insensitively; permissive rules match exactly.** A deny written
+  as `src/*.env` must still hold for `SRC/PROD.ENV` on a case-insensitive volume, while case
+  folding must never *widen* an allow.
+- **Command rules are matched as text.** No shell parsing, no operator splitting, no variable
+  expansion. A contract that wants to reason about `a && b` must say so.
+
+### 14.3 Classification
+
+Tag-weighted scoring, not first-match, with the free-text `role:` and `description:` lines
+contributing at half weight. First-match would file Themis (legal, contracts, **compliance**, tos,
+nda) under Security; weighted scoring files it under Operations. Ties break on the fixed role
+order. Unclassifiable agents fall back to `operations` — chosen because its baseline grants the
+least — and the fallback is recorded as a compile note.
+
+Reading `description:` matters more than it looks: exported Claude-format agent documents carry no
+`tags:`, so without it every exported agent collapsed into the fallback role.
+
+### 14.4 Evidence and handoff model
+
+Eight role-aware baselines, mechanically asserted to be distinct
+(`evidenceBaselinesAreDistinct()`), because a shared list would be easy to write and worth nothing.
+`AgentHandoff` v1.0.0 is normalized (dedup, sort, path-fold, redact) then validated; a handoff
+claiming `complete` without its contract's required evidence is reported **and** downgraded to
+`partial`, so a caller reading only the status still cannot be misled.
+
+### 14.5 Compatibility strategy (D2/D4)
+
+Declaring contract metadata is opt-in via flat `council_*` frontmatter keys — flat because the
+catalog's frontmatter parser is a line-based YAML subset that flattens nesting.
+
+`provenance.derivation` records **intent, not outcome**. An author who declares any `council_*` key
+owns every safety-critical field; a partial declaration stays `explicit` and fails validation.
+An earlier iteration relabelled partial declarations as `compatibility`, which made
+`COUNCIL_MISSING_SAFETY_METADATA` unreachable — caught by the CLI exit-code test, not by review.
+
+### 14.6 Agents proven
+
+128 contracts compiled from the shipped catalog, **0 errors**. Explicitly asserted: Zeus, Argus,
+Athena, Hephaestus, Themis; all eight role leads selectable (`mode != subagent`, `hidden: false`);
+every primary role covered; and one external user-owned agent fixture that stays external,
+unmodified on disk, and absent from the ownership manifest.
+
+### 14.7 Not migrated
+
+**All 128** remain compatibility-compiled — their safety-critical fields are the conservative role
+baseline, not declared intent. This is the documented migration path, not an oversight: PR 1's
+mandate was to govern the existing roster without rewriting it. `thesmos agents:validate --migration`
+reports exactly which agents and which fields, and writes nothing.
+
+### 14.8 Tests
+
+**314 new tests** across 11 files; full workspace **4,024 passing** (128 files).
+
+| Suite | Tests |
+|---|---|
+| `council/matching.test.ts` | 48 |
+| `council/validate.test.ts` | 49 |
+| `council/handoff.test.ts` | 33 |
+| `council/compiler.test.ts` | 32 |
+| `council/sanitize.test.ts` | 31 |
+| `council/catalog-proof.test.ts` | 29 |
+| `council/adapter-context.test.ts` | 29 |
+| `council/permissions.test.ts` | 27 |
+| `bin/commands/council.test.ts` | 22 |
+| `council/load.test.ts` | 14 |
+
+Other suites: `extensions/vscode` 93, `actions/pr-review` 108, `thesmos:validate` exit 0
+(7 TECH_DEBT, 0 BLOCKER), `thesmos:doctor` 39/39, `thesmos:ci-check` 20/20.
+
+### 14.9 Security review
+
+| Vector | Finding |
+|---|---|
+| Broad later rule overriding a deny | **Not possible.** Order-independent; proven across every permutation of a rule set. |
+| Child expanding parent permissions | **Not possible** structurally; `detectPermissionEscalation` also reports attempts, conservatively. |
+| Missing metadata becoming allow | **No.** Unmatched → `ask`; missing channel → validation error; baseline never grants `edit`. |
+| Malformed pattern failing open | **No.** Unparsable restriction → `deny`; unparsable grant → ignored. |
+| Windows form bypassing a POSIX-tested deny | **No.** Separators, drive letters, and UNC prefixes fold before matching; restrictive rules also fold case. |
+| External agent auto-adopted | **No.** Compilation is read-only; ownership comes from the manifest. Managed-namespace files absent from the manifest stay external. |
+| Duplicate normalized id silently replacing an agent | **No.** `COUNCIL_ID_DUPLICATE` is an error; loading dedups by documented precedence. |
+| Source path escaping the repo | **No.** Absolute paths are relativized or reduced to a basename; `..` and absolute forms are validation errors. |
+| Frontmatter injecting executable config | **No.** Only known keys are read; unknown keys are ignored entirely. |
+| Untrusted Markdown altering permission semantics | **No.** Permissions come from `council_*` keys and the baseline; body text is never parsed for policy. |
+| Description breaking generated adapter structure | **No.** Markers, comment terminators, fences, and HTML are neutralized; descriptions are single-line and length-capped. |
+| Control sequences reaching a terminal or webview | **No.** ANSI sequences and C0/C1 controls are stripped from every displayed field. |
+| Secrets serialized into contracts/reports/handoffs | **No.** Redaction on emission, plus `COUNCIL_SECRET_SERIALIZED` / `HANDOFF_SECRET_SERIALIZED` as an independent second gate. Council patterns are asserted to be a superset of `CONFIG_DEFAULTS.secretPatterns` so the two lists cannot drift. |
+| Absolute machine paths exposed | **No.** Home paths keep their shape with the username removed; unrelated absolute paths degrade to a basename. |
+| Resource abuse | **Bounded.** Pattern length 512, target 4096, 64 segments, 256 chars per segment, 8 globstars; steps ≤ 200, children ≤ 16, parallel ≤ 8, timeout ≤ 1h. The segment-length cap was added specifically to bound intra-segment backtracking. |
+| One malformed agent failing the catalog | **No.** Compilation never throws; unreadable documents are reported in `unreadable`, not swallowed. |
+
+**Residual risk:** cross-platform behavior is asserted semantically on macOS/arm64 — the Windows
+path tests are pure-function tests that do not touch `node:path` or the filesystem, so they prove
+*semantics*, not Windows execution. That remains PR 11 scope (§11.6).
+
+### 14.10 Prompt-context protection (D7)
+
+`thesmos/council/adapter-context.test.ts` fails if any compiled-contract payload or roster listing
+reaches a generated adapter: no agent named individually, no contract field name, no permission
+pattern, no evidence category, the 8KB generated-section budget intact for all six targets, and
+adapter output that does not grow when the roster does. Adapters remain thin and deterministic,
+and user content outside the generated markers is preserved.
