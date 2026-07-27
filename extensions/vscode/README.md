@@ -21,7 +21,7 @@ Thesmos Governance enforces 1,137+ AI-coding rules across your repo — catching
 - **AI Adapter Sync** — regenerate Claude, Cursor, Copilot, and Gemini config files from one command
 - **Autopilot** — Claude Code session orchestration with journal, diff review, and one-click PR
 - **Agent Scope** — lock Claude Code to allowed paths and commands to prevent runaway AI edits
-- **Token Budget** — track and limit Claude Code token spend per session
+- **Token Budget (billing-aware Budget Guardian)** — track estimated AI usage per session and enforce a real spending ceiling on confirmed metered API connections. Costs are computed from token counts, so on subscription-backed sessions (Claude Pro/Max/Team/Enterprise) the figure is an **API-equivalent usage estimate, not a charge** — those sessions are never blocked; they get advisories instead. Unverified connections stay advisory and ask you to classify them. See "Budget Guardian billing modes" below.
 - **Commit Lint** — validate commit messages against Conventional Commits before push
 - **Import Scan** — supply-chain check for suspicious or unvetted npm packages
 - **AI Debt Scanner** — quantify and surface accumulated AI tech debt
@@ -113,6 +113,26 @@ All settings are under **Settings → Extensions → Thesmos Governance**:
 | `thesmos.binaryPath` | `""` | Absolute path to thesmos binary (leave empty for auto-detect) |
 | `thesmos.autoScan` | `false` | Auto-run scan on activation when no report exists |
 | `thesmos.autopilot.baseBranch` | `"main"` | Base branch to diff against in autopilot review |
+
+### Budget Guardian billing modes
+
+Pantheon Chat shows a budget bar fed by the Claude Code CLI's cumulative `total_cost_usd`. That
+number is always an **estimate computed from token counts** — the CLI reports it for every auth
+mode, so on a subscription login it is an *API-equivalent* figure, not money you spent. The
+Budget Guardian therefore distinguishes three modes (configure in `.thesmos/config.json` →
+`tokenBudget.billingMode`, or click the budget bar and pick one):
+
+| Mode | Bar label | Behavior |
+|------|-----------|----------|
+| `subscription` | `Subscription · ~$30.06 API equivalent · Advisory only` | Never blocks on the estimate. Advisory at `subscriptionWarningEquivalentUSD` (default $30). Provider usage limits (e.g. Claude weekly limits) still apply — subscription use is not unlimited. |
+| `metered` | `Metered API · ~$12.40 / $15.00` | Real spend protection: warns at `warnAtFraction` (default 0.8) of `sessionMaxCostUSD`, hard-pauses new prompts at the ceiling. Raise the ceiling (budget-bar action) and the same session continues immediately. |
+| `auto` (default) | `Billing unknown · ~$8.21 estimated` | Detects from provider/session auth metadata: linked GLM/Kimi/DeepSeek keys and API-key-authenticated Claude sessions classify as metered; everything unverified (including OAuth logins, which may be a subscription **or** a metered Console account, and custom proxies) stays advisory and asks you to classify. Unknown never silently becomes either mode. |
+
+Old configs that only set `sessionMaxCostUSD` are treated as `auto` — they are **not**
+reinterpreted as confirmed metered billing. Billing-mode changes and ceiling changes apply on the
+next prompt without restarting VS Code; queued prompts re-check the ceiling before dispatching.
+The same rule applies to the CLI-side `thesmos claude:govern` hook: cost ceilings hard-stop only
+in `metered` mode (token-count ceilings still apply everywhere).
 
 ---
 

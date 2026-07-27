@@ -2,6 +2,31 @@
 
 All notable changes to the Thesmos Governance VS Code extension are documented here.
 
+## [Unreleased]
+
+### Fixed
+
+- **Billing-aware Budget Guardian** — Pantheon Chat no longer treats the CLI's cumulative
+  `total_cost_usd` as actual billed spend. Subscription-backed sessions (Claude Pro/Max/Team/
+  Enterprise) are **never blocked** by the API-equivalent usage estimate; they receive advisories
+  instead. Confirmed metered API connections keep the configurable hard ceiling
+  (`tokenBudget.sessionMaxCostUSD`), and unverified connections stay advisory with a one-click
+  prompt to classify the billing mode (persisted per provider). Queued prompts now re-check the
+  ceiling before dispatching, and raising the ceiling or switching billing mode takes effect
+  immediately — no VS Code restart.
+
+### Added
+
+- Budget bar now shows the billing mode as a first-class label (`Subscription · ~$30.06 API
+  equivalent · Advisory only` / `Metered API · ~$12.40 / $15.00` / `Billing unknown · ~$8.21
+  estimated`), is keyboard-operable (role=button, Enter/Space), and opens a focused action menu:
+  Set as subscription · Set as metered API · Reset to auto-detect · Raise metered ceiling ·
+  Open budget configuration · Start new session.
+- `tokenBudget.billingMode` (`auto` | `subscription` | `metered`),
+  `tokenBudget.subscriptionWarningEquivalentUSD`, and `tokenBudget.warnAtFraction` in
+  `.thesmos/config.json`, now fully described in `thesmos/config.schema.json` (which previously
+  did not define `tokenBudget` at all). Old configs behave as `auto` — never as confirmed metered.
+
 ## [1.8.0] - 2026-07-02
 
 ### Added
