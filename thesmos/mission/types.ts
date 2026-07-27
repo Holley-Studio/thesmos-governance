@@ -15,6 +15,7 @@ import type {
   CouncilAgentContract,
   CouncilLimits,
   CouncilPermissionChannel,
+  CouncilPermissionDecision,
   CouncilPermissionPolicy,
 } from '../council/contract.js';
 import type { AgentHandoff } from '../council/handoff.js';
@@ -49,12 +50,18 @@ export const MISSION_CODES = {
   limitChildrenExceeded: 'MISSION_LIMIT_CHILDREN_EXCEEDED',
   limitParallelExceeded: 'MISSION_LIMIT_PARALLEL_EXCEEDED',
   limitDepthExceeded: 'MISSION_LIMIT_DEPTH_EXCEEDED',
+  limitTasksExceeded: 'MISSION_LIMIT_TASKS_EXCEEDED',
+  limitDependenciesExceeded: 'MISSION_LIMIT_DEPENDENCIES_EXCEEDED',
 
   // Handoffs
   handoffMissing: 'MISSION_HANDOFF_MISSING',
   handoffInvalid: 'MISSION_HANDOFF_INVALID',
   handoffTaskMismatch: 'MISSION_HANDOFF_TASK_MISMATCH',
+  handoffMissionMismatch: 'MISSION_HANDOFF_MISSION_MISMATCH',
   handoffDowngraded: 'MISSION_HANDOFF_DOWNGRADED',
+
+  // Execution integrity
+  foldFailed: 'MISSION_FOLD_FAILED',
 
   // Execution
   dependencyUnsatisfied: 'MISSION_DEPENDENCY_UNSATISFIED',
@@ -174,6 +181,21 @@ export type MissionTaskStatus =
 
 export type MissionStatus = 'complete' | 'partial' | 'blocked' | 'failed';
 
+/**
+ * One authority question a task asked, and what it was told.
+ *
+ * Recorded whether or not the runner honoured the answer. A runtime that
+ * answered `deny` and then said nothing about it in the report would make the
+ * refusal unauditable — the decision has to survive even a runner that ignores
+ * it. Deliberately compact: no reason string, so the record stays hashable and
+ * bounded.
+ */
+export interface TaskAuthorizationRecord {
+  channel: CouncilPermissionChannel;
+  target: string;
+  decision: CouncilPermissionDecision;
+}
+
 export interface MissionTaskState {
   taskId: string;
   agentId: string;
@@ -182,6 +204,15 @@ export interface MissionTaskState {
   stepsUsed: number;
   /** Ids of tasks this task delegated into existence. */
   childTaskIds: string[];
+  /**
+   * The bounds this task actually ran under — the minimum of the mission's and
+   * its contract's. Recorded because a contract whose limits changed changes
+   * what the run means, and a state hash blind to that would call two
+   * materially different runs identical.
+   */
+  limits: CouncilLimits;
+  /** Every authority question this task asked, deduplicated and sorted. */
+  authorizations: TaskAuthorizationRecord[];
   /** Present only when the task produced one and it survived validation. */
   handoff?: AgentHandoff;
   issues: MissionIssue[];

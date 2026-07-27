@@ -28,10 +28,16 @@ export {
   type MissionTaskState,
   type MissionTaskStatus,
   type TaskAuthorization,
+  type TaskAuthorizationRecord,
   type TaskBinding,
 } from './types.js';
 
-export { MAX_DELEGATION_DEPTH, buildMissionGraph } from './graph.js';
+export {
+  MAX_DELEGATION_DEPTH,
+  MAX_MISSION_TASKS,
+  MAX_TASK_DEPENDENCIES,
+  buildMissionGraph,
+} from './graph.js';
 
 export {
   DEFAULT_MISSION_LIMITS,

@@ -36,6 +36,8 @@ function taskState(overrides: Partial<MissionTaskState>): MissionTaskState {
     status: 'complete',
     stepsUsed: 1,
     childTaskIds: [],
+    limits: LIMITS,
+    authorizations: [],
     issues: [],
     ...overrides,
   };
@@ -137,6 +139,54 @@ describe('state hash', () => {
     const cheap = stateWith([taskState({ stepsUsed: 1 })]);
     const dear = stateWith([taskState({ stepsUsed: 9 })]);
     expect(missionStateHash(dear)).not.toBe(missionStateHash(cheap));
+  });
+
+  it('changes when the effective limits a task ran under change', () => {
+    const wide = stateWith([taskState({ limits: LIMITS })]);
+    const narrow = stateWith([taskState({ limits: { ...LIMITS, maximumSteps: 3 } })]);
+    expect(missionStateHash(narrow)).not.toBe(missionStateHash(wide));
+  });
+
+  it('changes when an authority decision changes', () => {
+    const allowed = stateWith([
+      taskState({ authorizations: [{ channel: 'edit', target: 'a.ts', decision: 'allow' }] }),
+    ]);
+    const denied = stateWith([
+      taskState({ authorizations: [{ channel: 'edit', target: 'a.ts', decision: 'deny' }] }),
+    ]);
+    expect(missionStateHash(denied)).not.toBe(missionStateHash(allowed));
+  });
+
+  it('does not depend on the order authority questions were asked in', () => {
+    const forward = stateWith([
+      taskState({
+        authorizations: [
+          { channel: 'edit', target: 'a.ts', decision: 'allow' },
+          { channel: 'read', target: 'b.ts', decision: 'deny' },
+        ],
+      }),
+    ]);
+    const reversed = stateWith([
+      taskState({
+        authorizations: [
+          { channel: 'read', target: 'b.ts', decision: 'deny' },
+          { channel: 'edit', target: 'a.ts', decision: 'allow' },
+        ],
+      }),
+    ]);
+    expect(missionStateHash(reversed)).toBe(missionStateHash(forward));
+  });
+
+  it('changes when a task id changes, proving identity is sealed', () => {
+    const a = stateWith([taskState({ taskId: 'a' })]);
+    const b = stateWith([taskState({ taskId: 'z' })]);
+    expect(missionStateHash(b)).not.toBe(missionStateHash(a));
+  });
+
+  it('changes when the agent assigned to a task changes', () => {
+    const one = stateWith([taskState({ agentId: 'alpha' })]);
+    const two = stateWith([taskState({ agentId: 'beta' })]);
+    expect(missionStateHash(two)).not.toBe(missionStateHash(one));
   });
 });
 

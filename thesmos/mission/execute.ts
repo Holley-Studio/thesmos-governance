@@ -27,7 +27,7 @@ import {
 } from '../council/handoff.js';
 import { sanitizeToken } from '../council/sanitize.js';
 import { authorizationIssue, authorizeTaskAction, bindMission } from './authority.js';
-import { MAX_DELEGATION_DEPTH, buildMissionGraph } from './graph.js';
+import { MAX_DELEGATION_DEPTH, MAX_MISSION_TASKS, buildMissionGraph } from './graph.js';
 import {
   StepBudget,
   childrenExceededIssue,
@@ -47,6 +47,7 @@ import {
   type MissionTaskState,
   type MissionTaskStatus,
   type TaskAuthorization,
+  type TaskAuthorizationRecord,
   type TaskBinding,
 } from './types.js';
 
@@ -90,6 +91,15 @@ export interface MissionExecutionResult {
 
 /** One extra round beyond the depth ceiling, so the breach is reported. */
 const MAX_ROUNDS = MAX_DELEGATION_DEPTH + 1;
+
+/**
+ * Cap on authority questions recorded per task.
+ *
+ * A runner that probes in a loop must not be able to grow the mission state
+ * without bound. Records are deduplicated as well, so this ceiling is only
+ * reached by a task asking about genuinely distinct targets.
+ */
+const MAX_AUTHORIZATION_RECORDS = 256;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -141,7 +151,6 @@ export async function executeMission(
   const budget = new StepBudget(mission.limits.maximumSteps);
   const states = new Map<string, MissionTaskState>();
   const handoffs = new Map<string, AgentHandoff>();
-  const childrenByParent = new Map<string, string[]>();
 
   let allInputs = taskInputsOf(mission);
   const knownIds = new Set(allInputs.map((t) => t.id));
@@ -180,7 +189,12 @@ export async function executeMission(
       const queue = [...pending].sort();
       while (queue.length > 0) {
         const chunk = queue.splice(0, Math.max(1, Math.min(width, budget.remaining || 1)));
-        const dispatched: Array<{ id: string; result?: TaskRunResult; error?: unknown }> = [];
+        const dispatched: Array<{
+          id: string;
+          result?: TaskRunResult;
+          error?: unknown;
+          authorizations?: TaskAuthorizationRecord[];
+        }> = [];
 
         // Two layers, deliberately. The inner guard covers the whole callback
         // body rather than just the runner call, so every dispatch resolves and
@@ -191,37 +205,50 @@ export async function executeMission(
         try {
           await Promise.all(
             chunk.map(async (id) => {
+              const authorizations: TaskAuthorizationRecord[] = [];
               try {
-              const bound = bindingsByAgent.get(id);
-              if (!bound) return;
+                const bound = bindingsByAgent.get(id);
+                if (!bound) return;
 
-              const edges = [
-                ...bound.task.dependsOn,
-                ...(bound.task.parentTaskId ? [bound.task.parentTaskId] : []),
-              ];
-              if (unmetDependencies(edges, states).length > 0 || budget.exhausted) {
-                dispatched.push({ id });
-                return;
-              }
+                const edges = [
+                  ...bound.task.dependsOn,
+                  ...(bound.task.parentTaskId ? [bound.task.parentTaskId] : []),
+                ];
+                if (unmetDependencies(edges, states).length > 0 || budget.exhausted) {
+                  dispatched.push({ id });
+                  return;
+                }
 
-              const upstream = edges
-                .slice()
-                .sort()
-                .map((dep) => handoffs.get(dep))
-                .filter((h): h is AgentHandoff => h !== undefined);
+                const upstream = edges
+                  .slice()
+                  .sort()
+                  .map((dep) => handoffs.get(dep))
+                  .filter((h): h is AgentHandoff => h !== undefined);
 
-              const ctx: TaskRunContext = {
-                mission,
-                binding: bound,
-                upstream,
-                stepsRemaining: budget.remaining,
-                authorize: (channel, target) =>
-                  authorizeTaskAction(mission, bound, channel, target),
-              };
+                const ctx: TaskRunContext = {
+                  mission,
+                  binding: bound,
+                  upstream,
+                  stepsRemaining: budget.remaining,
+                  // Every answer is recorded, honoured or not. A `deny` the
+                  // runner ignored still has to appear in the report, or the
+                  // refusal is unauditable.
+                  authorize: (channel, target) => {
+                    const auth = authorizeTaskAction(mission, bound, channel, target);
+                    if (authorizations.length < MAX_AUTHORIZATION_RECORDS) {
+                      authorizations.push({
+                        channel: auth.channel,
+                        target: auth.target,
+                        decision: auth.resolution.decision,
+                      });
+                    }
+                    return auth;
+                  },
+                };
 
-                dispatched.push({ id, result: await options.runTask(ctx) });
+                dispatched.push({ id, result: await options.runTask(ctx), authorizations });
               } catch (error) {
-                dispatched.push({ id, error });
+                dispatched.push({ id, error, authorizations });
               }
             })
           );
@@ -237,28 +264,58 @@ export async function executeMission(
           );
         }
 
-        // Fold results back deterministically.
+        // Fold results back deterministically. Guarded per task: normalization,
+        // validation, and delegation all run here, and a throw from any of them
+        // would otherwise abandon the whole mission mid-wave.
         for (const id of chunk) {
           const bound = bindingsByAgent.get(id);
           if (!bound) continue;
           const entry = dispatched.find((d) => d.id === id);
-          const taskState = foldTaskResult({
-            bound,
-            entry,
-            states,
-            budget,
-            knownAgentIds,
-            ...(options.root ? { root: options.root } : {}),
-          });
 
-          states.set(id, taskState);
-          if (taskState.handoff) handoffs.set(id, taskState.handoff);
+          try {
+            const taskState = foldTaskResult({
+              mission,
+              bound,
+              entry,
+              states,
+              budget,
+              knownAgentIds,
+              ...(options.root ? { root: options.root } : {}),
+            });
 
-          const accepted = acceptDelegations(bound, entry?.result?.delegated ?? [], knownIds);
-          delegatedThisRound.push(...accepted.tasks);
-          taskState.childTaskIds = accepted.tasks.map((t) => t.id).sort();
-          taskState.issues.push(...accepted.issues);
-          childrenByParent.set(id, taskState.childTaskIds);
+            states.set(id, taskState);
+            if (taskState.handoff) handoffs.set(id, taskState.handoff);
+
+            const remainingTaskSlots = MAX_MISSION_TASKS - knownIds.size;
+            const accepted = acceptDelegations(
+              bound,
+              entry?.result?.delegated ?? [],
+              knownIds,
+              remainingTaskSlots
+            );
+            delegatedThisRound.push(...accepted.tasks);
+            taskState.childTaskIds = accepted.tasks.map((t) => t.id).sort();
+            taskState.issues.push(...accepted.issues);
+          } catch (error) {
+            states.set(id, {
+              taskId: id,
+              agentId: bound.task.agentId,
+              status: 'failed',
+              stepsUsed: 0,
+              childTaskIds: [],
+              limits: bound.limits,
+              authorizations: [],
+              issues: [
+                missionIssue(
+                  MISSION_CODES.foldFailed,
+                  'error',
+                  `tasks.${id}`,
+                  `recording the result failed: ${error instanceof Error ? error.message : String(error)}`,
+                  'this indicates a defect in the executor, not in the task'
+                ),
+              ],
+            });
+          }
         }
       }
     }
@@ -289,18 +346,60 @@ export async function executeMission(
     tasks: taskStates.map((t) => ({ ...t, issues: sortMissionIssues(t.issues) })),
   };
 
-  return { state, stateHash: missionStateHash(state), issues: state.issues };
+  // Hashing is the last thing that can fail, and a report without a hash is
+  // still worth more than a rejected promise. An empty digest is an unmistakable
+  // signal that the state could not be sealed.
+  let stateHash = '';
+  try {
+    stateHash = missionStateHash(state);
+  } catch (error) {
+    state.issues = sortMissionIssues([
+      ...state.issues,
+      missionIssue(
+        MISSION_CODES.foldFailed,
+        'error',
+        'stateHash',
+        `mission state could not be hashed: ${error instanceof Error ? error.message : String(error)}`,
+        'the report is complete but unsealed — treat it as unverified'
+      ),
+    ]);
+  }
+
+  return { state, stateHash, issues: state.issues };
 }
 
 // ── Result folding ────────────────────────────────────────────────────────────
 
 interface FoldArgs {
+  mission: Mission;
   bound: TaskBinding;
-  entry: { id: string; result?: TaskRunResult; error?: unknown } | undefined;
+  entry:
+    | {
+        id: string;
+        result?: TaskRunResult;
+        error?: unknown;
+        authorizations?: TaskAuthorizationRecord[];
+      }
+    | undefined;
   states: ReadonlyMap<string, MissionTaskState>;
   budget: StepBudget;
   knownAgentIds: readonly string[];
   root?: string;
+}
+
+/** Deduplicated and ordered, so the record is stable and hashable. */
+function normalizeAuthorizations(
+  records: readonly TaskAuthorizationRecord[] | undefined
+): TaskAuthorizationRecord[] {
+  if (!records || records.length === 0) return [];
+  const seen = new Map<string, TaskAuthorizationRecord>();
+  for (const r of records) seen.set(`${r.channel} ${r.target} ${r.decision}`, r);
+  return [...seen.values()].sort(
+    (a, b) =>
+      a.channel.localeCompare(b.channel) ||
+      a.target.localeCompare(b.target) ||
+      a.decision.localeCompare(b.decision)
+  );
 }
 
 /**
@@ -311,9 +410,28 @@ interface FoldArgs {
  * is the whole point of validating here rather than trusting the runner.
  */
 function foldTaskResult(args: FoldArgs): MissionTaskState {
-  const { bound, entry, states, budget, knownAgentIds, root } = args;
+  const { mission, bound, entry, states, budget, knownAgentIds, root } = args;
   const task = bound.task;
   const issues: MissionIssue[] = [];
+  const authorizations = normalizeAuthorizations(entry?.authorizations);
+
+  // Any answer that was not an outright `allow` is surfaced, whether or not the
+  // runner acted on it. `ask` is a question the runtime cannot answer alone.
+  for (const record of authorizations) {
+    if (record.decision === 'allow') continue;
+    const denied = record.decision === 'deny';
+    issues.push(
+      missionIssue(
+        denied ? MISSION_CODES.actionDenied : MISSION_CODES.actionConfirmationRequired,
+        denied ? 'error' : 'warning',
+        `tasks.${task.id}.${record.channel}`,
+        `${record.channel}:${record.target} resolved to ${record.decision}`,
+        denied
+          ? 'grant the channel on the mission and the agent, or drop the action'
+          : 'confirm the action before the task proceeds'
+      )
+    );
+  }
 
   const base: MissionTaskState = {
     taskId: task.id,
@@ -321,6 +439,8 @@ function foldTaskResult(args: FoldArgs): MissionTaskState {
     status: 'pending',
     stepsUsed: 0,
     childTaskIds: [],
+    limits: bound.limits,
+    authorizations,
     issues,
   };
 
@@ -372,7 +492,26 @@ function foldTaskResult(args: FoldArgs): MissionTaskState {
 
   const result = entry.result as TaskRunResult;
   const requested = Math.max(1, Math.floor(result.stepsUsed ?? 1));
-  const charged = budget.charge(requested);
+
+  // The task's own ceiling is the effective one — the minimum of the mission's
+  // and its contract's. Charging the mission budget alone would let an agent
+  // that narrowed itself to a handful of steps spend the whole mission.
+  const taskCeiling = bound.limits.maximumSteps;
+  const overTaskCeiling = requested > taskCeiling;
+  const chargeable = Math.min(requested, taskCeiling);
+  if (overTaskCeiling) {
+    issues.push(
+      missionIssue(
+        MISSION_CODES.limitStepsExceeded,
+        'error',
+        `tasks.${task.id}`,
+        `task consumed ${requested} steps, exceeding its effective limit of ${taskCeiling}`,
+        'raise `council_max_steps` on the agent and the mission, or split the task'
+      )
+    );
+  }
+
+  const charged = budget.charge(chargeable);
   if (!charged) issues.push(stepsExceededIssue(task.id, budget.used));
 
   const handoff = normalizeHandoff(result.handoff, root);
@@ -394,7 +533,8 @@ function foldTaskResult(args: FoldArgs): MissionTaskState {
     );
   }
 
-  if (handoff.taskId !== task.id) {
+  const taskMismatched = handoff.taskId !== task.id;
+  if (taskMismatched) {
     issues.push(
       missionIssue(
         MISSION_CODES.handoffTaskMismatch,
@@ -402,6 +542,22 @@ function foldTaskResult(args: FoldArgs): MissionTaskState {
         `tasks.${task.id}.handoff.taskId`,
         `handoff reports task "${handoff.taskId}" but was produced for "${task.id}"`,
         'set handoff.taskId to the task it belongs to'
+      )
+    );
+  }
+
+  // A handoff carrying another mission's id is either a routing bug or a forged
+  // result. Either way it must not be recorded as proof under this mission's
+  // permission envelope.
+  const missionMismatched = handoff.missionId !== mission.id;
+  if (missionMismatched) {
+    issues.push(
+      missionIssue(
+        MISSION_CODES.handoffMissionMismatch,
+        'error',
+        `tasks.${task.id}.handoff.missionId`,
+        `handoff reports a different mission than the one that dispatched it`,
+        'set handoff.missionId to the mission the task belongs to'
       )
     );
   }
@@ -418,16 +574,18 @@ function foldTaskResult(args: FoldArgs): MissionTaskState {
     );
   }
 
-  const mismatched = handoff.taskId !== task.id;
   const status: MissionTaskStatus =
-    mismatched || (!charged && validation.effectiveStatus === 'complete')
+    taskMismatched ||
+    missionMismatched ||
+    overTaskCeiling ||
+    (!charged && validation.effectiveStatus === 'complete')
       ? 'failed'
       : validation.effectiveStatus;
 
   return {
     ...base,
     status,
-    stepsUsed: requested,
+    stepsUsed: chargeable,
     handoff,
     issues,
   };
@@ -445,20 +603,37 @@ function foldTaskResult(args: FoldArgs): MissionTaskState {
 function acceptDelegations(
   bound: TaskBinding,
   requested: readonly MissionTaskInput[],
-  knownIds: Set<string>
+  knownIds: Set<string>,
+  remainingTaskSlots: number
 ): { tasks: MissionTaskInput[]; issues: MissionIssue[] } {
   if (requested.length === 0) return { tasks: [], issues: [] };
 
   const issues: MissionIssue[] = [];
-  const ceiling = bound.limits.maximumChildren;
+  const childCeiling = bound.limits.maximumChildren;
   const ordered = [...requested].sort((a, b) => String(a?.id).localeCompare(String(b?.id)));
 
-  if (ordered.length > ceiling) {
-    issues.push(childrenExceededIssue(bound.task.id, ordered.length, ceiling));
+  if (ordered.length > childCeiling) {
+    issues.push(childrenExceededIssue(bound.task.id, ordered.length, childCeiling));
+  }
+
+  // Per-task children and whole-mission tasks are separate ceilings. Depth alone
+  // does not bound a graph whose generations multiply, so the mission-wide slot
+  // count is what actually stops runaway delegation.
+  const slots = Math.max(0, Math.min(childCeiling, remainingTaskSlots));
+  if (slots < Math.min(ordered.length, childCeiling)) {
+    issues.push(
+      missionIssue(
+        MISSION_CODES.limitTasksExceeded,
+        'error',
+        `tasks.${bound.task.id}.children`,
+        `delegation refused: the mission is at its ceiling of ${MAX_MISSION_TASKS} tasks`,
+        'split the work across missions — this ceiling is compiled in and not configurable'
+      )
+    );
   }
 
   const admitted: MissionTaskInput[] = [];
-  for (const child of ordered.slice(0, ceiling)) {
+  for (const child of ordered.slice(0, slots)) {
     if (!child || typeof child.id !== 'string') continue;
     // Checked against every id the mission knows about, not just the ones that
     // have run — a child colliding with a task still queued is just as broken.

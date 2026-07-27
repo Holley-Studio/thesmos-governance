@@ -257,6 +257,23 @@ describe('handoff validation', () => {
     expect(a?.issues.map((i) => i.code)).toContain(MISSION_CODES.handoffTaskMismatch);
   });
 
+  it('fails a task whose handoff names a different mission', async () => {
+    // A handoff carrying another mission's id is either a routing bug or a
+    // forged result. Accepting it would let work done under one permission
+    // envelope be recorded as proof under another.
+    const mission = missionFor([task('a')]);
+    const result = await executeMission(mission, {
+      contracts: CONTRACTS,
+      runTask: (ctx) => ({
+        handoff: richHandoff(ctx, { missionId: 'sha256:' + 'b'.repeat(64) }),
+      }),
+    });
+
+    const a = result.state.tasks.find((t) => t.taskId === 'a');
+    expect(a?.status).toBe('failed');
+    expect(a?.issues.map((i) => i.code)).toContain(MISSION_CODES.handoffMissionMismatch);
+  });
+
   it('keeps absolute machine paths out of the recorded handoff', async () => {
     const mission = missionFor([task('a')]);
     const result = await executeMission(mission, {
@@ -283,6 +300,24 @@ describe('bounds', () => {
     expect(result.state.stepsUsed).toBe(2);
     expect(result.state.tasks.filter((t) => t.status === 'blocked')).toHaveLength(1);
     expect(result.state.status).toBe('blocked');
+  });
+
+  it('enforces the per-task step limit, not just the mission budget', async () => {
+    // The contract narrows itself to 2 steps inside a mission that allows 100.
+    // A task claiming 50 must not be able to spend the mission's budget on the
+    // strength of the mission's ceiling alone — limits only ever narrow.
+    const contracts = [contractFor('worker', emptyPermissionPolicy(), { maximumSteps: 2 })];
+    const mission = missionFor([task('a')], { maximumSteps: 100 });
+
+    const result = await executeMission(mission, {
+      contracts,
+      runTask: (ctx) => ({ handoff: richHandoff(ctx), stepsUsed: 50 }),
+    });
+
+    const a = result.state.tasks.find((t) => t.taskId === 'a');
+    expect(a?.issues.map((i) => i.code)).toContain(MISSION_CODES.limitStepsExceeded);
+    expect(result.state.stepsUsed).toBeLessThanOrEqual(2);
+    expect(a?.status).toBe('failed');
   });
 
   it('charges what a task reports, never less than one step', async () => {
@@ -406,6 +441,73 @@ describe('authority in context', () => {
   });
 });
 
+describe('authority is recorded whether or not it is honoured', () => {
+  function deniedMission(): Mission {
+    const missionPolicy = { ...emptyPermissionPolicy() };
+    missionPolicy.edit = [{ decision: 'deny', patterns: ['**'] }];
+    const created = createMission({ goal: 'g', tasks: [task('a')], permissions: missionPolicy });
+    if (!created.mission) throw new Error('fixture invalid');
+    return created.mission;
+  }
+
+  it('records a denial even when the runner ignores it and reports success', async () => {
+    // The whole point: a runner that asks, is refused, and carries on anyway
+    // must not be able to erase the refusal from the report.
+    const result = await executeMission(deniedMission(), {
+      contracts: [contractFor('worker')],
+      runTask: (ctx) => {
+        ctx.authorize('edit', 'src/app.ts');
+        return { handoff: richHandoff(ctx) };
+      },
+    });
+
+    const a = result.state.tasks.find((t) => t.taskId === 'a');
+    expect(a?.authorizations).toEqual([
+      { channel: 'edit', target: 'src/app.ts', decision: 'deny' },
+    ]);
+    expect(a?.issues.map((i) => i.code)).toContain(MISSION_CODES.actionDenied);
+  });
+
+  it('records an ask as a question, not as permission', async () => {
+    const askPolicy = { ...emptyPermissionPolicy() };
+    askPolicy.edit = [{ decision: 'ask', patterns: ['**'] }];
+    const created = createMission({ goal: 'g', tasks: [task('a')], permissions: askPolicy });
+
+    const result = await executeMission(created.mission!, {
+      contracts: [contractFor('worker', askPolicy)],
+      runTask: (ctx) => {
+        expect(ctx.authorize('edit', 'src/app.ts').permitted).toBe(false);
+        return { handoff: richHandoff(ctx) };
+      },
+    });
+
+    const a = result.state.tasks.find((t) => t.taskId === 'a');
+    expect(a?.authorizations[0]?.decision).toBe('ask');
+    expect(a?.issues.map((i) => i.code)).toContain(MISSION_CODES.actionConfirmationRequired);
+  });
+
+  it('deduplicates repeated questions about the same target', async () => {
+    const result = await executeMission(deniedMission(), {
+      contracts: [contractFor('worker')],
+      runTask: (ctx) => {
+        for (let i = 0; i < 50; i += 1) ctx.authorize('edit', 'src/app.ts');
+        return { handoff: richHandoff(ctx) };
+      },
+    });
+
+    expect(result.state.tasks.find((t) => t.taskId === 'a')?.authorizations).toHaveLength(1);
+  });
+
+  it('records nothing when a task never asks', async () => {
+    const mission = missionFor([task('a')]);
+    const result = await executeMission(mission, {
+      contracts: CONTRACTS,
+      runTask: (ctx) => ({ handoff: richHandoff(ctx) }),
+    });
+    expect(result.state.tasks.find((t) => t.taskId === 'a')?.authorizations).toEqual([]);
+  });
+});
+
 describe('determinism', () => {
   it('produces the same state hash for the same run twice', async () => {
     const mission = missionFor([task('a'), task('b', 'worker', ['a']), task('c')]);
@@ -436,6 +538,50 @@ describe('determinism', () => {
     const forward = await runWithDelays({ a: 5, b: 1, c: 0 });
     const reversed = await runWithDelays({ a: 0, b: 1, c: 5 });
     expect(reversed).toBe(forward);
+  });
+
+  it('is unaffected by completion order across five tasks with mixed outcomes', async () => {
+    // One success, one failure, one throw, one downgrade, one plain task — the
+    // combination most likely to expose order-sensitive folding.
+    const mission = missionFor([task('a'), task('b'), task('c'), task('d'), task('e')], {
+      maximumParallelChildren: 8,
+    });
+
+    const runWith = async (delays: Record<string, number>): Promise<string> =>
+      (
+        await executeMission(mission, {
+          contracts: CONTRACTS,
+          runTask: async (ctx) => {
+            const id = ctx.binding.task.id;
+            await new Promise((r) => setTimeout(r, delays[id] ?? 0));
+            if (id === 'b') return { handoff: richHandoff(ctx, { status: 'failed' }) };
+            if (id === 'c') throw new Error('boom');
+            if (id === 'd') return { handoff: thinHandoff(ctx) };
+            return { handoff: richHandoff(ctx) };
+          },
+        })
+      ).stateHash;
+
+    const forward = await runWith({ a: 8, b: 6, c: 4, d: 2, e: 0 });
+    const reversed = await runWith({ a: 0, b: 2, c: 4, d: 6, e: 8 });
+    const scattered = await runWith({ a: 3, b: 0, c: 7, d: 1, e: 5 });
+
+    expect(reversed).toBe(forward);
+    expect(scattered).toBe(forward);
+  });
+
+  it('is unaffected by the order tasks were declared in', async () => {
+    const run = async (tasks: MissionTaskInput[]): Promise<string> =>
+      (
+        await executeMission(missionFor(tasks), {
+          contracts: CONTRACTS,
+          runTask: (ctx) => ({ handoff: richHandoff(ctx) }),
+        })
+      ).stateHash;
+
+    const forward = await run([task('a'), task('b', 'worker', ['a']), task('c', 'worker', ['a'])]);
+    const shuffled = await run([task('c', 'worker', ['a']), task('a'), task('b', 'worker', ['a'])]);
+    expect(shuffled).toBe(forward);
   });
 
   it('hashes the state it returns', async () => {

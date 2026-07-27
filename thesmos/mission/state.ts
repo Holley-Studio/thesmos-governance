@@ -101,6 +101,15 @@ export function missionStateHash(state: MissionState): string {
         status: t.status,
         stepsUsed: t.stepsUsed,
         childTaskIds: [...t.childTaskIds].sort(),
+        // Effective bounds and authority answers are part of what the run
+        // *meant*, not incidental telemetry, so both are sealed by the hash.
+        limits: t.limits,
+        authorizations: [...t.authorizations].sort(
+          (a, b) =>
+            a.channel.localeCompare(b.channel) ||
+            a.target.localeCompare(b.target) ||
+            a.decision.localeCompare(b.decision)
+        ),
         handoff: t.handoff ?? null,
         issues: sortMissionIssues(t.issues),
       }))
@@ -123,6 +132,9 @@ export function initialMissionState(mission: Mission): MissionState {
       status: 'pending',
       stepsUsed: 0,
       childTaskIds: [],
+      // Nothing is bound yet, so the mission ceiling is the honest value here.
+      limits: mission.limits,
+      authorizations: [],
       issues: [],
     })),
   };
