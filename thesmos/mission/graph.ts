@@ -30,6 +30,20 @@ const TASK_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 /** A delegation chain deeper than this is a bug, not a plan. */
 const MAX_DELEGATION_DEPTH = 16;
 
+/**
+ * Hard ceiling on tasks in one mission.
+ *
+ * Depth alone does not bound the graph: each task may delegate up to
+ * `maximumChildren`, so generations multiply rather than add, and a runner that
+ * delegates the maximum every round reaches millions of tasks well before the
+ * depth check stops it. This is the ceiling that actually bounds memory, and it
+ * is compiled in — no configuration can raise it.
+ */
+const MAX_MISSION_TASKS = 1024;
+
+/** Per-task dependency fan-in ceiling, applied before any edge is resolved. */
+const MAX_TASK_DEPENDENCIES = 64;
+
 const EMPTY_GRAPH: MissionGraph = { tasks: [], order: [], layers: [] };
 
 function normalizeTask(input: MissionTaskInput): MissionTask {
@@ -196,10 +210,40 @@ export function buildMissionGraph(inputs: readonly MissionTaskInput[]): MissionG
     return { valid: false, graph: EMPTY_GRAPH, issues };
   }
 
+  // Checked before normalization so a pathological input is rejected without
+  // being walked first.
+  if (inputs.length > MAX_MISSION_TASKS) {
+    issues.push(
+      missionIssue(
+        MISSION_CODES.limitTasksExceeded,
+        'error',
+        'tasks',
+        `mission declares ${inputs.length} tasks, exceeding the ceiling of ${MAX_MISSION_TASKS}`,
+        'split the work across missions — this ceiling is compiled in and not configurable'
+      )
+    );
+    return { valid: false, graph: EMPTY_GRAPH, issues };
+  }
+
   const tasks: MissionTask[] = [];
   const seen = new Set<string>();
 
   for (const [index, raw] of inputs.entries()) {
+    // Fan-in is checked against the raw array, before normalization walks it.
+    const declaredDeps = Array.isArray(raw?.dependsOn) ? raw.dependsOn.length : 0;
+    if (declaredDeps > MAX_TASK_DEPENDENCIES) {
+      issues.push(
+        missionIssue(
+          MISSION_CODES.limitDependenciesExceeded,
+          'error',
+          `tasks[${index}].dependsOn`,
+          `task declares ${declaredDeps} dependencies, exceeding the ceiling of ${MAX_TASK_DEPENDENCIES}`,
+          'introduce an intermediate task rather than depending on everything at once'
+        )
+      );
+      continue;
+    }
+
     const task = normalizeTask(raw);
 
     if (!TASK_ID_RE.test(task.id)) {
@@ -299,4 +343,4 @@ export function buildMissionGraph(inputs: readonly MissionTaskInput[]): MissionG
   return { valid: true, graph: { tasks: ordered, order, layers }, issues: sorted };
 }
 
-export { MAX_DELEGATION_DEPTH };
+export { MAX_DELEGATION_DEPTH, MAX_MISSION_TASKS, MAX_TASK_DEPENDENCIES };

@@ -9,7 +9,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { MAX_DELEGATION_DEPTH, buildMissionGraph } from './graph.js';
+import {
+  MAX_DELEGATION_DEPTH,
+  MAX_MISSION_TASKS,
+  MAX_TASK_DEPENDENCIES,
+  buildMissionGraph,
+} from './graph.js';
 import { MISSION_CODES, type MissionTaskInput } from './types.js';
 
 function task(id: string, dependsOn: string[] = [], extra: Partial<MissionTaskInput> = {}): MissionTaskInput {
@@ -166,6 +171,41 @@ describe('delegation', () => {
       chain.push(task(`t${i}`, [], { parentTaskId: `t${i - 1}` }));
     }
     expect(codes(chain)).toContain(MISSION_CODES.limitDepthExceeded);
+  });
+});
+
+describe('resource ceilings', () => {
+  it('rejects a mission above the compiled task ceiling', () => {
+    const many = Array.from({ length: MAX_MISSION_TASKS + 1 }, (_, i) => task(`t${i}`));
+    const result = buildMissionGraph(many);
+    expect(result.valid).toBe(false);
+    expect(result.issues.map((i) => i.code)).toContain(MISSION_CODES.limitTasksExceeded);
+  });
+
+  it('accepts a mission exactly at the task ceiling', () => {
+    const many = Array.from({ length: MAX_MISSION_TASKS }, (_, i) => task(`t${i}`));
+    expect(buildMissionGraph(many).valid).toBe(true);
+  });
+
+  it('rejects a task above the dependency fan-in ceiling', () => {
+    const deps = Array.from({ length: MAX_TASK_DEPENDENCIES + 1 }, (_, i) => `d${i}`);
+    const inputs = [...deps.map((d) => task(d)), task('hub', deps)];
+    expect(codes(inputs)).toContain(MISSION_CODES.limitDependenciesExceeded);
+  });
+
+  it('accepts a task exactly at the dependency ceiling', () => {
+    const deps = Array.from({ length: MAX_TASK_DEPENDENCIES }, (_, i) => `d${i}`);
+    const inputs = [...deps.map((d) => task(d)), task('hub', deps)];
+    const result = buildMissionGraph(inputs);
+    expect(result.valid).toBe(true);
+    expect(result.graph.order.at(-1)).toBe('hub');
+  });
+
+  it('bounds the ceiling below any configurable value', () => {
+    // The ceilings are compiled in. If either becomes configurable, this test
+    // is the thing that should start failing.
+    expect(MAX_MISSION_TASKS).toBeLessThanOrEqual(1024);
+    expect(MAX_TASK_DEPENDENCIES).toBeLessThanOrEqual(64);
   });
 });
 
