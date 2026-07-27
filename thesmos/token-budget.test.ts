@@ -220,6 +220,66 @@ describe('buildBudgetReport', () => {
     expect(report.hardStopReason).toContain('token');
   });
 
+  // ── Billing-aware enforcement ─────────────────────────────────────────────
+  // Cost ceilings track ESTIMATES (tokens × price table). Only a confirmed
+  // metered session may hard-stop on them; subscription and unverified
+  // sessions get advisories. Token ceilings hard-stop in every mode.
+
+  const overCeilingEvent = (sessionId: string) => ({
+    ts: new Date().toISOString(), sessionId, toolName: 'Write',
+    model: 'claude-sonnet-4-6', inputTokens: 1_000, outputTokens: 500, costUSD: 6.00, // over the $5 ceiling
+  });
+
+  it("billingMode 'metered' hard-stops at the cost ceiling (fail-closed)", () => {
+    const sessionId = 'metered-sess';
+    appendTokenEvent(root, overCeilingEvent(sessionId));
+    const report = buildBudgetReport(root, { ...config, sessionMaxTokens: 0, billingMode: 'metered' }, sessionId);
+    expect(report.hardStop).toBe(true);
+    expect(report.hardStopReason).toContain('metered ceiling');
+    expect(report.hardStopReason).toContain('estimated');
+  });
+
+  it("billingMode 'subscription' never hard-stops on estimated cost — advisory only", () => {
+    const sessionId = 'sub-sess';
+    appendTokenEvent(root, overCeilingEvent(sessionId));
+    const report = buildBudgetReport(root, { ...config, sessionMaxTokens: 0, billingMode: 'subscription' }, sessionId);
+    expect(report.hardStop).toBe(false);
+    expect(report.alerts.some((a) => a.includes('API-equivalent'))).toBe(true);
+    expect(report.alerts.join(' ')).not.toMatch(/spent|charged/i);
+  });
+
+  it("billingMode 'auto' (unverified) stays advisory and requests classification", () => {
+    const sessionId = 'auto-sess';
+    appendTokenEvent(root, overCeilingEvent(sessionId));
+    const report = buildBudgetReport(root, { ...config, sessionMaxTokens: 0, billingMode: 'auto' }, sessionId);
+    expect(report.hardStop).toBe(false);
+    expect(report.alerts.some((a) => a.includes('billing mode is unverified'))).toBe(true);
+    expect(report.alerts.some((a) => a.includes('billingMode'))).toBe(true);
+  });
+
+  it('an old config without billingMode behaves as auto — NEVER as confirmed metered', () => {
+    const sessionId = 'legacy-sess';
+    appendTokenEvent(root, overCeilingEvent(sessionId));
+    // `config` above has no billingMode field — exactly an old config shape.
+    const report = buildBudgetReport(root, { ...config, sessionMaxTokens: 0 }, sessionId);
+    expect(report.hardStop).toBe(false);
+  });
+
+  it('the token-count ceiling still hard-stops regardless of billing mode', () => {
+    const sessionId = 'sub-token-sess';
+    appendTokenEvent(root, {
+      ts: new Date().toISOString(), sessionId, toolName: 'Read',
+      model: 'claude-sonnet-4-6', inputTokens: 1_500, outputTokens: 0, costUSD: 0.01,
+    });
+    const report = buildBudgetReport(
+      root,
+      { ...config, sessionMaxTokens: 1_000, sessionMaxCostUSD: 0, billingMode: 'subscription' },
+      sessionId,
+    );
+    expect(report.hardStop).toBe(true);
+    expect(report.hardStopReason).toContain('token');
+  });
+
   it('no hard stop when budget limits are 0 (disabled)', () => {
     const disabledConfig: TokenBudgetConfig = {
       ...config,

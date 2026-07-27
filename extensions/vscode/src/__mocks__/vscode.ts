@@ -35,6 +35,10 @@ export class RelativePattern {
 
 export const Uri = {
   file: (path: string) => ({ fsPath: path, path }),
+  joinPath: (base: { fsPath?: string; path?: string }, ...parts: string[]) => {
+    const joined = [base.fsPath ?? base.path ?? '', ...parts].join('/');
+    return { fsPath: joined, path: joined };
+  },
 };
 
 // ── FileSystemWatcher mock ────────────────────────────────────────────────────
