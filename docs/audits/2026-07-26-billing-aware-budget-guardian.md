@@ -50,11 +50,7 @@ This event was previously parsed but the field was dropped.
 - **Unknown:** custom proxies (always, unless the user classifies), Anthropic OAuth sessions before
   classification, unrecognized `apiKeySource` values, sessions that haven't started yet.
 - **Codex:** the integration itself establishes subscription OAuth (`codex login`); classified
-  subscription with confidence `inferred` — a display-only label. `decideBudget()` grants the
-  subscription never-block exemption only at `verified` confidence, so the inference can never
-  trigger or disable monetary enforcement; and it ranks below verified signals, so a linked key
-  or a key-authenticated session still classifies as metered. Moot in practice today — Codex
-  reports no cost at all.
+  subscription with confidence `inferred`. Moot for enforcement — no cost is ever reported.
 
 ## 5. Final decision table (implemented)
 
@@ -63,22 +59,24 @@ Resolution order (first match wins) — `resolveBillingContext()` in
 
 1. `.thesmos/config.json` `tokenBudget.billingMode` = `subscription` | `metered` → that mode, `workspace-config`, `verified`.
 2. Pantheon stored user selection (globalState, per provider) → that mode, `user-selection`, `verified`.
-3. Provider auth: custom proxy → `unknown`; any linked pay-per-token key (GLM/Kimi/DeepSeek) → `metered`, `provider-auth`, `verified`.
+3. Provider auth: custom proxy → `unknown`; GLM/Kimi/DeepSeek with linked key → `metered`, `provider-auth`, `verified`; Codex → `subscription`, `provider-auth`, `inferred`.
 4. Anthropic session metadata: recognized key-ish `apiKeySource` → `metered`, `session-metadata`, `verified`; `"none"` / unrecognized / absent → `unknown`.
-5. Inference (below every verified signal): Codex → `subscription`, `provider-auth`, `inferred` — display-only; the policy layer treats non-verified subscription as unknown for enforcement.
-6. Fallback → `unknown`.
+5. Fallback → `unknown`.
 
 Budget policy matrix — `decideBudget()` in `extensions/vscode/src/chat/budgetPolicy.ts`
 (pure, deterministic, unit-tested; UI never reimplements it):
 
 | Billing mode | Under warning | Over warning | Over limit |
 |---|---|---|---|
-| Subscription | continue (`none`) | advisory (API-equivalent copy) | **continue** with advisory — never blocks |
+| Subscription (**`verified` only**) | continue (`none`) | advisory (API-equivalent copy) | **continue** with advisory — never blocks |
 | Metered | continue | warning at `warnAtFraction` (default 0.8) | **block** (fail-closed), unblocks immediately when ceiling raised or mode reclassified |
 | Unknown | continue | advisory (unverified-billing copy) | continue + request classification — never silently becomes either mode |
 
-The Subscription row applies only at `verified` confidence (workspace config, explicit user
-selection, or provider auth). An `inferred` subscription takes the Unknown row.
+**Confidence gate:** the Subscription row applies only at `confidence: 'verified'` (workspace config,
+explicit user selection, or provider auth metadata). An *inferred* subscription — the `codex login`
+heuristic — takes the **Unknown** row instead. An inference is a display label, not a billing fact:
+it must never trigger *or disable* monetary enforcement. Correspondingly, the verified-metered check
+is evaluated **before** any inference, so a verified metered signal can never be outranked.
 
 Subscription advisory threshold: `tokenBudget.subscriptionWarningEquivalentUSD` (falls back to
 `sessionMaxCostUSD` if unset). Invalid inputs sanitized: non-finite/negative cost → 0;
@@ -88,6 +86,14 @@ non-finite/≤0 limits → no limit; `warnAtFraction` outside (0,1) → 0.8.
 
 - **Queue bypass:** `drainQueue()` dispatched queued prompts without re-checking the budget — a
   queued prompt could run after a metered ceiling was reached mid-turn. Now re-checked per dequeue.
+  The durable fix is a **single choke point** in `dispatchPrompt()`: every path that reaches the CLI
+  (direct send, approved *or* skipped dispatch order, dequeued prompt, resumed session) runs the
+  billing decision there, so a ceiling or classification change between gating and dispatch cannot be
+  bypassed. `sendPrompt`/`drainQueue` still check earlier purely for UX (error before queueing);
+  `dispatchPrompt` is the check that guards the wire.
+- **Stale billing mode across provider switch:** switching providers kept the previous provider's
+  `apiKeySource`, so the budget bar could report the old provider's billing mode. Now cleared and
+  re-classified on switch.
 - **Stale ceiling display:** `sessionBudgetUsd` was read once in the controller constructor and
   broadcast forever; raising the ceiling updated enforcement but not the bar. Now re-read per status broadcast.
 - **Schema drift:** runtime reads `tokenBudget` (and `routing`, `context1M`, `reviewIgnorePaths`,
@@ -125,7 +131,9 @@ New:
 - `extensions/vscode/src/chat/billingContext.ts` — BillingMode/BillingContext types, `resolveBillingContext()` (pure), `ProviderBillingCapability` contract.
 - `extensions/vscode/src/chat/budgetPolicy.ts` — `decideBudget()` (pure matrix), `parseTokenBudgetSettings()`/`readTokenBudgetSettings()` (config compat + sanitization).
 - `extensions/vscode/src/chat/budgetBarModel.ts` — pure, browser-safe budget-bar view model (labels, tooltip, aria).
-- Tests: `budgetPolicy.test.ts` (45), `billingContext.test.ts` (19), `budgetBarModel.test.ts` (14), `claudeSession.test.ts` (7) in `extensions/vscode/src/__tests__/`; `thesmos/config-schema.test.ts` (8).
+- Tests: `budgetPolicy.test.ts`, `billingContext.test.ts`, `budgetBarModel.test.ts`,
+  `claudeSession.test.ts`, `budgetEnforcementPaths.test.ts` (9 end-to-end dispatch-path tests) in
+  `extensions/vscode/src/__tests__/`; `thesmos/config-schema.test.ts`.
 
 Modified:
 - `extensions/vscode/src/chat/claudeSession.ts` — surface `apiKeySource` from the CLI init event.
@@ -141,21 +149,47 @@ Not changed: `.thesmos/config.json` — the Thesmos guard correctly blocks agent
 governance config (scope rule). Absent `billingMode` already means `auto`, so behavior is
 identical; adding `"billingMode": "auto"` explicitly is an optional manual edit.
 
-## 9. Validation (run 2026-07-26)
+## 8b. Working-tree / branch reconciliation (2026-07-27)
 
-- `npm ci` — clean install, pass.
+The implementation exists in two places and they had **diverged**. Recorded because the divergence
+silently dropped enforcement behavior:
+
+| | Working tree (uncommitted) | Branch `fix/billing-aware-budget-guardian` (`cb97343`) |
+|---|---|---|
+| Timestamp | files mtime 21:27–21:28, 2026-07-26 | commits 22:43, 2026-07-26 |
+| Base | `a8132c3` (incl. config-repair hatch) | `d89b7c8` |
+| Status | earlier draft | **refined final state** |
+
+The branch is ~75 min newer and was never merged back. Relative to it, the working tree was missing:
+
+1. the `dispatchPrompt()` choke-point billing check (§6) — without it, approved/skipped dispatch
+   orders and resumed sessions bypass a reached metered ceiling;
+2. the `confidence === 'verified'` gate on the subscription exemption (§5) — without it an *inferred*
+   subscription disables monetary enforcement;
+3. evaluation of verified-metered **before** inference;
+4. `apiKeySource` reset on provider switch;
+5. `budgetEnforcementPaths.test.ts` entirely (9 tests);
+6. the `Uri.joinPath` mock those tests depend on.
+
+**Resolution:** the branch version of all 7 divergent files was restored into the working tree; all 15
+billing-related files now byte-match `cb97343`. The `a8132c3` config-repair-hatch work is untouched
+(disjoint files). Verified green after restore. The branch and its worktree are retained as the
+record — neither was deleted.
+
+## 9. Validation (re-run 2026-07-27 after reconciliation)
+
 - `npm run typecheck` — all three workspaces pass.
 - `npm run build` — thesmos, actions/pr-review, extension (incl. webview + hook bundles) pass; dist regenerated.
-- Extension tests: **15 files, 174 passed, 0 failed** (includes 85 new billing/budget tests).
+- Extension tests: **16 files, 189 passed, 0 failed** — up from 15/174 before reconciliation
+  (+1 file, +15 tests recovered from the branch, incl. the 9 dispatch-path enforcement tests).
 - Core tests: **120 files — 119 passed; 4075 passed / 75 failed**, all 75 in
   `rules/__fixtures__/blocker-fixture-harness.test.ts` — pre-existing WIP from the proof-gate-5.2
   branch (file + fixtures were modified/untracked before this task; verified via `git stash` that
   HEAD passes 20/20 and this task's diff does not touch that harness). New suites pass: 31/31.
-- `npm run thesmos:validate` — exit 0, no BLOCKER (7 pre-existing TECH_DEBT findings).
-- `npm run thesmos:doctor` — 39/39 checks pass.
-- `npx vsce package --no-dependencies` — packages cleanly (not published).
-- `git diff --check` — flags only in generated dist bundles and the pre-existing proof-gate WIP
-  fixture file; all source files from this task are clean.
+- `npm run thesmos:validate` — exit 0, no BLOCKER (7 TECH_DEBT, 44 baseline suppressed).
+- Core tests: the 75 failures in `rules/__fixtures__/blocker-fixture-harness.test.ts` are the
+  **Phase 2 worklist** of the proof-gate-5.2 branch, not noise from this task — see
+  `2026-07-25-proof-gate-5.2.md` §2. This task's diff does not touch that harness.
 
 ## 10. Remaining limitations
 
