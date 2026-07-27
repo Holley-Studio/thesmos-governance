@@ -324,13 +324,20 @@ precondition that was skipped.
 in the runtime, all fixed on the branch, and cleared the ten architectural invariants by mutation
 testing rather than by inspection alone.
 
-**Next: PR 3 — Council Records**, on branch `feat/council-records`.
+**Next: PR 3 — Pantheon Mission Control**, on branch `feat/pantheon-mission-control`, per the
+dependency graph in §9.
+
+> **Correction.** Earlier revisions of this section named PR 3 as "Council Records" on
+> `feat/council-records`. That contradicted §9 of this same document, which is authoritative:
+> **Council Records is PR 5**, and both PR 3 and PR 5 are unblocked by PR 2. The error was
+> introduced when §12 was rewritten and is corrected here rather than silently overwritten,
+> because a ledger that disagrees with itself is worse than one that is merely out of date.
 
 **Preconditions for PR 3, all of which must hold before a branch is created:**
 
-1. **#127 is independently reviewed by a human and merged.** This is the hard gate. PR 3 persists
-   what PR 2 produces, and PR 2's own schema moved during review — `MissionTaskState` gained
-   `limits` and `authorizations`, both of which now enter the state hash. A record format written
+1. **#127 is independently reviewed by a human and merged.** This is the hard gate. PR 3 drives the
+   mission runtime from a surface, and PR 2's own shape moved during review — `MissionTaskState`
+   gained `limits` and `authorizations`, both of which now enter the state hash. A surface built
    against the pre-review shape would already be wrong. The waiver taken once at §12 is not
    available again: PR 2's review was performed by the same agent that wrote it, which is a real
    check but not an independent one.
@@ -348,8 +355,14 @@ testing rather than by inspection alone.
    base resolves the *local* ref, and a stale one silently attributes the previous PR's findings
    to the current branch.
 
-**Scope for PR 3** (from §5/§9 — do not expand): durable, content-addressed records of what a
-mission did — no UI, no model intelligence, no marketplace.
+**Scope for PR 3** (from §5/§9 — do not expand): a governed mission-control surface over the PR 2
+runtime — presenting missions, tasks, effective authority, and handoffs, and driving
+`executeMission` through the existing `TaskRunner` seam. No model intelligence (PR 4), no
+persistence or records (PR 5), no packs (PR 6).
+
+**PR 5 — Council Records** (`feat/council-records`) is separately unblocked by PR 2 and may be
+taken before or after PR 3. Its own precondition is the same: #127 reviewed and merged, with
+`MISSION_SCHEMA_VERSION` frozen at `1.0.0` or PR 5 owning the migration.
 
 **Out of scope, still:** Pantheon Chat redesign, model intelligence, governed packs, checkpoints,
 semantic indexing, browser automation, incident systems, unified health, release proof.
