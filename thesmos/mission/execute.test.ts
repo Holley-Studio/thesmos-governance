@@ -584,6 +584,45 @@ describe('determinism', () => {
     expect(shuffled).toBe(forward);
   });
 
+  it('resolves contention by task id, not by which task finished first', async () => {
+    // Two tasks in one wave both try to delegate the same child id. Exactly one
+    // can win, and which one must be decided by the sorted fold — never by the
+    // race. This is the case that actually observes fold order: with ample
+    // budget and no contention, completion order is invisible, which is why an
+    // earlier version of this suite let a completion-ordered fold pass.
+    const mission = missionFor([task('a'), task('b')], { maximumParallelChildren: 4 });
+
+    const runWith = async (
+      delays: Record<string, number>
+    ): Promise<{ hash: string; winner: string | undefined; loser: string | undefined }> => {
+      const result = await executeMission(mission, {
+        contracts: CONTRACTS,
+        runTask: async (ctx): Promise<TaskRunResult> => {
+          await new Promise((r) => setTimeout(r, delays[ctx.binding.task.id] ?? 0));
+          return {
+            handoff: richHandoff(ctx),
+            delegated: [{ id: 'shared', agentId: 'child-agent', title: 'S', intent: 's' }],
+          };
+        },
+      });
+      const winner = result.state.tasks.find((t) => t.childTaskIds.includes('shared'))?.taskId;
+      const loser = result.state.tasks.find((t) =>
+        t.issues.some((i) => i.code === MISSION_CODES.graphDuplicateTask)
+      )?.taskId;
+      return { hash: result.stateHash, winner, loser };
+    };
+
+    const aFirst = await runWith({ a: 0, b: 20 });
+    const bFirst = await runWith({ a: 20, b: 0 });
+
+    // 'a' sorts before 'b', so 'a' takes the child in both runs.
+    expect(aFirst.winner).toBe('a');
+    expect(bFirst.winner).toBe('a');
+    expect(aFirst.loser).toBe('b');
+    expect(bFirst.loser).toBe('b');
+    expect(bFirst.hash).toBe(aFirst.hash);
+  });
+
   it('hashes the state it returns', async () => {
     const mission = missionFor([task('a')]);
     const result = await executeMission(mission, {
