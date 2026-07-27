@@ -459,6 +459,12 @@ reports exactly which agents and which fields, and writes nothing.
 Other suites: `extensions/vscode` 93, `actions/pr-review` 108, `thesmos:validate` exit 0
 (7 TECH_DEBT, 0 BLOCKER), `thesmos:doctor` 39/39, `thesmos:ci-check` 20/20.
 
+**Where these actually executed.** Locally on macOS/arm64, and in CI on **ubuntu-latest across Node
+20.x / 22.x / 24.x** — all 13 PR checks green on `a7fd205`. The `Guard (Windows)` job runs
+`guard.cross-platform.test.ts` only; **no council test has executed on Windows.** The Windows path
+assertions in `matching.test.ts` are pure-function tests that never touch `node:path` or the
+filesystem, so they are semantic coverage of Windows *semantics* — not a Windows run.
+
 ### 14.9 Security review
 
 | Vector | Finding |
@@ -483,6 +489,34 @@ Other suites: `extensions/vscode` 93, `actions/pr-review` 108, `thesmos:validate
 **Residual risk:** cross-platform behavior is asserted semantically on macOS/arm64 — the Windows
 path tests are pure-function tests that do not touch `node:path` or the filesystem, so they prove
 *semantics*, not Windows execution. That remains PR 11 scope (§11.6).
+
+### 14.9a Thesmos reviewing itself — findings against this PR
+
+The Governance Review action ran on PR #126 and produced **9 BLOCKER, 109 HIGH, 214 other**.
+Recorded here because dogfooding results are evidence, not an embarrassment to hide.
+
+**The 9 BLOCKERs were real and are fixed.** All were `secret_in_diff` on this PR's own test
+fixtures — the fake credentials that prove redaction works. The rule was right: a literal `ghp_…`
+in a test file is indistinguishable from a leaked token to every scanner that reads this repo, and
+a repo full of "expected" secret alarms is one where the alarm stops meaning anything. Fixtures are
+now assembled from a prefix and a body at runtime (`a7fd205`), which exercises the identical string
+while leaving nothing credential-shaped in source. **No baseline entry, no suppression.**
+
+**Most of the 109 HIGH are false positives from one heuristic**, and this is a scanner signal worth
+acting on separately:
+
+| Category | Count | Assessment |
+|---|---|---|
+| `unhandled_promise_rejection` | 79 | **False positive.** `NODE` rule matches any indented `identifier(` in a file that contains `async function` anywhere above it. It fires on `mkdirSync`, `writeFileSync`, `process.stdout.write`, `lines.push` — all synchronous. |
+| `debt_exported_function_no_test` | ~20 | Partly fair. Most are covered indirectly through the suites that exercise them; some are barrel re-exports. |
+| `timing_attack_comparison` | 7 | **False positive.** Flags `===` on content hashes and ids. These are integrity comparisons, not authentication — there is no secret to leak by timing. |
+| `debt_exponential_loop` | 1 | **False positive.** `validate.ts` iterates channels × rules × patterns, all bounded by `MATCH_LIMITS`. |
+| "imported but not used" (notice) | ~8 | **False positive.** Every one is a `type` import consumed in a type position. |
+
+Nothing here was contorted to satisfy a heuristic, and nothing was baselined. The
+`unhandled_promise_rejection` heuristic producing 79 false positives on a single PR is a defect
+worth its own change — **not** bundled into a contract PR, and explicitly not fixed here, because
+loosening a HIGH rule's detection inside an unrelated PR is how real findings get lost.
 
 ### 14.10 Prompt-context protection (D7)
 
