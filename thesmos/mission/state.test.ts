@@ -15,8 +15,10 @@ import {
   deriveMissionStatus,
   initialMissionState,
   missionId,
+  missionIdentityProjection,
   missionStateHash,
 } from './state.js';
+import { hasErrors, missionIssue, sortMissionIssues } from './types.js';
 import type { MissionRequest, MissionState, MissionTaskInput, MissionTaskState } from './types.js';
 
 const LIMITS = ceilingBoundedLimits();
@@ -197,6 +199,71 @@ describe('initial state', () => {
     expect(state.stepsUsed).toBe(0);
     expect(state.tasks.every((t) => t.status === 'pending')).toBe(true);
     expect(state.tasks.map((t) => t.taskId)).toEqual(['a', 'b']);
+  });
+});
+
+describe('identity projection', () => {
+  it('normalizes declaration and dependency order into one canonical shape', () => {
+    const forward = missionIdentityProjection(
+      'g',
+      [task('b', ['a']), task('a')],
+      emptyPermissionPolicy(),
+      LIMITS
+    );
+    const reversed = missionIdentityProjection(
+      'g',
+      [task('a'), task('b', ['a'])],
+      emptyPermissionPolicy(),
+      LIMITS
+    );
+    expect(reversed).toEqual(forward);
+    expect(forward.tasks.map((t) => t.id)).toEqual(['a', 'b']);
+  });
+
+  it('represents an absent parent as an empty string rather than omitting it', () => {
+    const [only] = missionIdentityProjection('g', [task('a')], emptyPermissionPolicy(), LIMITS)
+      .tasks;
+    expect(only?.parentTaskId).toBe('');
+  });
+
+  it('excludes everything derived, so scheduling cannot change identity', () => {
+    const [only] = missionIdentityProjection('g', [task('a')], emptyPermissionPolicy(), LIMITS)
+      .tasks;
+    expect(only).not.toHaveProperty('depth');
+    expect(only).not.toHaveProperty('order');
+  });
+});
+
+describe('issue helpers', () => {
+  it('omits remediation entirely when none is given', () => {
+    expect(missionIssue('C', 'error', 'p', 'm')).not.toHaveProperty('remediation');
+    expect(missionIssue('C', 'error', 'p', 'm', 'fix it').remediation).toBe('fix it');
+  });
+
+  it('orders issues by path, then code, then message', () => {
+    const sorted = sortMissionIssues([
+      missionIssue('B', 'error', 'z', 'm'),
+      missionIssue('A', 'error', 'a', 'zzz'),
+      missionIssue('A', 'error', 'a', 'aaa'),
+    ]);
+    expect(sorted.map((i) => `${i.path}/${i.code}/${i.message}`)).toEqual([
+      'a/A/aaa',
+      'a/A/zzz',
+      'z/B/m',
+    ]);
+  });
+
+  it('does not mutate the list it sorts', () => {
+    const original = [missionIssue('B', 'error', 'z', 'm'), missionIssue('A', 'error', 'a', 'm')];
+    const snapshot = original.map((i) => i.code);
+    sortMissionIssues(original);
+    expect(original.map((i) => i.code)).toEqual(snapshot);
+  });
+
+  it('detects errors but ignores warnings', () => {
+    expect(hasErrors([missionIssue('C', 'warning', 'p', 'm')])).toBe(false);
+    expect(hasErrors([missionIssue('C', 'error', 'p', 'm')])).toBe(true);
+    expect(hasErrors([])).toBe(false);
   });
 });
 

@@ -14,8 +14,12 @@ import {
   DEFAULT_MISSION_LIMITS,
   StepBudget,
   ceilingBoundedLimits,
+  childrenExceededIssue,
   effectiveTaskLimits,
+  parallelExceededIssue,
+  stepsExceededIssue,
 } from './limits.js';
+import { MISSION_CODES } from './types.js';
 
 describe('absent-key defaults', () => {
   it('falls back to the ceilings when nothing is declared', () => {
@@ -96,6 +100,41 @@ describe('combination', () => {
 
   it('treats an absent contract as no additional narrowing', () => {
     expect(effectiveTaskLimits(mission)).toEqual(ceilingBoundedLimits(mission));
+  });
+});
+
+describe('limit issue constructors', () => {
+  it('reports an exhausted step budget against the task that hit it', () => {
+    const issue = stepsExceededIssue('build-api', 12);
+    expect(issue.code).toBe(MISSION_CODES.limitStepsExceeded);
+    expect(issue.severity).toBe('error');
+    expect(issue.path).toBe('tasks.build-api');
+    expect(issue.message).toContain('12');
+  });
+
+  it('reports over-delegation with both the request and the ceiling', () => {
+    const issue = childrenExceededIssue('planner', 9, 4);
+    expect(issue.code).toBe(MISSION_CODES.limitChildrenExceeded);
+    expect(issue.severity).toBe('error');
+    expect(issue.message).toContain('9');
+    expect(issue.message).toContain('4');
+  });
+
+  it('reports a throttled wave as a warning, since the work still runs', () => {
+    const issue = parallelExceededIssue(10, 3, 2);
+    expect(issue.code).toBe(MISSION_CODES.limitParallelExceeded);
+    expect(issue.severity).toBe('warning');
+    expect(issue.path).toBe('layers[2]');
+  });
+
+  it('carries a remediation on every limit issue', () => {
+    for (const issue of [
+      stepsExceededIssue('t', 1),
+      childrenExceededIssue('t', 2, 1),
+      parallelExceededIssue(2, 1, 0),
+    ]) {
+      expect(issue.remediation, `${issue.code} has no remediation`).toBeTruthy();
+    }
   });
 });
 
