@@ -356,19 +356,22 @@ describe('model policy', () => {
 });
 
 describe('secrets', () => {
+  /** Assembled at runtime — see the note in `sanitize.test.ts`. */
+  const token = `ghp_${'0123456789abcdefghijABCDEF'}`;
+
   it('rejects a contract whose serialization contains a credential', () => {
     const contract = mutate((c) => {
-      c.identity.description = 'use token ghp_0123456789abcdefghijABCDEF to authenticate';
+      c.identity.description = `use token ${token} to authenticate`;
     });
     expect(codes(contract)).toContain(COUNCIL_CODES.secretSerialized);
   });
 
   it('redacts the credential out of its own issue message', () => {
     const contract = mutate((c) => {
-      c.identity.id = 'ghp_0123456789abcdefghijABCDEF' as string;
+      c.identity.id = token;
     });
     const json = serializeStable(validateContract(contract));
-    expect(json).not.toContain('ghp_0123456789abcdefghijABCDEF');
+    expect(json).not.toContain(token);
   });
 });
 

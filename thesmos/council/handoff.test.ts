@@ -92,21 +92,31 @@ describe('normalization', () => {
   });
 });
 
+/**
+ * Credential-shaped fixtures, assembled at runtime. A literal token in a test
+ * file is indistinguishable from a leaked one to every scanner that reads this
+ * repository — including `secret_in_diff`. See `sanitize.test.ts` for the full
+ * reasoning.
+ */
+function credentialFixture(prefix: string, body: string): string {
+  return prefix + body;
+}
+
 describe('secret handling', () => {
   it('redacts credentials out of a summary', () => {
-    const result = handoff({ summary: 'exported GITHUB_TOKEN=ghp_0123456789abcdefghijABCDEF ok' as never });
-    expect(result.summary).not.toContain('ghp_0123456789abcdefghijABCDEF');
+    const token = credentialFixture('ghp_', '0123456789abcdefghijABCDEF');
+    const result = handoff({ summary: `exported GITHUB_TOKEN=${token} ok` as never });
+    expect(result.summary).not.toContain(token);
     expect(result.summary).toContain('[redacted]');
   });
 
   it('redacts credentials out of command output excerpts', () => {
+    const token = credentialFixture('sk-', 'abcdefghijklmnopqrstuvwxyz01');
     const result = normalizeHandoff({
       agentId: 'worker-agent',
-      testResults: [
-        { name: 'auth', status: 'passed', excerpt: 'using sk-abcdefghijklmnopqrstuvwxyz01' },
-      ],
+      testResults: [{ name: 'auth', status: 'passed', excerpt: `using ${token}` }],
     });
-    expect(serializeHandoff(result)).not.toContain('sk-abcdefghijklmnopqrstuvwxyz01');
+    expect(serializeHandoff(result)).not.toContain(token);
   });
 
   it('strips absolute home paths', () => {
@@ -117,7 +127,10 @@ describe('secret handling', () => {
   it('flags a credential that survives into a validated handoff', () => {
     const raw = handoff();
     // Bypass normalization to prove validation is a second, independent gate.
-    const tampered: AgentHandoff = { ...raw, summary: 'token AKIAIOSFODNN7EXAMPLE' };
+    const tampered: AgentHandoff = {
+      ...raw,
+      summary: `token ${credentialFixture('AKIA', 'IOSFODNN7EXAMPLE')}`,
+    };
     const result = validateHandoff(tampered);
     expect(result.issues.some((i) => i.code === HANDOFF_CODES.secretSerialized)).toBe(true);
   });
