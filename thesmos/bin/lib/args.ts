@@ -49,6 +49,7 @@ const VALUE_FLAGS = new Set([
   'reason',
   'repo',
   'report',
+  'role',
   'rule',
   'session',
   'severity',
