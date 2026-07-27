@@ -179,6 +179,34 @@ describe('failure containment', () => {
     expect(b?.status).toBe('complete');
   });
 
+  it('contains an asynchronously rejected runner', async () => {
+    const mission = missionFor([task('a'), task('b')]);
+
+    const result = await executeMission(mission, {
+      contracts: CONTRACTS,
+      runTask: async (ctx) => {
+        if (ctx.binding.task.id === 'a') return Promise.reject(new Error('async boom'));
+        return { handoff: richHandoff(ctx) };
+      },
+    });
+
+    expect(result.state.tasks.find((t) => t.taskId === 'a')?.status).toBe('failed');
+    expect(result.state.tasks.find((t) => t.taskId === 'b')?.status).toBe('complete');
+  });
+
+  it('never rejects, even when the runner itself is unusable', async () => {
+    const mission = missionFor([task('a')]);
+
+    // A whole wave failing must still resolve to a report. If this rejects, one
+    // bad dispatch has taken down the record of everything else in the mission.
+    await expect(
+      executeMission(mission, {
+        contracts: CONTRACTS,
+        runTask: undefined as unknown as (ctx: TaskRunContext) => TaskRunResult,
+      })
+    ).resolves.toMatchObject({ state: { status: 'failed' } });
+  });
+
   it('fails the mission when an agent id cannot be bound', async () => {
     const mission = missionFor([task('a', 'ghost-agent')]);
     const result = await executeMission(mission, {

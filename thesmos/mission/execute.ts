@@ -182,40 +182,40 @@ export async function executeMission(
         const chunk = queue.splice(0, Math.max(1, Math.min(width, budget.remaining || 1)));
         const dispatched: Array<{ id: string; result?: TaskRunResult; error?: unknown }> = [];
 
+        // The whole callback body is guarded, not just the runner call. A
+        // rejection escaping here would reject `Promise.all` and take down the
+        // entire mission report — the one thing this executor promises never to
+        // do — so every dispatch resolves, and failure travels as data.
         await Promise.all(
           chunk.map(async (id) => {
-            const bound = bindingsByAgent.get(id);
-            if (!bound) return;
-
-            const edges = [
-              ...bound.task.dependsOn,
-              ...(bound.task.parentTaskId ? [bound.task.parentTaskId] : []),
-            ];
-            const unmet = unmetDependencies(edges, states);
-            if (unmet.length > 0) {
-              dispatched.push({ id });
-              return;
-            }
-            if (budget.exhausted) {
-              dispatched.push({ id });
-              return;
-            }
-
-            const upstream = edges
-              .slice()
-              .sort()
-              .map((dep) => handoffs.get(dep))
-              .filter((h): h is AgentHandoff => h !== undefined);
-
-            const ctx: TaskRunContext = {
-              mission,
-              binding: bound,
-              upstream,
-              stepsRemaining: budget.remaining,
-              authorize: (channel, target) => authorizeTaskAction(mission, bound, channel, target),
-            };
-
             try {
+              const bound = bindingsByAgent.get(id);
+              if (!bound) return;
+
+              const edges = [
+                ...bound.task.dependsOn,
+                ...(bound.task.parentTaskId ? [bound.task.parentTaskId] : []),
+              ];
+              if (unmetDependencies(edges, states).length > 0 || budget.exhausted) {
+                dispatched.push({ id });
+                return;
+              }
+
+              const upstream = edges
+                .slice()
+                .sort()
+                .map((dep) => handoffs.get(dep))
+                .filter((h): h is AgentHandoff => h !== undefined);
+
+              const ctx: TaskRunContext = {
+                mission,
+                binding: bound,
+                upstream,
+                stepsRemaining: budget.remaining,
+                authorize: (channel, target) =>
+                  authorizeTaskAction(mission, bound, channel, target),
+              };
+
               dispatched.push({ id, result: await options.runTask(ctx) });
             } catch (error) {
               dispatched.push({ id, error });
