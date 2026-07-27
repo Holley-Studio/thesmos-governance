@@ -182,13 +182,16 @@ export async function executeMission(
         const chunk = queue.splice(0, Math.max(1, Math.min(width, budget.remaining || 1)));
         const dispatched: Array<{ id: string; result?: TaskRunResult; error?: unknown }> = [];
 
-        // The whole callback body is guarded, not just the runner call. A
-        // rejection escaping here would reject `Promise.all` and take down the
-        // entire mission report — the one thing this executor promises never to
-        // do — so every dispatch resolves, and failure travels as data.
-        await Promise.all(
-          chunk.map(async (id) => {
-            try {
+        // Two layers, deliberately. The inner guard covers the whole callback
+        // body rather than just the runner call, so every dispatch resolves and
+        // failure travels as data. The outer guard is a backstop: if a rejection
+        // ever did escape, the wave degrades into missing entries — which the
+        // fold below records as failed tasks — instead of destroying the report
+        // for every task that already succeeded.
+        try {
+          await Promise.all(
+            chunk.map(async (id) => {
+              try {
               const bound = bindingsByAgent.get(id);
               if (!bound) return;
 
@@ -216,12 +219,23 @@ export async function executeMission(
                   authorizeTaskAction(mission, bound, channel, target),
               };
 
-              dispatched.push({ id, result: await options.runTask(ctx) });
-            } catch (error) {
-              dispatched.push({ id, error });
-            }
-          })
-        );
+                dispatched.push({ id, result: await options.runTask(ctx) });
+              } catch (error) {
+                dispatched.push({ id, error });
+              }
+            })
+          );
+        } catch (error) {
+          missionIssues.push(
+            missionIssue(
+              MISSION_CODES.taskThrew,
+              'error',
+              `layers[${layerIndex}]`,
+              `wave dispatch failed: ${error instanceof Error ? error.message : String(error)}`,
+              'this indicates a defect in the executor, not in a task'
+            )
+          );
+        }
 
         // Fold results back deterministically.
         for (const id of chunk) {
