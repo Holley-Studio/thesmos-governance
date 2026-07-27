@@ -23,7 +23,14 @@ import { listSessions, loadTranscript } from './sessionHistory.js';
 import { appendSavings, estimateTierSaving, monthSavingsUsd } from './savingsLedger.js';
 import { runReview, ThesmosNotFoundError } from '../runner.js';
 import type { Finding } from '../types.js';
-import { runAdvise, shouldGate, budgetState, type DispatchAdvice } from './dispatchAdvisor.js';
+import { runAdvise, shouldGate, type DispatchAdvice } from './dispatchAdvisor.js';
+import {
+  decideBudget,
+  readTokenBudgetSettings,
+  type BudgetDecision,
+  type TokenBudgetSettings,
+} from './budgetPolicy.js';
+import type { BillingContext } from './billingContext.js';
 
 interface GodUiInfo extends GodEntry {}
 
@@ -65,6 +72,8 @@ interface PersistedChat {
   permissionMode?: PermissionMode;
   totalCostUsd?: number;
   modelId?: string;
+  /** CLI auth report from the last session init — keeps billing display accurate after reload. */
+  billingApiKeySource?: string;
 }
 
 const STATE_KEY = 'thesmos.pantheonChat.state';
@@ -121,18 +130,6 @@ function toolLabel(name: string, input: Record<string, unknown>): string {
 /** Stable per-workspace directory name for the shadow checkpoint repo. */
 function workspaceKey(root: string): string {
   return root.replace(/[^a-zA-Z0-9]/g, '-').slice(-80);
-}
-
-/** Read sessionMaxCostUSD from .thesmos/config.json → tokenBudget, returning undefined if absent. */
-function readSessionBudget(workspaceRoot: string): number | undefined {
-  try {
-    const raw = JSON.parse(readFileSync(join(workspaceRoot, '.thesmos', 'config.json'), 'utf-8')) as Record<string, unknown>;
-    const tb = raw['tokenBudget'] as Record<string, unknown> | undefined;
-    const v = Number(tb?.['sessionMaxCostUSD']);
-    return isFinite(v) && v > 0 ? v : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 /**
@@ -212,8 +209,10 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private pendingDispatch:
     | { orderId: string; text: string; attachments: string[]; advice: DispatchAdvice }
     | undefined;
-  /** True once an 80% budget warning has been shown this session. */
+  /** True once a budget warning/advisory has been shown this session (re-armed when state returns to ok). */
   private budgetWarned = false;
+  /** True once the at/over-limit notice has been shown this session (re-armed like budgetWarned). */
+  private budgetLimitNoticed = false;
   /** Advice from the last approved dispatch order — used to build the post-turn summary card. */
   private lastApprovedAdvice: DispatchAdvice | undefined;
   /** Session cost at the start of the current turn — used to compute per-turn cost delta. */
@@ -233,8 +232,18 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private savedUsdSession = 0;
   private savingsCacheAt: number | undefined;
   private savingsCacheVal = 0;
-  /** Session cost ceiling from .thesmos/config.json tokenBudget.sessionMaxCostUSD. */
-  private readonly sessionBudgetUsd: number | undefined;
+
+  // Budget Guardian — billing-aware session budget (see budgetPolicy.ts).
+  /** The Claude CLI's auth report from the session init event ('none' = OAuth login). */
+  private apiKeySource: string | undefined;
+  /** Last resolved billing classification — refreshed before every prompt and on auth/provider changes. */
+  private billing: BillingContext = {
+    mode: 'unknown',
+    source: 'unknown',
+    providerId: 'anthropic',
+    confidence: 'unknown',
+    label: 'Billing unknown (unverified — classify to enable protection)',
+  };
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -247,8 +256,211 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       workspaceRoot,
       vscode.Uri.joinPath(this.context.globalStorageUri, 'checkpoints', workspaceKey(workspaceRoot)).fsPath,
     );
-    this.sessionBudgetUsd = readSessionBudget(workspaceRoot);
     this.restore();
+    // Resolve initial billing classification (async — status broadcasts pick it up).
+    void this.refreshBilling();
+  }
+
+  /**
+   * Re-resolve the billing classification from workspace config, stored user
+   * selection, provider auth, and session metadata — in that priority order,
+   * so stale persisted state can never override newer workspace config.
+   */
+  private async refreshBilling(settings?: TokenBudgetSettings): Promise<BillingContext> {
+    const s = settings ?? readTokenBudgetSettings(this.workspaceRoot);
+    try {
+      this.billing = await this.providers.detectBillingContext({
+        configMode: s.billingMode,
+        apiKeySource: this.apiKeySource,
+      });
+    } catch {
+      // Detection failure must never break chat — fall back to unknown (advisory).
+      this.billing = {
+        mode: 'unknown',
+        source: 'unknown',
+        providerId: this.providers.active.id,
+        confidence: 'unknown',
+        label: 'Billing unknown (unverified — classify to enable protection)',
+      };
+    }
+    return this.billing;
+  }
+
+  /** Fresh billing-aware budget decision. Re-reads config so edits apply immediately. */
+  private async budgetDecision(): Promise<BudgetDecision> {
+    const settings = readTokenBudgetSettings(this.workspaceRoot);
+    const billing = await this.refreshBilling(settings);
+    return decideBudget(this.totalCostUsd, billing, settings);
+  }
+
+  /**
+   * Post-turn budget notice, shown once per state (re-armed when the state
+   * returns to ok, e.g. after the ceiling is raised or billing reclassified).
+   * Only a metered limit is an error; everything else is advisory.
+   */
+  private async emitBudgetNotice(): Promise<void> {
+    const decision = await this.budgetDecision();
+    if (decision.state === 'ok') {
+      this.budgetWarned = false;
+      this.budgetLimitNoticed = false;
+      return;
+    }
+    if (decision.state === 'warn') {
+      this.budgetLimitNoticed = false;
+      if (!this.budgetWarned) {
+        this.budgetWarned = true;
+        this.pushItem({ kind: 'turnFooter', text: `— ⚠️ ${decision.message} —` });
+      }
+      return;
+    }
+    // limit-reached
+    if (decision.enforcement === 'block') {
+      // Metered ceiling: real spend protection — surface every turn and ledger once.
+      this.pushItem({ kind: 'error', text: `⛔ ${decision.message} (Click the budget bar for actions.)` });
+      if (!this.budgetLimitNoticed) {
+        this.budgetLimitNoticed = true;
+        try {
+          appendSavings(this.workspaceRoot, {
+            ts: new Date().toISOString(),
+            type: 'budget_stop',
+            detail:
+              `metered session paused at ~$${decision.estimatedCostUsd.toFixed(2)} estimated ` +
+              `(ceiling ~$${(decision.configuredLimitUsd ?? 0).toFixed(2)})`,
+            costUsd: decision.estimatedCostUsd,
+          });
+        } catch {
+          // Ledger write is best-effort — never break a turn over it.
+        }
+      }
+      return;
+    }
+    // Subscription / unknown advisory — once until the state changes.
+    if (!this.budgetLimitNoticed) {
+      this.budgetLimitNoticed = true;
+      this.pushItem({ kind: 'turnFooter', text: `— ℹ️ ${decision.message} —` });
+    }
+  }
+
+  /** Budget-bar action menu: classify billing, raise the ceiling, open config. */
+  private async showBudgetActions(): Promise<void> {
+    const settings = readTokenBudgetSettings(this.workspaceRoot);
+    const billing = await this.refreshBilling(settings);
+    const preset = this.providers.active;
+    const configPinned = settings.billingMode !== 'auto';
+
+    type Action = vscode.QuickPickItem & { act: string };
+    const items: Action[] = [
+      {
+        label: '$(star) Set as subscription',
+        description: 'Advisory only — never blocks on the API-equivalent estimate',
+        act: 'subscription',
+      },
+      {
+        label: '$(credit-card) Set as metered API',
+        description: 'Enforce the session ceiling to prevent real API spend',
+        act: 'metered',
+      },
+      { label: '$(discard) Reset to auto-detect', description: 'Clear the explicit classification', act: 'auto' },
+      {
+        label: '$(arrow-up) Raise metered ceiling…',
+        description: `tokenBudget.sessionMaxCostUSD${settings.limitUsd !== undefined ? ` (currently $${settings.limitUsd.toFixed(2)})` : ''}`,
+        act: 'raise',
+      },
+      { label: '$(gear) Open budget configuration', description: '.thesmos/config.json', act: 'open' },
+      { label: '$(refresh) Start new session', description: 'Resets the session estimate (keeps billing preference)', act: 'new' },
+    ];
+    const picked = await vscode.window.showQuickPick(items, {
+      title: `⚡ Budget Guardian — ${billing.label}`,
+      placeHolder: `Session estimate ~$${this.totalCostUsd.toFixed(2)} (API-equivalent). How should Pantheon treat this connection?`,
+    });
+    if (!picked) return;
+
+    switch (picked.act) {
+      case 'subscription':
+      case 'metered': {
+        if (configPinned && settings.billingMode !== picked.act) {
+          const open = await vscode.window.showWarningMessage(
+            `.thesmos/config.json pins tokenBudget.billingMode to "${settings.billingMode}", which overrides in-chat selection. Edit the config to change it.`,
+            'Open config',
+          );
+          if (open) await this.openBudgetConfig();
+          return;
+        }
+        await this.providers.setBillingSelection(preset.id, picked.act);
+        await this.refreshBilling();
+        this.pushItem({
+          kind: 'turnFooter',
+          text: `— 🧾 billing mode set: ${this.billing.label} —`,
+        });
+        this.broadcastStatus(false);
+        break;
+      }
+      case 'auto':
+        await this.providers.setBillingSelection(preset.id, undefined);
+        await this.refreshBilling();
+        this.pushItem({ kind: 'turnFooter', text: `— 🧾 billing mode auto-detect: ${this.billing.label} —` });
+        this.broadcastStatus(false);
+        break;
+      case 'raise':
+        await this.raiseMeteredCeiling(settings);
+        break;
+      case 'open':
+        await this.openBudgetConfig();
+        break;
+      case 'new':
+        this.newSession();
+        break;
+    }
+  }
+
+  /** Prompt for a new ceiling and write it to .thesmos/config.json (explicit user action). */
+  private async raiseMeteredCeiling(settings: TokenBudgetSettings): Promise<void> {
+    const value = await vscode.window.showInputBox({
+      title: 'Metered session ceiling (USD)',
+      prompt: 'Applies immediately — the same session resumes without a restart.',
+      value: settings.limitUsd !== undefined ? String(settings.limitUsd) : '15',
+      validateInput: (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) && n > 0 ? undefined : 'Enter a positive number of US dollars';
+      },
+    });
+    if (value === undefined) return;
+    const ceiling = Number(value);
+    const configPath = join(this.workspaceRoot, '.thesmos', 'config.json');
+    try {
+      const raw = JSON.parse(readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+      const tb = (typeof raw.tokenBudget === 'object' && raw.tokenBudget !== null ? raw.tokenBudget : {}) as Record<string, unknown>;
+      tb.sessionMaxCostUSD = ceiling;
+      raw.tokenBudget = tb;
+      writeFileSync(configPath, JSON.stringify(raw, null, 2) + '\n', 'utf-8');
+      this.pushItem({ kind: 'turnFooter', text: `— 🧾 metered session ceiling set to $${ceiling.toFixed(2)} —` });
+      this.budgetWarned = false;
+      this.budgetLimitNoticed = false;
+      this.broadcastStatus(false);
+    } catch {
+      // Unparseable/missing config — never guess at a rewrite; open it instead.
+      void vscode.window.showWarningMessage('Could not update .thesmos/config.json automatically — opening it.');
+      await this.openBudgetConfig();
+    }
+  }
+
+  private async openBudgetConfig(): Promise<void> {
+    const doc = await vscode.workspace.openTextDocument(
+      vscode.Uri.file(join(this.workspaceRoot, '.thesmos', 'config.json')),
+    );
+    await vscode.window.showTextDocument(doc);
+  }
+
+  /** Broadcast a plain status frame (billing/budget fields are added in broadcast()). */
+  private broadcastStatus(running: boolean): void {
+    this.broadcast({
+      type: 'status',
+      running,
+      model: this.model,
+      sessionId: this.session?.id,
+      permissionMode: this.permissionMode,
+      totalCostUsd: this.totalCostUsd,
+    });
   }
 
   /** Create a session with the current mode/model/provider. Null = key not linked. */
@@ -405,6 +617,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.permissionMode = saved.permissionMode ?? 'default';
     this.totalCostUsd = saved.totalCostUsd ?? 0;
     this.modelId = saved.modelId ?? '';
+    this.apiKeySource = saved.billingApiKeySource;
     const lastTodo = [...saved.items].reverse().find((i): i is Extract<UiItem, { kind: 'todo' }> => i.kind === 'todo');
     this.currentTodoId = lastTodo?.id;
   }
@@ -419,6 +632,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         permissionMode: this.permissionMode,
         totalCostUsd: this.totalCostUsd,
         modelId: this.modelId,
+        billingApiKeySource: this.apiKeySource,
       };
       void this.context.workspaceState.update(STATE_KEY, state);
     }, 400);
@@ -557,9 +771,10 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
             void this.exportCouncilRecord();
             break;
           case 'openBudgetConfig':
-            void vscode.workspace.openTextDocument(
-              vscode.Uri.file(join(this.workspaceRoot, '.thesmos', 'config.json'))
-            ).then((doc) => vscode.window.showTextDocument(doc));
+            void this.openBudgetConfig();
+            break;
+          case 'budgetActions':
+            void this.showBudgetActions();
             break;
           case 'pasteImage':
             if (typeof msg.data === 'string' && msg.data.length > 0) {
@@ -612,8 +827,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       <button id="open-tab" title="Open in editor tab">↗️</button>
       <button id="new-session" title="New session">⟳ New</button>
     </div>
-    <div id="budget-bar-wrap" title="Session cost — click to edit budget in .thesmos/config.json">
-      <span id="budget-cost">$0.0000</span>
+    <div id="budget-bar-wrap" role="button" tabindex="0"
+         aria-label="Budget Guardian — session usage estimate. Press Enter for billing and budget actions."
+         title="Session usage estimate — click for billing and budget actions">
+      <span id="budget-mode" aria-hidden="true"></span>
+      <span id="budget-cost">$0.00</span>
       <div id="budget-bar"><div id="budget-fill"></div></div>
       <span id="budget-ceiling"></span>
     </div>
@@ -678,16 +896,14 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   private async sendPrompt(text: string, attachments: string[] = []): Promise<void> {
-    // Budget enforcement (fail-closed): re-read the ceiling each send so the
-    // user can raise it in .thesmos/config.json and immediately continue.
-    const budget = readSessionBudget(this.workspaceRoot);
-    if (budgetState(this.totalCostUsd, budget) === 'exceeded') {
-      this.pushItem({
-        kind: 'error',
-        text:
-          `⛔ Session budget reached (~$${this.totalCostUsd.toFixed(2)} of ~$${budget!.toFixed(2)}). ` +
-          `Raise tokenBudget.sessionMaxCostUSD in .thesmos/config.json (click the budget bar) or start a new session.`,
-      });
+    // Budget Guardian: re-read config AND billing mode on every send, so
+    // raising a metered ceiling or reclassifying billing takes effect
+    // immediately, without restarting VS Code. Only a confirmed/explicitly
+    // configured METERED session ever blocks; subscription and unknown are
+    // advisory only (the number is an API-equivalent estimate, not a charge).
+    const decision = await this.budgetDecision();
+    if (decision.enforcement === 'block') {
+      this.pushItem({ kind: 'error', text: `⛔ ${decision.message} (Click the budget bar for actions.)` });
       return;
     }
 
@@ -707,9 +923,9 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       const orderId = `do-${Date.now().toString(36)}`;
       this.pendingDispatch = { orderId, text, attachments, advice };
       const budgetLine =
-        budget !== undefined
-          ? `~$${this.totalCostUsd.toFixed(2)} of ~$${budget.toFixed(2)} session budget used`
-          : null;
+        decision.configuredLimitUsd !== undefined && this.billing.mode === 'metered'
+          ? `~$${this.totalCostUsd.toFixed(2)} of ~$${decision.configuredLimitUsd.toFixed(2)} metered session ceiling (estimated)`
+          : `~$${this.totalCostUsd.toFixed(2)} API-equivalent usage estimate this session`;
       this.pushItem({ kind: 'dispatchOrder', orderId, advice, budgetLine, status: 'pending' });
       return;
     }
@@ -754,6 +970,17 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   private async dispatchPrompt(text: string, attachments: string[], dequeued: boolean): Promise<void> {
+    // Single choke point: EVERY path that reaches the CLI (direct send,
+    // approved/skipped dispatch order, dequeued prompt, resumed session) runs
+    // the billing-aware decision here, so a ceiling or classification change
+    // between gating and dispatch can never be bypassed. sendPrompt and
+    // drainQueue also check earlier for better UX (error before queueing /
+    // queue clearing), but this check is the one that guards the wire.
+    const decision = await this.budgetDecision();
+    if (decision.enforcement === 'block') {
+      this.pushItem({ kind: 'error', text: `⛔ ${decision.message} (Click the budget bar for actions.)` });
+      return;
+    }
     if (!this.session) {
       // Resume the restored conversation, if any.
       this.session = (await this.createSession(this.lastSessionId)) ?? undefined;
@@ -802,7 +1029,26 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   /** Called when a turn finishes — dispatch the next queued prompt, if any. */
   private drainQueue(): void {
     const next = this.promptQueue.shift();
-    if (next) void this.dispatchPrompt(next.text, next.attachments, true);
+    if (!next) return;
+    // A queued prompt must not bypass a ceiling reached while it waited —
+    // re-run the same billing-aware decision the send path uses.
+    void (async () => {
+      const decision = await this.budgetDecision();
+      if (decision.enforcement === 'block') {
+        this.promptQueue.length = 0;
+        for (let i = this.history.length - 1; i >= 0; i--) {
+          const item = this.history[i];
+          if (item.kind === 'user' && item.queued === true) this.history.splice(i, 1);
+        }
+        this.broadcast({ type: 'history', items: this.history });
+        this.pushItem({
+          kind: 'error',
+          text: `⛔ Queued prompt not sent — ${decision.message} (Click the budget bar for actions, then resend.)`,
+        });
+        return;
+      }
+      void this.dispatchPrompt(next.text, next.attachments, true);
+    })();
   }
 
   private async setPermissionMode(mode: PermissionMode): Promise<void> {
@@ -854,7 +1100,13 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     const changed = await this.providers.pick();
     if (!changed) return;
     this.modelId = ''; // model ids are provider-specific — reset to default
+    // The old provider's auth report doesn't describe the new provider —
+    // drop it and re-classify billing (each provider keeps its own stored
+    // selection), so the budget bar never shows the previous provider's mode.
+    this.apiKeySource = undefined;
     await this.restartSession();
+    await this.refreshBilling();
+    this.broadcastStatus(false);
     this.pushItem({
       kind: 'turnFooter',
       text: `— 🔗 power source: ${this.providers.active.label} —`,
@@ -1174,6 +1426,12 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   newSession(): void {
     if (this.pendingDispatch) this.resolveDispatch(this.pendingDispatch.orderId, 'dismissed');
     this.budgetWarned = false;
+    this.budgetLimitNoticed = false;
+    // The session estimate resets; the user's billing classification does NOT
+    // (it lives in globalState per provider). Auth metadata re-detects on the
+    // next turn's init event.
+    this.apiKeySource = undefined;
+    void this.refreshBilling();
     this.lastApprovedAdvice = undefined;
     this.session?.dispose();
     this.session = undefined;
@@ -1199,6 +1457,14 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       case 'init':
         this.model = event.model;
         if (event.sessionId) this.lastSessionId = event.sessionId;
+        if (event.apiKeySource !== undefined && event.apiKeySource !== this.apiKeySource) {
+          // The CLI just told us how it authenticated — re-classify billing.
+          this.apiKeySource = event.apiKeySource;
+          void this.refreshBilling().then(() => {
+            this.broadcast({ type: 'status', running: true, model: this.model, sessionId: this.session?.id, permissionMode: this.permissionMode, totalCostUsd: this.totalCostUsd });
+          });
+          this.schedulePersist();
+        }
         this.contextTokens = 0;
         this.setPhase('🔮 Thinking…');
         this.broadcast({
@@ -1379,40 +1645,11 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
             }
           }
         }
-        if (event.costUsd !== undefined) this.totalCostUsd = event.costUsd; // CLI reports cumulative session cost
-        // Budget guardian: warn once at 80%, hard-notify at 100%. Enforcement
-        // (blocking the next send) happens in sendPrompt, fail-closed.
-        {
-          const budget = readSessionBudget(this.workspaceRoot);
-          const state = budgetState(this.totalCostUsd, budget);
-          if (state === 'warn' && !this.budgetWarned) {
-            this.budgetWarned = true;
-            this.pushItem({
-              kind: 'turnFooter',
-              text: `— ⚠️ ~$${this.totalCostUsd.toFixed(2)} of ~$${budget!.toFixed(2)} session budget used —`,
-            });
-          } else if (state === 'exceeded') {
-            this.pushItem({
-              kind: 'error',
-              text:
-                `⛔ Session budget reached (~$${this.totalCostUsd.toFixed(2)} of ~$${budget!.toFixed(2)}). ` +
-                `New prompts are blocked until you raise tokenBudget.sessionMaxCostUSD or start a new session.`,
-            });
-            try {
-              appendSavings(this.workspaceRoot, {
-                ts: new Date().toISOString(),
-                type: 'budget_stop',
-                detail: `session stopped at ~$${this.totalCostUsd.toFixed(2)} (ceiling ~$${budget!.toFixed(2)})`,
-                costUsd: this.totalCostUsd,
-              });
-            } catch {
-              // Ledger write is best-effort — never break a turn over it.
-            }
-          } else if (state === 'ok' && this.budgetWarned) {
-            // Ceiling was raised mid-session — re-arm the 80% warning.
-            this.budgetWarned = false;
-          }
-        }
+        if (event.costUsd !== undefined) this.totalCostUsd = event.costUsd; // CLI reports cumulative estimated session cost
+        // Budget Guardian: billing-aware notices. Enforcement (blocking the
+        // next send) lives in sendPrompt/drainQueue and only ever applies to
+        // confirmed metered sessions — see budgetPolicy.ts for the matrix.
+        void this.emitBudgetNotice();
         this.setActivity(null);
         this.setPhase(null);
         const fmtTok = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
@@ -1558,15 +1795,28 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private broadcast(message: unknown): void {
     // Credit Guardian: every status update carries the savings figures and session budget
     // so the header bar stays current without threading them through ten call sites.
-    if (typeof message === 'object' && message !== null && (message as { type?: string }).type === 'status') {
-      message = {
-        ...message,
-        savedUsdSession: this.savedUsdSession,
-        savedUsdMonth: this.monthSavings(),
-        sessionBudgetUsd: this.sessionBudgetUsd,
-      };
+    message = this.decorateStatus(message);
+    for (const webview of this.webviews) void webview.postMessage(message);
+  }
+
+  /** Attach savings + billing/budget fields to any status frame (single- or multi-webview path). */
+  private decorateStatus(message: unknown): unknown {
+    if (typeof message !== 'object' || message === null || (message as { type?: string }).type !== 'status') {
+      return message;
     }
-    for (const webview of this.webviews) this.post(webview, message);
+    // Budget settings are re-read here (tiny file, low-frequency status
+    // frames) so a config edit updates the bar without a reload.
+    const settings = readTokenBudgetSettings(this.workspaceRoot);
+    return {
+      ...message,
+      savedUsdSession: this.savedUsdSession,
+      savedUsdMonth: this.monthSavings(),
+      sessionBudgetUsd: settings.limitUsd,
+      subscriptionWarnUsd: settings.subscriptionWarnUsd,
+      billingMode: this.billing.mode,
+      billingLabel: this.billing.label,
+      billingConfidence: this.billing.confidence,
+    };
   }
 
   /** Month savings, cached for 30s — the file is tiny but re-reading per status would be waste. */
@@ -1584,7 +1834,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   }
 
   private post(webview: vscode.Webview, message: unknown): void {
-    void webview.postMessage(message);
+    void webview.postMessage(this.decorateStatus(message));
   }
 
   dispose(): void {

@@ -25,6 +25,11 @@
  */
 
 import * as vscode from 'vscode';
+import {
+  resolveBillingContext,
+  type BillingContext,
+  type ProviderBillingCapability,
+} from './billingContext.js';
 
 export interface ProviderPreset {
   id: string;
@@ -112,8 +117,10 @@ interface ActiveProviderState {
 
 const STATE_KEY = 'thesmos.pantheonChat.provider';
 const secretKey = (providerId: string): string => `thesmos.pantheon.provider.${providerId}.apiKey`;
+/** Per-provider explicit billing classification ('subscription' | 'metered'). */
+const billingKey = (providerId: string): string => `thesmos.pantheonChat.provider.${providerId}.billingMode`;
 
-export class ProviderManager {
+export class ProviderManager implements ProviderBillingCapability {
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   get active(): ProviderPreset {
@@ -142,6 +149,41 @@ export class ProviderManager {
     const key = await this.context.secrets.get(secretKey(preset.id));
     if (!key) return null;
     return { ANTHROPIC_BASE_URL: preset.baseUrl, ANTHROPIC_AUTH_TOKEN: key };
+  }
+
+  /** The user's explicit billing classification for a provider, if any. */
+  getBillingSelection(providerId: string): 'subscription' | 'metered' | undefined {
+    const v = this.context.globalState.get<string>(billingKey(providerId));
+    return v === 'subscription' || v === 'metered' ? v : undefined;
+  }
+
+  /** Persist (or clear, with undefined) the explicit billing classification. */
+  async setBillingSelection(providerId: string, mode: 'subscription' | 'metered' | undefined): Promise<void> {
+    await this.context.globalState.update(billingKey(providerId), mode);
+  }
+
+  /**
+   * ProviderBillingCapability — classify the active provider's billing mode.
+   * Only a boolean "is a key linked" ever leaves SecretStorage; the resolver
+   * never sees credential material. Ambiguity resolves to 'unknown'.
+   */
+  async detectBillingContext(opts: {
+    configMode?: 'auto' | 'subscription' | 'metered';
+    apiKeySource?: string;
+  }): Promise<BillingContext> {
+    const preset = this.active;
+    const hasLinkedKey = preset.needsKey
+      ? Boolean(await this.context.secrets.get(secretKey(preset.id)))
+      : false;
+    return resolveBillingContext({
+      providerId: preset.id,
+      providerCli: preset.cli,
+      hasLinkedKey,
+      isCustomProxy: preset.id === 'custom',
+      configMode: opts.configMode,
+      storedSelection: this.getBillingSelection(preset.id),
+      apiKeySource: opts.apiKeySource,
+    });
   }
 
   /** Interactive picker: choose provider, link key if needed. Returns true on change. */

@@ -3,7 +3,6 @@ import { describe, it, expect } from 'vitest';
 import {
   parseAdvice,
   shouldGate,
-  budgetState,
   type DispatchAdvice,
 } from '../chat/dispatchAdvisor.js';
 
@@ -77,22 +76,5 @@ describe('shouldGate', () => {
   });
 });
 
-describe('budgetState', () => {
-  it('is ok with no budget configured', () => {
-    expect(budgetState(999, undefined)).toBe('ok');
-  });
-
-  it('is ok below 80%', () => {
-    expect(budgetState(3.99, 5)).toBe('ok');
-  });
-
-  it('warns at 80% and above', () => {
-    expect(budgetState(4.0, 5)).toBe('warn');
-    expect(budgetState(4.9, 5)).toBe('warn');
-  });
-
-  it('is exceeded at 100% and above', () => {
-    expect(budgetState(5.0, 5)).toBe('exceeded');
-    expect(budgetState(7.2, 5)).toBe('exceeded');
-  });
-});
+// Session budget decisions moved to budgetPolicy.ts (billing-aware) —
+// see budgetPolicy.test.ts for the full decision-matrix coverage.

@@ -3,10 +3,9 @@
  * DispatchAdvisor — pre-execution routing/cost advice for Pantheon Chat.
  *
  * Wraps the deterministic `thesmos advise` heuristic (no LLM call, ~instant)
- * and owns the pure decision logic for:
- *   - when to show the Dispatch Order approval card (shouldGate)
- *   - session budget state (budgetState) — display is advisory, enforcement
- *     lives in the chat controller
+ * and owns the pure decision logic for when to show the Dispatch Order
+ * approval card (shouldGate). Session budget decisions live in
+ * budgetPolicy.ts (billing-aware) — not here.
  *
  * Fail-open by design: any advise failure (missing CLI, timeout, bad JSON)
  * returns null and the prompt dispatches without a gate.
@@ -43,8 +42,6 @@ export interface DispatchAdvice {
 
 /** Council-scale threshold for the chat gate outside auto mode. */
 const COUNCIL_GATE_MIN_GODS = 2;
-/** Budget warn threshold as a fraction of the session ceiling. */
-const BUDGET_WARN_FRACTION = 0.8;
 /** Kill advise if it hasn't answered in this many ms — the gate is optional. */
 const ADVISE_TIMEOUT_MS = 8000;
 
@@ -104,17 +101,6 @@ export function parseAdvice(raw: string): DispatchAdvice | null {
 export function shouldGate(advice: DispatchAdvice, permissionMode: string): boolean {
   if (permissionMode === 'auto') return true;
   return advice.agents.length >= COUNCIL_GATE_MIN_GODS;
-}
-
-/** Session budget state. No budget configured → always 'ok'. */
-export function budgetState(
-  totalCostUsd: number,
-  budgetUsd: number | undefined,
-): 'ok' | 'warn' | 'exceeded' {
-  if (budgetUsd === undefined || budgetUsd <= 0) return 'ok';
-  if (totalCostUsd >= budgetUsd) return 'exceeded';
-  if (totalCostUsd >= budgetUsd * BUDGET_WARN_FRACTION) return 'warn';
-  return 'ok';
 }
 
 /**
