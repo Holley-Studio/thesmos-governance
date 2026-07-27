@@ -393,7 +393,10 @@ function normalizeAuthorizations(
 ): TaskAuthorizationRecord[] {
   if (!records || records.length === 0) return [];
   const seen = new Map<string, TaskAuthorizationRecord>();
-  for (const r of records) seen.set(`${r.channel} ${r.target} ${r.decision}`, r);
+  // Keyed by a serialized tuple rather than a delimited string: `shell` targets
+  // are command lines, so any single-character delimiter is a target a caller
+  // could legitimately supply.
+  for (const r of records) seen.set(JSON.stringify([r.channel, r.target, r.decision]), r);
   return [...seen.values()].sort(
     (a, b) =>
       a.channel.localeCompare(b.channel) ||
