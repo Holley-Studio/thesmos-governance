@@ -42,10 +42,23 @@ const label = (file: string): string => file.split('/').slice(-2).join('/');
 describe('mission sources stay text', () => {
   it('finds every watched module', () => {
     expect(sourceFiles.length).toBeGreaterThan(5);
-    // Both directories must actually contribute, or the widening silently
-    // regressed to the original single-directory scope.
-    for (const dir of WATCHED_DIRS) {
-      expect(sourceFiles.some((f) => f.startsWith(dir))).toBe(true);
+
+    // Named explicitly rather than derived from WATCHED_DIRS. An earlier
+    // version looped over that constant, so narrowing the constant made the
+    // assertion trivially true and the coverage regression invisible — which
+    // mutation testing caught. These are the files that must be watched,
+    // stated independently of the thing under test.
+    const required = [
+      'mission/execute.ts',
+      'mission/graph.ts',
+      'bin/commands/mission.ts',
+      'bin/commands/mission.test.ts',
+    ];
+    for (const suffix of required) {
+      expect(
+        sourceFiles.some((f) => f.endsWith(suffix)),
+        `${suffix} is not being checked for source hygiene`
+      ).toBe(true);
     }
   });
 
