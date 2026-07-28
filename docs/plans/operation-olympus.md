@@ -369,7 +369,7 @@ dependency graph in §9. See §17.
    to the current branch.
 
 **Scope for PR 3** (from §5/§9 — do not expand): a governed mission-control surface over the PR 2
-runtime — presenting missions, tasks, effective authority, and handoffs, and driving
+runtime — presenting missions, tasks, declared policies, and handoffs, and driving
 `executeMission` through the existing `TaskRunner` seam. No model intelligence (PR 4), no
 persistence or records (PR 5), no packs (PR 6).
 
@@ -945,7 +945,7 @@ no task status, so execution cannot later be wired in silently.
 | Command | Purpose |
 |---|---|
 | `mission:plan <spec> [--json]` | Dependency order and execution layers |
-| `mission:show <spec> [--json] [--markdown]` | Per-task agent, role, effective limits, authority summary, escalation count |
+| `mission:show <spec> [--json] [--markdown]` | Per-task agent, role, effective limits, declared policies, escalation count |
 | `mission:validate <spec> [--json]` | Gate a spec — exit 2 on errors |
 
 Exit codes match the council commands: 0 valid (warnings never gate), 1 usage or unreadable spec,
@@ -1000,3 +1000,78 @@ confirmation. Nothing baselined, nothing suppressed.
 No execution, no persistence, no UI, no model selection. `mission:run` is deliberately absent.
 An uncommitted `thesmos/Dockerfile` refactor exists in the working tree; it predates this work, is
 unrelated, and was deliberately left unstaged.
+
+### 17.7 Correction — agent policy was published as effective authority
+
+Found by review of #128 before merge, and fixed on the branch.
+
+`taskViews()` summarized `binding.contract.permissions` and published it under the field name
+`authority`. That is the agent's **declared policy**, not the task's effective permission, which is
+resolved per concrete `(channel, target)` from the intersection of the mission envelope and the
+agent policy. The closing line of `mission:show` then asserted outright that the displayed counts
+*were* that intersection.
+
+The gap is widest in the default case, which makes it worse than a wording slip. Every agent
+baseline grants `read: allow` over ordinary source, and a mission that declares no permissions has
+an empty envelope where every lookup resolves to `ask`. So the command displayed `read(19a/…)` for
+a task whose effective read decision was `ask` on all nineteen targets. The regression test asserts
+this against the runtime's own answer: `authorizeTaskAction` returns `ask`, and the CLI must not
+contradict it.
+
+| Before | After |
+|---|---|
+| `authority` (task field) | `agentPolicy` |
+| — | `missionPolicy` (top level) |
+| "Effective authority is the intersection of the mission and each agent." | "Counts above are declared rules, not decisions… resolved per concrete action" |
+| CLI help: "…effective limits, authority" | "…effective limits, declared policies" |
+
+**No effective allow count was invented to replace it.** Effective permission is target-specific, so
+no count over abstract glob patterns can answer it, and a number that looked like an answer would
+be worse than none. `authority` was removed rather than aliased: #128 is unmerged, so no released
+contract needed preserving, and an alias would have left the misleading name in the payload.
+
+Two further defects surfaced while proving the fix, both found by mutation-testing the new tests
+rather than trusting them green:
+
+- **The redaction test was vacuous.** It used a trailing-comma malformation, which V8 reports
+  without quoting any input, so removing `scrubForOutput` from the parser-error path failed nothing.
+  Only the unquoted-value shape makes V8 quote input, and only a ~20-character window. Each case now
+  places the dangerous bytes at the error position, and a guard test asserts V8 still quotes at all.
+- **`scrubForOutput` does not strip control bytes.** It is
+  `redactAbsolutePaths(redactSecrets(…))`, so an escape sequence quoted out of a parse error reached
+  the terminal intact. Now stripped.
+
+The source-hygiene suite was also widened from `mission/` to the mission CLI directory: writing the
+redaction test put a literal ESC byte into `bin/commands/mission.test.ts` — the very defect class
+the suite exists to prevent — and nothing failed, because the guard was not watching that
+directory. Its coverage assertion originally looped over its own `WATCHED_DIRS` constant, so
+narrowing that constant made the check trivially true; mutation testing caught that too, and the
+required files are now named independently.
+
+### 17.8 Linux verification (Docker)
+
+Run from `git archive HEAD`, so only committed content enters the container — no `node_modules`, no
+`.env`, and none of the unrelated uncommitted `Dockerfile` work. No privileged containers, no socket
+mounts, no images published.
+
+| Image | Install | Build | Typecheck | Tests |
+|---|---|---|---|---|
+| `node:22-alpine` | lockfile ok | ok | ok | **4498 / 4498**, 135 files |
+| `node:20-alpine` | lockfile ok | ok | ok | mission + CLI focused: **459 / 459** |
+| `node:24-alpine` | lockfile ok | ok | ok | mission + CLI focused: **459 / 459** |
+
+**Two host/container differences, both explained, neither a defect:**
+
+1. **12 failures with no `git` binary.** `node:*-alpine` ships without git, and `bin/lib/git.test.ts`,
+   `agent-lifecycle.test.ts`, and `autopilot/executor.test.ts` all shell out to it. Installing git
+   and initializing a repository took the failures from 12 to 3.
+2. **3 failures as root.** The remaining three are rollback tests that simulate a registry write
+   failure through filesystem permissions — which root bypasses, so the failure they induce never
+   occurs and the rollback never runs. Re-running as the unprivileged `node` user: all 4498 pass.
+
+Worth recording as a repository property rather than a one-off: **the suite requires `git` on PATH
+and a non-root user.** A container image or CI runner lacking either produces failures that look
+like product defects and are not.
+
+This is Linux evidence only. It says nothing about Windows or macOS, and the Windows CI job still
+runs only `guard.cross-platform.test.ts`.
