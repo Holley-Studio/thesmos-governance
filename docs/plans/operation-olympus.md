@@ -4,8 +4,8 @@
 > Update this file after every PR. A fresh session should be able to resume from §12 alone.
 >
 > Created 2026-07-27. Status: **Phase 0 / 0A / 0B complete. PR 1 (Council Contract) MERGED as
-> `670d850`. PR 2 (Mission Graph Runtime) implemented, independently reviewed, rebased onto that
-> merge — draft #127 open, awaiting independent *human* review.** See §14, §15, §16.
+> `670d850`. PR 2 (Mission Graph Runtime) MERGED as `7e60641`. PR 3 (Pantheon Mission Control) in
+> progress on `feat/pantheon-mission-control`.** See §14, §15, §16, §17.
 >
 > The pre-Olympus work was split into four independent draft PRs off `origin/main`:
 > **#121** Billing Guardian · **#122** config repair hatch (supersedes #115) ·
@@ -324,8 +324,21 @@ precondition that was skipped.
 in the runtime, all fixed on the branch, and cleared the ten architectural invariants by mutation
 testing rather than by inspection alone.
 
-**Next: PR 3 — Pantheon Mission Control**, on branch `feat/pantheon-mission-control`, per the
-dependency graph in §9.
+**PR 2 (#127) is MERGED** as `7e60641`, squashed, on 2026-07-28. The remote branch was deleted on
+merge despite `--delete-branch=false`; the repository has `delete_branch_on_merge: true`, which
+wins.
+
+**Precondition 1 for PR 3 was waived, like PR 2's before it.** It required #127 to be reviewed by a
+*human*. What happened instead: the same agent that wrote PR 2 ran the independent-review protocol
+against it from a clean worktree, reported that it could not satisfy the independence requirement,
+declined to self-approve, and returned `CHANGES REQUESTED — on process, not on code`. The owner
+then directed the merge. Merged without a human reviewer, and without an agent approval either —
+recorded plainly because that is now **two consecutive PRs merged on owner instruction rather than
+on independent review**. The technical verification behind that merge was real (§16); the
+independence was not. A third waiver should be a deliberate decision, not a habit.
+
+**Now: PR 3 — Pantheon Mission Control**, on branch `feat/pantheon-mission-control`, per the
+dependency graph in §9. See §17.
 
 > **Correction.** Earlier revisions of this section named PR 3 as "Council Records" on
 > `feat/council-records`. That contradicted §9 of this same document, which is authoritative:
@@ -356,7 +369,7 @@ dependency graph in §9.
    to the current branch.
 
 **Scope for PR 3** (from §5/§9 — do not expand): a governed mission-control surface over the PR 2
-runtime — presenting missions, tasks, effective authority, and handoffs, and driving
+runtime — presenting missions, tasks, declared policies, and handoffs, and driving
 `executeMission` through the existing `TaskRunner` seam. No model intelligence (PR 4), no
 persistence or records (PR 5), no packs (PR 6).
 
@@ -383,13 +396,12 @@ split into four independently reviewable draft PRs.
 | [#123](https://github.com/Holley-Studio/thesmos-governance/pull/123) | `hardening/proof-gate-blocker-fixtures` | BLOCKER fixture coverage |
 | [#124](https://github.com/Holley-Studio/thesmos-governance/pull/124) | `docs/operation-olympus-ledger` | This ledger (docs-only) |
 
-**Deferred:** PR 3–11. Merging #121–#123 and #127 (independent human review required for each).
+**Deferred:** PR 4–11. Merging #121–#123 and the PR 3 draft (independent human review required for each).
 Disposition of the 29 scanner gaps. The `unhandled_promise_rejection` heuristic defect recorded in
 §14.9, re-confirmed independently twice since (§15.7, §16.5). Windows execution of the mission
 suites (§16.7). Nothing has been tagged, published, or released.
 
-**Merged:** #124 (this ledger) as `1a495e8`; **#126 (Council Contract Foundation) as `670d850`**,
-squashed, on 2026-07-27.
+**Merged:** #124 (this ledger) as `1a495e8`; **#126 (Council Contract Foundation) as `670d850`**; **#127 (Mission Graph Runtime) as `7e60641`** — all squashed, 2026-07-27/28.
 
 ---
 
@@ -906,3 +918,160 @@ on macOS; no mission test has ever executed on Windows. PR 11 scope, unchanged f
    Nothing has yet run a model through this runtime.
 4. **The `unhandled_promise_rejection` heuristic remains defective** and now demonstrably noisy on
    any async-adjacent file. Still deferred and unbundled, for the reason §14.9 gives.
+
+---
+
+## 17. PR 3 — Pantheon Mission Control (in progress)
+
+Branch `feat/pantheon-mission-control`, based on `main` (`7e60641`). Three files.
+
+### 17.1 Two decisions taken before any code
+
+**Surface: CLI, not the extension.** §1 calls Pantheon Chat "the governed mission-control surface",
+which reads like a mandate for a VS Code panel. It was not taken, for three reasons: D10 says extend
+existing commands rather than add duplicates; the CLI-internal API decision (§15.2) is only coherent
+if the CLI is what consumes the runtime; and the runtime has no persistence until PR 5, so a panel
+could only ever show an in-memory run that vanishes when the process exits. A panel over durable
+records is a better PR 5+ than a worse PR 3.
+
+**Runner: none.** PR 3 plans, binds, and reports. It does not execute. `executeMission` needs a real
+agent behind the `TaskRunner` seam and that is PR 4; the two alternatives were a scripted
+human-in-the-loop runner or a no-op echo runner, and both ship a command called `mission:run` that
+does not run a mission. A test asserts the JSON output carries no `stepsUsed`, no `stateHash`, and
+no task status, so execution cannot later be wired in silently.
+
+### 17.2 What it builds
+
+| Command | Purpose |
+|---|---|
+| `mission:plan <spec> [--json]` | Dependency order and execution layers |
+| `mission:show <spec> [--json] [--markdown]` | Per-task agent, role, effective limits, declared policies, escalation count |
+| `mission:validate <spec> [--json]` | Gate a spec — exit 2 on errors |
+
+Exit codes match the council commands: 0 valid (warnings never gate), 1 usage or unreadable spec,
+2 invalid mission. A spec is JSON matching `MissionRequest`.
+
+### 17.3 What building the consumer revealed about the runtime
+
+**`detectPermissionEscalation` is per-pattern, and that does not survive contact with a real
+roster.** A three-task mission against the shipped agents produced **84 warnings** — one per glob,
+every one individually correct. That is right for a validator and unusable for a plan: a governance
+tool that prints 84 warnings for 3 tasks teaches people to skip warnings, which costs more than the
+detail is worth.
+
+Fixed in the surface, not the runtime: human output groups issues by `(code, path)`, shows two
+examples, and collapses the rest to a count with a pointer to `--json`. The 84 warnings became 6
+groups. `--json` is untouched and still carries every issue individually, so nothing is lost to a
+machine consumer. The runtime's per-pattern reporting is correct and stays as it is.
+
+This is the first evidence that PR 2's outputs are *usable*, not merely correct — which is the thing
+only a consumer can establish.
+
+### 17.4 Boundaries held
+
+Same boundary `agent:show` holds, for the same reason: no instruction bodies, no roster dump, no
+absolute machine paths. Spec paths are reported repo-relative through `toProvenancePath`; JSON
+parser errors are scrubbed with `scrubForOutput` before reaching a terminal, because a parse error
+can quote spec content; specs are capped at 1 MiB. Asserted for all three commands across all output
+modes, including a test that the temp-directory absolute path never appears in output.
+
+### 17.5 Verification
+
+| Gate | Result |
+|---|---|
+| `npm run build` (3 workspaces) | 0 errors |
+| `npm run typecheck` (3 workspaces) | 0 errors |
+| `npm test --workspace=thesmos` | **4234 / 4234**, 135 files |
+| `npm test --workspace=extensions/vscode` | **93 / 93** |
+| `npm test --workspace=actions/pr-review` | **108 / 108** |
+| Mission CLI suite | **27 / 27** |
+| `npm run thesmos:validate` | 7 TECH_DEBT — **0 BLOCKER** |
+| `npm run thesmos:doctor` | 39/39 |
+| `npm run thesmos:ci-check` | 20/20 |
+| `review --base=main` | 122 findings — 92 HIGH, 2 MEDIUM, 21 LOW, 7 TECH_DEBT, **0 BLOCKER** |
+
+All 92 HIGH are `unhandled_promise_rejection`, traced to source: the 18 in `mission.ts` are
+`serializeStable(`, `printIssues(`, and `exitForIssues(` — all synchronous; the 74 in the test file
+are `expect(`, `*Sync` fs calls, and `it('…', async () => {`. The §14.9 heuristic, third
+confirmation. Nothing baselined, nothing suppressed.
+
+### 17.6 Not done here
+
+No execution, no persistence, no UI, no model selection. `mission:run` is deliberately absent.
+An uncommitted `thesmos/Dockerfile` refactor exists in the working tree; it predates this work, is
+unrelated, and was deliberately left unstaged.
+
+### 17.7 Correction — agent policy was published as effective authority
+
+Found by review of #128 before merge, and fixed on the branch.
+
+`taskViews()` summarized `binding.contract.permissions` and published it under the field name
+`authority`. That is the agent's **declared policy**, not the task's effective permission, which is
+resolved per concrete `(channel, target)` from the intersection of the mission envelope and the
+agent policy. The closing line of `mission:show` then asserted outright that the displayed counts
+*were* that intersection.
+
+The gap is widest in the default case, which makes it worse than a wording slip. Every agent
+baseline grants `read: allow` over ordinary source, and a mission that declares no permissions has
+an empty envelope where every lookup resolves to `ask`. So the command displayed `read(19a/…)` for
+a task whose effective read decision was `ask` on all nineteen targets. The regression test asserts
+this against the runtime's own answer: `authorizeTaskAction` returns `ask`, and the CLI must not
+contradict it.
+
+| Before | After |
+|---|---|
+| `authority` (task field) | `agentPolicy` |
+| — | `missionPolicy` (top level) |
+| "Effective authority is the intersection of the mission and each agent." | "Counts above are declared rules, not decisions… resolved per concrete action" |
+| CLI help: "…effective limits, authority" | "…effective limits, declared policies" |
+
+**No effective allow count was invented to replace it.** Effective permission is target-specific, so
+no count over abstract glob patterns can answer it, and a number that looked like an answer would
+be worse than none. `authority` was removed rather than aliased: #128 is unmerged, so no released
+contract needed preserving, and an alias would have left the misleading name in the payload.
+
+Two further defects surfaced while proving the fix, both found by mutation-testing the new tests
+rather than trusting them green:
+
+- **The redaction test was vacuous.** It used a trailing-comma malformation, which V8 reports
+  without quoting any input, so removing `scrubForOutput` from the parser-error path failed nothing.
+  Only the unquoted-value shape makes V8 quote input, and only a ~20-character window. Each case now
+  places the dangerous bytes at the error position, and a guard test asserts V8 still quotes at all.
+- **`scrubForOutput` does not strip control bytes.** It is
+  `redactAbsolutePaths(redactSecrets(…))`, so an escape sequence quoted out of a parse error reached
+  the terminal intact. Now stripped.
+
+The source-hygiene suite was also widened from `mission/` to the mission CLI directory: writing the
+redaction test put a literal ESC byte into `bin/commands/mission.test.ts` — the very defect class
+the suite exists to prevent — and nothing failed, because the guard was not watching that
+directory. Its coverage assertion originally looped over its own `WATCHED_DIRS` constant, so
+narrowing that constant made the check trivially true; mutation testing caught that too, and the
+required files are now named independently.
+
+### 17.8 Linux verification (Docker)
+
+Run from `git archive HEAD`, so only committed content enters the container — no `node_modules`, no
+`.env`, and none of the unrelated uncommitted `Dockerfile` work. No privileged containers, no socket
+mounts, no images published.
+
+| Image | Install | Build | Typecheck | Tests |
+|---|---|---|---|---|
+| `node:22-alpine` | lockfile ok | ok | ok | **4498 / 4498**, 135 files |
+| `node:20-alpine` | lockfile ok | ok | ok | mission + CLI focused: **459 / 459** |
+| `node:24-alpine` | lockfile ok | ok | ok | mission + CLI focused: **459 / 459** |
+
+**Two host/container differences, both explained, neither a defect:**
+
+1. **12 failures with no `git` binary.** `node:*-alpine` ships without git, and `bin/lib/git.test.ts`,
+   `agent-lifecycle.test.ts`, and `autopilot/executor.test.ts` all shell out to it. Installing git
+   and initializing a repository took the failures from 12 to 3.
+2. **3 failures as root.** The remaining three are rollback tests that simulate a registry write
+   failure through filesystem permissions — which root bypasses, so the failure they induce never
+   occurs and the rollback never runs. Re-running as the unprivileged `node` user: all 4498 pass.
+
+Worth recording as a repository property rather than a one-off: **the suite requires `git` on PATH
+and a non-root user.** A container image or CI runner lacking either produces failures that look
+like product defects and are not.
+
+This is Linux evidence only. It says nothing about Windows or macOS, and the Windows CI job still
+runs only `guard.cross-platform.test.ts`.
