@@ -31,6 +31,11 @@ import {
   cmdAgentValidate,
   cmdAgentsValidate,
 } from './commands/council.ts';
+import {
+  cmdMissionPlan,
+  cmdMissionShow,
+  cmdMissionValidate,
+} from './commands/mission.ts';
 import { cmdSkillCreate } from './commands/skill-create.ts';
 import { cmdDrift } from './commands/drift.ts';
 import { cmdBaseline } from './commands/baseline.ts';
@@ -172,6 +177,9 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'agent:show': cmdAgentShow,
   'agent:validate': cmdAgentValidate,
   'agents:validate': cmdAgentsValidate,
+  'mission:plan': cmdMissionPlan,
+  'mission:show': cmdMissionShow,
+  'mission:validate': cmdMissionValidate,
   'agents:doctor': cmdAgentsDoctor,
   'agents:conflicts': cmdAgentsConflicts,
   'skill:create': cmdSkillCreate,
@@ -549,6 +557,15 @@ COUNCIL CONTRACT
   agent:validate <id>      Validate one compiled contract (exit 2 on errors)
   agents:validate          Validate every compiled contract
     --json --role=<role> --migration (read-only migration status)
+
+MISSION GRAPH
+  mission:plan <spec>      Dependency order and execution layers
+    --json
+  mission:show <spec>      Per-task agent, effective limits, authority
+    --json --markdown
+  mission:validate <spec>  Gate a mission spec (exit 2 on errors)
+    --json
+    Read-only. These inspect a mission; they never execute one.
 
 CATALOG
   catalog:list             List all agents and skills
