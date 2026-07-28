@@ -16,14 +16,21 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { journalPath } from './journal.js';
-import { buildRecordContent, type RecordInput } from './record.js';
+import { appendRecord, journalPath } from './journal.js';
+import { buildRecordContent, sealRecord, type RecordInput } from './record.js';
 import { findRedactionViolations, redactField } from './redact.js';
 import { executedRecords, readRecords, writeRecord } from './store.js';
-import { isExecutedOutcome, type RecordOutcome } from './types.js';
+import {
+  GENESIS_HASH,
+  RECORD_CODES,
+  RECORD_SCHEMA_VERSION,
+  isExecutedOutcome,
+  type RecordContent,
+  type RecordOutcome,
+} from './types.js';
 
 let root = '';
 const FIXED_TIME = '2026-01-01T00:00:00.000Z';
@@ -165,11 +172,49 @@ describe('redaction is enforced at the boundary', () => {
   });
 
   it('refuses to append a record that still contains a secret', () => {
-    // Redaction is applied by the builder, so reaching the appender with a
-    // secret means something bypassed it. The appender refuses rather than
-    // writing, because an append-only journal cannot be corrected.
-    const violations = findRedactionViolations({ intent: `key ${SECRET}` });
-    expect(violations.some((v) => v.kind === 'secret')).toBe(true);
+    // Exercises the appender's own refusal, not just the detector. Redaction
+    // normally happens in the builder, so a violating record can only reach
+    // here by bypassing it — which is exactly the case worth proving, because
+    // an append-only journal cannot be corrected afterwards.
+    //
+    // An earlier version of this test called findRedactionViolations directly
+    // and asserted nothing about appendRecord. Mutation testing caught it:
+    // disabling the appender's refusal passed the whole suite.
+    const content: RecordContent = {
+      schemaVersion: RECORD_SCHEMA_VERSION,
+      event: 'mission.planned',
+      identity: { correlationId: 'c', causationId: '' },
+      actor: { kind: 'system', component: 'test' },
+      intent: `credential ${SECRET}`,
+      outcome: { kind: 'planned' },
+      digests: {},
+      links: {},
+    };
+    const record = sealRecord(content, GENESIS_HASH, 0, FIXED_TIME);
+
+    const result = appendRecord(journalPath(root), record);
+    expect(result.ok).toBe(false);
+    expect(result.issues.map((i) => i.code)).toContain(RECORD_CODES.secretPresent);
+    // Nothing was written.
+    expect(existsSync(journalPath(root))).toBe(false);
+  });
+
+  it('refuses to append a record containing an absolute path', () => {
+    const content: RecordContent = {
+      schemaVersion: RECORD_SCHEMA_VERSION,
+      event: 'mission.planned',
+      identity: { correlationId: 'c', causationId: '' },
+      actor: { kind: 'system', component: 'test' },
+      intent: `wrote /Users/someone/thing.txt`,
+      outcome: { kind: 'planned' },
+      digests: {},
+      links: {},
+    };
+    const record = sealRecord(content, GENESIS_HASH, 0, FIXED_TIME);
+
+    const result = appendRecord(journalPath(root), record);
+    expect(result.ok).toBe(false);
+    expect(result.issues.map((i) => i.code)).toContain(RECORD_CODES.absolutePath);
   });
 
   it('detects violations on read as well as on write', () => {
