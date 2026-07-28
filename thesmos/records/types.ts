@@ -139,16 +139,30 @@ export function isExecutedOutcome(
 // ── Attestation ───────────────────────────────────────────────────────────────
 
 /**
- * Signing state.
+ * Signing state, persisted on every record.
  *
- * This repository has no key management and no trust root, so every record is
- * `none`. The field exists so a real signing implementation has somewhere to go
- * without breaking the schema, and so a reader can tell "unsigned" from
- * "signature not checked". Nothing here simulates a signature.
+ * This repository has no key management and no trust root, so every record
+ * persists exactly `{ kind: 'none' }`. It is written, covered by the envelope
+ * hash, and validated on read, so a reader can distinguish "this journal
+ * asserts it is unsigned" from "this journal says nothing about signing".
+ *
+ * Only `none` exists. An earlier revision declared an `unverified` variant
+ * carrying an algorithm, key id and signature, and persisted none of it — the
+ * type was never wired into a record. That was removed rather than implemented:
+ * a variant whose semantics do not exist is a promise the schema cannot keep.
+ * Introducing signing will require a schema version bump, and the honest
+ * position is to say so rather than to claim a placeholder makes it free.
  */
-export type RecordAttestation =
-  | { kind: 'none' }
-  | { kind: 'unverified'; algorithm: string; keyId: string; signature: string };
+export type RecordAttestation = { kind: 'none' };
+
+export function isRecordAttestation(value: unknown): value is RecordAttestation {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    (value as { kind?: unknown }).kind === 'none' &&
+    Object.keys(value as object).length === 1
+  );
+}
 
 // ── Record ────────────────────────────────────────────────────────────────────
 
@@ -176,34 +190,117 @@ export interface RecordContent {
   links: Record<string, string>;
 }
 
-/** A record as it appears on disk: content, chain, and journal metadata. */
-export interface CouncilRecord extends RecordContent {
-  /** `sha256:<hex>` over the canonical serialization of the content alone. */
+/**
+ * The envelope projection, hashed to produce `recordHash`.
+ *
+ * Two digests exist because they answer different questions, and collapsing
+ * them was the defect that made timestamps forgeable:
+ *
+ * - `contentHash` is **semantic identity**. Two records describing the same
+ *   event have the same content hash regardless of when or where they were
+ *   written. It must stay free of position and time, or replay determinism is
+ *   impossible.
+ * - `recordHash` is **envelope integrity**. It binds that semantic identity to
+ *   this position, this timestamp, this attestation state, and this chain. It
+ *   is what makes the persisted record unforgeable in place.
+ *
+ * `recordHash` is excluded from its own projection, for the obvious reason.
+ */
+export interface RecordEnvelope {
   contentHash: string;
-  /** `contentHash` of the previous record, or the genesis sentinel. */
-  prevHash: string;
-  /** Position in the journal, from 0. Not hashed. */
+  /** `recordHash` of the previous record — the chain links envelopes. */
+  prevRecordHash: string;
   sequence: number;
-  /** ISO-8601 UTC. Not hashed — see `RecordContent`. */
+  /** ISO-8601 UTC, validated on the way in and on the way out. */
   recordedAt: string;
+  attestation: RecordAttestation;
 }
 
-/** First `prevHash` in a journal. Distinguishable from any real digest. */
+/** A record as it appears on disk: content, envelope, and envelope digest. */
+export interface CouncilRecord extends RecordContent, RecordEnvelope {
+  /** `sha256:<hex>` over the envelope projection, excluding itself. */
+  recordHash: string;
+}
+
+/** First `prevRecordHash` in a journal. Distinguishable from any real digest. */
 export const GENESIS_HASH = 'sha256:genesis';
+
+/**
+ * Canonical ISO-8601 UTC with milliseconds, e.g. `2026-01-01T00:00:00.000Z`.
+ *
+ * Deliberately strict. A timestamp is part of the authenticated envelope, so an
+ * ambiguous or locale-dependent form would make the same instant hash two ways.
+ */
+const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+export function isCanonicalTimestamp(value: unknown): value is string {
+  if (typeof value !== 'string' || !TIMESTAMP_RE.test(value)) return false;
+  const parsed = Date.parse(value);
+  // Round-tripping rejects values that match the shape but are not real dates,
+  // such as month 13 or the 31st of February.
+  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
+}
+
+// ── Head anchor ───────────────────────────────────────────────────────────────
+
+/**
+ * The sibling anchor that makes suffix truncation detectable.
+ *
+ * A backward chain proves each record follows its predecessor. It cannot prove
+ * that no record followed the *last* one, so deleting a valid suffix leaves a
+ * journal that verifies perfectly. The anchor records how far the journal is
+ * known to have reached.
+ *
+ * This defends against crashes, truncation and accidental loss. It does **not**
+ * defend against an attacker who can rewrite the journal and the anchor
+ * together — both are local files, and no local artifact can establish that.
+ */
+export interface JournalHead {
+  schemaVersion: string;
+  /** Distinguishes a rebuilt journal from a truncated one. */
+  journalId: string;
+  /** Sequence of the last committed record; -1 for an initialized empty journal. */
+  sequence: number;
+  /** `recordHash` of the last committed record, or the genesis sentinel. */
+  tipRecordHash: string;
+}
+
+/** How the journal and its anchor relate. */
+export type HeadState =
+  | 'agreed'
+  | 'journal-ahead-recoverable'
+  | 'head-ahead'
+  | 'tip-mismatch'
+  | 'missing'
+  | 'corrupt';
 
 // ── Verification ──────────────────────────────────────────────────────────────
 
 export const RECORD_CODES = {
   schemaUnsupported: 'RECORD_SCHEMA_UNSUPPORTED',
   contentHashMismatch: 'RECORD_CONTENT_HASH_MISMATCH',
+  recordHashMismatch: 'RECORD_ENVELOPE_HASH_MISMATCH',
   chainBroken: 'RECORD_CHAIN_BROKEN',
   sequenceGap: 'RECORD_SEQUENCE_GAP',
   malformed: 'RECORD_MALFORMED',
   tornTail: 'RECORD_TORN_TAIL',
+  tornTailRepaired: 'RECORD_TORN_TAIL_REPAIRED',
+  timestampInvalid: 'RECORD_TIMESTAMP_INVALID',
+  attestationInvalid: 'RECORD_ATTESTATION_INVALID',
   secretPresent: 'RECORD_SECRET_PRESENT',
   absolutePath: 'RECORD_ABSOLUTE_PATH',
   controlCharacter: 'RECORD_CONTROL_CHARACTER',
   executionUnproven: 'RECORD_EXECUTION_UNPROVEN',
+  // Head anchor
+  headMissing: 'RECORD_HEAD_MISSING',
+  headCorrupt: 'RECORD_HEAD_CORRUPT',
+  headAhead: 'RECORD_HEAD_AHEAD',
+  headTipMismatch: 'RECORD_HEAD_TIP_MISMATCH',
+  headRecovered: 'RECORD_HEAD_RECOVERED',
+  // Transaction
+  lockHeld: 'RECORD_LOCK_HELD',
+  lockStaleRecovered: 'RECORD_LOCK_STALE_RECOVERED',
+  writeIncomplete: 'RECORD_WRITE_INCOMPLETE',
 } as const;
 
 export interface RecordIssue {
@@ -222,6 +319,17 @@ export interface JournalVerification {
   intactCount: number;
   /** True when the final record was partially written — the crash signature. */
   tornTail: boolean;
+  /**
+   * How the journal relates to its anchor.
+   *
+   * `missing` is reported as a degraded state rather than silently treated as
+   * agreement: a journal with no anchor cannot be checked for truncation, and
+   * calling that "verified" would be the same overclaim the anchor exists to
+   * remove.
+   */
+  headState: HeadState;
+  /** False when no anchor was available to check suffix truncation against. */
+  suffixAnchored: boolean;
   issues: RecordIssue[];
 }
 

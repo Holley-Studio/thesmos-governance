@@ -20,11 +20,15 @@ import { redactField, redactMap } from './redact.js';
 import {
   GENESIS_HASH,
   RECORD_SCHEMA_VERSION,
+  isCanonicalTimestamp,
+  isRecordAttestation,
   isRecordEventKind,
   type CouncilRecord,
   type RecordActor,
+  type RecordAttestation,
   type RecordAuthority,
   type RecordContent,
+  type RecordEnvelope,
   type RecordEventKind,
   type RecordIdentity,
   type RecordOutcome,
@@ -132,35 +136,96 @@ export function buildRecordContent(input: RecordInput, root?: string): RecordCon
   };
 }
 
-/** `sha256:<hex>` over the canonical serialization of the content alone. */
+/**
+ * `sha256:<hex>` over the semantic content alone — **identity, not integrity**.
+ *
+ * Deliberately excludes position, time and attestation so that two records
+ * describing the same event hash identically. That property is what makes
+ * replay determinism testable, and it is exactly why this hash cannot also
+ * protect the envelope: see `hashRecordEnvelope`.
+ */
 export function hashRecordContent(content: RecordContent): string {
   return contentHash(serializeStable(content));
 }
 
 /**
+ * `sha256:<hex>` over the envelope — **integrity, not identity**.
+ *
+ * Binds semantic identity to this position, this timestamp, this attestation
+ * state and this chain. Changing any of them changes this digest, which is what
+ * makes a persisted record unforgeable in place.
+ *
+ * An earlier revision had only `hashRecordContent`, so `recordedAt` was covered
+ * by nothing and could be rewritten freely on an existing journal without
+ * detection.
+ */
+export function hashRecordEnvelope(envelope: RecordEnvelope): string {
+  return contentHash(
+    serializeStable({
+      contentHash: envelope.contentHash,
+      prevRecordHash: envelope.prevRecordHash,
+      sequence: envelope.sequence,
+      recordedAt: envelope.recordedAt,
+      attestation: envelope.attestation,
+    })
+  );
+}
+
+/**
  * Seal a record into the chain.
  *
- * `recordedAt` is supplied rather than read from the clock here so the caller
- * owns the only non-deterministic input, and tests can produce byte-identical
- * journals.
+ * `recordedAt` is supplied rather than read from the clock so the caller owns
+ * the only non-deterministic input and tests can produce byte-identical
+ * journals. It is validated here rather than trusted: an unparseable or
+ * non-canonical timestamp would otherwise be authenticated as-is, making the
+ * envelope hash agree with a value no reader can interpret.
  */
 export function sealRecord(
   content: RecordContent,
-  prevHash: string,
+  prevRecordHash: string,
   sequence: number,
-  recordedAt: string
+  recordedAt: string,
+  attestation: RecordAttestation = { kind: 'none' }
 ): CouncilRecord {
-  return {
-    ...content,
+  if (!isCanonicalTimestamp(recordedAt)) {
+    throw new Error(`recordedAt must be canonical ISO-8601 UTC with milliseconds`);
+  }
+  if (!isRecordAttestation(attestation)) {
+    throw new Error(`attestation must be exactly { kind: 'none' }`);
+  }
+
+  const envelope: RecordEnvelope = {
     contentHash: hashRecordContent(content),
-    prevHash: prevHash || GENESIS_HASH,
+    prevRecordHash: prevRecordHash || GENESIS_HASH,
     sequence,
     recordedAt,
+    attestation,
   };
+
+  return { ...content, ...envelope, recordHash: hashRecordEnvelope(envelope) };
 }
 
-/** Strip chain and journal metadata back off, for re-hashing on verification. */
+/** Strip the envelope back off, for re-hashing semantic content on verification. */
 export function contentOf(record: CouncilRecord): RecordContent {
-  const { contentHash: _c, prevHash: _p, sequence: _s, recordedAt: _r, ...content } = record;
+  const {
+    contentHash: _c,
+    prevRecordHash: _p,
+    sequence: _s,
+    recordedAt: _r,
+    attestation: _a,
+    recordHash: _h,
+    ...content
+  } = record;
   return content as RecordContent;
+}
+
+/** Lift the envelope back out, for re-hashing on verification. */
+export function envelopeOf(record: CouncilRecord): RecordEnvelope {
+  return {
+    contentHash: record.contentHash,
+    prevRecordHash: record.prevRecordHash,
+    sequence: record.sequence,
+    recordedAt: record.recordedAt,
+    attestation: record.attestation,
+  };
 }
