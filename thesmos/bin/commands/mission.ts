@@ -6,10 +6,16 @@
  *   thesmos mission:validate <spec.json> [--json]
  *
  * All three are read-only and none of them executes a mission. Planning,
- * binding, and authority resolution are the whole surface: a mission is
- * *shown* here, never run. Execution needs a real agent behind the
+ * binding, and the *declared* policies on either side are the whole surface: a
+ * mission is shown here, never run. Execution needs a real agent behind the
  * `TaskRunner` seam, which is a later PR, and a command that pretended to
  * execute by driving a stub runner would report work that never happened.
+ *
+ * These commands deliberately do not report effective authority. A permission
+ * decision is resolved per concrete `(channel, target)` from the mission
+ * envelope and the agent policy together, so it exists only once an action is
+ * actually requested. Counting rules on either side cannot answer it, and a
+ * number that looked like an answer would be worse than no number at all.
  *
  * Exit codes:
  *   0 — the mission is valid (warnings do not fail a gate)
@@ -43,7 +49,7 @@ import {
  * A mission spec is a hand-authored description, not a data feed. Anything
  * larger than this is a mistake worth naming rather than parsing.
  */
-const MAX_SPEC_BYTES = 1_048_576;
+export const MAX_SPEC_BYTES = 1_048_576;
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 
@@ -227,7 +233,24 @@ export async function cmdMissionPlan(argv: string[]): Promise<void> {
 
 const SHOW_USAGE = 'thesmos mission:show <spec.json> [--json] [--markdown]';
 
-/** Per-task view: what it is bound to, and what it may actually do. */
+/**
+ * Per-task view: what a task is bound to, and what its agent *declares*.
+ *
+ * `agentPolicy` is deliberately named for what it is. It counts the rules in
+ * the agent's own contract — not the task's effective authority, which is
+ * resolved per concrete `(channel, target)` from the intersection of the
+ * mission envelope and the agent policy.
+ *
+ * The two are routinely different, and the default case is the widest gap:
+ * every agent baseline grants `read: allow` over ordinary source, while a
+ * mission that declares no permissions resolves every lookup to `ask`. A large
+ * agent allow count under a heading like "authority" would therefore assert
+ * something the runtime disagrees with.
+ *
+ * No effective allow count is derived here. Effective permission is
+ * target-specific, so no count over abstract glob patterns can answer it, and
+ * inventing one would trade a visible unknown for an invisible wrong number.
+ */
 function taskViews(loaded: LoadedMission): Array<{
   taskId: string;
   agentId: string;
@@ -235,7 +258,7 @@ function taskViews(loaded: LoadedMission): Array<{
   dependsOn: string[];
   depth: number;
   limits: { maximumSteps: number; maximumChildren: number; maximumParallelChildren: number };
-  authority: ReturnType<typeof summarizePolicy>;
+  agentPolicy: ReturnType<typeof summarizePolicy>;
   escalations: number;
 }> {
   return loaded.bindings.map((b) => ({
@@ -249,11 +272,21 @@ function taskViews(loaded: LoadedMission): Array<{
       maximumChildren: b.limits.maximumChildren,
       maximumParallelChildren: b.limits.maximumParallelChildren,
     },
-    // The agent's own policy is summarized, but the mission is the ceiling —
-    // `bindMission` has already reported anywhere the agent claims more.
-    authority: summarizePolicy(b.contract.permissions),
+    agentPolicy: summarizePolicy(b.contract.permissions),
     escalations: b.escalations.length,
   }));
+}
+
+/** Rule counts declared by the mission itself — the ceiling, not the result. */
+function missionPolicyView(mission: Mission | undefined): ReturnType<typeof summarizePolicy> {
+  return mission ? summarizePolicy(mission.permissions) : [];
+}
+
+/** `edit(1a/0?/3d)` — a compact rule-count summary, never a decision. */
+function formatPolicy(summary: ReturnType<typeof summarizePolicy>): string {
+  const declared = summary.filter((c) => c.allow > 0 || c.ask > 0 || c.deny > 0);
+  if (declared.length === 0) return 'no declared rules — every target resolves to ask';
+  return declared.map((c) => `${c.channel}(${c.allow}a/${c.ask}?/${c.deny}d)`).join(' ');
 }
 
 export async function cmdMissionShow(argv: string[]): Promise<void> {
@@ -270,6 +303,9 @@ export async function cmdMissionShow(argv: string[]): Promise<void> {
         goal: mission?.goal ?? null,
         order: mission?.graph.order ?? [],
         layers: mission?.graph.layers ?? [],
+        // Declared rule counts, kept apart on purpose. Neither is a resolved
+        // decision; effective authority is per concrete (channel, target).
+        missionPolicy: missionPolicyView(mission),
         tasks: views,
         valid: !hasErrors(issues),
         issues,
@@ -283,12 +319,16 @@ export async function cmdMissionShow(argv: string[]): Promise<void> {
     if (mission) {
       process.stdout.write(`**Id:** \`${mission.id}\`\n\n`);
       process.stdout.write(`**Order:** ${mission.graph.order.join(' → ')}\n\n`);
-      process.stdout.write('| Task | Agent | Role | Steps | Children | Escalations |\n');
-      process.stdout.write('|---|---|---|---|---|---|\n');
+      process.stdout.write(`**Mission envelope:** ${formatPolicy(missionPolicyView(mission))}\n\n`);
+      process.stdout.write(
+        '_Declared rules only. Effective authority is resolved per concrete action._\n\n'
+      );
+      process.stdout.write('| Task | Agent | Role | Steps | Children | Agent policy | Escalations |\n');
+      process.stdout.write('|---|---|---|---|---|---|---|\n');
       for (const v of views) {
         process.stdout.write(
           `| ${v.taskId} | ${v.agentId} | ${v.role} | ${v.limits.maximumSteps} | ` +
-            `${v.limits.maximumChildren} | ${v.escalations} |\n`
+            `${v.limits.maximumChildren} | ${formatPolicy(v.agentPolicy)} | ${v.escalations} |\n`
         );
       }
     }
@@ -306,7 +346,8 @@ export async function cmdMissionShow(argv: string[]): Promise<void> {
 
   process.stdout.write(`\n  ⚡ MISSION  ${mission.id}\n`);
   process.stdout.write(`     ${scrubForOutput(mission.goal, root)}\n\n`);
-  process.stdout.write(`  order   ${mission.graph.order.join(' → ')}\n\n`);
+  process.stdout.write(`  order   ${mission.graph.order.join(' → ')}\n`);
+  process.stdout.write(`  mission envelope  ${formatPolicy(missionPolicyView(mission))}\n\n`);
 
   for (const v of views) {
     process.stdout.write(`  ▸ ${v.taskId}  →  ${v.agentId}  (${v.role})\n`);
@@ -318,16 +359,7 @@ export async function cmdMissionShow(argv: string[]): Promise<void> {
       `      limits  steps ≤ ${v.limits.maximumSteps}` +
         `  ·  children ≤ ${v.limits.maximumChildren}\n`
     );
-    const granted = v.authority.filter((a) => a.allow > 0 || a.ask > 0 || a.deny > 0);
-    process.stdout.write(
-      `      agent   ${
-        granted.length === 0
-          ? 'no declared rules — every target resolves to ask'
-          : granted
-              .map((a) => `${a.channel}(${a.allow}a/${a.ask}?/${a.deny}d)`)
-              .join(' ')
-      }\n`
-    );
+    process.stdout.write(`      agent policy  ${formatPolicy(v.agentPolicy)}\n`);
     if (v.escalations > 0) {
       process.stdout.write(`      ⚠ ${v.escalations} rule(s) claim more than the mission grants\n`);
     }
@@ -335,8 +367,10 @@ export async function cmdMissionShow(argv: string[]): Promise<void> {
   }
 
   process.stdout.write(
-    `  Effective authority is the intersection of the mission and each agent.\n` +
-      `  Run \`thesmos mission:validate\` to gate on it.\n`
+    `  Counts above are declared rules, not decisions. Effective authority is\n` +
+      `  resolved per concrete action from the mission envelope and the agent\n` +
+      `  policy together, so no action shown here has been authorized yet.\n` +
+      `  Run \`thesmos mission:validate\` to gate on the mission itself.\n`
   );
 
   printIssues(issues, root);

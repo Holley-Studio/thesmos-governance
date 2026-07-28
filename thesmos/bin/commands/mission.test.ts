@@ -18,10 +18,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { cmdMissionPlan, cmdMissionShow, cmdMissionValidate } from './mission.ts';
+import { MAX_SPEC_BYTES, cmdMissionPlan, cmdMissionShow, cmdMissionValidate } from './mission.ts';
 
 interface Run {
   stdout: string;
@@ -261,6 +261,84 @@ describe('mission:validate', () => {
   });
 });
 
+describe('policy display tells the truth about authority', () => {
+  /**
+   * The case that matters, and it is the *default* one.
+   *
+   * Every agent baseline grants `read: allow` over ordinary source. A mission
+   * that declares no permissions has an empty envelope, where every lookup
+   * resolves to `ask`. So a task can display a large agent allow count while
+   * its effective decision on every one of those targets is `ask`.
+   *
+   * Displaying that count under the heading "authority" states something the
+   * runtime does not agree with, which is the defect these tests pin.
+   */
+  async function effectiveDecisionFor(target: string): Promise<string> {
+    const { createMission } = await import('../../mission/create.ts');
+    const { bindMission, authorizeTaskAction } = await import('../../mission/authority.ts');
+    const { loadCouncilContracts } = await import('../../council/load.ts');
+
+    const created = createMission(validSpec() as never);
+    if (!created.mission) throw new Error('fixture mission invalid');
+    const { contracts } = loadCouncilContracts({ root });
+    const bound = bindMission(created.mission, contracts);
+    const binding = bound.bindings[0];
+    if (!binding) throw new Error('fixture produced no binding');
+    return authorizeTaskAction(created.mission, binding, 'read', target).resolution.decision;
+  }
+
+  it('the runtime does not resolve the agent’s declared allow to allow', async () => {
+    // Grounding assertion: this is the runtime's own answer, not the CLI's.
+    expect(await effectiveDecisionFor('src/app.ts')).not.toBe('allow');
+  });
+
+  it('names the agent’s declared policy as such, not as authority', async () => {
+    const result = await run(cmdMissionShow, [spec('m.json', validSpec()), '--json']);
+    const parsed = JSON.parse(result.stdout);
+    const task = parsed.tasks[0];
+
+    expect(task).toHaveProperty('agentPolicy');
+    // `authority` claimed to be resolved permission while carrying declared
+    // agent-policy counts. It is removed rather than redefined.
+    expect(task).not.toHaveProperty('authority');
+  });
+
+  it('reports the mission envelope separately from any agent policy', async () => {
+    const result = await run(cmdMissionShow, [spec('m.json', validSpec()), '--json']);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed).toHaveProperty('missionPolicy');
+  });
+
+  it('distinguishes the two policies when the mission actually grants something', async () => {
+    const withGrant = validSpec({
+      permissions: { edit: [{ decision: 'allow', patterns: ['src/**'] }] },
+    });
+    const result = await run(cmdMissionShow, [spec('g.json', withGrant), '--json']);
+    const parsed = JSON.parse(result.stdout);
+
+    const missionEdit = parsed.missionPolicy.find((c: { channel: string }) => c.channel === 'edit');
+    expect(missionEdit?.allow).toBe(1);
+    // The agent's own policy is a different number from the mission's, which is
+    // the whole reason they cannot share one field.
+    expect(parsed.tasks[0].agentPolicy).not.toEqual(parsed.missionPolicy);
+  });
+
+  it('never claims a resolved effective decision in human output', async () => {
+    const result = await run(cmdMissionShow, [spec('m.json', validSpec())]);
+    expect(result.stdout).toContain('mission envelope');
+    expect(result.stdout).toContain('agent policy');
+    // The old copy asserted the displayed counts *were* the intersection.
+    expect(result.stdout).not.toMatch(/Effective authority is the intersection/);
+    expect(result.stdout).toContain('resolved per concrete action');
+  });
+
+  it('labels the columns honestly in Markdown', async () => {
+    const result = await run(cmdMissionShow, [spec('m.json', validSpec()), '--markdown']);
+    expect(result.stdout).not.toContain('| Authority |');
+    expect(result.stdout).toContain('Agent policy');
+  });
+});
+
 describe('boundaries these commands must hold', () => {
   it.each([
     ['mission:plan', cmdMissionPlan],
@@ -292,19 +370,152 @@ describe('boundaries these commands must hold', () => {
   });
 
   it('collapses repeated issues instead of printing every one', async () => {
-    // Escalation is reported per glob pattern, so a real roster produces dozens
-    // of identical-shaped warnings. Human output must summarize them.
-    const result = await run(cmdMissionShow, [spec('m.json', validSpec())]);
-    const lines = result.stdout.split('\n');
-    const perIssueLines = lines.filter((l) => l.includes('child claims')).length;
-    const jsonRun = await run(cmdMissionShow, [spec('m.json', validSpec()), '--json']);
-    const total = JSON.parse(jsonRun.stdout).issues.length;
-    if (total > 4) {
-      expect(perIssueLines).toBeLessThan(total);
-      expect(result.stdout).toContain('use --json for the full list');
+    // Deterministic by construction. The previous version of this test guarded
+    // its assertions behind `if (total > 4)`, so a fixture that happened to
+    // emit fewer issues would have made it silently vacuous.
+    const path = spec('m.json', validSpec());
+
+    const jsonRun = await run(cmdMissionShow, [path, '--json']);
+    const issues = JSON.parse(jsonRun.stdout).issues as Array<{ code: string; path: string }>;
+
+    // The default fixture must actually produce repeats, or this proves nothing.
+    const groups = new Set(issues.map((i) => JSON.stringify([i.code, i.path])));
+    expect(issues.length).toBeGreaterThan(groups.size);
+    expect(issues.length).toBeGreaterThan(8);
+
+    const human = await run(cmdMissionShow, [path]);
+    const detailLines = human.stdout.split('\n').filter((l) => l.includes('child claims')).length;
+
+    // Two examples per group, so detail lines are bounded by 2 × groups and are
+    // strictly fewer than the full issue count.
+    expect(detailLines).toBeLessThanOrEqual(groups.size * 2);
+    expect(detailLines).toBeLessThan(issues.length);
+    expect(human.stdout).toContain('use --json for the full list');
+
+    // Every group header carries its true count, so nothing is hidden.
+    for (const g of groups) {
+      const [code, issuePath] = JSON.parse(g) as [string, string];
+      const n = issues.filter((i) => i.code === code && i.path === issuePath).length;
+      if (n > 1) expect(human.stdout).toContain(`${issuePath}  (${n}×)`);
     }
-    // --json keeps every issue, uncollapsed.
-    expect(total).toBeGreaterThanOrEqual(perIssueLines);
+  });
+
+  it('keeps every issue in JSON while collapsing the human view', async () => {
+    const path = spec('m.json', validSpec());
+    const jsonRun = await run(cmdMissionShow, [path, '--json']);
+    const parsed = JSON.parse(jsonRun.stdout);
+    // Uncollapsed: each issue is its own object with its own message.
+    const messages = new Set(parsed.issues.map((i: { message: string }) => i.message));
+    expect(messages.size).toBeGreaterThan(4);
+    expect(jsonRun.stdout).not.toContain('use --json for the full list');
+  });
+
+  it('does not let grouping hide a differing severity or remediation', async () => {
+    // Grouping is by (code, path). If two issues shared a group but differed in
+    // severity, the group header would show only the first — so no group may
+    // contain more than one distinct severity.
+    const jsonRun = await run(cmdMissionShow, [spec('m.json', validSpec()), '--json']);
+    const issues = jsonRun.stdout
+      ? (JSON.parse(jsonRun.stdout).issues as Array<{
+          code: string;
+          path: string;
+          severity: string;
+          remediation?: string;
+        }>)
+      : [];
+
+    const byGroup = new Map<string, Set<string>>();
+    const remediationByGroup = new Map<string, Set<string>>();
+    for (const i of issues) {
+      const key = JSON.stringify([i.code, i.path]);
+      (byGroup.get(key) ?? byGroup.set(key, new Set()).get(key)!).add(i.severity);
+      (
+        remediationByGroup.get(key) ?? remediationByGroup.set(key, new Set()).get(key)!
+      ).add(i.remediation ?? '');
+    }
+    for (const severities of byGroup.values()) expect(severities.size).toBe(1);
+    for (const remediations of remediationByGroup.values()) expect(remediations.size).toBe(1);
+  });
+
+  it('accepts a spec exactly at the size limit and rejects one byte over', async () => {
+    // The limit is enforced on the file, before any parsing, so the oversize
+    // case must fail with a usage error rather than a JSON error.
+    const base = validSpec();
+    const encoder = new TextEncoder();
+
+    const pad = (target: number): Record<string, unknown> => {
+      const withoutPad = { ...base, note: '' };
+      const overhead = encoder.encode(JSON.stringify(withoutPad)).length;
+      return { ...base, note: 'x'.repeat(Math.max(0, target - overhead)) };
+    };
+
+    const atLimit = pad(MAX_SPEC_BYTES);
+    const atPath = join(root, 'at-limit.json');
+    writeFileSync(atPath, JSON.stringify(atLimit), 'utf8');
+    expect(statSync(atPath).size).toBe(MAX_SPEC_BYTES);
+
+    const ok = await run(cmdMissionPlan, ['at-limit.json']);
+    expect(ok.exitCode).toBe(0);
+
+    const overPath = join(root, 'over-limit.json');
+    writeFileSync(overPath, `${JSON.stringify(atLimit)} `, 'utf8');
+    expect(statSync(overPath).size).toBe(MAX_SPEC_BYTES + 1);
+
+    const over = await run(cmdMissionPlan, ['over-limit.json']);
+    expect(over.exitCode).toBe(1);
+    expect(over.stderr).toContain('over the');
+    // Rejected on size, never parsed.
+    expect(over.stderr).not.toContain('not valid JSON');
+  });
+
+  it('redacts secrets, paths, and control sequences from parser errors', async () => {
+    // A JSON parse error quotes the offending content, so a spec carrying a
+    // credential can push it into stderr and from there into a CI log.
+    const secret = ['sk', 'live', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'].join('-');
+    const malformed = `{ "goal": "${secret} ${root}/leak [31mred[0m", `;
+    const result = await run(cmdMissionPlan, [spec('leak.json', malformed)]);
+
+    expect(result.exitCode).toBe(1);
+    const all = result.stdout + result.stderr;
+    expect(all).not.toContain(secret);
+    expect(all).not.toContain(root);
+    // No raw ESC survives into a terminal.
+    expect(all).not.toContain('');
+  });
+
+  it('refuses a symlinked spec that escapes the repository', async () => {
+    const outside = mkdtempSync(join(tmpdir(), 'thesmos-outside-'));
+    const target = join(outside, 'secret.json');
+    writeFileSync(target, JSON.stringify(validSpec()), 'utf8');
+    const link = join(root, 'link.json');
+    try {
+      symlinkSync(target, link);
+    } catch {
+      return; // symlinks unavailable on this platform; nothing to assert
+    }
+
+    const result = await run(cmdMissionPlan, ['link.json']);
+    // Whatever the decision, the outside path must never be echoed back.
+    expect(result.stdout + result.stderr).not.toContain(outside);
+    rmSync(outside, { recursive: true, force: true });
+  });
+
+  it('does not silently accept an unsupported flag', async () => {
+    // A typo'd flag must not be read as the flag the caller meant.
+    const path = spec('m.json', validSpec());
+    const plain = await run(cmdMissionShow, [path]);
+    const typo = await run(cmdMissionShow, [path, '--jsonn']);
+    // `--jsonn` is not `--json`: output stays human-readable rather than JSON.
+    expect(typo.stdout.startsWith('{')).toBe(false);
+    expect(typo.stdout).toBe(plain.stdout);
+  });
+
+  it('resolves conflicting output flags deterministically', async () => {
+    const path = spec('m.json', validSpec());
+    const first = await run(cmdMissionShow, [path, '--json', '--markdown']);
+    const second = await run(cmdMissionShow, [path, '--markdown', '--json']);
+    // Whichever wins, flag order must not change the answer.
+    expect(second.stdout).toBe(first.stdout);
   });
 
   it('does not execute the mission', async () => {

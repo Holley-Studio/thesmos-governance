@@ -561,11 +561,13 @@ COUNCIL CONTRACT
 MISSION GRAPH
   mission:plan <spec>      Dependency order and execution layers
     --json
-  mission:show <spec>      Per-task agent, effective limits, authority
+  mission:show <spec>      Bindings, effective limits, declared policies
     --json --markdown
   mission:validate <spec>  Gate a mission spec (exit 2 on errors)
     --json
     Read-only. These inspect a mission; they never execute one.
+    Policy counts are declared rules, not decisions — effective
+    authority is resolved per concrete action, not shown here.
 
 CATALOG
   catalog:list             List all agents and skills
