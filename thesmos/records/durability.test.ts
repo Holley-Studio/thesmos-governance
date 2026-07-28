@@ -45,7 +45,7 @@ vi.mock('node:fs', async (importOriginal) => {
 const { mkdtempSync, rmSync } = await import('node:fs');
 const { tmpdir } = await import('node:os');
 const { join } = await import('node:path');
-const { appendRecord, journalPath } = await import('./journal.js');
+const { appendRecordInternal, journalPath } = await import('./journal.js');
 const { buildRecordContent, sealRecord } = await import('./record.js');
 const { GENESIS_HASH } = await import('./types.js');
 
@@ -74,7 +74,7 @@ function record(intent: string) {
 
 describe('append is durable', () => {
   it('fsyncs before closing the descriptor', () => {
-    const result = appendRecord(journalPath(root), record('durable write'));
+    const result = appendRecordInternal(journalPath(root), record('durable write'));
     expect(result.ok).toBe(true);
 
     const fsyncAt = calls.indexOf('fsync');
@@ -87,12 +87,12 @@ describe('append is durable', () => {
   });
 
   it('opens in append mode so concurrent writers cannot clobber each other', () => {
-    appendRecord(journalPath(root), record('one'));
+    appendRecordInternal(journalPath(root), record('one'));
     expect(calls.some((c) => c === 'open:a')).toBe(true);
   });
 
   it('writes exactly one newline-terminated line per record', () => {
-    appendRecord(journalPath(root), record('one'));
+    appendRecordInternal(journalPath(root), record('one'));
     expect(written).toHaveLength(1);
     expect(written[0]?.endsWith('\n')).toBe(true);
     expect(written[0]?.slice(0, -1).includes('\n')).toBe(false);
@@ -102,7 +102,7 @@ describe('append is durable', () => {
     // A refusal must happen before any descriptor is opened, or a rejected
     // record still creates the journal file.
     const bad = { ...record('ok'), digests: { blob: 'y'.repeat(70_000) } };
-    const result = appendRecord(journalPath(root), bad);
+    const result = appendRecordInternal(journalPath(root), bad);
 
     expect(result.ok).toBe(false);
     expect(calls).toEqual([]);

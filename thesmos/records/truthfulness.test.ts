@@ -19,7 +19,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { appendRecord, journalPath } from './journal.js';
+import { journalPath } from './journal.js';
+import { appendRecordInternal } from './journal.js';
 import { buildRecordContent, sealRecord, type RecordInput } from './record.js';
 import { findRedactionViolations, redactField } from './redact.js';
 import { executedRecords, readRecords, writeRecord } from './store.js';
@@ -192,9 +193,9 @@ describe('redaction is enforced at the boundary', () => {
     };
     const record = sealRecord(content, GENESIS_HASH, 0, FIXED_TIME);
 
-    const result = appendRecord(journalPath(root), record);
+    const result = appendRecordInternal(journalPath(root), record);
     expect(result.ok).toBe(false);
-    expect(result.issues.map((i) => i.code)).toContain(RECORD_CODES.secretPresent);
+    expect(result.issues.map((i: { code: string }) => i.code)).toContain(RECORD_CODES.secretPresent);
     // Nothing was written.
     expect(existsSync(journalPath(root))).toBe(false);
   });
@@ -212,9 +213,9 @@ describe('redaction is enforced at the boundary', () => {
     };
     const record = sealRecord(content, GENESIS_HASH, 0, FIXED_TIME);
 
-    const result = appendRecord(journalPath(root), record);
+    const result = appendRecordInternal(journalPath(root), record);
     expect(result.ok).toBe(false);
-    expect(result.issues.map((i) => i.code)).toContain(RECORD_CODES.absolutePath);
+    expect(result.issues.map((i: { code: string }) => i.code)).toContain(RECORD_CODES.absolutePath);
   });
 
   it('detects violations on read as well as on write', () => {
