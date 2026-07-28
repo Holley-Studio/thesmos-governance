@@ -1155,3 +1155,85 @@ Mission execution, a `TaskRunner`, model selection, resume, fork, checkpoints, p
 *operations* (the record *events* for them are typed here; nothing performs them), UI, remote sync,
 retention automation, and signing. Pack lifecycle and evaluation events are defined now precisely so
 Phase 2 does not have to change the record schema to emit them.
+
+### 18.5 Implementation and verification
+
+| Module | Responsibility |
+|---|---|
+| `records/types.ts` | Schema, event kinds, the `RecordOutcome` union, issue codes |
+| `records/redact.ts` | Boundary redaction + an independent verifier |
+| `records/record.ts` | Construction, canonical hashing, chain sealing |
+| `records/journal.ts` | Crash-safe append, verification, export |
+| `records/store.ts` | Caller seam, chain-tip resolution, queries |
+
+**Native:** build/typecheck 0 errors; thesmos **4568 / 4568** (138 files); vscode 93/93; pr-review
+108/108; records focused **58 / 58**; validate 7 TECH_DEBT / **0 BLOCKER**; doctor 39/39; ci-check
+20/20; `git diff --check` clean.
+
+**Docker** (from `git archive HEAD`, non-root, git installed):
+
+| Image | Install | Build | Typecheck | Tests |
+|---|---|---|---|---|
+| `node:22-alpine` | ok | ok | ok | **4586 / 4586**, 139 files |
+| `node:20-alpine` | ok | ok | ok | records **58 / 58** |
+| `node:24-alpine` | ok | ok | ok | records **58 / 58** |
+
+Linux only. No Windows or macOS claim; the Windows CI job still runs only
+`guard.cross-platform.test.ts`.
+
+**Mutation proofs — 10 applied, 10 caught after two fixes:**
+
+| Mutation | Result |
+|---|---|
+| Mid-journal corruption downgraded to a warning | CAUGHT (2) |
+| Content hash not verified on read | CAUGHT (4) |
+| Chain link not verified | CAUGHT (1) |
+| `fsync` removed from append | **ESCAPED → CAUGHT (1)** |
+| Outcome spread instead of reconstructed | CAUGHT (1) |
+| Redaction skipped on intent | CAUGHT (5) |
+| Appender no longer refuses violations | **ESCAPED → CAUGHT (2)** |
+| Unsupported schema silently accepted | CAUGHT (1) |
+| `recordedAt` pulled into the hashed projection | CAUGHT (15) |
+| `validated.valid` accepts a non-boolean | CAUGHT (1) |
+
+Both escapes were real test gaps. Nothing asserted `fsync` was invoked at all — it cannot be proven
+by its effect without real power loss, so the provable claim is that the append path calls it, on
+the descriptor it just wrote, before closing; that needs `node:fs` mocked and lives in its own file.
+And the test named "refuses to append a record that still contains a secret" only called the
+detector, asserting nothing about `appendRecord` — the same vacuous shape found in §17.7. It now
+constructs a violating record directly and asserts both the refusal and that no file was created.
+
+### 18.6 Governance findings
+
+`review --base=main`: **91 findings — 6 HIGH, 17 MEDIUM, 61 LOW, 7 TECH_DEBT, 0 BLOCKER.** Nothing
+baselined, suppressed, or disabled.
+
+Nine `debt_exported_function_no_test` findings were **accurate and are fixed** with direct tests, not
+argued away. The six remaining HIGH are the `timing_attack` family, and unlike previous PRs this
+code genuinely compares hashes, so each was traced individually:
+
+| Site | Assessment |
+|---|---|
+| `journal.ts:165` `parsed.contentHash !== expected` | **Not a timing attack.** `contentHash` is unkeyed. An attacker supplying one side can compute the other side themselves, so learning it byte-by-byte gains nothing. |
+| `journal.ts:178` `parsed.prevHash !== prevHash` | Same — unkeyed chain link. |
+| `journal.ts:206`, `journal.ts:280` | **False positive.** Fires on the literal `'secret'` in `finding.kind === 'secret'`, a discriminator comparison. |
+| `redact.ts:68` `key === ''` | **False positive.** Empty-string check. |
+
+Worth carrying forward rather than closing: **if D-CR7 signing is ever implemented, the signature
+comparison genuinely will need `timingSafeEqual`**, because that comparison *is* keyed. The rule is
+wrong about today's code and right about the code that would replace it.
+
+### 18.7 Known limitations, stated plainly
+
+- **Tamper evidence, not tamper prevention.** An attacker who can write to `.thesmos/records/` can
+  rewrite a record and every record after it, producing a chain that verifies. What they cannot do
+  is edit one record in place. Prevention needs signing, which needs a trust root this repository
+  does not have (D-CR7).
+- **Concurrency is optimistic.** Each write re-reads the chain tip, so two racing processes produce
+  a detected chain break rather than a corrupted file — but the loser's record is refused, not
+  retried. A lock file was rejected: a stale lock is a worse failure mode than a detected race for a
+  local evidence log.
+- **Retention is manual.** `exportJournal` exists; nothing rotates or prunes automatically. The
+  journal refuses to grow past its compiled ceilings rather than silently discarding evidence.
+- **No CLI surface yet.** The record layer is library-only in this PR, consistent with keeping one
+  concern per PR. Inspection commands belong with the pack lifecycle that will emit the events.
