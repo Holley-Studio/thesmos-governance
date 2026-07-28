@@ -34,7 +34,7 @@ import { flag, parseArgs } from '../lib/args.ts';
 import { loadCouncilContracts } from '../../council/load.ts';
 import { serializeStable, type CouncilAgentContract } from '../../council/contract.ts';
 import { summarizePolicy } from '../../council/permissions.ts';
-import { scrubForOutput, toProvenancePath } from '../../council/sanitize.ts';
+import { scrubForOutput, stripControlChars, toProvenancePath } from '../../council/sanitize.ts';
 import { createMission } from '../../mission/create.ts';
 import { bindMission } from '../../mission/authority.ts';
 import {
@@ -101,9 +101,14 @@ function loadMission(specArg: string | undefined, usage: string): LoadedMission 
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
-    // The parser's message can quote spec content, so it is scrubbed before it
-    // reaches a terminal or a CI log.
-    const detail = error instanceof Error ? scrubForOutput(error.message, root) : 'invalid JSON';
+    // V8 quotes a window of the offending input in its message, so spec content
+    // reaches stderr and from there a CI log. `scrubForOutput` removes secrets
+    // and absolute paths but leaves control bytes intact, and an escape
+    // sequence echoed to a terminal is its own problem — so strip those too.
+    const detail =
+      error instanceof Error
+        ? stripControlChars(scrubForOutput(error.message, root))
+        : 'invalid JSON';
     fail(`"${specPath}" is not valid JSON — ${detail}`, usage);
   }
 

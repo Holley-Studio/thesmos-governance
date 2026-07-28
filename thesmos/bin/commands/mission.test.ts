@@ -468,19 +468,49 @@ describe('boundaries these commands must hold', () => {
     expect(over.stderr).not.toContain('not valid JSON');
   });
 
-  it('redacts secrets, paths, and control sequences from parser errors', async () => {
-    // A JSON parse error quotes the offending content, so a spec carrying a
-    // credential can push it into stderr and from there into a CI log.
-    const secret = ['sk', 'live', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'].join('-');
-    const malformed = `{ "goal": "${secret} ${root}/leak [31mred[0m", `;
-    const result = await run(cmdMissionPlan, [spec('leak.json', malformed)]);
+  /**
+   * V8 quotes a ~20-character window of the offending input, and only for some
+   * malformed shapes. A trailing comma yields "Expected double-quoted property
+   * name…" carrying no content at all — so a test built on that shape asserts
+   * nothing. An earlier version of this suite did exactly that and passed with
+   * redaction removed entirely. Each case below places the dangerous bytes *at
+   * the error position*, which is what forces V8 to quote them.
+   *
+   * The escape byte is built with `fromCharCode` rather than written literally,
+   * because a raw control character in a source file is its own defect.
+   */
+  const ESC = String.fromCharCode(27);
+
+  it('proves this malformed shape really does quote spec content', async () => {
+    // Guard for the two tests below. If V8 stops quoting input, they would
+    // silently stop testing anything; this fails first and says so.
+    let message = '';
+    try {
+      // Minimal prefix: V8's quoted window is ~20 characters from the start of
+      // the input, so a long key would push the marker out of it.
+      JSON.parse('{"a":zzMARK}');
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain('zzMARK');
+  });
+
+  it('strips control sequences quoted out of a parser error', async () => {
+    const malformed = `{ "goal": ${ESC}[31mred${ESC}[0m }`;
+    const result = await run(cmdMissionPlan, [spec('esc.json', malformed)]);
 
     expect(result.exitCode).toBe(1);
     const all = result.stdout + result.stderr;
-    expect(all).not.toContain(secret);
-    expect(all).not.toContain(root);
-    // No raw ESC survives into a terminal.
-    expect(all).not.toContain('');
+    expect(all).toContain('not valid JSON');
+    expect(all).not.toContain(ESC);
+  });
+
+  it('redacts an absolute path quoted out of a parser error', async () => {
+    const malformed = `{ "goal": ${root}/leaked/file.txt }`;
+    const result = await run(cmdMissionPlan, [spec('path.json', malformed)]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout + result.stderr).not.toContain(root);
   });
 
   it('refuses a symlinked spec that escapes the repository', async () => {
