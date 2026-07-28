@@ -1075,3 +1075,83 @@ like product defects and are not.
 
 This is Linux evidence only. It says nothing about Windows or macOS, and the Windows CI job still
 runs only `guard.cross-platform.test.ts`.
+
+---
+
+## 18. PR 5 — Council Records (ADR, recorded before implementation)
+
+Branch `feat/council-records`, based on `main` (`1435d6a`).
+
+### 18.1 Gate status, recorded plainly
+
+PR #128 merged as `1435d6a` with **`reviews: 0`, `reviewDecision: none`**. Its own gate required a
+genuine independent review at head; that condition was waived by the owner, who directed the merge
+and instructed work to continue. Post-merge validation — the one gate condition an agent *can*
+satisfy — passes: 4,699 tests green, 0 BLOCKER, doctor 39/39, ci-check 20/20.
+
+**This is the fourth consecutive Olympus PR merged without independent review** (#126, #127, #128,
+and this one will be the fifth if the pattern holds). The technical verification behind each has
+been real and is recorded in §16–§17. The independence has not been. Recorded here so the pattern
+is visible in the ledger rather than only in chat history.
+
+### 18.2 What already exists, and why Council Records is not a rename of it
+
+Two append-only JSONL layers exist and are extended, not replaced:
+
+| Component | Location | Shape |
+|---|---|---|
+| `ExecutionReceipt` | `.thesmos/receipts/<runId>.jsonl` | Per-task run outcome; hashes prompt/result, never stores them |
+| `GovernanceEvent` | governance log | Rule fires, MCP block/pass/override, outcomes |
+
+Both write with `appendFileSync` and read with `try { JSON.parse } catch { /* skip malformed */ }`.
+That combination has three consequences that matter for an evidence layer:
+
+1. **Corruption fails open.** A malformed line is skipped silently, so a truncated, tampered, or
+   partially-written record is indistinguishable from a record that never existed.
+2. **No durability barrier.** `appendFileSync` without `fsync` means a crash can leave a torn final
+   line, and nothing distinguishes a torn tail from deliberate truncation.
+3. **No tamper evidence.** Records carry payload hashes but nothing binds record *N* to record
+   *N−1*, so any line can be edited or removed without trace.
+
+Council Records is the layer that closes those three, and it **links** to receipts and governance
+events by id rather than duplicating their content. `execution-receipt.ts` and `governance-log.ts`
+are unchanged by this PR.
+
+### 18.3 Decisions
+
+- **D-CR1 — Storage.** Repository-scoped, local-first, under `.thesmos/`. No database, no service,
+  no network. Consistent with D1: `.thesmos` stays the canonical governed source of truth.
+- **D-CR2 — Journal, not snapshot.** Append-only journal with an integrity chain. A snapshot cache
+  may be derived later; the journal is authoritative. Rebuilding state from the journal is what
+  makes verification independent of the writer.
+- **D-CR3 — Chained content hashes.** Each record carries `contentHash` over its own canonical
+  serialization and `prevHash` binding it to its predecessor. Editing or deleting any record breaks
+  the chain at a determinate point. This is tamper *evidence*, not tamper *prevention*, and is not
+  a signature — see D-CR7.
+- **D-CR4 — Fail closed in the middle, defined recovery at the tail.** A corrupt record in the
+  middle of a journal is an error, not a skipped line. A torn final record — the crash signature — is
+  recoverable: the journal truncates to the last intact record and reports it. The distinction is
+  the point, and the previous layers cannot make it.
+- **D-CR5 — Determinism.** One canonical serializer (`serializeStable`) and one hash format
+  (`sha256:<hex>` via `contentHash`), reusing what the council and mission layers already use. No
+  second serializer, no second hash format. Wall-clock time is recorded in a field that is
+  explicitly *outside* the hashed projection, so a replay produces identical hashes.
+- **D-CR6 — Redaction is enforced at the boundary, not requested of callers.** Every string entering
+  a record passes through `council/sanitize` (secrets, absolute paths) plus control-character
+  stripping. A caller cannot opt out. Reuses the existing sanitizer; adds no parallel implementation.
+- **D-CR7 — Unsigned, honestly.** There is no key management or trust root in this repository, so
+  records are represented as **unsigned**. The record carries a typed `attestation` field with an
+  explicit `none` state so a future signing implementation has a place to live without a schema
+  break. No signature system is simulated.
+- **D-CR8 — A record cannot claim execution it does not have evidence for.** There is no
+  `mission:run`; nothing in this repository executes agents. So `outcome.kind` is a discriminated
+  union in which the `executed` variant *requires* a receipt reference. `planned` and `refused`
+  carry no receipt and cannot be widened into `executed` by any caller-supplied field. This is
+  structural, and it is the property most worth testing.
+
+### 18.4 Deliberately not in this PR
+
+Mission execution, a `TaskRunner`, model selection, resume, fork, checkpoints, pack lifecycle
+*operations* (the record *events* for them are typed here; nothing performs them), UI, remote sync,
+retention automation, and signing. Pack lifecycle and evaluation events are defined now precisely so
+Phase 2 does not have to change the record schema to emit them.
