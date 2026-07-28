@@ -1,0 +1,305 @@
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
+// @vitest-environment node
+/**
+ * Content addressing: same inputs, same hash — always.
+ *
+ * If any of these fail, mission state has stopped being comparable across runs
+ * or machines, which is the property the whole runtime is built on.
+ */
+
+import { describe, expect, it } from 'vitest';
+import { emptyPermissionPolicy } from '../council/contract.js';
+import { createMission } from './create.js';
+import { ceilingBoundedLimits } from './limits.js';
+import {
+  deriveMissionStatus,
+  initialMissionState,
+  missionId,
+  missionIdentityProjection,
+  missionStateHash,
+} from './state.js';
+import { hasErrors, missionIssue, sortMissionIssues } from './types.js';
+import type { MissionRequest, MissionState, MissionTaskInput, MissionTaskState } from './types.js';
+
+const LIMITS = ceilingBoundedLimits();
+
+function task(id: string, dependsOn: string[] = []): MissionTaskInput {
+  return { id, agentId: `${id}-agent`, title: `Task ${id}`, intent: `do ${id}`, dependsOn };
+}
+
+function request(overrides: Partial<MissionRequest> = {}): MissionRequest {
+  return { goal: 'ship the thing', tasks: [task('a'), task('b', ['a'])], ...overrides };
+}
+
+function taskState(overrides: Partial<MissionTaskState>): MissionTaskState {
+  return {
+    taskId: 'a',
+    agentId: 'a-agent',
+    status: 'complete',
+    stepsUsed: 1,
+    childTaskIds: [],
+    limits: LIMITS,
+    authorizations: [],
+    issues: [],
+    ...overrides,
+  };
+}
+
+describe('mission id', () => {
+  it('is a sha256 digest', () => {
+    expect(missionId('goal', [task('a')], emptyPermissionPolicy(), LIMITS)).toMatch(
+      /^sha256:[a-f0-9]{64}$/
+    );
+  });
+
+  it('is stable across declaration order', () => {
+    const forward = missionId('goal', [task('a'), task('b')], emptyPermissionPolicy(), LIMITS);
+    const reversed = missionId('goal', [task('b'), task('a')], emptyPermissionPolicy(), LIMITS);
+    expect(reversed).toBe(forward);
+  });
+
+  it('is stable across dependency order', () => {
+    const forward = missionId('goal', [task('c', ['a', 'b'])], emptyPermissionPolicy(), LIMITS);
+    const reversed = missionId('goal', [task('c', ['b', 'a'])], emptyPermissionPolicy(), LIMITS);
+    expect(reversed).toBe(forward);
+  });
+
+  it('changes when the goal changes', () => {
+    const a = missionId('goal one', [task('a')], emptyPermissionPolicy(), LIMITS);
+    const b = missionId('goal two', [task('a')], emptyPermissionPolicy(), LIMITS);
+    expect(b).not.toBe(a);
+  });
+
+  it('changes when a task changes', () => {
+    const a = missionId('goal', [task('a')], emptyPermissionPolicy(), LIMITS);
+    const b = missionId('goal', [task('a'), task('b')], emptyPermissionPolicy(), LIMITS);
+    expect(b).not.toBe(a);
+  });
+
+  it('changes when the permission envelope changes', () => {
+    const open = emptyPermissionPolicy();
+    open.edit = [{ decision: 'allow', patterns: ['src/**'] }];
+    const a = missionId('goal', [task('a')], emptyPermissionPolicy(), LIMITS);
+    const b = missionId('goal', [task('a')], open, LIMITS);
+    expect(b).not.toBe(a);
+  });
+
+  it('is reproduced identically by createMission across declaration order', () => {
+    const forward = createMission(request({ tasks: [task('a'), task('b', ['a'])] }));
+    const reversed = createMission(request({ tasks: [task('b', ['a']), task('a')] }));
+    expect(forward.valid && reversed.valid).toBe(true);
+    expect(reversed.mission?.id).toBe(forward.mission?.id);
+  });
+
+  it('ignores whitespace differences in the goal', () => {
+    const a = createMission(request({ goal: 'ship the thing' }));
+    const b = createMission(request({ goal: '  ship the thing  ' }));
+    expect(b.mission?.id).toBe(a.mission?.id);
+  });
+});
+
+describe('state hash', () => {
+  function stateWith(tasks: MissionTaskState[]): MissionState {
+    return {
+      schemaVersion: '1.0.0',
+      missionId: 'sha256:' + 'a'.repeat(64),
+      status: 'complete',
+      stepsUsed: 2,
+      issues: [],
+      tasks,
+    };
+  }
+
+  it('is a sha256 digest', () => {
+    expect(missionStateHash(stateWith([taskState({})]))).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+
+  it('is identical for the same state hashed twice', () => {
+    const state = stateWith([taskState({ taskId: 'a' }), taskState({ taskId: 'b' })]);
+    expect(missionStateHash(state)).toBe(missionStateHash(state));
+  });
+
+  it('does not depend on task insertion order', () => {
+    const forward = stateWith([taskState({ taskId: 'a' }), taskState({ taskId: 'b' })]);
+    const reversed = stateWith([taskState({ taskId: 'b' }), taskState({ taskId: 'a' })]);
+    expect(missionStateHash(reversed)).toBe(missionStateHash(forward));
+  });
+
+  it('does not depend on child id order', () => {
+    const forward = stateWith([taskState({ childTaskIds: ['x', 'y'] })]);
+    const reversed = stateWith([taskState({ childTaskIds: ['y', 'x'] })]);
+    expect(missionStateHash(reversed)).toBe(missionStateHash(forward));
+  });
+
+  it('changes when a task status changes', () => {
+    const complete = stateWith([taskState({ status: 'complete' })]);
+    const failed = stateWith([taskState({ status: 'failed' })]);
+    expect(missionStateHash(failed)).not.toBe(missionStateHash(complete));
+  });
+
+  it('changes when steps consumed change', () => {
+    const cheap = stateWith([taskState({ stepsUsed: 1 })]);
+    const dear = stateWith([taskState({ stepsUsed: 9 })]);
+    expect(missionStateHash(dear)).not.toBe(missionStateHash(cheap));
+  });
+
+  it('changes when the effective limits a task ran under change', () => {
+    const wide = stateWith([taskState({ limits: LIMITS })]);
+    const narrow = stateWith([taskState({ limits: { ...LIMITS, maximumSteps: 3 } })]);
+    expect(missionStateHash(narrow)).not.toBe(missionStateHash(wide));
+  });
+
+  it('changes when an authority decision changes', () => {
+    const allowed = stateWith([
+      taskState({ authorizations: [{ channel: 'edit', target: 'a.ts', decision: 'allow' }] }),
+    ]);
+    const denied = stateWith([
+      taskState({ authorizations: [{ channel: 'edit', target: 'a.ts', decision: 'deny' }] }),
+    ]);
+    expect(missionStateHash(denied)).not.toBe(missionStateHash(allowed));
+  });
+
+  it('does not depend on the order authority questions were asked in', () => {
+    const forward = stateWith([
+      taskState({
+        authorizations: [
+          { channel: 'edit', target: 'a.ts', decision: 'allow' },
+          { channel: 'read', target: 'b.ts', decision: 'deny' },
+        ],
+      }),
+    ]);
+    const reversed = stateWith([
+      taskState({
+        authorizations: [
+          { channel: 'read', target: 'b.ts', decision: 'deny' },
+          { channel: 'edit', target: 'a.ts', decision: 'allow' },
+        ],
+      }),
+    ]);
+    expect(missionStateHash(reversed)).toBe(missionStateHash(forward));
+  });
+
+  it('changes when a task id changes, proving identity is sealed', () => {
+    const a = stateWith([taskState({ taskId: 'a' })]);
+    const b = stateWith([taskState({ taskId: 'z' })]);
+    expect(missionStateHash(b)).not.toBe(missionStateHash(a));
+  });
+
+  it('changes when the agent assigned to a task changes', () => {
+    const one = stateWith([taskState({ agentId: 'alpha' })]);
+    const two = stateWith([taskState({ agentId: 'beta' })]);
+    expect(missionStateHash(two)).not.toBe(missionStateHash(one));
+  });
+});
+
+describe('initial state', () => {
+  it('starts every task pending with nothing spent', () => {
+    const { mission } = createMission(request());
+    const state = initialMissionState(mission!);
+    expect(state.stepsUsed).toBe(0);
+    expect(state.tasks.every((t) => t.status === 'pending')).toBe(true);
+    expect(state.tasks.map((t) => t.taskId)).toEqual(['a', 'b']);
+  });
+});
+
+describe('identity projection', () => {
+  it('normalizes declaration and dependency order into one canonical shape', () => {
+    const forward = missionIdentityProjection(
+      'g',
+      [task('b', ['a']), task('a')],
+      emptyPermissionPolicy(),
+      LIMITS
+    );
+    const reversed = missionIdentityProjection(
+      'g',
+      [task('a'), task('b', ['a'])],
+      emptyPermissionPolicy(),
+      LIMITS
+    );
+    expect(reversed).toEqual(forward);
+    expect(forward.tasks.map((t) => t.id)).toEqual(['a', 'b']);
+  });
+
+  it('represents an absent parent as an empty string rather than omitting it', () => {
+    const [only] = missionIdentityProjection('g', [task('a')], emptyPermissionPolicy(), LIMITS)
+      .tasks;
+    expect(only?.parentTaskId).toBe('');
+  });
+
+  it('excludes everything derived, so scheduling cannot change identity', () => {
+    const [only] = missionIdentityProjection('g', [task('a')], emptyPermissionPolicy(), LIMITS)
+      .tasks;
+    expect(only).not.toHaveProperty('depth');
+    expect(only).not.toHaveProperty('order');
+  });
+});
+
+describe('issue helpers', () => {
+  it('omits remediation entirely when none is given', () => {
+    expect(missionIssue('C', 'error', 'p', 'm')).not.toHaveProperty('remediation');
+    expect(missionIssue('C', 'error', 'p', 'm', 'fix it').remediation).toBe('fix it');
+  });
+
+  it('orders issues by path, then code, then message', () => {
+    const sorted = sortMissionIssues([
+      missionIssue('B', 'error', 'z', 'm'),
+      missionIssue('A', 'error', 'a', 'zzz'),
+      missionIssue('A', 'error', 'a', 'aaa'),
+    ]);
+    expect(sorted.map((i) => `${i.path}/${i.code}/${i.message}`)).toEqual([
+      'a/A/aaa',
+      'a/A/zzz',
+      'z/B/m',
+    ]);
+  });
+
+  it('does not mutate the list it sorts', () => {
+    const original = [missionIssue('B', 'error', 'z', 'm'), missionIssue('A', 'error', 'a', 'm')];
+    const snapshot = original.map((i) => i.code);
+    sortMissionIssues(original);
+    expect(original.map((i) => i.code)).toEqual(snapshot);
+  });
+
+  it('detects errors but ignores warnings', () => {
+    expect(hasErrors([missionIssue('C', 'warning', 'p', 'm')])).toBe(false);
+    expect(hasErrors([missionIssue('C', 'error', 'p', 'm')])).toBe(true);
+    expect(hasErrors([])).toBe(false);
+  });
+});
+
+describe('status rollup', () => {
+  it('is complete only when every task completed', () => {
+    expect(deriveMissionStatus([taskState({}), taskState({ taskId: 'b' })])).toBe('complete');
+  });
+
+  it('is failed when any task failed, however much else succeeded', () => {
+    expect(
+      deriveMissionStatus([taskState({}), taskState({ taskId: 'b', status: 'failed' })])
+    ).toBe('failed');
+  });
+
+  it('prefers failed over blocked', () => {
+    expect(
+      deriveMissionStatus([
+        taskState({ status: 'blocked' }),
+        taskState({ taskId: 'b', status: 'failed' }),
+      ])
+    ).toBe('failed');
+  });
+
+  it('is blocked when a task is blocked and none failed', () => {
+    expect(
+      deriveMissionStatus([taskState({}), taskState({ taskId: 'b', status: 'blocked' })])
+    ).toBe('blocked');
+  });
+
+  it('is partial when work remains but nothing broke', () => {
+    expect(
+      deriveMissionStatus([taskState({}), taskState({ taskId: 'b', status: 'pending' })])
+    ).toBe('partial');
+  });
+
+  it('treats an empty task set as failed rather than complete', () => {
+    expect(deriveMissionStatus([])).toBe('failed');
+  });
+});
