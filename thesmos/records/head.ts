@@ -19,7 +19,6 @@
  */
 
 import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
 import { serializeStable } from '../council/contract.js';
 import { fsyncDirectory, writeAllSync } from './io.js';
@@ -34,8 +33,14 @@ import {
   type RecordIssue,
 } from './types.js';
 
+/**
+ * Journal identity.
+ *
+ * Uses the Web Crypto API rather than `node:crypto`: it is available in Node 20+
+ * and everywhere else, so the record layer carries no runtime-specific import.
+ */
 export function newJournalId(): string {
-  return randomUUID();
+  return globalThis.crypto.randomUUID();
 }
 
 export function readHead(path: string): { head: JournalHead | null; corrupt: boolean } {

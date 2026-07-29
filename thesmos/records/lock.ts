@@ -20,7 +20,6 @@
  */
 
 import { openSync, closeSync, readFileSync, unlinkSync, writeSync, existsSync, mkdirSync, statSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
 import { RECORD_CODES, recordIssue, type RecordIssue } from './types.js';
 
@@ -107,7 +106,7 @@ export function acquireLock(
   let reclaimed = false;
 
   for (;;) {
-    const owner: LockOwner = { token: randomUUID(), pid: process.pid, acquiredAt: now() };
+    const owner: LockOwner = { token: globalThis.crypto.randomUUID(), pid: process.pid, acquiredAt: now() };
     try {
       const fd = openSync(path, 'wx');
       try {
