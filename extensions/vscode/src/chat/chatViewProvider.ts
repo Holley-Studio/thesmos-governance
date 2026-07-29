@@ -26,6 +26,8 @@ import { appendSavings, estimateTierSaving, monthSavingsUsd } from './savingsLed
 import { runReview, ThesmosNotFoundError } from '../runner.js';
 import type { Finding } from '../types.js';
 import { runAdvise, shouldGate, budgetState, type DispatchAdvice } from './dispatchAdvisor.js';
+import { classifyAssistantText } from './assistantRouting.js';
+import type { StreamDisposition, StreamId } from './streamProtocol.js';
 
 interface GodUiInfo extends GodEntry {}
 
@@ -75,9 +77,6 @@ const DIFF_PREVIEW_CHARS = 2000;
 const CONTEXT_WINDOW_TOKENS = 200_000;
 
 const AGENT_TOOL_NAMES = new Set(['Agent', 'Task']);
-const ZEUS_BANNER = /^⚡\s*ZEUS/u;
-/** Lean-tier routing line: "⚡ ZEUS · 👁 Argus — Security & Threat Modeling". */
-const ZEUS_LEAN_LINE = /^⚡\s*ZEUS\s*·\s*(.+)$/u;
 
 /**
  * Appended to the CLI's system prompt so headless Pantheon Chat sessions feel
@@ -210,6 +209,13 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private currentTodoId: string | undefined;
   private readonly promptQueue: Array<{ text: string; attachments: string[] }> = [];
   private turnRunning = false;
+  /**
+   * Identity of the assistant text stream currently rendering live, or
+   * undefined when nothing is streaming. Minted on the first delta of a run and
+   * cleared by exactly one terminal message — see `streamProtocol.ts`.
+   */
+  private currentStreamId: StreamId | undefined;
+  private streamSeq = 0;
   /** Prompt held while its Dispatch Order card awaits approval. */
   private pendingDispatch:
     | { orderId: string; text: string; attachments: string[]; advice: DispatchAdvice }
@@ -623,6 +629,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       <span id="budget-ceiling"></span>
     </div>
     <div id="log"></div>
+    <div id="a11y-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
     <div id="empty">
       <div class="glyph">🏛️</div>
       <div class="headline">THE COUNCIL AWAITS</div>
@@ -1021,6 +1028,9 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   stop(): void {
     if (this.pendingDispatch) this.resolveDispatch(this.pendingDispatch.orderId, 'dismissed');
     this.lastApprovedAdvice = undefined;
+    // Cancellation keeps whatever already streamed — the user saw it, and it is
+    // the truthful record of how far the turn got. It is settled exactly once.
+    this.closeStream({ kind: 'keep' });
     this.session?.stop();
     this.turnRunning = false;
     this.setActivity(null);
@@ -1153,6 +1163,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.session?.dispose();
     this.session = undefined;
     this.turnRunning = false;
+    this.currentStreamId = undefined; // the log is being replaced — no node survives
     this.promptQueue.length = 0;
     this.lastSessionId = picked.sessionId;
     this.totalCostUsd = 0;
@@ -1193,6 +1204,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.permissionBridge?.dispose();
     this.permissionBridge = undefined;
     this.usageProvider.reset();
+    this.currentStreamId = undefined; // the log is being cleared — no node survives
     void this.context.workspaceState.update(STATE_KEY, undefined);
     this.broadcast({ type: 'reset' });
     this.broadcast({ type: 'status', running: false, permissionMode: this.permissionMode });
@@ -1225,7 +1237,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       case 'textDelta':
         this.setActivity(null); // the streaming bubble itself shows progress
         this.setPhase('✍️ Writing…'); // strip stays lit even while the bubble streams
-        this.broadcast({ type: 'delta', text: event.text });
+        this.currentStreamId ??= `s${++this.streamSeq}`;
+        this.broadcast({ type: 'delta', streamId: this.currentStreamId, text: event.text });
         break;
 
       case 'thinkingDelta':
@@ -1248,30 +1261,16 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         break;
 
       case 'assistantText': {
-        this.broadcast({ type: 'deltaDone' });
-        const trimmed = event.text.trimStart();
-        const firstLine = trimmed.split('\n')[0]?.trim() ?? '';
-        const leanMatch = ZEUS_LEAN_LINE.exec(firstLine);
-
-        if (leanMatch && trimmed.split('\n').length > 1) {
-          // Lean routing line — strip it and attribute the bubble to the god.
-          const body = trimmed.split('\n').slice(1).join('\n').trim();
-          const route = leanMatch[1].trim();
-          let god: { emoji: string; name: string; color: string } | undefined;
-          if (!/direct response/i.test(route)) {
-            const resolved = this.godMapper.resolve(route);
-            if (resolved.name !== 'Oracle') {
-              god = { emoji: resolved.emoji, name: resolved.name, color: resolved.color };
-            }
-          }
-          // The raw text (header included) already streamed — replace it.
-          this.broadcast({ type: 'removeLive' });
-          this.pushItem({ kind: 'assistant', text: body, god });
-        } else if (ZEUS_BANNER.test(trimmed)) {
-          this.pushItem({ kind: 'zeus', text: event.text });
-        } else {
-          this.pushItem({ kind: 'assistant', text: event.text }, /* alreadyStreamed */ true);
-        }
+        const { item, streamedTextIsFinal } = classifyAssistantText(event.text, (route) => {
+          const resolved = this.godMapper.resolve(route);
+          return resolved.name === 'Oracle'
+            ? undefined
+            : { emoji: resolved.emoji, name: resolved.name, color: resolved.color };
+        });
+        // One logical response → one history entry → one terminal message. The
+        // streamed node is kept when it already shows exactly this card, and
+        // atomically replaced when routing changed the content.
+        this.settleStream(item, streamedTextIsFinal ? { kind: 'keep' } : { kind: 'replace', item });
         break;
       }
 
@@ -1368,7 +1367,10 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       }
 
       case 'turnDone': {
-        this.broadcast({ type: 'deltaDone' });
+        // A turn can end with text still streaming — cancellation, or a stop
+        // mid-sentence. The partial text stands as written; it is never joined
+        // by a duplicate card.
+        this.closeStream({ kind: 'keep' });
         this.turnRunning = false;
         if (event.costUsd !== undefined) {
           // Credit Guardian: cumulative-cost delta = this turn's cost. A turn
@@ -1489,6 +1491,9 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
 
       case 'exit':
         this.lastApprovedAdvice = undefined;
+        // The process can die without a turnDone. Settle here too, or the next
+        // turn's deltas would stream into the previous turn's bubble.
+        this.closeStream({ kind: 'keep' });
         this.turnRunning = false;
         this.setActivity(null);
         this.setPhase(null);
@@ -1563,11 +1568,51 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       : path;
   }
 
-  /** Record an item in history and broadcast it, unless it was already streamed live. */
-  private pushItem(item: UiItem, alreadyStreamed = false): void {
+  /**
+   * Record an item in history and broadcast it.
+   *
+   * Any card that is not a stream's own terminal disposition ends the open
+   * stream first (keeping what streamed), so an interleaved tool/god/error card
+   * can never adopt the live node's identity and later deltas start a fresh
+   * bubble below it. Stream terminals go through `settleStream` instead.
+   */
+  private pushItem(item: UiItem): void {
+    this.closeStream({ kind: 'keep' });
     this.history.push(item);
-    if (!alreadyStreamed) this.broadcast({ type: 'item', item });
+    this.broadcast({ type: 'item', item });
     this.schedulePersist();
+  }
+
+  /**
+   * End the current assistant stream with `item` as its one visible card, and
+   * record that item as its one history entry.
+   *
+   * When nothing streamed (no deltas arrived — a non-streaming provider, or a
+   * webview that attached mid-turn) there is no live node to keep, so the item
+   * is appended instead. Either way: exactly one card, exactly one entry.
+   */
+  private settleStream(item: UiItem, disposition: StreamDisposition<UiItem>): void {
+    const streamId = this.currentStreamId;
+    this.currentStreamId = undefined;
+    this.history.push(item);
+    if (streamId === undefined && disposition.kind === 'keep') {
+      // 'keep' presumes a live node that never existed — render the item.
+      this.broadcast({ type: 'item', item });
+    } else {
+      this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition });
+    }
+    this.schedulePersist();
+  }
+
+  /**
+   * End the current stream without a history entry — used at turn boundaries
+   * and before any interleaved card. A no-op when nothing is streaming, except
+   * that the webview still runs its end-of-turn cleanup.
+   */
+  private closeStream(disposition: StreamDisposition<UiItem>): void {
+    const streamId = this.currentStreamId;
+    this.currentStreamId = undefined;
+    this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition });
   }
 
   private broadcast(message: unknown): void {

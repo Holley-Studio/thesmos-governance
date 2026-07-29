@@ -6,6 +6,8 @@
  * markdown-lite transform, which only ever injects a fixed set of safe tags.
  */
 
+import { StreamFinalizer, type StreamDisposition, type StreamSurface } from '../streamProtocol.js';
+
 declare function acquireVsCodeApi(): { postMessage(msg: unknown): void };
 
 interface GodInfo {
@@ -55,8 +57,8 @@ type InboundMessage =
   | { type: 'reset' }
   | { type: 'history'; items: UiItem[] }
   | { type: 'item'; item: UiItem }
-  | { type: 'delta'; text: string }
-  | { type: 'deltaDone' }
+  | { type: 'delta'; streamId: string; text: string }
+  | { type: 'finalizeStream'; streamId: string | null; disposition: StreamDisposition<UiItem> }
   | { type: 'godComplete'; toolUseId: string; summary: string; isError: boolean; durationMs: number }
   | { type: 'status'; running: boolean; model?: string; sessionId?: string; permissionMode?: string; totalCostUsd?: number; savedUsdSession?: number; savedUsdMonth?: number; sessionBudgetUsd?: number }
   | { type: 'providerInfo'; label: string; models: Array<{ id: string; label: string }>; currentModel: string }
@@ -64,7 +66,6 @@ type InboundMessage =
   | { type: 'phase'; text: string | null }
   | { type: 'usage'; contextTokens: number; contextPct: number }
   | { type: 'thinking'; text: string }
-  | { type: 'removeLive' }
   | { type: 'attachments'; paths: string[] }
   | { type: 'permissionResolved'; requestId: string; status: 'allowed' | 'denied' }
   | { type: 'dispatchResolved'; orderId: string; status: 'approved' | 'skipped' | 'dismissed' }
@@ -74,6 +75,8 @@ type InboundMessage =
 const vscode = acquireVsCodeApi();
 
 const log = document.getElementById('log') as HTMLDivElement;
+/** Polite live region — one announcement per settled assistant response. */
+const a11yLive = document.getElementById('a11y-live') as HTMLDivElement | null;
 const empty = document.getElementById('empty') as HTMLDivElement;
 const input = document.getElementById('input') as HTMLTextAreaElement;
 const sendBtn = document.getElementById('send') as HTMLButtonElement;
@@ -236,8 +239,6 @@ function finalizeDeliberation(): void {
   deliberationPre = undefined;
 }
 
-let liveBubble: HTMLDivElement | undefined;
-let liveText = '';
 let councilEl: HTMLDivElement | undefined;
 const godElements = new Map<string, HTMLDivElement>();
 const godStart = new Map<string, number>();
@@ -310,9 +311,25 @@ function scrollToEnd(): void {
   if (stickToBottom) log.scrollTop = log.scrollHeight;
 }
 
+/**
+ * Node this render pass must replace in place, set only by `renderItem`'s
+ * `replacing` argument and consumed by the first `append()` of that pass. The
+ * swap is what makes "one response, one card" hold: the streamed node and its
+ * routed replacement occupy the same slot rather than stacking.
+ */
+let replaceTarget: HTMLElement | undefined;
+
 function append(el: HTMLElement): void {
   empty.style.display = 'none';
-  log.appendChild(el);
+  const target = replaceTarget;
+  replaceTarget = undefined;
+  if (target && target.parentNode === log) {
+    log.replaceChild(el, target);
+  } else {
+    // The node is already gone (log cleared, or an earlier removal) — appending
+    // is then the only way to show the response, and still shows it once.
+    log.appendChild(el);
+  }
   scrollToEnd();
 }
 
@@ -326,7 +343,22 @@ function formatDuration(ms: number): string {
   return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)}s`;
 }
 
-function renderItem(item: UiItem): void {
+/**
+ * Draw one item. When `replacing` is given, the item takes that node's place in
+ * the log instead of being appended — the atomic half of a `replace`
+ * disposition. `replacing` is cleared unconditionally, so a render path that
+ * never appends cannot leave it armed for the next item.
+ */
+function renderItem(item: UiItem, replacing?: HTMLElement): void {
+  replaceTarget = replacing;
+  try {
+    renderItemBody(item);
+  } finally {
+    replaceTarget = undefined;
+  }
+}
+
+function renderItemBody(item: UiItem): void {
   switch (item.kind) {
     case 'user': {
       const el = div(`msg user${item.queued ? ' queued' : ''}`);
@@ -352,7 +384,6 @@ function renderItem(item: UiItem): void {
       break;
     }
     case 'assistant': {
-      finalizeLiveBubble();
       const el = div('msg assistant');
       if (item.god) {
         el.classList.add('god-voiced');
@@ -373,17 +404,15 @@ function renderItem(item: UiItem): void {
       break;
     }
     case 'zeus': {
-      // The banner text already streamed into the live bubble — replace it
-      // with the styled banner instead of showing the text twice.
-      if (liveBubble) liveBubble.remove();
-      finalizeLiveBubble();
+      // The banner text already streamed; the provider sends this item as a
+      // `replace` disposition, so it takes the streamed node's slot rather than
+      // appearing beneath it.
       const el = div('msg zeus');
       el.textContent = item.text;
       append(el);
       break;
     }
     case 'god': {
-      finalizeLiveBubble();
       const runningBefore = [...godStart.keys()];
       const el = div(`msg god${item.status === 'done' ? ' done' : ''}${item.status === 'error' ? ' error' : ''}`);
       el.style.setProperty('--god-color', item.god.color);
@@ -716,18 +745,43 @@ function buildTurnSummaryCard(item: Extract<UiItem, { kind: 'turnSummary' }>): H
 
 // ── Streaming ─────────────────────────────────────────────────────────────
 
-function ensureLiveBubble(): HTMLDivElement {
-  if (!liveBubble) {
-    liveBubble = div('msg assistant');
-    append(liveBubble);
-  }
-  return liveBubble;
-}
+/**
+ * The DOM half of the single-finalization protocol. All identity and
+ * exactly-once logic lives in `StreamFinalizer` (see `../streamProtocol.ts`);
+ * this adapter only knows how to draw.
+ */
+const streamSurface: StreamSurface<HTMLDivElement, UiItem> = {
+  createLiveNode() {
+    const node = div('msg assistant');
+    append(node);
+    return node;
+  },
+  renderLive(node, text) {
+    node.innerHTML = renderMarkdown(text);
+    attachCodeCopyButtons(node);
+    scrollToEnd();
+  },
+  removeNode(node) {
+    node.remove();
+  },
+  renderItemReplacing(item, node) {
+    renderItem(item, node);
+  },
+  appendItem(item) {
+    renderItem(item);
+  },
+  announceSettled(disposition) {
+    // One announcement per settled response — never one per delta, and never a
+    // second one for a duplicated terminal message.
+    if (!a11yLive) return;
+    a11yLive.textContent =
+      disposition.kind === 'replace' && disposition.item.kind === 'assistant' && disposition.item.god
+        ? `Response from ${disposition.item.god.name}`
+        : 'Response complete';
+  },
+};
 
-function finalizeLiveBubble(): void {
-  liveBubble = undefined;
-  liveText = '';
-}
+const streams = new StreamFinalizer<HTMLDivElement, UiItem>(streamSurface);
 
 // Batch delta re-renders to one per frame — re-rendering the whole bubble on
 // every token is O(n²) over a long response.
@@ -737,11 +791,7 @@ function scheduleLiveRender(): void {
   liveRenderScheduled = true;
   requestAnimationFrame(() => {
     liveRenderScheduled = false;
-    if (!liveText) return;
-    const bubble = ensureLiveBubble();
-    bubble.innerHTML = renderMarkdown(liveText);
-    attachCodeCopyButtons(bubble);
-    scrollToEnd();
+    streams.flush();
   });
 }
 
@@ -766,7 +816,7 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       godStart.clear();
       permissionElements.clear();
       todoElements.clear();
-      finalizeLiveBubble();
+      streams.reset(); // log was cleared — no streamed node survives
       thinkingEl = undefined; // log was cleared — drop the stale reference
       councilEl = undefined;
       clearTimeout(thinkingGapTimer);
@@ -780,7 +830,7 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       godStart.clear();
       permissionElements.clear();
       todoElements.clear();
-      finalizeLiveBubble();
+      streams.reset(); // log was cleared — no streamed node survives
       thinkingEl = undefined; // log was cleared — drop the stale reference
       councilEl = undefined;
       clearTimeout(thinkingGapTimer);
@@ -792,11 +842,10 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       break;
     case 'delta':
       bumpThinkingGap();
-      liveText += msg.text;
-      scheduleLiveRender();
+      if (streams.delta(msg.streamId, msg.text)) scheduleLiveRender();
       break;
-    case 'deltaDone':
-      finalizeLiveBubble();
+    case 'finalizeStream':
+      streams.finalize(msg.streamId, msg.disposition);
       finalizeDeliberation();
       bumpThinkingGap();
       break;
@@ -812,10 +861,6 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
     case 'thinking':
       appendDeliberation(msg.text);
       bumpThinkingGap();
-      break;
-    case 'removeLive':
-      if (liveBubble) liveBubble.remove();
-      finalizeLiveBubble();
       break;
     case 'godComplete': {
       const el = godElements.get(msg.toolUseId);
