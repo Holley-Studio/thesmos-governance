@@ -1237,3 +1237,74 @@ wrong about today's code and right about the code that would replace it.
   journal refuses to grow past its compiled ceilings rather than silently discarding evidence.
 - **No CLI surface yet.** The record layer is library-only in this PR, consistent with keeping one
   concern per PR. Inspection commands belong with the pack lifecycle that will emit the events.
+
+### 18.8 Correction — eight defects found by adversarial review
+
+An independent adversarial review of `966578b` returned **BLOCK — CORRECTNESS DEFECTS**. Eight were
+confirmed by reproduction, three of them critical, and several claims in §18.2–§18.7 and the PR body
+were **false as written**, not merely optimistic. Every gate was green while the journal was unsound.
+
+The architectural error underneath most of them: **semantic identity and envelope integrity were
+collapsed into one digest.** `contentHash` deliberately excluded `recordedAt` so that replaying a
+mission produced identical hashes — correct for identity, and fatal for integrity, because nothing
+else covered the timestamp.
+
+| # | Defect | Correction |
+|---|---|---|
+| F1 | `recordedAt` authenticated by nothing; changing only the timestamp still verified | `recordHash` over the envelope — semantic hash, prior record hash, sequence, timestamp, attestation. `contentHash` stays semantic. Timestamps validated as canonical ISO-8601 UTC on write and read. |
+| F2 | Valid suffix truncation undetectable; deleting the last records still verified | Sibling head anchor holding committed sequence and tip `recordHash`, committed by temp→fsync→rename→dir-fsync |
+| F3 | Crash bricked the journal on the next write, which reported success | Torn tail physically truncated under the transaction, fsynced, byte count reported |
+| F4 | Concurrent writers corrupted the chain; neither refused | `O_EXCL` transaction lock with owner token, liveness check, bounded timeout, conservative stale recovery |
+| F5 | `attestation` declared but never persisted | Every record persists `{ kind: 'none' }`, covered by the envelope hash, validated on read |
+| F6 | `writeSync` return value discarded | Complete-write loop with byte accounting; zero progress refused; partial bytes truncated on failure |
+| F7 | Exported raw append validated only size and redaction | Raw append internalized; `writeRecord` is the only entry point |
+| F8 | Durability stopped at the file descriptor | Parent-directory fsync after creation, truncation and rename |
+
+**Claims that were false and are now corrected:**
+
+- *"Edits, deletions and reordering break verification at a determinate position."* Interior
+  deletions did; **suffix deletions did not**. Corrected everywhere, including §18.2 and the
+  `journal.ts` docblock.
+- *"A torn final record — the crash signature — recovered and reported."* It was *tolerated on read*
+  and never repaired. It is now physically truncated.
+- *"A racing writer gets a detected break, not a corrupted file — but the loser is refused."* Both
+  halves were false: the loser was not refused, and the file was corrupted past the break.
+- *"The record carries a typed attestation field with an explicit none state so signing has a place
+  to live without a schema break."* The field was never persisted, so adding it later **was** a
+  schema change. It is now persisted, and the honest position is stated: **signing will require a
+  schema version bump.**
+- *"Tamper-evident"* used unqualified. See §18.9.
+
+**Two further defects were found while fixing these,** both by mutation testing rather than by
+review:
+
+- The lock treated an *unreadable* file as abandoned. `wx` creates the lock before its contents are
+  written, so a competing writer could observe an empty lock about to become a live one, steal it,
+  and break the chain under ten concurrent writers. Unparseable locks now fall back to file age.
+- Four mutations escaped the first regression pass. Short writes had no behavioural test at all;
+  attestation was validated on read by nothing; and the unreadable-lock race was covered only by a
+  timing-dependent multi-process test that passed with the fix reverted. All three now have
+  deterministic coverage.
+
+### 18.9 Assurance boundaries — not one label
+
+The word "tamper-evident" was doing too much work. These are separate properties with separate
+evidence:
+
+| Property | Status |
+|---|---|
+| Accidental interior corruption | **Detected.** Malformed or edited interior records fail closed. |
+| Interior tampering (edit, reorder, delete-in-middle) | **Detected** by the envelope chain. |
+| Suffix truncation | **Detected** by the head anchor — and *only* by it. |
+| Crash recovery | **Repaired.** Torn tails truncated; journal-ahead-of-anchor recovered. |
+| Concurrent-writer safety | **Serialized** by an exclusive lock; every acknowledged record is committed. |
+| Writable-local-attacker resistance | **Not achieved.** Someone who can rewrite the journal *and* the anchor together produces a consistent forgery. No purely local artifact can prevent this. |
+| Externally signed certification | **Not present.** Records are honestly unsigned; signing requires a trust root this repository does not have, and a schema version bump. |
+
+For Phase 2 this matters concretely: unsigned local evaluation may be called **`evaluated-local`**.
+It may **not** be called `verified`. `verified-signed` is reserved for a state that does not yet
+exist.
+
+**Durability is POSIX.** Directory fsync is unavailable on Windows, where a directory cannot be
+opened as a file. There, record *contents* are fsynced and directory metadata is left to the
+filesystem — a weaker guarantee, documented rather than hidden. No Windows durability claim is made.
