@@ -26,16 +26,35 @@ export interface TokenBudgetConfig {
   enabled: boolean;
   /** Hard stop session at this many tokens (0 = disabled). */
   sessionMaxTokens: number;
-  /** Hard stop session at this USD cost. */
+  /** Session USD ceiling. Hard-stops only when billingMode is 'metered'. */
   sessionMaxCostUSD: number;
-  /** Daily accumulated cost hard stop. */
+  /** Daily accumulated cost ceiling (same billing-mode rule). */
   dailyMaxCostUSD: number;
-  /** Project accumulated cost hard stop. */
+  /** Project accumulated cost ceiling (same billing-mode rule). */
   projectMaxCostUSD: number;
   /** Alert when this fraction of any budget is used (0–1). */
   alertAt: number;
   /** Hard stop when this fraction is used (0–1, should be 1.0). */
   hardStopAt: number;
+  /**
+   * How USD ceilings are enforced. All costs here are ESTIMATES computed from
+   * token counts × modelCostTable — for subscription-authenticated Claude Code
+   * sessions (Pro/Max/Team/Enterprise) they are API-equivalent estimates, not
+   * charges. Therefore:
+   *   - 'metered'     : the user confirmed pay-per-use billing — cost ceilings
+   *                     hard-stop (fail-closed).
+   *   - 'subscription': cost ceilings are advisory alerts only.
+   *   - 'auto'        : billing unverified — advisory alert plus a request to
+   *                     classify. An old config without this field is 'auto';
+   *                     it is never reinterpreted as confirmed metered.
+   * Token-count ceilings (sessionMaxTokens) hard-stop in every mode — they are
+   * usage governance, not a billing claim.
+   */
+  billingMode?: 'auto' | 'subscription' | 'metered';
+  /** Advisory threshold for subscription-backed sessions (API-equivalent USD). */
+  subscriptionWarningEquivalentUSD?: number;
+  /** Warn fraction for UI surfaces (0–1). Falls back to alertAt. */
+  warnAtFraction?: number;
   /** Cost per 1M tokens by model ID. */
   modelCostTable: Record<string, ModelCost>;
 }
@@ -48,6 +67,7 @@ export const TOKEN_BUDGET_DEFAULTS: TokenBudgetConfig = {
   projectMaxCostUSD: 500.00,
   alertAt: 0.80,
   hardStopAt: 1.00,
+  billingMode: 'auto',
   modelCostTable: {
     // Canonical SDK model IDs (claude-<family>-<version>)
     'claude-sonnet-4-6':              { inputPer1M: 3.00,  outputPer1M: 15.00 },
@@ -185,15 +205,37 @@ export function buildBudgetReport(
   let hardStop = false;
   let hardStopReason: string | null = null;
 
+  // Cost ceilings hard-stop only for confirmed metered billing. The tracked
+  // dollars are estimates from token counts — on a subscription-authenticated
+  // session they are API-equivalent estimates, not charges, and must never
+  // block work. 'auto' (including old configs without billingMode) stays
+  // advisory and asks the user to classify rather than silently guessing.
+  const billingMode = config.billingMode === 'metered' || config.billingMode === 'subscription'
+    ? config.billingMode
+    : 'auto';
+
   const check = (used: number, max: number, label: string) => {
     if (max <= 0) return;
     const ratio = used / max;
     if (ratio >= config.hardStopAt) {
-      hardStop = true;
-      hardStopReason = `${label} budget exhausted ($${used.toFixed(2)} / $${max.toFixed(2)})`;
+      if (billingMode === 'metered') {
+        hardStop = true;
+        hardStopReason = `${label} metered ceiling reached — ~$${used.toFixed(2)} estimated of $${max.toFixed(2)}`;
+      } else if (billingMode === 'subscription') {
+        alerts.push(
+          `ℹ️ API-equivalent usage estimate ~$${used.toFixed(2)} passed the $${max.toFixed(2)} ${label} threshold — ` +
+          `subscription-backed, advisory only. Provider usage limits may still apply.`,
+        );
+      } else {
+        alerts.push(
+          `⚠️ Estimated API-equivalent usage ~$${used.toFixed(2)} reached the $${max.toFixed(2)} ${label} ceiling, ` +
+          `but billing mode is unverified so this is advisory only. Set tokenBudget.billingMode to "metered" ` +
+          `to enforce the ceiling, or "subscription" if this session is subscription-backed.`,
+        );
+      }
     } else if (ratio >= config.alertAt) {
       const pct = Math.round(ratio * 100);
-      alerts.push(`⚡ ${pct}% of ${label} budget used — $${used.toFixed(2)} / $${max.toFixed(2)}`);
+      alerts.push(`⚡ ~${pct}% of ${label} budget — $${used.toFixed(2)} estimated / $${max.toFixed(2)}`);
     }
   };
 

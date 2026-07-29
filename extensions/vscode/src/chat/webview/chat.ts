@@ -6,6 +6,9 @@
  * markdown-lite transform, which only ever injects a fixed set of safe tags.
  */
 
+import { buildBudgetBarModel } from '../budgetBarModel.js';
+import type { BillingMode } from '../billingContext.js';
+
 declare function acquireVsCodeApi(): { postMessage(msg: unknown): void };
 
 interface GodInfo {
@@ -58,7 +61,7 @@ type InboundMessage =
   | { type: 'delta'; text: string }
   | { type: 'deltaDone' }
   | { type: 'godComplete'; toolUseId: string; summary: string; isError: boolean; durationMs: number }
-  | { type: 'status'; running: boolean; model?: string; sessionId?: string; permissionMode?: string; totalCostUsd?: number; savedUsdSession?: number; savedUsdMonth?: number; sessionBudgetUsd?: number }
+  | { type: 'status'; running: boolean; model?: string; sessionId?: string; permissionMode?: string; totalCostUsd?: number; savedUsdSession?: number; savedUsdMonth?: number; sessionBudgetUsd?: number; subscriptionWarnUsd?: number; billingMode?: BillingMode; billingLabel?: string; billingConfidence?: string }
   | { type: 'providerInfo'; label: string; models: Array<{ id: string; label: string }>; currentModel: string }
   | { type: 'activity'; text: string | null }
   | { type: 'phase'; text: string | null }
@@ -89,37 +92,46 @@ const attachBtn = document.getElementById('attach') as HTMLButtonElement;
 const mentionPopup = document.getElementById('mention-popup') as HTMLDivElement;
 const attachmentsRow = document.getElementById('attachments') as HTMLDivElement;
 const budgetBarWrap = document.getElementById('budget-bar-wrap') as HTMLDivElement;
+const budgetModeEl = document.getElementById('budget-mode') as HTMLSpanElement;
 const budgetCostEl = document.getElementById('budget-cost') as HTMLSpanElement;
 const budgetFill = document.getElementById('budget-fill') as HTMLDivElement;
 const budgetCeilingEl = document.getElementById('budget-ceiling') as HTMLSpanElement;
 
 let pendingAttachments: string[] = [];
-/** Session cost ceiling from .thesmos/config.json — undefined means no limit configured. */
+/** Metered session ceiling from .thesmos/config.json — undefined means no limit configured. */
 let sessionBudgetUsd: number | undefined;
+/** Subscription advisory threshold from config. */
+let subscriptionWarnUsd: number | undefined;
+/** Billing classification from the controller (never decided here — see budgetPolicy.ts). */
+let billingMode: BillingMode = 'unknown';
+let billingLabel = 'Billing unknown';
 
 /**
- * Update the always-visible header budget bar.
- * States: no-limit (bar hidden), healthy (green), warn (amber ≥60%), crit (red ≥85%).
+ * Update the always-visible Budget Guardian bar. Presentation only — the
+ * text/tone comes from buildBudgetBarModel; the enforcement matrix lives in
+ * the extension host. All strings render via textContent (XSS-safe).
  */
 function updateBudgetBar(costUsd: number): void {
   if (!budgetBarWrap) return;
-  if (!sessionBudgetUsd) {
-    // No budget configured — show cost only, no fill bar
-    budgetBarWrap.classList.add('no-limit');
-    budgetCostEl.textContent = `$${costUsd.toFixed(4)}`;
-    budgetCeilingEl.textContent = '';
-    return;
+  const model = buildBudgetBarModel({
+    costUsd,
+    billingMode,
+    billingLabel,
+    limitUsd: sessionBudgetUsd,
+    subscriptionWarnUsd,
+  });
+  if (budgetModeEl) budgetModeEl.textContent = model.modeText;
+  budgetCostEl.textContent = model.costText;
+  budgetCeilingEl.textContent = model.ceilingText;
+  budgetBarWrap.classList.toggle('no-limit', model.pct === null);
+  if (model.pct !== null) {
+    budgetFill.style.width = `${model.pct}%`;
+    budgetFill.classList.toggle('warn', model.tone === 'warn');
+    budgetFill.classList.toggle('crit', model.tone === 'crit');
   }
-  budgetBarWrap.classList.remove('no-limit');
-  const pct = Math.min(100, (costUsd / sessionBudgetUsd) * 100);
-  budgetFill.style.width = `${pct}%`;
-  budgetFill.classList.toggle('warn', pct >= 60 && pct < 85);
-  budgetFill.classList.toggle('crit', pct >= 85);
-  budgetBarWrap.classList.toggle('pulsing', pct >= 100);
-  budgetCostEl.textContent = `$${costUsd.toFixed(4)}`;
-  budgetCeilingEl.textContent = `/ $${sessionBudgetUsd.toFixed(2)}`;
-  const pctLabel = Math.round(pct);
-  budgetBarWrap.title = `Session cost: $${costUsd.toFixed(4)} of $${sessionBudgetUsd.toFixed(2)} budget (${pctLabel}%) — click to edit .thesmos/config.json`;
+  budgetBarWrap.classList.toggle('pulsing', model.pulsing);
+  budgetBarWrap.title = model.title;
+  budgetBarWrap.setAttribute('aria-label', model.ariaLabel);
 }
 
 // ── Thinking indicator ────────────────────────────────────────────────────────
@@ -851,7 +863,10 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       // While a turn runs, Send becomes Queue — messages wait their turn.
       sendBtn.textContent = msg.running ? 'Queue' : 'Send';
       sendBtn.title = msg.running ? 'Queue for when the current turn finishes' : 'Send (Enter)';
-      if (msg.sessionBudgetUsd !== undefined) sessionBudgetUsd = msg.sessionBudgetUsd;
+      sessionBudgetUsd = msg.sessionBudgetUsd;
+      subscriptionWarnUsd = msg.subscriptionWarnUsd;
+      if (msg.billingMode) billingMode = msg.billingMode;
+      if (msg.billingLabel) billingLabel = msg.billingLabel;
       if (msg.model || msg.sessionId || msg.totalCostUsd !== undefined) {
         meta.textContent = [
           msg.model,
@@ -970,7 +985,18 @@ empty.addEventListener('click', (e) => {
 });
 stopBtn.addEventListener('click', () => vscode.postMessage({ type: 'stop' }));
 newBtn.addEventListener('click', () => vscode.postMessage({ type: 'newSession' }));
-if (budgetBarWrap) budgetBarWrap.addEventListener('click', () => vscode.postMessage({ type: 'openBudgetConfig' }));
+if (budgetBarWrap) {
+  // Opens the Budget Guardian action menu (classify billing, raise ceiling,
+  // open config). Keyboard-operable: the wrap is role=button + tabindex=0.
+  const budgetActions = (): void => vscode.postMessage({ type: 'budgetActions' });
+  budgetBarWrap.addEventListener('click', budgetActions);
+  budgetBarWrap.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      budgetActions();
+    }
+  });
+}
 attachBtn.addEventListener('click', () => vscode.postMessage({ type: 'pickImage' }));
 modeSelect.addEventListener('change', () =>
   vscode.postMessage({ type: 'setPermissionMode', mode: modeSelect.value }),

@@ -386,8 +386,12 @@ const JSON_TEMPLATES: JsonTemplate[] = [
           protectedBranches: config.protectedBranches,
           tokenBudget: {
             enabled: true,
+            // 'auto' = billing unverified: USD ceilings stay advisory until the
+            // user confirms 'metered' (enforce) or 'subscription' (advisory).
+            billingMode: 'auto',
             sessionMaxTokens: 500000,
             sessionMaxCostUSD: 5,
+            subscriptionWarningEquivalentUSD: 30,
             dailyMaxCostUSD: 25,
             projectMaxCostUSD: 500,
             alertAt: 0.8,

@@ -10,6 +10,14 @@
       "type": "string",
       "description": "JSON Schema reference — add this for editor autocomplete"
     },
+    "name": {
+      "type": "string",
+      "description": "Config name (informational; usually the repo name)"
+    },
+    "version": {
+      "type": "string",
+      "description": "Config schema version written by `thesmos init`"
+    },
     "disabled": {
       "type": "boolean",
       "default": false,
@@ -249,6 +257,124 @@
           "items": { "type": "number", "minimum": 0, "maximum": 1 },
           "description": "Allowed opacity values (0–1) for DESIGN_018. Default: Tailwind 5% increment scale (0, 0.05, 0.1, … 0.95, 1).",
           "examples": [[0, 0.1, 0.25, 0.5, 0.75, 0.9, 1]]
+        }
+      }
+    },
+    "reviewIgnorePaths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Path prefixes excluded from `thesmos review` findings (e.g. rule fixture folders)",
+      "examples": [["thesmos/rules/", "extensions/vscode/dist/"]]
+    },
+    "routing": {
+      "type": "object",
+      "description": "Pantheon agent routing doctrine (AGNT_032/033)",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["auto", "confirm", "off"],
+          "default": "auto",
+          "description": "auto: Zeus routes silently per tier rules · confirm: announce and await user go-ahead before any spawn · off: agents only on explicit invocation"
+        },
+        "councilConfirmThreshold": {
+          "type": "integer",
+          "minimum": 2,
+          "default": 4,
+          "description": "Councils of this many agents or more require explicit user confirmation"
+        }
+      }
+    },
+    "context1M": {
+      "type": "object",
+      "description": "Context window governance (AGNT_037)",
+      "additionalProperties": false,
+      "properties": {
+        "allow1M": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow the 1M-token context window ([1m] model variants). Premium-priced — enabling must be deliberate."
+        }
+      }
+    },
+    "tokenBudget": {
+      "type": "object",
+      "description": "Token/cost budget governance for AI sessions (Claude Code hook + Pantheon Chat Budget Guardian). All tracked dollars are ESTIMATES computed from token counts — on subscription-authenticated sessions they are API-equivalent estimates, not charges.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the Claude Code PostToolUse budget hook (`thesmos claude:govern`). The Pantheon Chat budget bar reads this section regardless."
+        },
+        "billingMode": {
+          "type": "string",
+          "enum": ["auto", "subscription", "metered"],
+          "default": "auto",
+          "description": "How USD ceilings are enforced. 'metered': you confirmed pay-per-use API billing — ceilings hard-block to prevent real spend. 'subscription': subscription-backed (Claude Pro/Max/Team/Enterprise) — ceilings are advisory only; the estimate is API-equivalent usage, not a charge. 'auto' (default): detect from provider/session auth metadata; anything unverified stays advisory and asks you to classify. Old configs without this field behave as 'auto' — never as confirmed metered."
+        },
+        "sessionMaxTokens": {
+          "type": "number",
+          "minimum": 0,
+          "default": 500000,
+          "description": "Hard-stop the session at this many tokens (0 = disabled). Applies in every billing mode — a usage guard, not a billing claim."
+        },
+        "sessionMaxCostUSD": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 5,
+          "description": "Session USD ceiling. Hard-blocks only when billingMode is 'metered'; otherwise advisory. Must be a positive finite dollar amount."
+        },
+        "subscriptionWarningEquivalentUSD": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 30,
+          "description": "Advisory threshold (API-equivalent USD) for subscription-backed sessions. Never blocks — informs you how much API-equivalent usage the session represents."
+        },
+        "warnAtFraction": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1,
+          "default": 0.8,
+          "description": "Fraction of the relevant threshold at which the Budget Guardian warns (strictly between 0 and 1). Falls back to alertAt when absent."
+        },
+        "dailyMaxCostUSD": {
+          "type": "number",
+          "minimum": 0,
+          "default": 25,
+          "description": "Daily accumulated estimated-cost ceiling for the Claude Code hook (0 = disabled). Same billing-mode enforcement rule as sessionMaxCostUSD."
+        },
+        "projectMaxCostUSD": {
+          "type": "number",
+          "minimum": 0,
+          "default": 500,
+          "description": "Project accumulated estimated-cost ceiling for the Claude Code hook (0 = disabled). Same billing-mode enforcement rule as sessionMaxCostUSD."
+        },
+        "alertAt": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "default": 0.8,
+          "description": "Fraction of any budget at which the Claude Code hook prints an alert"
+        },
+        "hardStopAt": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 1.0,
+          "description": "Fraction of a budget at which the hook hard-stops (metered mode only for cost budgets)"
+        },
+        "modelCostTable": {
+          "type": "object",
+          "description": "Cost per 1M tokens by model ID, used to estimate costs from token counts",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["inputPer1M", "outputPer1M"],
+            "additionalProperties": false,
+            "properties": {
+              "inputPer1M": { "type": "number", "minimum": 0 },
+              "outputPer1M": { "type": "number", "minimum": 0 }
+            }
+          }
         }
       }
     },

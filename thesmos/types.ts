@@ -224,6 +224,14 @@ export interface ThesmosConfig {
     projectMaxCostUSD?: number;
     alertAt?: number;
     hardStopAt?: number;
+    /** How USD ceilings apply: 'metered' hard-stops; 'subscription' and 'auto'
+     *  (default — billing unverified) are advisory, because tracked costs are
+     *  API-equivalent estimates, not verified charges. */
+    billingMode?: 'auto' | 'subscription' | 'metered';
+    /** Advisory threshold (API-equivalent USD) for subscription-backed sessions. */
+    subscriptionWarningEquivalentUSD?: number;
+    /** Warn fraction (0–1) for UI surfaces; falls back to alertAt, then 0.8. */
+    warnAtFraction?: number;
     modelCostTable?: Record<string, { inputPer1M: number; outputPer1M: number }>;
   };
 

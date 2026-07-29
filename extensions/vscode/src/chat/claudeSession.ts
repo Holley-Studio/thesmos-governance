@@ -37,7 +37,7 @@ export function resolveClaudeBinary(): string {
 
 /** Shaped events consumed by the chat controller. */
 export type SessionEvent =
-  | { kind: 'init'; sessionId: string; model: string }
+  | { kind: 'init'; sessionId: string; model: string; apiKeySource?: string }
   | { kind: 'textDelta'; text: string }
   | { kind: 'thinkingDelta'; text: string }
   | { kind: 'assistantText'; text: string }
@@ -235,6 +235,10 @@ export class ClaudeSession {
             kind: 'init',
             sessionId: this.sessionId ?? '',
             model: typeof event.model === 'string' ? event.model : 'unknown',
+            // The CLI's own report of how it authenticated ('none' = OAuth
+            // login) — feeds billing classification, never treated as a secret
+            // (it is a source name, not a credential).
+            apiKeySource: typeof event.apiKeySource === 'string' ? event.apiKeySource : undefined,
           });
         } else if (event.subtype === 'compact_boundary') {
           // The CLI auto-compacts long conversations; surface it so the UI never goes silent.
