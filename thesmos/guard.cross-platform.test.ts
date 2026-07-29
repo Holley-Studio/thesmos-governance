@@ -281,9 +281,169 @@ describe('thesmos-guard.js — real execution', () => {
       const result = runGuard(['check'], { cwd: tmp, stdin });
       expect(result.status).toBe(2);
       expect(result.stderr).toMatch(/failClosed|Config/i);
+      // Diagnostic must point at the config repair path, not blame package.json.
+      expect(result.stderr).toMatch(/package\.json does not cause|Repair path/i);
+      // Error output stays machine-independent: no absolute tmp dir leaks
+      // beyond the config path the user must fix.
+      expect(result.stderr).not.toMatch(/\/src\/a\.ts/);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
+  });
+
+  // ── Config repair hatch (fail-closed self-heal) ──────────────────────────
+  // Real spawned-guard proof that a malformed .thesmos/config.json can only be
+  // repaired by a Write/Edit of that exact file, and that the exception does
+  // not weaken content scanning or broaden to look-alike paths.
+  describe('config repair hatch — real guard', () => {
+    function brokenConfigRepo(): string {
+      const tmp = mkdtempSync(join(tmpdir(), 'thesmos-guard-repair-'));
+      mkdirSync(join(tmp, '.thesmos'), { recursive: true });
+      writeFileSync(join(tmp, '.thesmos', 'config.json'), '{broken', 'utf8');
+      return tmp;
+    }
+
+    it('allows Write of .thesmos/config.json (valid repair payload → exit 0)', () => {
+      const tmp = brokenConfigRepo();
+      try {
+        const fixed = JSON.stringify({ project: 'repaired', autoMode: { failClosed: true } }, null, 2);
+        const stdin = JSON.stringify({
+          tool_name: 'Write',
+          tool_input: { file_path: join(tmp, '.thesmos', 'config.json'), content: fixed + '\n' },
+        });
+        expect(runGuard(['check'], { cwd: tmp, stdin }).status).toBe(0);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('allows Edit of .thesmos/config.json (repair via Edit → exit 0)', () => {
+      const tmp = brokenConfigRepo();
+      try {
+        const stdin = JSON.stringify({
+          tool_name: 'Edit',
+          tool_input: {
+            file_path: join(tmp, '.thesmos', 'config.json'),
+            old_string: '{broken',
+            new_string: '{ "project": "repaired" }\n',
+          },
+        });
+        expect(runGuard(['check'], { cwd: tmp, stdin }).status).toBe(0);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('still blocks a non-config Write while config is broken (exit 2)', () => {
+      const tmp = brokenConfigRepo();
+      try {
+        const stdin = JSON.stringify({
+          tool_name: 'Write',
+          tool_input: { file_path: join(tmp, 'src', 'a.ts'), content: 'export const x = 1;\n' },
+        });
+        expect(runGuard(['check'], { cwd: tmp, stdin }).status).toBe(2);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('does not extend the hatch to a look-alike filename (config.json.bak → exit 2)', () => {
+      const tmp = brokenConfigRepo();
+      try {
+        const stdin = JSON.stringify({
+          tool_name: 'Write',
+          tool_input: {
+            file_path: join(tmp, '.thesmos', 'config.json.bak'),
+            content: '{ "project": "sneaky" }\n',
+          },
+        });
+        expect(runGuard(['check'], { cwd: tmp, stdin }).status).toBe(2);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('rejects a "repair" payload that carries a live secret (BLOCKER still fires)', () => {
+      const tmp = brokenConfigRepo();
+      try {
+        // A repair Write skips scope but NOT the content scan. An AWS key in
+        // the payload must still be blocked.
+        const payload = JSON.stringify({
+          project: 'x',
+          note: 'AKIAIOSFODNN7EXAMPLE aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+        });
+        const stdin = JSON.stringify({
+          tool_name: 'Write',
+          tool_input: { file_path: join(tmp, '.thesmos', 'config.json'), content: payload + '\n' },
+        });
+        const result = runGuard(['check'], { cwd: tmp, stdin });
+        expect(result.status).toBe(2);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('refuses to repair through a symlinked config file (exit 2, no link-follow)', () => {
+      if (IS_WIN) return; // symlink creation is privileged on Windows
+      const tmp = brokenConfigRepo();
+      try {
+        const outside = join(tmp, 'evil-target.json');
+        writeFileSync(outside, 'sentinel', 'utf8');
+        rmSync(join(tmp, '.thesmos', 'config.json'), { force: true });
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('node:fs').symlinkSync(outside, join(tmp, '.thesmos', 'config.json'));
+        const stdin = JSON.stringify({
+          tool_name: 'Write',
+          tool_input: { file_path: join(tmp, '.thesmos', 'config.json'), content: '{ "ok": true }\n' },
+        });
+        expect(runGuard(['check'], { cwd: tmp, stdin }).status).toBe(2);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('restores normal governance once config parses again', () => {
+      const tmp = brokenConfigRepo();
+      try {
+        // Repair the file for real.
+        writeFileSync(
+          join(tmp, '.thesmos', 'config.json'),
+          JSON.stringify({ project: 'ok' }, null, 2),
+          'utf8',
+        );
+        // Next invocation: a normal benign Write is allowed (config now valid).
+        const stdin = JSON.stringify({
+          tool_name: 'Write',
+          tool_input: { file_path: join(tmp, 'src', 'ok.ts'), content: 'export const ok = true;\n' },
+        });
+        expect(runGuard(['check'], { cwd: tmp, stdin }).status).toBe(0);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('does not failClosed on invalid project package.json alone (exit 0)', () => {
+      const tmp = mkdtempSync(join(tmpdir(), 'thesmos-guard-badpkg-'));
+      try {
+        mkdirSync(join(tmp, '.thesmos'), { recursive: true });
+        mkdirSync(join(tmp, 'src'), { recursive: true });
+        writeFileSync(
+          join(tmp, '.thesmos', 'config.json'),
+          JSON.stringify({ project: 'pkg-test' }, null, 2),
+          'utf8',
+        );
+        writeFileSync(join(tmp, 'package.json'), '{not-json', 'utf8');
+        const stdin = JSON.stringify({
+          tool_name: 'Write',
+          tool_input: { file_path: join(tmp, 'src', 'ok.ts'), content: 'export const ok = true;\n' },
+        });
+        const result = runGuard(['check'], { cwd: tmp, stdin });
+        expect(result.status).toBe(0);
+        expect(result.stderr).not.toMatch(/Config unreadable|failClosed/i);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
   });
 
   it('failClosed: false restores allow-on-error for malformed stdin', () => {
