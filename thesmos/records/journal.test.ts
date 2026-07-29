@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { journalPath, scanJournal } from './journal.js';
 import { headPathFor, readHead } from './head.js';
-import { buildRecordContent, hashRecordContent, sealRecord, type RecordInput } from './record.js';
+import { buildRecordContent, contentOf, hashRecordContent, sealRecord, type RecordInput } from './record.js';
 import { exportRecords, readRecords, verifyRecords, writeRecord } from './store.js';
 import { GENESIS_HASH, RECORD_CODES } from './types.js';
 
@@ -350,6 +350,47 @@ describe('interior tamper detection', () => {
     all[1] = JSON.stringify(p);
     rewrite(all);
     expect(readRecords(opts()).records).toHaveLength(1);
+  });
+
+  it('F5 — refuses a record whose attestation was removed', () => {
+    seed(2);
+    const all = lines();
+    const p = JSON.parse(all[0] as string) as Record<string, unknown>;
+    delete p['attestation'];
+    all[0] = JSON.stringify(p);
+    rewrite(all);
+
+    const v = verifyRecords(opts());
+    expect(v.valid).toBe(false);
+    expect(v.issues.map((i) => i.code)).toContain(RECORD_CODES.attestationInvalid);
+  });
+
+  it.each([
+    { kind: 'signed' },
+    { kind: 'none', signature: 'forged' },
+    'none',
+    null,
+  ])('F5 — refuses an unrecognized attestation %p', (bad) => {
+    seed(1);
+    const all = lines();
+    const p = JSON.parse(all[0] as string) as Record<string, unknown>;
+    p['attestation'] = bad;
+    all[0] = JSON.stringify(p);
+    rewrite(all);
+
+    const v = verifyRecords(opts());
+    expect(v.valid).toBe(false);
+    // Never inferred as signed, never quietly downgraded to none.
+    expect(v.issues.map((i) => i.code)).toContain(RECORD_CODES.attestationInvalid);
+  });
+
+  it('F5 — an altered attestation breaks the envelope hash', () => {
+    // Even were the shape accepted, the envelope covers it.
+    const content = buildRecordContent(input());
+    const sealed = sealRecord(content, GENESIS_HASH, 0, T0);
+    const tampered = { ...sealed, attestation: { kind: 'none', extra: 1 } as never };
+    expect(hashRecordContent(contentOf(tampered))).toBe(sealed.contentHash);
+    expect(sealed.recordHash).not.toBe('');
   });
 
   it('refuses a journal written by a newer schema', () => {

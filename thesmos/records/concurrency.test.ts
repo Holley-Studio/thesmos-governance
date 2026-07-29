@@ -202,6 +202,29 @@ describe('F4 — lock ownership', () => {
     releaseLock(lockPath(), held.owner!);
   });
 
+  it('does not steal a lock that exists but has no contents yet', () => {
+    // `wx` creates the lock file before its JSON is written, so a competing
+    // writer can observe an empty lock that is about to become a live one.
+    // Treating unreadable as abandoned let a second writer steal a held lock
+    // and broke the chain under ten concurrent writers. That race is timing
+    // dependent, so it is pinned deterministically here rather than left to
+    // the multi-process test to catch by luck.
+    writeFileSync(lockPath(), '', 'utf8');
+
+    const attempt = acquireLock(lockPath(), { timeoutMs: 100, staleMs: 30_000 });
+    expect(attempt.ok, 'an empty lock file was treated as abandoned').toBe(false);
+    expect(existsSync(lockPath())).toBe(true);
+  });
+
+  it('reclaims an unreadable lock only once it is old', () => {
+    writeFileSync(lockPath(), 'not json at all', 'utf8');
+    // staleMs of 0 makes any age qualify, so this proves the age path is what
+    // permits reclaim — not the unreadability itself.
+    const attempt = acquireLock(lockPath(), { timeoutMs: 500, staleMs: 0 });
+    expect(attempt.ok).toBe(true);
+    releaseLock(lockPath(), attempt.owner!);
+  });
+
   it('does not steal a young lock even from a dead pid', () => {
     // Age is checked before liveness, so a fresh lock is respected regardless.
     writeFileSync(
