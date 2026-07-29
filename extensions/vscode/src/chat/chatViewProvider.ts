@@ -14,6 +14,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ClaudeSession, type SessionEvent, type PermissionMode } from './claudeSession.js';
+import { SubscriptionUsageProvider } from '../usage/subscriptionUsage.js';
+import type { SubscriptionUsageSnapshot } from '../usage/subscriptionUsage.js';
 import { CodexSession } from './codexSession.js';
 import { CheckpointManager } from './checkpointManager.js';
 import { GodMapper, type GodEntry } from './godMapper.js';
@@ -228,6 +230,9 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private contextTokens = 0;
   private readonly providers: ProviderManager;
   private modelId = '';
+  /** Collects subscription-plan usage from the live session stream. One instance
+   * survives process restarts — reset() on explicit new session only. */
+  private readonly usageProvider = new SubscriptionUsageProvider({ provider: 'claude' });
 
   // Credit Guardian — estimated savings vs flagship baseline (see savingsLedger.ts).
   private savedUsdSession = 0;
@@ -1187,9 +1192,15 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.currentTodoId = undefined;
     this.permissionBridge?.dispose();
     this.permissionBridge = undefined;
+    this.usageProvider.reset();
     void this.context.workspaceState.update(STATE_KEY, undefined);
     this.broadcast({ type: 'reset' });
     this.broadcast({ type: 'status', running: false, permissionMode: this.permissionMode });
+  }
+
+  /** Current subscription-plan usage snapshot from the live session stream. */
+  get subscriptionUsage(): SubscriptionUsageSnapshot {
+    return this.usageProvider.snapshot(new Date());
   }
 
   // ── Stream event shaping ────────────────────────────────────────────────
@@ -1230,6 +1241,10 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
 
       case 'usage':
         this.updateUsage(event.contextTokens);
+        break;
+
+      case 'rateLimitInfo':
+        this.usageProvider.ingestStreamEvent(event.windowPayload, new Date());
         break;
 
       case 'assistantText': {
