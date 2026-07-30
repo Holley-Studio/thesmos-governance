@@ -7,6 +7,7 @@
  */
 
 import { StreamFinalizer, type StreamDisposition, type StreamSurface } from '../streamProtocol.js';
+import { TurnCardTracker, type TurnCardSurface } from '../turnCards.js';
 
 declare function acquireVsCodeApi(): { postMessage(msg: unknown): void };
 
@@ -58,7 +59,7 @@ type InboundMessage =
   | { type: 'history'; items: UiItem[] }
   | { type: 'item'; item: UiItem }
   | { type: 'delta'; streamId: string; text: string }
-  | { type: 'finalizeStream'; streamId: string | null; disposition: StreamDisposition<UiItem> }
+  | { type: 'finalizeStream'; streamId: string | null; disposition: StreamDisposition<UiItem>; turnId?: string | null }
   | { type: 'godComplete'; toolUseId: string; summary: string; isError: boolean; durationMs: number }
   | { type: 'status'; running: boolean; model?: string; sessionId?: string; permissionMode?: string; totalCostUsd?: number; savedUsdSession?: number; savedUsdMonth?: number; sessionBudgetUsd?: number }
   | { type: 'providerInfo'; label: string; models: Array<{ id: string; label: string }>; currentModel: string }
@@ -319,6 +320,13 @@ function scrollToEnd(): void {
  */
 let replaceTarget: HTMLElement | undefined;
 
+/**
+ * The element `append()` most recently mounted into the log. The stream surface
+ * reads this immediately after a settle to learn which node became the turn's
+ * card, so the TurnCardTracker can dedupe multi-stream turns.
+ */
+let lastMountedEl: HTMLElement | undefined;
+
 function append(el: HTMLElement): void {
   empty.style.display = 'none';
   const target = replaceTarget;
@@ -330,6 +338,7 @@ function append(el: HTMLElement): void {
     // is then the only way to show the response, and still shows it once.
     log.appendChild(el);
   }
+  lastMountedEl = el;
   scrollToEnd();
 }
 
@@ -750,10 +759,21 @@ function buildTurnSummaryCard(item: Extract<UiItem, { kind: 'turnSummary' }>): H
  * exactly-once logic lives in `StreamFinalizer` (see `../streamProtocol.ts`);
  * this adapter only knows how to draw.
  */
+/**
+ * The DOM node the most recent settle mounted as a card (kept live node,
+ * in-place replacement, or appended item), or undefined for a settle that
+ * produced no card (`discard`). The `finalizeStream` handler reads it to feed
+ * the TurnCardTracker, then clears it.
+ */
+let lastSettledNode: HTMLElement | undefined;
+
 const streamSurface: StreamSurface<HTMLDivElement, UiItem> = {
   createLiveNode() {
     const node = div('msg assistant');
     append(node);
+    // A kept stream settles into exactly this live node — record it as the
+    // candidate card so a later stream in the same turn can supersede it.
+    lastSettledNode = node;
     return node;
   },
   renderLive(node, text) {
@@ -766,9 +786,11 @@ const streamSurface: StreamSurface<HTMLDivElement, UiItem> = {
   },
   renderItemReplacing(item, node) {
     renderItem(item, node);
+    lastSettledNode = lastMountedEl; // the element that took node's slot
   },
   appendItem(item) {
     renderItem(item);
+    lastSettledNode = lastMountedEl;
   },
   announceSettled(disposition) {
     // One announcement per settled response — never one per delta, and never a
@@ -782,6 +804,16 @@ const streamSurface: StreamSurface<HTMLDivElement, UiItem> = {
 };
 
 const streams = new StreamFinalizer<HTMLDivElement, UiItem>(streamSurface);
+
+// Turn-level DOM idempotency, above the per-stream finalizer: when one turn
+// settles more than one stream, the earlier (superseded) card is removed so the
+// turn shows exactly one response card. See ../turnCards.ts.
+const turnCardSurface: TurnCardSurface<HTMLElement> = {
+  removeNode(node) {
+    node.remove();
+  },
+};
+const turnCards = new TurnCardTracker<HTMLElement>(turnCardSurface);
 
 // Batch delta re-renders to one per frame — re-rendering the whole bubble on
 // every token is O(n²) over a long response.
@@ -817,6 +849,7 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       permissionElements.clear();
       todoElements.clear();
       streams.reset(); // log was cleared — no streamed node survives
+      turnCards.reset(); // log was cleared — drop the tracked turn card
       thinkingEl = undefined; // log was cleared — drop the stale reference
       councilEl = undefined;
       clearTimeout(thinkingGapTimer);
@@ -831,6 +864,7 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       permissionElements.clear();
       todoElements.clear();
       streams.reset(); // log was cleared — no streamed node survives
+      turnCards.reset(); // log was cleared — drop the tracked turn card
       thinkingEl = undefined; // log was cleared — drop the stale reference
       councilEl = undefined;
       clearTimeout(thinkingGapTimer);
@@ -844,11 +878,17 @@ window.addEventListener('message', (e: MessageEvent<InboundMessage>) => {
       bumpThinkingGap();
       if (streams.delta(msg.streamId, msg.text)) scheduleLiveRender();
       break;
-    case 'finalizeStream':
+    case 'finalizeStream': {
+      lastSettledNode = undefined;
       streams.finalize(msg.streamId, msg.disposition);
+      // Feed the just-settled card to the turn tracker; if this is the second
+      // stream to settle under the same turn, the earlier card is removed.
+      turnCards.onSettled(msg.turnId ?? null, lastSettledNode);
+      lastSettledNode = undefined;
       finalizeDeliberation();
       bumpThinkingGap();
       break;
+    }
     case 'activity':
       setActivityLabel(msg.text);
       break;

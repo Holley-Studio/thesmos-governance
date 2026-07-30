@@ -1637,12 +1637,14 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     const streamId = this.currentStreamId;
     this.currentStreamId = undefined;
 
+    const turnId = this.currentTurnId ?? null;
     if (this.turnAssistantHistoryIdx !== undefined) {
-      // A second (or later) assistant final for this turn: update in place so
-      // the authoritative text replaces what the partial stream showed, and the
-      // webview's StreamFinalizer keeps this a single visible card.
+      // A second (or later) assistant final for this turn: update history in
+      // place, and stamp the terminal with this turn's id so the webview's
+      // TurnCardTracker removes the earlier (superseded) card — one turn, one
+      // visible card even when the turn emitted more than one stream.
       this.history[this.turnAssistantHistoryIdx] = item;
-      this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition });
+      this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition, turnId });
     } else {
       this.turnAssistantHistoryIdx = this.history.length;
       this.history.push(item);
@@ -1650,7 +1652,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         // 'keep' presumes a live node that never existed — render the item.
         this.broadcast({ type: 'item', item });
       } else {
-        this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition });
+        this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition, turnId });
       }
     }
     this.schedulePersist();
@@ -1664,7 +1666,10 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private closeStream(disposition: StreamDisposition<UiItem>): void {
     const streamId = this.currentStreamId;
     this.currentStreamId = undefined;
-    this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition });
+    // Stamp with the live turn id (still set here — turnDone clears it only after
+    // calling closeStream) so a partial card settled at a turn boundary can be
+    // superseded by a later authoritative final for the same turn.
+    this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition, turnId: this.currentTurnId ?? null });
   }
 
   private broadcast(message: unknown): void {
