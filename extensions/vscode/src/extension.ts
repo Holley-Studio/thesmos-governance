@@ -878,7 +878,7 @@ async function checkExtensionUpdate(context: vscode.ExtensionContext): Promise<v
     if (choice === 'Update Extension') {
       await vscode.commands.executeCommand(
         'workbench.extensions.action.installExtension',
-        'holley-studios.thesmos-governance',
+        'holleystudio.thesmos-governance-vscode',
       );
     }
   } catch {
