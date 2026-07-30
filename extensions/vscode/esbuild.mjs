@@ -7,8 +7,18 @@
 
 import * as esbuild from 'esbuild';
 import { argv } from 'process';
+import { execFileSync } from 'child_process';
 
 const watching = argv.includes('--watch');
+
+let buildSha = 'dev';
+try { buildSha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim(); } catch {}
+
+/** Injected at build time into both bundles — lets diagnostics prove which commit is running. */
+const buildDefines = {
+  __BUILD_SHA__: JSON.stringify(buildSha),
+  __PROTOCOL_VERSION__: JSON.stringify(2),
+};
 
 /** @type {import('esbuild').BuildOptions} */
 const options = {
@@ -22,6 +32,7 @@ const options = {
   sourcemap: true,
   minify: !watching,
   logLevel: 'info',
+  define: buildDefines,
 };
 
 /** Pantheon Chat webview bundle — browser context, no vscode module. */
@@ -36,6 +47,7 @@ const webviewOptions = {
   sourcemap: true,
   minify: !watching,
   logLevel: 'info',
+  define: buildDefines,
 };
 
 /**

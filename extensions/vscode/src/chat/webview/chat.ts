@@ -1221,4 +1221,4 @@ document.addEventListener('drop', (e) => {
   }
 });
 
-vscode.postMessage({ type: 'ready' });
+vscode.postMessage({ type: 'ready', protocolVersion: typeof __PROTOCOL_VERSION__ !== 'undefined' ? __PROTOCOL_VERSION__ : 1 });

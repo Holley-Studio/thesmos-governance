@@ -22,12 +22,20 @@ import { GodMapper, type GodEntry } from './godMapper.js';
 import { PermissionBridge, type PermissionRequest } from './permissionBridge.js';
 import { ProviderManager } from './providerManager.js';
 import { listSessions, loadTranscript } from './sessionHistory.js';
-import { appendSavings, estimateTierSaving, monthSavingsUsd } from './savingsLedger.js';
+import { appendSavings, estimateTierSaving, monthSavingsUsd, privateLedgerPath } from './savingsLedger.js';
 import { runReview, ThesmosNotFoundError } from '../runner.js';
 import type { Finding } from '../types.js';
 import { runAdvise, shouldGate, budgetState, type DispatchAdvice } from './dispatchAdvisor.js';
 import { classifyAssistantText } from './assistantRouting.js';
 import type { StreamDisposition, StreamId } from './streamProtocol.js';
+
+/**
+ * Webview↔host protocol version. Bump when any message shape changes.
+ * Both bundles receive the same value via esbuild `define`; a mismatch
+ * means a stale webview (old VSIX) is attached to a newer host — the host
+ * shows an actionable error rather than silently misbehaving.
+ */
+const PROTOCOL_VERSION: number = typeof __PROTOCOL_VERSION__ !== 'undefined' ? __PROTOCOL_VERSION__ : 1;
 
 interface GodUiInfo extends GodEntry {}
 
@@ -216,6 +224,18 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
    */
   private currentStreamId: StreamId | undefined;
   private streamSeq = 0;
+  /**
+   * Stable identity for the logical turn currently executing. Minted in
+   * `dispatchPrompt` and cleared in `turnDone` / `newSession`.
+   */
+  private currentTurnId: string | undefined;
+  private turnIdSeq = 0;
+  /**
+   * History index of the assistant-response slot for the current turn.
+   * Defined once `settleStream` has pushed an item; subsequent assistant
+   * finals for the same turn update in place rather than appending a second.
+   */
+  private turnAssistantHistoryIdx: number | undefined;
   /** Prompt held while its Dispatch Order card awaits approval. */
   private pendingDispatch:
     | { orderId: string; text: string; attachments: string[]; advice: DispatchAdvice }
@@ -504,7 +524,22 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         orderId?: string;
       }) => {
         switch (msg.type) {
-          case 'ready':
+          case 'ready': {
+            // Handshake: verify the webview's protocol version matches ours.
+            // A mismatch means an old webview bundle is attached to a newer host
+            // (stale VSIX or cached bundle) — show a visible, actionable error
+            // rather than silently producing undefined behaviour.
+            const webviewVersion = (msg as { type: string; protocolVersion?: number }).protocolVersion;
+            if (webviewVersion !== undefined && webviewVersion !== PROTOCOL_VERSION) {
+              this.post(webview, {
+                type: 'item',
+                item: {
+                  kind: 'error',
+                  text: `⚠️ Pantheon Chat: protocol mismatch — webview v${webviewVersion} ≠ host v${PROTOCOL_VERSION}. ` +
+                    'Reload VS Code (Developer: Reload Window) to pick up the latest extension bundle.',
+                },
+              });
+            }
             this.post(webview, { type: 'history', items: this.history });
             this.broadcastProviderInfo();
             this.post(webview, {
@@ -516,6 +551,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
               totalCostUsd: this.totalCostUsd,
             });
             break;
+          }
           case 'send':
             if (typeof msg.text === 'string') {
               void this.sendPrompt(msg.text, Array.isArray(msg.attachments) ? msg.attachments : []);
@@ -615,7 +651,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     <div id="header">
       <span class="title">⚡ PANTHEON</span>
       <span class="session-meta" id="session-meta"></span>
-      <span id="savings" title="Credit Guardian — estimated savings vs flagship baseline. Ledger: .thesmos/savings.jsonl"></span>
+      <span id="savings" title="Credit Guardian — estimated savings vs flagship baseline. Run 'Thesmos: Migrate Credit Guardian Ledger to Private Storage' to move legacy data out of the repo."></span>
       <select id="model-select" title="Model for this session"></select>
       <button id="provider-btn" title="LLM provider — link Anthropic, GLM, Kimi, DeepSeek, or a custom proxy (GPT/Gemini)">⚡</button>
       <button id="chronicles" title="Chronicles — reopen a past session">📜</button>
@@ -774,6 +810,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.turnRunning = true;
     this.turnStartCostUsd = this.totalCostUsd;
     this.turnChangedFiles.clear();
+    this.currentTurnId = `t${++this.turnIdSeq}`;
+    this.turnAssistantHistoryIdx = undefined;
 
     const checkpointId = await this.checkpoints.snapshot(text.slice(0, 72));
     if (checkpointId === undefined && !this.checkpointsUnavailableNoted) {
@@ -1205,6 +1243,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.permissionBridge = undefined;
     this.usageProvider.reset();
     this.currentStreamId = undefined; // the log is being cleared — no node survives
+    this.currentTurnId = undefined;
+    this.turnAssistantHistoryIdx = undefined;
     void this.context.workspaceState.update(STATE_KEY, undefined);
     this.broadcast({ type: 'reset' });
     this.broadcast({ type: 'status', running: false, permissionMode: this.permissionMode });
@@ -1372,6 +1412,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         // by a duplicate card.
         this.closeStream({ kind: 'keep' });
         this.turnRunning = false;
+        this.currentTurnId = undefined;
+        this.turnAssistantHistoryIdx = undefined;
         if (event.costUsd !== undefined) {
           // Credit Guardian: cumulative-cost delta = this turn's cost. A turn
           // that genuinely ran on a cheaper tier records an estimated saving
@@ -1383,7 +1425,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
             this.savedUsdSession += saved;
             this.savingsCacheAt = undefined; // month figure changed — invalidate
             try {
-              appendSavings(this.workspaceRoot, {
+              appendSavings(privateLedgerPath(this.privateStorageRoot()), {
                 ts: new Date().toISOString(),
                 type: 'model_tier',
                 detail: `chat turn on ${modelName}`,
@@ -1416,7 +1458,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
                 `New prompts are blocked until you raise tokenBudget.sessionMaxCostUSD or start a new session.`,
             });
             try {
-              appendSavings(this.workspaceRoot, {
+              appendSavings(privateLedgerPath(this.privateStorageRoot()), {
                 ts: new Date().toISOString(),
                 type: 'budget_stop',
                 detail: `session stopped at ~$${this.totalCostUsd.toFixed(2)} (ceiling ~$${budget!.toFixed(2)})`,
@@ -1594,12 +1636,22 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private settleStream(item: UiItem, disposition: StreamDisposition<UiItem>): void {
     const streamId = this.currentStreamId;
     this.currentStreamId = undefined;
-    this.history.push(item);
-    if (streamId === undefined && disposition.kind === 'keep') {
-      // 'keep' presumes a live node that never existed — render the item.
-      this.broadcast({ type: 'item', item });
-    } else {
+
+    if (this.turnAssistantHistoryIdx !== undefined) {
+      // A second (or later) assistant final for this turn: update in place so
+      // the authoritative text replaces what the partial stream showed, and the
+      // webview's StreamFinalizer keeps this a single visible card.
+      this.history[this.turnAssistantHistoryIdx] = item;
       this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition });
+    } else {
+      this.turnAssistantHistoryIdx = this.history.length;
+      this.history.push(item);
+      if (streamId === undefined && disposition.kind === 'keep') {
+        // 'keep' presumes a live node that never existed — render the item.
+        this.broadcast({ type: 'item', item });
+      } else {
+        this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition });
+      }
     }
     this.schedulePersist();
   }
@@ -1629,12 +1681,21 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     for (const webview of this.webviews) this.post(webview, message);
   }
 
+  /**
+   * VS Code private storage root for this workspace. Writes here never dirty the
+   * project's git working tree. Falls back to globalStorageUri when storageUri is
+   * unavailable (VS Code < 1.56 or extension development host edge cases).
+   */
+  private privateStorageRoot(): string {
+    return (this.context.storageUri ?? this.context.globalStorageUri).fsPath;
+  }
+
   /** Month savings, cached for 30s — the file is tiny but re-reading per status would be waste. */
   private monthSavings(): number {
     const now = Date.now();
     if (this.savingsCacheAt === undefined || now - this.savingsCacheAt > 30_000) {
       try {
-        this.savingsCacheVal = monthSavingsUsd(this.workspaceRoot, new Date());
+        this.savingsCacheVal = monthSavingsUsd(this.privateStorageRoot(), this.workspaceRoot, new Date());
       } catch {
         this.savingsCacheVal = 0;
       }
@@ -1645,6 +1706,25 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
 
   private post(webview: vscode.Webview, message: unknown): void {
     void webview.postMessage(message);
+  }
+
+  /**
+   * Returns a redacted diagnostics payload for the Copy Diagnostics command.
+   * No absolute paths, secrets, prompts, session IDs or ledger contents.
+   */
+  diagnosticsPayload(extensionId: string, extensionVersion: string): Record<string, unknown> {
+    return {
+      extensionId,
+      extensionVersion,
+      buildSha: typeof __BUILD_SHA__ !== 'undefined' ? __BUILD_SHA__ : 'unknown',
+      protocolVersion: PROTOCOL_VERSION,
+      provider: this.providers.active.label,
+      requestedModel: this.modelId || '(default)',
+      resolvedModel: this.model ?? '(none)',
+      webviewCount: this.webviews.size,
+      historyLength: this.history.length,
+      turnRunning: this.turnRunning,
+    };
   }
 
   dispose(): void {

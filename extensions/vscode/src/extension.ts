@@ -28,7 +28,7 @@ import { DiagnosticsManager } from './diagnostics.js';
 import { StatusBarManager } from './statusBar.js';
 import { WorkingStateManager } from './workingState.js';
 import { GodMapper } from './chat/godMapper.js';
-import { appendSavings, monthSavingsUsd } from './chat/savingsLedger.js';
+import { appendSavings, monthSavingsUsd, privateLedgerPath, migrateLegacyLedger, legacyLedgerPath } from './chat/savingsLedger.js';
 import { FindingsTreeProvider } from './treeView.js';
 import { AutopilotWatcher } from './autopilotWatcher.js';
 import { LibraryTreeProvider, invokeAgentCommand } from './libraryView.js';
@@ -196,6 +196,10 @@ class ThesmosExtension implements vscode.Disposable {
     this.disposables.push(pantheonWatcher);
   }
 
+  private privateStorageRoot(): string {
+    return (this.context.storageUri ?? this.context.globalStorageUri).fsPath;
+  }
+
   /**
    * Show the highest-priority Pantheon badge:
    *  1. ⚠ 1M ctx — a [1m] model variant is active and allow1M is false
@@ -227,7 +231,7 @@ class ThesmosExtension implements vscode.Disposable {
           if (!this.loggedContext1M.has(rel)) {
             this.loggedContext1M.add(rel);
             try {
-              appendSavings(this.workspaceRoot, {
+              appendSavings(privateLedgerPath(this.privateStorageRoot()), {
                 ts: new Date().toISOString(),
                 type: 'context_1m_block',
                 detail: `1M context flagged in ${rel} (AGNT_037, allow1M not set)`,
@@ -468,6 +472,51 @@ class ThesmosExtension implements vscode.Disposable {
       vscode.commands.registerCommand('thesmos.commandCenter', () =>
         this.openCommandCenter(),
       ),
+    );
+
+    // Diagnostics — copy redacted runtime info to clipboard so users can paste
+    // into a bug report without exposing workspace paths or session contents.
+    this.disposables.push(
+      vscode.commands.registerCommand('thesmos.pantheon.copyDiagnostics', async () => {
+        const ext = vscode.extensions.getExtension('holleystudio.thesmos-governance-vscode');
+        const payload = this.pantheonChat.diagnosticsPayload(
+          ext?.id ?? 'holleystudio.thesmos-governance-vscode',
+          String(ext?.packageJSON?.version ?? 'unknown'),
+        );
+        const text = JSON.stringify(payload, null, 2);
+        await vscode.env.clipboard.writeText(text);
+        void vscode.window.showInformationMessage('Pantheon diagnostics copied to clipboard.');
+      }),
+    );
+
+    // Migrate legacy .thesmos/savings.jsonl → VS Code private storage
+    this.disposables.push(
+      vscode.commands.registerCommand('thesmos.pantheon.migrateSavings', async () => {
+        const legacyPath = legacyLedgerPath(this.workspaceRoot);
+        if (!existsSync(legacyPath)) {
+          void vscode.window.showInformationMessage(
+            'Pantheon Credit Guardian: nothing to migrate — no legacy ledger found at .thesmos/savings.jsonl.',
+          );
+          return;
+        }
+        const privateRoot = this.privateStorageRoot();
+        const ok = await vscode.window.showInformationMessage(
+          `Migrate Credit Guardian ledger out of the repo?\n\nFrom: ${legacyPath}\nTo: ${privateLedgerPath(privateRoot)}\n\nThis moves the file so git no longer sees it as a dirty tracked file after each chat turn. Your historical savings data is preserved.`,
+          { modal: true },
+          'Migrate',
+        );
+        if (ok !== 'Migrate') return;
+        try {
+          migrateLegacyLedger(privateRoot, this.workspaceRoot);
+          void vscode.window.showInformationMessage(
+            '✅ Pantheon Credit Guardian: ledger moved to private storage. The repo is clean.',
+          );
+        } catch (err) {
+          void vscode.window.showErrorMessage(
+            `Migration failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }),
     );
 
     // Set context flag so tree view & menus are visible
@@ -727,7 +776,7 @@ class ThesmosExtension implements vscode.Disposable {
       if (report) {
         let monthSaved = 0;
         try {
-          monthSaved = monthSavingsUsd(this.workspaceRoot, new Date());
+          monthSaved = monthSavingsUsd(this.privateStorageRoot(), this.workspaceRoot, new Date());
         } catch {
           // Savings line is decoration — never break the token meter.
         }

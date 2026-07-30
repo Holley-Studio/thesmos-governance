@@ -2,7 +2,7 @@
   "name": "thesmos-governance-vscode",
   "displayName": "Thesmos Governance",
   "description": "Real-time AI repo governance — inline findings, health scores, and adapter sync for Claude, Gemini, Cursor, Copilot, and Codex.",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "private": true,
   "publisher": "holleystudio",
   "author": {
@@ -315,6 +315,16 @@
         "title": "Open Command Center",
         "category": "Thesmos",
         "icon": "$(list-unordered)"
+      },
+      {
+        "command": "thesmos.pantheon.copyDiagnostics",
+        "title": "Copy Pantheon Diagnostics",
+        "category": "Thesmos"
+      },
+      {
+        "command": "thesmos.pantheon.migrateSavings",
+        "title": "Migrate Credit Guardian Ledger to Private Storage",
+        "category": "Thesmos"
       }
     ],
     "keybindings": [
