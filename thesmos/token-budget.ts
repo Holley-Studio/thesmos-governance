@@ -14,6 +14,7 @@
 import { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { appendSavingsEntry, readSavingsEntries } from './savings.js';
+import { type CostResult, costFor } from './models/index.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -36,7 +37,16 @@ export interface TokenBudgetConfig {
   alertAt: number;
   /** Hard stop when this fraction is used (0–1, should be 1.0). */
   hardStopAt: number;
-  /** Cost per 1M tokens by model ID. */
+  /**
+   * OPTIONAL per-model price override, consulted before the registry.
+   *
+   * This used to be the primary price table, and it had drifted badly — Opus was
+   * billed at $15/$75 (3× the verified rate) and Haiku 4.5 at $0.25/$1.25 (4×
+   * under). Prices now come from thesmos/models/registry.ts, which carries a
+   * source URL, a verified-at date, and dated price windows. This field remains
+   * only so an operator can model a negotiated or preview rate; leave it empty
+   * unless you have one.
+   */
   modelCostTable: Record<string, ModelCost>;
 }
 
@@ -48,22 +58,8 @@ export const TOKEN_BUDGET_DEFAULTS: TokenBudgetConfig = {
   projectMaxCostUSD: 500.00,
   alertAt: 0.80,
   hardStopAt: 1.00,
-  modelCostTable: {
-    // Canonical SDK model IDs (claude-<family>-<version>)
-    'claude-sonnet-4-6':              { inputPer1M: 3.00,  outputPer1M: 15.00 },
-    'claude-opus-4-8':                { inputPer1M: 15.00, outputPer1M: 75.00 },
-    'claude-haiku-4-5-20251001':      { inputPer1M: 0.25,  outputPer1M: 1.25  },
-    'claude-opus-4-5':                { inputPer1M: 15.00, outputPer1M: 75.00 },
-    'claude-sonnet-4-5':              { inputPer1M: 3.00,  outputPer1M: 15.00 },
-    // Legacy API date-suffixed model IDs reported by some Claude Code versions
-    'claude-3-5-sonnet-20241022':     { inputPer1M: 3.00,  outputPer1M: 15.00 },
-    'claude-3-5-sonnet-20240620':     { inputPer1M: 3.00,  outputPer1M: 15.00 },
-    'claude-3-opus-20240229':         { inputPer1M: 15.00, outputPer1M: 75.00 },
-    'claude-3-5-haiku-20241022':      { inputPer1M: 0.80,  outputPer1M: 4.00  },
-    'claude-3-haiku-20240307':        { inputPer1M: 0.25,  outputPer1M: 1.25  },
-    'claude-opus-4-5-20251101':       { inputPer1M: 15.00, outputPer1M: 75.00 },
-    'claude-sonnet-4-5-20251101':     { inputPer1M: 3.00,  outputPer1M: 15.00 },
-  },
+  // Empty by design: the model registry is the price source of truth.
+  modelCostTable: {},
 };
 
 // ── Token usage event (one line in .thesmos/token-usage.jsonl) ─────────────
@@ -75,7 +71,13 @@ export interface TokenEvent {
   model: string;
   inputTokens: number;
   outputTokens: number;
+  /** 0 when the cost could not be determined — read `costKnown` before trusting it. */
   costUSD: number;
+  /**
+   * False when no verified price existed for `model`. Absent on events written
+   * before this field existed, which are treated as known for back-compat.
+   */
+  costKnown?: boolean;
 }
 
 // ── File paths ────────────────────────────────────────────────────────────────
@@ -85,14 +87,57 @@ const SESSION_ID_FILE = '.thesmos/token-session-id';
 
 // ── Cost calculation ──────────────────────────────────────────────────────────
 
+/**
+ * Cost of a turn, or an explicit unknown.
+ *
+ * Resolution order: operator override table → model registry → unknown.
+ *
+ * The previous implementation fell back to a Sonnet 4.6 price for ANY
+ * unrecognised model id, so an unknown model produced a confident, wrong
+ * number that then fed budget enforcement. Guessing a price is worse than
+ * admitting you do not know one: the guess is invisible, and it is wrong in an
+ * unknown direction.
+ */
+export function calcCostResult(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  costTable: Record<string, ModelCost>,
+  at: Date = new Date(),
+): CostResult {
+  const override = costTable[model];
+  if (override) {
+    return {
+      known: true,
+      modelId: model,
+      costUsd: (inputTokens * override.inputPer1M + outputTokens * override.outputPer1M) / 1_000_000,
+      price: {
+        inputPer1M: override.inputPer1M,
+        outputPer1M: override.outputPer1M,
+        effectiveFrom: '0000-01-01',
+        effectiveTo: null,
+        note: 'Operator override from config.modelCostTable.',
+      },
+    };
+  }
+  return costFor(model, inputTokens, outputTokens, at);
+}
+
+/**
+ * Cost in USD, or `null` when no verified price exists.
+ *
+ * Returns null rather than 0 on purpose — 0 reads as "free", which is a
+ * different and equally wrong claim.
+ */
 export function calcCost(
   model: string,
   inputTokens: number,
   outputTokens: number,
   costTable: Record<string, ModelCost>,
-): number {
-  const costs = costTable[model] ?? costTable['claude-sonnet-4-6'] ?? { inputPer1M: 3.00, outputPer1M: 15.00 };
-  return (inputTokens * costs.inputPer1M + outputTokens * costs.outputPer1M) / 1_000_000;
+  at: Date = new Date(),
+): number | null {
+  const result = calcCostResult(model, inputTokens, outputTokens, costTable, at);
+  return result.known ? result.costUsd : null;
 }
 
 // ── Event log ─────────────────────────────────────────────────────────────────
@@ -154,6 +199,12 @@ export interface BudgetReport {
   alerts: string[];
   hardStop: boolean;
   hardStopReason: string | null;
+  /**
+   * Events whose cost could not be determined. When > 0 every cost total above
+   * is a LOWER BOUND, and display layers must say so rather than presenting the
+   * figure as complete.
+   */
+  unknownCostEvents: number;
 }
 
 export function buildBudgetReport(
@@ -181,9 +232,18 @@ export function buildBudgetReport(
   const today   = sum(todayEvents);
   const project = sum(events);
 
+  // Events written before `costKnown` existed are treated as known.
+  const unknownCostEvents = events.filter((e) => e.costKnown === false).length;
+
   const alerts: string[] = [];
   let hardStop = false;
   let hardStopReason: string | null = null;
+
+  if (unknownCostEvents > 0) {
+    alerts.push(
+      `${unknownCostEvents} event(s) had no verified price — cost totals are a lower bound, not a complete figure.`,
+    );
+  }
 
   const check = (used: number, max: number, label: string) => {
     if (max <= 0) return;
@@ -206,7 +266,7 @@ export function buildBudgetReport(
     hardStopReason = `Session token budget exhausted (${session.totalTokens.toLocaleString()} / ${config.sessionMaxTokens.toLocaleString()} tokens)`;
   }
 
-  return { session, today, project, alerts, hardStop, hardStopReason };
+  return { session, today, project, alerts, hardStop, hardStopReason, unknownCostEvents };
 }
 
 // ── PostToolUse stdin handler ─────────────────────────────────────────────────
@@ -242,11 +302,13 @@ export async function runPostToolBudgetCheck(root: string, config: TokenBudgetCo
 
   const inputTokens  = hookData.usage?.input_tokens  ?? 0;
   const outputTokens = hookData.usage?.output_tokens ?? 0;
-  const model        = hookData.model ?? 'claude-sonnet-4-6';
+  // No default model. Attributing an unlabelled turn to a specific model would
+  // invent both the model and its price; 'unknown' resolves to unknown cost.
+  const model        = hookData.model ?? 'unknown';
   const toolName     = hookData.tool_name ?? 'unknown';
   const sessionId    = hookData.session_id ?? getCurrentSessionId(root);
 
-  const costUSD = calcCost(model, inputTokens, outputTokens, config.modelCostTable);
+  const cost = calcCostResult(model, inputTokens, outputTokens, config.modelCostTable);
 
   const event: TokenEvent = {
     ts: new Date().toISOString(),
@@ -255,7 +317,8 @@ export async function runPostToolBudgetCheck(root: string, config: TokenBudgetCo
     model,
     inputTokens,
     outputTokens,
-    costUSD,
+    costUSD: cost.known ? cost.costUsd : 0,
+    costKnown: cost.known,
   };
 
   appendTokenEvent(root, event);

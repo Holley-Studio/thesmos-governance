@@ -174,6 +174,19 @@ export interface CouncilHandoffContract {
 }
 
 export interface CouncilModelPolicy {
+  /**
+   * Preferred LOGICAL PROFILES from the model registry, most-preferred first.
+   *
+   * These are profile names ('balanced-agentic', 'deep-reasoning'), not raw
+   * model ids — that is what lets a council contract survive a model generation
+   * turning over.
+   *
+   * Provider ids may still appear here on contracts compiled from legacy
+   * frontmatter (`compiler.ts` falls back to the `platforms.*` values when no
+   * profiles are declared). That is tolerated for compatibility, and the model
+   * audit reports any such id that is deprecated, invalid, or absent from the
+   * registry — so legacy values are visible rather than silently accepted.
+   */
   preferredProfiles: string[];
   minimumCapability?: string;
   allowedProviders?: string[];

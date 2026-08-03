@@ -29,9 +29,9 @@ governance:
   reports_to: morpheus-animation-agent
 platforms:
   claude_model: claude-sonnet-5
-  openai_model: gpt-5.5
+  openai_model: gpt-5.6-terra
   cursor_globs: "**/*.ksp,**/*.bip,**/*.md,**/*.json"
-  chatgpt_model: gpt-4o
+  chatgpt_model: gpt-5.6-terra
 ---
 
 # God Agent Helios — KeyShot Specialist

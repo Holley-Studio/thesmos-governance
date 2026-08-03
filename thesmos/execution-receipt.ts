@@ -6,6 +6,7 @@
  * I/O is stored as sha256 hashes only — never raw prompts or secrets.
  */
 import { createHash, randomUUID } from 'node:crypto';
+import { type ModelRouteDecision, hasModelMismatch } from './models/index.js';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -42,6 +43,59 @@ export interface ExecutionReceipt {
   artifacts?: string[];
   terminalStatus: ReceiptTerminalStatus;
   blockReason?: string;
+  /**
+   * The model routing decision behind this execution.
+   *
+   * Recorded on the receipt so "which model actually ran this, and why" is
+   * answerable after the fact instead of being reconstructed from logs. Carries
+   * the requested profile, the resolved and effective model ids, reason codes,
+   * approval state, any fallback, and the registry version+hash the decision
+   * was made against — so a decision stays interpretable even after the
+   * registry moves on.
+   *
+   * Optional: receipts written before model routing existed remain valid.
+   */
+  modelDecision?: ModelDecisionReceipt;
+}
+
+/**
+ * Flattened projection of a `ModelRouteDecision` for the receipt log.
+ *
+ * Deliberately a plain data shape rather than the live type: receipts are
+ * append-only JSON read back months later, so they must not depend on the
+ * current shape of routing code.
+ */
+export interface ModelDecisionReceipt {
+  requestedProfile: string;
+  provider: string;
+  requestedModelId: string;
+  /** What the runtime reported. null when it never reported back. */
+  effectiveModelId: string | null;
+  /** True when effective differs from requested — the mismatch signal. */
+  mismatch: boolean;
+  effort: string | null;
+  reasonCodes: string[];
+  approval: string;
+  fallback?: { from: string; to: string; reason: string };
+  registryVersion: string;
+  registryHash: string;
+}
+
+/** Project a live routing decision into its receipt form. */
+export function toModelDecisionReceipt(d: ModelRouteDecision): ModelDecisionReceipt {
+  return {
+    requestedProfile: d.requestedProfile,
+    provider: d.resolvedProvider,
+    requestedModelId: d.requestedModelId,
+    effectiveModelId: d.effectiveModelId,
+    mismatch: hasModelMismatch(d),
+    effort: d.effort,
+    reasonCodes: [...d.reasonCodes],
+    approval: d.approval,
+    ...(d.fallback ? { fallback: { ...d.fallback } } : {}),
+    registryVersion: d.registryVersion,
+    registryHash: d.registryHash,
+  };
 }
 
 function receiptsDir(root: string): string {

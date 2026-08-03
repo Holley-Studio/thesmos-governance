@@ -54,10 +54,28 @@ describe('PANTHEON_MODELS generated map', () => {
     expect(sorted(PANTHEON_MODELS)).toEqual(sorted(catalog));
   });
 
-  it('resolves the three orchestration/security gods to Opus', () => {
-    expect(modelFor('zeus-executive-agent')).toBe('claude-opus-4-8');
-    expect(modelFor('argus-security-agent')).toBe('claude-opus-4-8');
-    expect(modelFor('athena-strategy-agent')).toBe('claude-opus-4-8');
+  it('resolves the four deep-reasoning gods to Opus 5', () => {
+    // Orchestration, security, strategy, and architecture — the domains where
+    // correctness materially outweighs latency. Every other agent runs on the
+    // balanced default and is escalated per-task by the router, not by a pin.
+    expect(modelFor('zeus-executive-agent')).toBe('claude-opus-5');
+    expect(modelFor('argus-security-agent')).toBe('claude-opus-5');
+    expect(modelFor('athena-strategy-agent')).toBe('claude-opus-5');
+    expect(modelFor('chiron-architecture-agent')).toBe('claude-opus-5');
+  });
+
+  it('has NO agent statically pinned to the frontier tier', () => {
+    // A static Fable pin makes every future invocation frontier-priced without
+    // anyone re-deciding. Frontier is a per-task, approval-gated route.
+    const pinned = Object.entries(PANTHEON_MODELS).filter(([, m]) => m === 'claude-fable-5');
+    expect(pinned).toEqual([]);
+  });
+
+  it('uses no superseded model ids anywhere in the active map', () => {
+    const superseded = ['claude-opus-4-8', 'claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
+    for (const [agent, model] of Object.entries(PANTHEON_MODELS)) {
+      expect(superseded, `${agent} is pinned to a superseded model`).not.toContain(model);
+    }
   });
 
   it('falls back to the baseline tier for an unknown id', () => {

@@ -11,6 +11,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DoctorCheck, ThesmosConfig } from './types';
+import { type ModelAuditFinding, type ModelAuditResult, runModelAuditForRoot } from './models/index.js';
 import { ADAPTER_OUTPUT_PATHS, THESMOS_RULES, isAdapterFresh } from './adapters';
 import { extractGeneratedSection } from './output';
 import { validateConfig } from './config';
@@ -39,6 +40,13 @@ export interface DoctorInput {
   packageScripts: Record<string, string>;
   /** Injected current time — lets tests control staleness without mocking Date. */
   now: Date;
+  /**
+   * Pre-computed model audit. Injected rather than read here so the doctor
+   * checks stay pure, and optional so a caller that cannot scan the catalog
+   * (or a fixture-driven test) simply omits the model group rather than
+   * failing.
+   */
+  modelAudit?: ModelAuditResult;
 }
 
 // ── Check group labels ────────────────────────────────────────────────────────
@@ -51,6 +59,7 @@ export const DOCTOR_GROUPS = {
   CONFIG: 'Configuration',
   IDE: 'IDE integration',
   GITHUB: 'GitHub integration',
+  MODELS: 'Model registry',
 } as const;
 
 export type DoctorGroup = (typeof DOCTOR_GROUPS)[keyof typeof DOCTOR_GROUPS];
@@ -404,6 +413,58 @@ function checkGitHubIntegration(input: DoctorInput): DoctorCheck[] {
  * Run all doctor checks against the provided injectable input.
  * Returns checks in logical group order.
  */
+/**
+ * Model registry health, folded into `doctor` rather than shipped as a fourth
+ * parallel command (Operation Olympus D10 — extend what exists).
+ *
+ * Reports one check per finding class rather than one per finding, so a repo
+ * with 68 drifted agents produces a readable summary instead of 68 lines.
+ */
+export function checkModelRegistry(input: DoctorInput): DoctorCheck[] {
+  const audit = input.modelAudit;
+  if (!audit) return [];
+
+  const checks: DoctorCheck[] = [
+    {
+      name: 'models:registry',
+      group: DOCTOR_GROUPS.MODELS,
+      pass: true,
+      message: `Registry ${audit.registryVersion} (hash ${audit.registryHash}) · ${audit.agentsScanned} agent docs scanned, ${audit.agentsWithModel} with a model pin`,
+    },
+  ];
+
+  const byCode = new Map<string, ModelAuditFinding[]>();
+  for (const f of audit.findings) {
+    const list = byCode.get(f.code) ?? [];
+    list.push(f);
+    byCode.set(f.code, list);
+  }
+
+  for (const [code, findings] of [...byCode.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const worst = findings.some((f) => f.severity === 'BLOCKER') ? 'BLOCKER' : findings[0]!.severity;
+    const first = findings[0]!;
+    const where = first.file ? ` (first: ${first.file})` : '';
+    checks.push({
+      name: `models:${code.toLowerCase()}`,
+      group: DOCTOR_GROUPS.MODELS,
+      pass: false,
+      message: `${worst} · ${findings.length} × ${code}${where} — ${first.message}`,
+      fixHint: first.fix,
+    });
+  }
+
+  if (audit.findings.length === 0) {
+    checks.push({
+      name: 'models:drift',
+      group: DOCTOR_GROUPS.MODELS,
+      pass: true,
+      message: 'No model drift detected across catalog, generated maps, or pricing.',
+    });
+  }
+
+  return checks;
+}
+
 export function runDoctor(input: DoctorInput): DoctorCheck[] {
   return [
     ...checkRequiredFiles(input),
@@ -416,6 +477,7 @@ export function runDoctor(input: DoctorInput): DoctorCheck[] {
     ...checkConfiguration(input),
     ...checkIdeDirs(input),
     ...checkGitHubIntegration(input),
+    ...checkModelRegistry(input),
   ];
 }
 
@@ -436,8 +498,18 @@ export function runDoctorForRoot(root: string, config: ThesmosConfig): DoctorChe
     // missing or invalid package.json — leave scripts empty
   }
 
+  // Model audit is I/O (it walks the catalog), so it is computed here and
+  // injected, keeping every doctor check pure and fixture-testable.
+  let modelAudit: ModelAuditResult | undefined;
+  try {
+    modelAudit = runModelAuditForRoot(root);
+  } catch {
+    // A repo without a catalog simply gets no model group.
+  }
+
   return runDoctor({
     config,
+    modelAudit,
     fileExists: (rel) => existsSync(join(root, rel)),
     readJsonSafe: (rel) => {
       try {

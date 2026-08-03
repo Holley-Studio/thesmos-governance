@@ -25,9 +25,9 @@ governance:
   reports_to: eidos-figma-orchestrator
 platforms:
   claude_model: claude-sonnet-5
-  openai_model: gpt-5.5
+  openai_model: gpt-5.6-terra
   cursor_globs: "**/*.fig,prototype/**,interactions/**"
-  chatgpt_model: gpt-4o
+  chatgpt_model: gpt-5.6-terra
 ---
 
 # Kairos — Prototype Behavior Engineer
