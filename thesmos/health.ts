@@ -43,6 +43,7 @@
 
 import type { Finding, ScanResult, ThesmosConfig } from './types.js';
 import type { DriftFinding } from './drift.js';
+import { type ModelAuditResult, runModelAuditForRoot } from './models/index.js';
 import type { SuppressionAuditFinding } from './suppress.js';
 import type { Baseline } from './baseline.js';
 import { SEVERITY_ORDER } from './severity.js';
@@ -97,6 +98,8 @@ export interface HealthInput {
   suppressionAuditFindings: SuppressionAuditFinding[];
   scan: ScanResult | null;
   now: Date;
+  /** Optional model-registry audit; omitted callers simply skip the deduction. */
+  modelAudit?: ModelAuditResult;
 }
 
 // ── Pure computation ──────────────────────────────────────────────────────────
@@ -114,6 +117,21 @@ const DRIFT_DEDUCTIONS: Record<string, { per: number; cap: number }> = {
   HIGH:    { per: 8,  cap: 24 },
   MEDIUM:  { per: 3,  cap: 9  },
   LOW:     { per: 1,  cap: 3  },
+};
+
+/**
+ * Model drift deductions.
+ *
+ * A BLOCKER here is a frontier pin or a fabricated model id — the kinds of
+ * defect that silently multiply cost or 404 at runtime — so it is weighted like
+ * a governance BLOCKER rather than a lint nit. CI gates at health >= 90, which
+ * makes a single model BLOCKER enough to stop a merge.
+ */
+const MODEL_DEDUCTIONS: Record<string, { per: number; cap: number }> = {
+  BLOCKER: { per: 15, cap: 45 },
+  HIGH:    { per: 5,  cap: 20 },
+  MEDIUM:  { per: 2,  cap: 8  },
+  LOW:     { per: 0.5, cap: 2 },
 };
 
 export function computeHealthScore(input: HealthInput): HealthScore {
@@ -173,6 +191,30 @@ export function computeHealthScore(input: HealthInput): HealthScore {
       detail: count > 1 ? `${count} events` : undefined,
     });
     total -= capped;
+  }
+
+  // ── Model registry deductions ─────────────────────────────────────────────
+  // Model drift is a governance defect, not a style issue: a frontier pin
+  // multiplies cost on every future invocation, and a fabricated model id
+  // fails at runtime rather than at review.
+
+  if (input.modelAudit) {
+    const modelBySev = new Map<string, number>();
+    for (const f of input.modelAudit.findings) {
+      modelBySev.set(f.severity, (modelBySev.get(f.severity) ?? 0) + 1);
+    }
+    for (const sev of ['BLOCKER', 'HIGH', 'MEDIUM', 'LOW']) {
+      const count = modelBySev.get(sev) ?? 0;
+      if (count === 0) continue;
+      const { per, cap } = MODEL_DEDUCTIONS[sev] ?? { per: 1, cap: 3 };
+      const capped = Math.min(count * per, cap);
+      deductions.push({
+        label: `model registry: ${sev}`,
+        amount: capped,
+        detail: count > 1 ? `${count} findings` : undefined,
+      });
+      total -= capped;
+    }
   }
 
   // ── Suppression deductions ────────────────────────────────────────────────
@@ -341,6 +383,15 @@ export function computeHealthForRoot(root: string, config: ThesmosConfig): Healt
   const baseline = loadBaseline(root);
   const driftFindings = runDriftForRoot(root, config);
 
+  // Model registry audit. A repo without a catalog simply scores without it,
+  // rather than failing the whole health computation.
+  let modelAudit: ModelAuditResult | undefined;
+  try {
+    modelAudit = runModelAuditForRoot(root);
+  } catch {
+    modelAudit = undefined;
+  }
+
   // Collect suppressions for audit
   const sourceFiles = walkSourceFiles(root);
   const allSuppressions = sourceFiles.flatMap((absPath) => {
@@ -364,6 +415,7 @@ export function computeHealthForRoot(root: string, config: ThesmosConfig): Healt
     driftFindings,
     suppressionAuditFindings,
     scan,
+    modelAudit,
     now: new Date(),
   });
 }

@@ -98,51 +98,75 @@ describe('classifyPlan', () => {
 // ── recommendModel ────────────────────────────────────────────────────────────
 
 describe('recommendModel', () => {
-  it('recommends sonnet for mechanical-heavy work', () => {
+  it('recommends the balanced default for mechanical-heavy work', () => {
     const c = classifyPlan(MECHANICAL_PLAN);
     const r = recommendModel(c);
-    expect(r.model).toBe('sonnet');
+    expect(r.model).toBe('balanced-agentic');
+    expect(r.claudeModel).toBe('claude-sonnet-5');
   });
 
-  it('recommends fable for architecture-heavy work', () => {
+  it('escalates architecture-heavy work to deep reasoning', () => {
     const c = classifyPlan(ARCHITECTURE_PLAN);
     const r = recommendModel(c);
-    expect(r.model).toBe('fable');
+    expect(r.model).toBe('deep-reasoning');
   });
 
-  it('resolves architecture-led top tier to the reasoning flagship (opus)', () => {
+  it('resolves the deep-reasoning tier to Opus 5', () => {
     const r = recommendModel({ mechanicalPct: 10, creativePct: 5, architecturePct: 80, bulkPct: 5 });
-    expect(r.model).toBe('fable');
-    expect(r.claudeModel).toBe('claude-opus-4-8');
+    expect(r.model).toBe('deep-reasoning');
+    expect(r.claudeModel).toBe('claude-opus-5');
+    expect(r.decision.reasonCodes).toContain('architectural-impact');
   });
 
-  it('recommends fable for creative-heavy work', () => {
+  // The behaviour this replaces: creative-heavy plans used to route straight to
+  // the frontier model. Cost must not be a function of vocabulary.
+  it('NEVER routes creative-heavy work to the frontier tier', () => {
     const c = classifyPlan(CREATIVE_PLAN);
     const r = recommendModel(c);
-    expect(r.model).toBe('fable');
+    expect(r.model).not.toBe('frontier-long-horizon');
+    expect(r.claudeModel).not.toBe('claude-fable-5');
   });
 
-  it('resolves creative-led top tier to the creative flagship (fable-5)', () => {
+  it('routes a purely creative plan to the balanced default, not a flagship', () => {
     const r = recommendModel({ mechanicalPct: 10, creativePct: 80, architecturePct: 5, bulkPct: 5 });
-    expect(r.model).toBe('fable');
-    expect(r.claudeModel).toBe('claude-fable-5');
+    expect(r.model).toBe('balanced-agentic');
+    expect(r.claudeModel).toBe('claude-sonnet-5');
   });
 
-  it('resolves mid tier to sonnet and fast tier to haiku', () => {
+  it('resolves mid tier to Sonnet 5 and fast tier to Haiku 4.5', () => {
     expect(recommendModel({ mechanicalPct: 70, creativePct: 10, architecturePct: 10, bulkPct: 10 }).claudeModel).toBe(DEFAULT_MODEL_IDS.mid);
     expect(recommendModel({ mechanicalPct: 10, creativePct: 5, architecturePct: 5, bulkPct: 80 }).claudeModel).toBe(DEFAULT_MODEL_IDS.fast);
   });
 
-  it('recommends haiku for bulk-dominant work with low judgment content', () => {
+  it('recommends the fast tier for bulk-dominant work with low judgment content', () => {
     const c = { mechanicalPct: 10, creativePct: 5, architecturePct: 5, bulkPct: 80 };
     const r = recommendModel(c);
-    expect(r.model).toBe('haiku');
+    expect(r.model).toBe('fast-mechanical');
   });
 
-  it('never recommends fable as the default for mixed mechanical work', () => {
+  it('never recommends the frontier tier as the default for mixed mechanical work', () => {
     const c = { mechanicalPct: 70, creativePct: 10, architecturePct: 10, bulkPct: 10 };
     const r = recommendModel(c);
-    expect(r.model).not.toBe('fable');
+    expect(r.model).not.toBe('frontier-long-horizon');
+  });
+
+  it('resolves Codex ids to the GPT-5.6 family, never an invented "pro" slug', () => {
+    const deep = recommendModel({ mechanicalPct: 10, creativePct: 5, architecturePct: 80, bulkPct: 5 });
+    const mid = recommendModel({ mechanicalPct: 70, creativePct: 10, architecturePct: 10, bulkPct: 10 });
+    const fast = recommendModel({ mechanicalPct: 10, creativePct: 5, architecturePct: 5, bulkPct: 80 });
+    expect(deep.codexModel).toBe('gpt-5.6-sol');
+    expect(mid.codexModel).toBe('gpt-5.6-terra');
+    expect(fast.codexModel).toBe('gpt-5.6-luna');
+    for (const r of [deep, mid, fast]) expect(r.codexModel).not.toContain('pro');
+  });
+
+  it('carries an auditable decision record on every recommendation', () => {
+    const r = recommendModel(classifyPlan(MECHANICAL_PLAN));
+    expect(r.decision.registryVersion).toBeTruthy();
+    expect(r.decision.registryHash).toMatch(/^[0-9a-f]{8}$/);
+    expect(r.decision.requestedModelId).toBe(r.claudeModel);
+    // The runtime has not reported yet — this must not be pre-filled.
+    expect(r.decision.effectiveModelId).toBeNull();
   });
 });
 
@@ -175,7 +199,8 @@ describe('suggestAgents', () => {
 describe('buildAdvisory', () => {
   it('produces a self-consistent advisory for a mixed plan', () => {
     const advisory = buildAdvisory(MIXED_PLAN, PANTHEON_MAP);
-    expect(['haiku', 'sonnet', 'fable']).toContain(advisory.recommendation.model);
+    expect(['fast-mechanical', 'balanced-agentic', 'deep-reasoning', 'frontier-long-horizon'])
+      .toContain(advisory.recommendation.model);
     expect(advisory.classification.mechanicalPct + advisory.classification.creativePct +
       advisory.classification.architecturePct + advisory.classification.bulkPct).toBe(100);
   });
@@ -230,9 +255,9 @@ describe('assignPhases', () => {
     ].join('\n');
     const phases = assignPhases(MIXED_TIER_PLAN, PANTHEON_MAP);
     expect(phases).toHaveLength(2);
-    expect(phases[0].model.model).toBe('fable');
-    expect(phases[0].model.claudeModel).toBe('claude-opus-4-8');
-    expect(phases[1].model.model).toBe('sonnet');
+    expect(phases[0].model.model).toBe('deep-reasoning');
+    expect(phases[0].model.claudeModel).toBe('claude-opus-5');
+    expect(phases[1].model.model).toBe('balanced-agentic');
     expect(phases[1].model.claudeModel).toBe(DEFAULT_MODEL_IDS.mid);
   });
 });
@@ -278,7 +303,7 @@ describe('formatKickoffPrompt (v2)', () => {
     ].join('\n');
     const advisory = buildAdvisory(MIXED_TIER_PLAN, PANTHEON_MAP);
     const p = formatKickoffPrompt('/tmp/plan.md', advisory, MIXED_TIER_PLAN, PANTHEON_MAP);
-    expect(p).toContain('[claude-opus-4-8]');
+    expect(p).toContain('[claude-opus-5]');
     expect(p).toContain(`[${DEFAULT_MODEL_IDS.mid}]`);
     expect(p).toContain('spans model tiers');
   });
