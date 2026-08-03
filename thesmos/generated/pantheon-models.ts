@@ -33,6 +33,7 @@ export const PANTHEON_MODELS: Record<string, string> = {
   "eos-automation-agent": "claude-sonnet-5",
   "erato-brand-voice-agent": "claude-sonnet-5",
   "ergon-code-layers": "claude-sonnet-5",
+  "eunomia-repository-steward-agent": "claude-sonnet-5",
   "hebe-support-agent": "claude-sonnet-5",
   "helios-keyshot-agent": "claude-sonnet-5",
   "hephaestus-design-agent": "claude-sonnet-5",
