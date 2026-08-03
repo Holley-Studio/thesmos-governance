@@ -72,6 +72,7 @@ const RAW_AGENTS: Omit<PantheonSidebarAgent, 'model'>[] = [
   { id: "atlas-integration-agent", name: "Atlas", domain: "Specialists", role: "Atlas Platform Integration Expert" },
   { id: "chrysos-stripe-agent", name: "Chrysos", domain: "Specialists", role: "Stripe Integration & Payment Security" },
   { id: "coeus-ideation-agent", name: "Coeus", domain: "Specialists", role: "Ideation & Creative Strategy" },
+  { id: "eunomia-repository-steward-agent", name: "Eunomia", domain: "Specialists", role: "Repository Stewardship & Codebase Order" },
   { id: "hera-recruiting-agent", name: "Hera", domain: "Specialists", role: "Talent Acquisition & Recruiting" },
   { id: "heracles-crm-agent", name: "Heracles", domain: "Specialists", role: "CRM & Sales Pipeline Management" },
   { id: "kronos-github-agent", name: "Kronos", domain: "Specialists", role: "GitHub Repository & Release Management" },

@@ -180,8 +180,68 @@ jobs:
   # Status-check aggregator: branch ruleset requires a check named "typecheck".
   # This job runs only after all matrix legs of `ci` pass, creating exactly
   # that context so the ruleset is satisfied on every PR.
+  # ── Repository stewardship (deterministic, merge-gating) ────────────────────
+  # Every check here is mechanical: the same tree always produces the same
+  # result. That is what makes it safe as a required status check. AI judgement
+  # may RECOMMEND maintenance work (see repository-stewardship.yml) but must
+  # never become an unreviewable merge gate.
+  stewardship:
+    name: Stewardship (model + artifact drift)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Catalog validates
+        run: npm run thesmos:catalog:validate --workspace=thesmos
+
+      # Regenerating must be a no-op on a correct tree. If this leaves the
+      # worktree dirty, a generated artifact was hand-edited or a catalog
+      # change was committed without regenerating.
+      - name: Generated artifacts are current
+        run: |
+          npm run agents:export --workspace=thesmos
+          if ! git diff --exit-code --stat; then
+            echo "::error::Generated artifacts are stale. Run 'npm run agents:export --workspace=thesmos' and commit the result. Never hand-edit a generated file."
+            exit 1
+          fi
+
+      # A second run must be byte-identical to the first, or the generator is
+      # non-deterministic and every future drift check is unreliable.
+      - name: Export is deterministic
+        run: |
+          npm run agents:export --workspace=thesmos
+          if ! git diff --exit-code --stat; then
+            echo "::error::agents:export is non-deterministic — two consecutive runs produced different output."
+            exit 1
+          fi
+
+      - name: No duplicate agent or skill ids
+        run: |
+          dupes=$(grep -rh '^id: ' thesmos/catalog/agents/ thesmos/catalog/skills/ | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "::error::Duplicate catalog ids found:"; echo "$dupes"; exit 1
+          fi
+
+      # Model drift, generated-map drift, frontier pins, obsolete pricing, and
+      # invalid ids all surface here via the model audit folded into doctor.
+      - name: Model registry audit
+        run: npx tsx thesmos/bin/cli.ts doctor
+
+      - name: Governance gate
+        run: npx tsx thesmos/bin/cli.ts validate
+
   typecheck:
     runs-on: ubuntu-latest
-    needs: [ci, guard-windows]
+    needs: [ci, guard-windows, stewardship]
     steps:
       - run: echo "All CI checks passed"
