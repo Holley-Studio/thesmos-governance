@@ -233,9 +233,17 @@ jobs:
           fi
 
       # Model drift, generated-map drift, frontier pins, obsolete pricing, and
-      # invalid ids all surface here via the model audit folded into doctor.
+      # invalid ids all surface via the model audit folded into doctor.
+      #
+      # SCOPED to the model group on purpose. Plain `doctor` also gates on
+      # report.json freshness and baseline.json age, which are TIME-derived:
+      # they fail any PR opened late enough regardless of its contents. A
+      # required status check must be a pure function of the tree, so this gate
+      # takes only the tree-derived group. Full doctor still runs, unscoped, in
+      # the weekly advisory sweep where a time-based finding is useful rather
+      # than merge-blocking.
       - name: Model registry audit
-        run: npx tsx thesmos/bin/cli.ts doctor
+        run: npx tsx thesmos/bin/cli.ts doctor --only=models
 
       - name: Governance gate
         run: npx tsx thesmos/bin/cli.ts validate

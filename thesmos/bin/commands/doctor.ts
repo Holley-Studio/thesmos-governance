@@ -7,13 +7,22 @@
  *   1  one or more checks failed (honest contract — CI can gate on this)
  *
  * Flags:
- *   --json       output as JSON
- *   --markdown   output as Markdown
- *   --soft       always exit 0 (legacy informational mode)
+ *   --json           output as JSON
+ *   --markdown       output as Markdown
+ *   --soft           always exit 0 (legacy informational mode)
+ *   --only=<group>   scope BOTH output and exit code to one check group
+ *
+ * `--only` exists because doctor's aggregate exit code mixes tree-derived
+ * checks (adapters, model registry) with TIME-derived ones (report freshness,
+ * baseline age). A required status check must be deterministic — the same tree
+ * must always produce the same result — and a time-derived check fails any PR
+ * opened late enough, regardless of its contents. `--only=models` gives CI a
+ * gate that is a pure function of the tree.
  */
 import { createContext } from '../lib/context.ts';
-import { parseArgs, flag } from '../lib/args.ts';
+import { parseArgs, flag, flagVal } from '../lib/args.ts';
 import {
+  DOCTOR_GROUPS,
   runDoctorForRoot,
   formatDoctorConsole,
   formatDoctorMarkdown,
@@ -26,8 +35,36 @@ export async function cmdDoctor(argv: string[]): Promise<void> {
   const json = flag(flags, 'json');
   const markdown = flag(flags, 'markdown');
   const soft = flag(flags, 'soft');
+  const only = flagVal(flags, 'only');
 
-  const checks = runDoctorForRoot(root, config);
+  const allChecks = runDoctorForRoot(root, config);
+
+  let checks = allChecks;
+  if (only) {
+    const wanted = only.toLowerCase();
+    const groups = Object.values(DOCTOR_GROUPS);
+    // Match the full group name, or any word of it, in either direction — so
+    // `--only=models` finds "Model registry" and `--only=adapters` finds
+    // "AI adapters". Exact match is tried first so a precise name always wins.
+    const match =
+      groups.find((g) => g.toLowerCase() === wanted) ??
+      groups.find((g) =>
+        g
+          .toLowerCase()
+          .split(/\s+/)
+          .some((word) => word.startsWith(wanted) || wanted.startsWith(word)),
+      );
+    if (!match) {
+      console.error(`doctor: unknown group "${only}". Known groups: ${groups.join(', ')}`);
+      process.exit(2);
+    }
+    checks = allChecks.filter((c) => c.group === match);
+    if (checks.length === 0) {
+      console.error(`doctor: group "${match}" produced no checks — nothing was verified.`);
+      process.exit(2);
+    }
+  }
+
   const pass = checks.every((c) => c.pass);
 
   if (json) {
