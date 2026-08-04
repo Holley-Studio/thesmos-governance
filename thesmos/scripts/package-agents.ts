@@ -68,7 +68,7 @@ const isHeldBack = (id: string): boolean =>
   HOLDBACK_AGENT_IDS.some((h) => id.startsWith(h))
 
 // Starter (free) bundle teaser — 3 broadly appealing skills out of the full
-// 53. The paid Full Pantheon bundle ships all of them.
+// 53. The paid Full Thesmos Pantheon bundle ships all of them.
 const STARTER_SAMPLE_SKILL_IDS = new Set([
   'a11y-audit',
   'ci-pipeline-audit',
@@ -360,7 +360,7 @@ Learn more: https://agents.md
 ]
 
 // ── Premium engine unlock ─────────────────────────────────────────────────────
-// The $24 Full Pantheon bundle ships premium/pack.json — the distribution-gated
+// The $24 Full Thesmos Pantheon bundle ships premium/pack.json — the distribution-gated
 // marker tiers.ts looks for (~/.thesmos/premium/pack.json or a project's
 // .thesmos/premium/pack.json). Its presence flips the CLI from the free
 // 288-rule Essentials tier to the full 1,137-rule engine. No license server,
@@ -405,7 +405,7 @@ Thank you for buying Thesmos. Lifetime updates — re-download anytime from your
 Gumroad library. Questions: holley42@yahoo.com
 `
 
-const ROOT_README = (agentCount: number, tier: 'starter' | 'pantheon'): string => `# Thesmos ${tier === 'starter' ? 'Starter Pack' : 'Full Pantheon'} — Agent Bundle
+const ROOT_README = (agentCount: number, tier: 'starter' | 'pantheon'): string => `# Thesmos ${tier === 'starter' ? 'Starter Pack' : 'Full Thesmos Pantheon'} — Agent Bundle
 
 ${tier === 'starter'
   ? `This package contains **6 free starter agents** from the Thesmos Pantheon.
@@ -579,7 +579,7 @@ function buildBundle(
 
   // Claude Code Agent Skills — 53 workflow rituals live in
   // pantheon/exports/skills/ (one directory per skill, SKILL.md inside).
-  // The paid Full Pantheon bundle ships all 53; the starter
+  // The paid Full Thesmos Pantheon bundle ships all 53; the starter
   // bundle gets exactly 3 as an upsell teaser.
   if (existsSync(SKILLS_EXPORT_DIR)) {
     const skillsDestDir = join(bundleDir, 'for-claude', 'skills')
@@ -680,13 +680,13 @@ function main(): void {
   console.log(`  ✅ Starter pack     ${starter.agentCount} agents/platform → website/downloads/thesmos-starter-agents.zip`)
 
   const full = buildBundle('thesmos-pantheon-agents', allFilter)
-  console.log(`  ✅ Full Pantheon    ${full.agentCount} agents/platform + premium engine unlock → dist-packs/thesmos-pantheon-agents.zip`)
+  console.log(`  ✅ Full Thesmos Pantheon    ${full.agentCount} agents/platform + premium engine unlock → dist-packs/thesmos-pantheon-agents.zip`)
 
   rmSync(TMP_DIR, { recursive: true, force: true })
 
   console.log('\n✅ Packaging complete.\n')
   console.log('Next steps:')
-  console.log('  1. Upload dist-packs/thesmos-pantheon-agents.zip to Gumroad as the Full Pantheon product ($24)')
+  console.log('  1. Upload dist-packs/thesmos-pantheon-agents.zip to Gumroad as the Full Thesmos Pantheon product ($24)')
   console.log('  2. Only website/downloads/thesmos-starter-agents.zip is committed to the repo — the paid')
   console.log('     bundle in dist-packs/ is gitignored and distributed exclusively through Gumroad')
   console.log('  3. The zip\'s premium/pack.json is the full-engine unlock (288 → 1,137 rules) — see premium/INSTALL.md\n')

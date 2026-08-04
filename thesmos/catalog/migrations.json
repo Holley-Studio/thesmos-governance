@@ -1,0 +1,50 @@
+{
+  "$schema": "./migrations.schema.json",
+  "version": "1.0.0",
+  "$comment": "Legacy → canonical identifier map. Loaded by the catalog resolver so an installed agent referenced by its old id keeps working after a rename. Entries are APPEND-ONLY: removing one breaks every user who installed under the legacy id.",
+
+  "agentIds": [
+    {
+      "legacyId": "nike-leadgen-agent",
+      "canonicalId": "lead-generation-agent",
+      "reason": "trademark_risk",
+      "basis": "'Nike' is a famous commercial trademark. It must not appear as a current public product or agent name.",
+      "deprecatedSince": "2026-08-03",
+      "removalPolicy": "never_remove_alias",
+      "userImpact": "Users who installed nike-leadgen-agent continue to resolve. The legacy id is never presented as the current name.",
+      "publicNameBefore": "God Agent Nike — Lead Generation Agent",
+      "publicNameAfter": "Thesmos Lead Generation Agent"
+    },
+    {
+      "legacyId": "nike-social-agent",
+      "canonicalId": "social-media-agent",
+      "reason": "trademark_risk",
+      "basis": "Same famous trademark. Renamed in the same pass so no public surface retains 'Nike'.",
+      "deprecatedSince": "2026-08-03",
+      "removalPolicy": "never_remove_alias",
+      "userImpact": "Users who installed nike-social-agent continue to resolve. The legacy id is never presented as the current name.",
+      "publicNameBefore": "God Agent Nike — Social Media Agent",
+      "publicNameAfter": "Thesmos Social Media Agent"
+    }
+  ],
+
+  "productNames": [
+    { "legacy": "Pantheon Pro", "canonical": "Thesmos Pro", "reason": "third_party_mark_collision", "deprecatedSince": "2026-08-03" },
+    { "legacy": "Pantheon Chat", "canonical": "Thesmos Chat", "reason": "third_party_mark_collision", "deprecatedSince": "2026-08-03" },
+    { "legacy": "Zeus Forge", "canonical": "Thesmos Builder", "reason": "product_consolidation", "deprecatedSince": "2026-08-03" },
+    { "legacy": "Full Pantheon", "canonical": "Full Thesmos Pantheon", "reason": "third_party_mark_collision", "deprecatedSince": "2026-08-03" }
+  ],
+
+  "preservedNamespaces": [
+    {
+      "namespace": "thesmos pantheon:*",
+      "reason": "CLI command namespace. Breaking it would break documented user workflows and installed automation.",
+      "policy": "retain_indefinitely"
+    },
+    {
+      "namespace": "pantheon/exports/**",
+      "reason": "Export directory layout referenced by existing user tooling and documentation.",
+      "policy": "retain_indefinitely"
+    }
+  ]
+}

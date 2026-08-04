@@ -19,6 +19,11 @@ tags:
 skills:
   - competitive-landscape-analysis
 enabled: true
+agent_kind: specialist
+availability: pro
+marketed: true
+routable: true
+exportable: true
 governance:
   rules:
     - DATA_002

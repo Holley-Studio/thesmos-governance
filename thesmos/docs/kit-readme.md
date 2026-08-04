@@ -1,6 +1,6 @@
-# Pantheon Pro Kit
+# Thesmos Pro Kit
 
-Welcome to Pantheon Pro. You have all 38 God Agents ready to deploy.
+Welcome to Thesmos Pro. You have all 38 God Agents ready to deploy.
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ Welcome to Pantheon Pro. You have all 38 God Agents ready to deploy.
 ## The 38 God Agents
 
 ### Core Pantheon (21)
-Zeus · Athena · Hermes · Nike · Ares · Apollo · Aphrodite · Hephaestus · Argus · Hestia · Tyche · Themis · Daedalus · Dionysus · Heracles · Hera · Artemis · Mnemosyne · Morpheus · Pheme · Plutus
+Zeus · Athena · Hermes · Lead Generation · Ares · Apollo · Aphrodite · Hephaestus · Argus · Hestia · Tyche · Themis · Daedalus · Dionysus · Heracles · Hera · Artemis · Mnemosyne · Morpheus · Pheme · Plutus
 
 ### Workflow Specialists (13)
 Chiron · Calliope · Talos · Clio · Eos · Erato · Kratos · Aether · Polyhymnia · Cassandra · Proteus · Momus · Metis
@@ -37,4 +37,4 @@ Re-download your kit at [holley.studio/thesmos/redownload](https://holley.studio
 
 ---
 
-Pantheon Pro · Thesmos v3.6.0 · [holley.studio/thesmos](https://holley.studio/thesmos)
+Thesmos Pro · Thesmos v3.6.0 · [holley.studio/thesmos](https://holley.studio/thesmos)

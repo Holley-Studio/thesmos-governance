@@ -30,7 +30,7 @@ export async function cmdSavings(argv: string[]): Promise<void> {
   out.push('');
   if (summary.monthEvents === 0) {
     out.push('No savings events recorded yet this month.');
-    out.push('Savings accrue as Pantheon Chat turns run on non-flagship models,');
+    out.push('Savings accrue as Thesmos Chat turns run on non-flagship models,');
     out.push('budget stops fire, or 1M-context configs are blocked.');
   } else {
     out.push(`Estimated saved: ~$${summary.monthEstUsd.toFixed(2)}   (${summary.monthEvents} events)`);

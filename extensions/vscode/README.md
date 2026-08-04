@@ -14,7 +14,7 @@ Thesmos Governance enforces 1,137+ AI-coding rules across your repo — catching
 
 **Key capabilities:**
 
-- **Pantheon Chat** — Zeus-orchestrated council chamber in the sidebar or editor tab, with god routing banners, permission gates for tool use, and workspace checkpoints
+- **Thesmos Chat** — Zeus-orchestrated council chamber in the sidebar or editor tab, with god routing banners, permission gates for tool use, and workspace checkpoints
 - **Pantheon Agents panel** — browse 65+ specialist gods grouped by division; copy Claude Code invocations in one click
 - **Live Findings Panel** — governance violations surface as you code, with severity badges (BLOCKER / HIGH / MEDIUM / LOW)
 - **Health Score** — a single 0–100 grade for your repo's governance state, visible in the status bar
@@ -77,7 +77,7 @@ Access all commands via the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and
 
 | Command | Description |
 |---------|-------------|
-| `Thesmos: Open Pantheon Chat in Editor Tab` | Full-screen council chamber with Zeus routing |
+| `Thesmos: Open Thesmos Chat in Editor Tab` | Full-screen council chamber with Zeus routing |
 | `Thesmos: Scan Repository` | Run a full governance scan |
 | `Thesmos: Review Current File` | Check the active file against all rules |
 | `Thesmos: Show Health Score` | View the 0–100 governance grade |

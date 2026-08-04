@@ -442,7 +442,7 @@ const PANTHEON_AGENTS_RAW = [
   { id: 'apollo-content-agent',       name: 'Apollo',      domain: 'content',      role: 'Content & Copywriting' },
   { id: 'daedalus-product-agent',     name: 'Daedalus',    domain: 'product',      role: 'Product Management' },
   { id: 'hera-operations-agent',      name: 'Hera',        domain: 'operations',   role: 'Operations & HR' },
-  { id: 'nike-leadgen-agent',         name: 'Nike',        domain: 'leadgen',      role: 'Lead Generation & Pipeline' },
+  { id: 'lead-generation-agent',         name: 'Lead Generation',        domain: 'leadgen',      role: 'Lead Generation & Pipeline' },
   { id: 'heracles-bd-agent',          name: 'Heracles',    domain: 'bd',           role: 'Business Dev & Partnerships' },
   { id: 'mnemosyne-knowledge-agent',  name: 'Mnemosyne',   domain: 'knowledge',    role: 'Knowledge Management' },
   { id: 'hestia-cx-agent',            name: 'Hestia',      domain: 'cx',           role: 'Customer Experience' },

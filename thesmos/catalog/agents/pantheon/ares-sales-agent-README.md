@@ -39,7 +39,7 @@ npx thesmos pantheon:invoke ares-sales --prompt "your task here"
 
 ## Works With
 
-- **Nike** (`nike-leadgen-agent`) — [view agent](nike-leadgen-agent.md)
+- **Lead Generation** (`lead-generation-agent`) — [view agent](lead-generation-agent.md)
 - **Zeus** (`zeus-executive-agent`) — [view agent](zeus-executive-agent.md)
 - **Athena** (`athena-strategy-agent`) — [view agent](athena-strategy-agent.md)
 

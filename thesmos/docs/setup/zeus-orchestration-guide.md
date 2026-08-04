@@ -35,7 +35,7 @@ This guide tells you exactly which agent to invoke for every type of task.
 | Write content (blog, email, landing page) | Apollo |
 | Design the brand | Aphrodite |
 | Define your brand voice | Erato |
-| Generate leads and build pipeline | Nike |
+| Generate leads and build pipeline | Lead Generation |
 | Close deals, handle objections | Ares |
 | Build a partnership or distribution deal | Heracles |
 | Write a pitch deck | Ares |
@@ -103,7 +103,7 @@ Assess the situation and tell me which agents to invoke in what order."
 ### Example: New Business Vertical
 
 ```
-Zeus → Athena (positioning) → Nike (ICP + outbound) → Ares (pitch) → Plutus (unit economics) → Hera (operations)
+Zeus → Athena (positioning) → Lead Generation (ICP + outbound) → Ares (pitch) → Plutus (unit economics) → Hera (operations)
 ```
 
 ### Example: Brand Relaunch
@@ -160,4 +160,4 @@ Zeus will sequence the session, compile the outputs, and deliver a unified brief
 
 ---
 
-Pantheon Pro · Thesmos v3.6.0 · [holley.studio/thesmos](https://holley.studio/thesmos)
+Thesmos Pro · Thesmos v3.6.0 · [holley.studio/thesmos](https://holley.studio/thesmos)

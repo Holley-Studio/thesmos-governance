@@ -55,6 +55,6 @@ Feed him a login flow → he returns a STRIDE threat model, CVSS-scored findings
 He never says "you could consider maybe."
 
 **T10 — The install-anywhere flex**
-Same 67 agents. 10 platforms.
+Same 68 Thesmos Agents. 10 platforms.
 Claude Code ✅ ChatGPT ✅ Codex ✅ Gemini ✅ Cursor ✅ Copilot ✅ Figma ✅ VS Code ✅ Claude.ai ✅ OpenAI API ✅
 One persona architecture, every tool you use. How we did the two-layer split: 🧵

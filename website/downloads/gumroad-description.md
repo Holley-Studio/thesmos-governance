@@ -1,4 +1,4 @@
-**Thesmos Full Pantheon — 68 Specialist Agents + 53 Workflow Skills**
+**Thesmos Full Thesmos Pantheon — 68 Specialist Agents + 53 Workflow Skills**
 
 You've seen the six free gods. This is the other 61.
 
@@ -13,7 +13,7 @@ Each file is a fully-written agent system prompt — role definition, domain met
 - Instant install via CLI: `thesmos pantheon:install --pack ~/Downloads/thesmos-pantheon-agents.zip`
 - Or use the GUI: VS Code → "Install Pantheon Pack…" → pick the file → done
 - No license key. No activation server. No account required. The files are yours.
-- Lifetime updates: re-download from Gumroad whenever new gods are added to the pack.
+- updates as described in the commercial terms: re-download from Gumroad whenever new gods are added to the pack.
 
 **Workflow Skills (53 included):**
 - `security-scan`, `secret-scan`, `auth-flow-review`, `rls-policy-audit` — Argus's security arsenal
@@ -40,7 +40,7 @@ Each file is a fully-written agent system prompt — role definition, domain met
 - **Morpheus** — motion design and animation briefs
 - **Artemis** — photography and visual direction
 - **Pheme** — PR, press releases, crisis comms
-- **Nike** — lead generation, outbound, cold email
+- **Lead Generation** — lead generation, outbound, cold email
 - Plus 53 more specialists covering legal, CX, operations, 3D, partnerships, and documentation.
 
 ---
@@ -49,7 +49,7 @@ Each file is a fully-written agent system prompt — role definition, domain met
 
 The writing and the specificity. Each god took real work to define — the right frameworks, the right output contracts, the right governance hooks for their domain. You could write these yourself. This saves you the week it would take to do it well.
 
-$24, one-time. No subscription.
+$79, one-time. No subscription.
 
 ```
 thesmos pantheon:install --pack ~/Downloads/thesmos-pantheon-agents.zip

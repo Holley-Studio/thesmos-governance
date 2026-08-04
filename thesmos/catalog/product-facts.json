@@ -3,6 +3,38 @@
   "version": "5.1.0",
   "license": "FSL-1.1-MIT",
   "ruleCount": 1137,
-  "agentCount": 59,
-  "generatedAt": "2026-07-24"
+  "agentCount": 68,
+  "agentCountDefinition": "available_customer_facing",
+  "agentCountDeprecated": true,
+  "agents": {
+    "specialistPersonaCount": 68,
+    "utilityAgentCount": 0,
+    "availableAgentCount": 68,
+    "freeIncludedAgentCount": 6,
+    "proExclusiveAgentCount": 62,
+    "proTotalAgentCount": 68,
+    "heldBackAgentCount": 1,
+    "internalReviewerCount": 60,
+    "catalogAgentCount": 129
+  },
+  "products": {
+    "free": {
+      "name": "Thesmos Free",
+      "billing": "free",
+      "availability": "available"
+    },
+    "pro": {
+      "name": "Thesmos Pro",
+      "priceUsd": 79,
+      "priceStatus": "owner_approved_repository_truth",
+      "billing": "one_time",
+      "availability": "available",
+      "externalCheckoutStatus": "requires_alignment"
+    },
+    "business": {
+      "name": "Thesmos Business",
+      "availability": "future"
+    }
+  },
+  "sourceDigest": "bad497cc8a948bf0"
 }

@@ -40,7 +40,7 @@ npx thesmos pantheon:invoke tyche-analytics --prompt "your task here"
 ## Works With
 
 - **Hestia** (`hestia-cx-agent`) — [view agent](hestia-cx-agent.md)
-- **Nike** (`nike-leadgen-agent`) — [view agent](nike-leadgen-agent.md)
+- **Lead Generation** (`lead-generation-agent`) — [view agent](lead-generation-agent.md)
 - **Plutus** (`plutus-finance-agent`) — [view agent](plutus-finance-agent.md)
 
 ## Governance

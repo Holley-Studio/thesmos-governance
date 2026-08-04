@@ -40,7 +40,7 @@ npx thesmos pantheon:invoke hermes-marketing --prompt "your task here"
 ## Works With
 
 - **Apollo** (`apollo-content-agent`) — [view agent](apollo-content-agent.md)
-- **Nike** (`nike-leadgen-agent`) — [view agent](nike-leadgen-agent.md)
+- **Lead Generation** (`lead-generation-agent`) — [view agent](lead-generation-agent.md)
 - **Pheme** (`pheme-pr-agent`) — [view agent](pheme-pr-agent.md)
 
 ## Governance

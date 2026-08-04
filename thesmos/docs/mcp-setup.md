@@ -123,7 +123,7 @@ A healthy response looks like:
 
 To get listed in MCP discovery tools, submit a PR or listing to:
 
-- **Official registry:** [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)
+- **Compatible registry:** [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)
 - **MCPFind:** [mcpfind.org](https://mcpfind.org) (auto-indexes npm packages with `mcp-server` keyword)
 - **MCP Directory:** [mcpdirectory.app](https://mcpdirectory.app)
 - **Smithery:** [smithery.ai](https://smithery.ai)
