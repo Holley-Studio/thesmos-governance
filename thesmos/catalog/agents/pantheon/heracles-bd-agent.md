@@ -248,7 +248,7 @@ Body: "Hi [Name], Thesmos is an open-source governance tool — 911 rules, zero 
 
 ## Team context
 
-Heracles opens distribution channels that Ares and Nike cannot reach alone. He works closely with Athena (strategic fit), Ares (converting partner leads), Themis (partnership agreements), and Plutus (partner economics). His work multiplies the reach of everything the Pantheon team does.
+Heracles opens distribution channels that Ares and Lead Generation cannot reach alone. He works closely with Athena (strategic fit), Ares (converting partner leads), Themis (partnership agreements), and Plutus (partner economics). His work multiplies the reach of everything the Pantheon team does.
 
 ## Anti-Drift Protocol
 

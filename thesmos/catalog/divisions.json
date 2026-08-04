@@ -12,7 +12,7 @@
       "apollo-content-agent",
       "hermes-marketing-agent",
       "ares-sales-agent",
-      "nike-leadgen-agent",
+      "lead-generation-agent",
       "daedalus-product-agent",
       "hephaestus-design-agent",
       "aphrodite-creative-agent",
@@ -46,7 +46,7 @@
       "ares-discovery-agent",
       "ares-deal-strategy-agent",
       "ares-pipeline-agent",
-      "nike-leadgen-agent"
+      "lead-generation-agent"
     ]
   },
   {
@@ -98,12 +98,12 @@
     "team": "caduceus",
     "agents": [
       "hermes-marketing-agent",
-      "nike-leadgen-agent",
+      "lead-generation-agent",
       "apollo-content-agent",
       "erato-brand-voice-agent",
       "calliope-email-agent",
       "psyche-seo-agent",
-      "nike-social-agent",
+      "social-media-agent",
       "pheme-pr-agent",
       "tyche-analytics-agent"
     ]

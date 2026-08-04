@@ -1,6 +1,6 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * DispatchAdvisor — pre-execution routing/cost advice for Pantheon Chat.
+ * DispatchAdvisor — pre-execution routing/cost advice for Thesmos Chat.
  *
  * Wraps the deterministic `thesmos advise` heuristic (no LLM call, ~instant)
  * and owns the pure decision logic for:

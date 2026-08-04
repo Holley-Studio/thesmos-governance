@@ -43,7 +43,7 @@ export async function cmdTier(argv: string[]): Promise<void> {
     lines.push(`   ALL ${THESMOS_RULES.length} rules active — the complete engine is free. Every framework,`);
     lines.push('   every compliance pack, every BLOCKER. Rules are never paywalled.');
     lines.push('');
-    lines.push('   The Full Pantheon — 67 specialist agents orchestrated by Zeus —');
+    lines.push('   The Full Thesmos Pantheon — 67 specialist agents orchestrated by Zeus —');
     lines.push(`   is $24, one-time, yours forever:  ${UPGRADE_URL}`);
     lines.push('   Already bought? thesmos pantheon:install --pack <downloaded-zip>');
   }

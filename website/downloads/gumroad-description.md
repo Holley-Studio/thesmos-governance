@@ -1,4 +1,4 @@
-**Thesmos Full Pantheon — 68 Specialist Agents + 53 Workflow Skills**
+**Thesmos Full Thesmos Pantheon — 68 Specialist Agents + 53 Workflow Skills**
 
 You've seen the six free gods. This is the other 61.
 
@@ -40,7 +40,7 @@ Each file is a fully-written agent system prompt — role definition, domain met
 - **Morpheus** — motion design and animation briefs
 - **Artemis** — photography and visual direction
 - **Pheme** — PR, press releases, crisis comms
-- **Nike** — lead generation, outbound, cold email
+- **Lead Generation** — lead generation, outbound, cold email
 - Plus 53 more specialists covering legal, CX, operations, 3D, partnerships, and documentation.
 
 ---

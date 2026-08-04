@@ -173,7 +173,7 @@ Agents outside the Pantheon may be available through the Agent tool.
 | Strategy, GTM, OKRs | Athena |
 | Marketing, growth, campaigns | Hermes |
 | Sales, pitch, closing | Ares |
-| Lead gen, pipeline | Nike |
+| Lead gen, pipeline | Lead Generation |
 | Content, copy, blog | Apollo |
 | Brand, creative direction | Aphrodite |
 | UI/UX, design systems | Hephaestus |

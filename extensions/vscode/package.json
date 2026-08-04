@@ -84,7 +84,7 @@
       },
       {
         "command": "thesmos.unlockPantheon",
-        "title": "Unlock Full Pantheon ($24)",
+        "title": "Unlock Full Thesmos Pantheon ($24)",
         "category": "Thesmos Agents",
         "icon": "$(star-full)"
       },
@@ -288,25 +288,25 @@
       },
       {
         "command": "thesmos.pantheon.chat.open",
-        "title": "Open Pantheon Chat",
+        "title": "Open Thesmos Chat",
         "category": "Thesmos Agents",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "thesmos.pantheon.chat.openInTab",
-        "title": "Open Pantheon Chat in Editor Tab",
+        "title": "Open Thesmos Chat in Editor Tab",
         "category": "Thesmos Agents",
         "icon": "$(window)"
       },
       {
         "command": "thesmos.pantheon.chat.newSession",
-        "title": "Pantheon Chat: New Session",
+        "title": "Thesmos Chat: New Session",
         "category": "Thesmos Agents",
         "icon": "$(refresh)"
       },
       {
         "command": "thesmos.pantheon.chat.unlinkProvider",
-        "title": "Pantheon Chat: Unlink Provider API Key",
+        "title": "Thesmos Chat: Unlink Provider API Key",
         "category": "Thesmos Agents",
         "icon": "$(key)"
       }
@@ -331,7 +331,7 @@
       "thesmos": [
         {
           "id": "thesmos.pantheonChat",
-          "name": "Pantheon Chat",
+          "name": "Thesmos Chat",
           "type": "webview",
           "icon": "$(zap)"
         },
@@ -365,16 +365,16 @@
       },
       {
         "view": "thesmos.pantheonChat",
-        "contents": "⚡ Pantheon Chat\n\nSet up Thesmos to unlock the full Pantheon — 67 specialist AI agents orchestrated by Zeus.\n\n[$(cloud-download) Set Up Thesmos](command:thesmos.setup)\n\nAlready installed? [Open Chat in Editor Tab](command:thesmos.pantheon.chat.openInTab)",
+        "contents": "⚡ Thesmos Chat\n\nSet up Thesmos to unlock the full Pantheon — 67 specialist AI agents orchestrated by Zeus.\n\n[$(cloud-download) Set Up Thesmos](command:thesmos.setup)\n\nAlready installed? [Open Chat in Editor Tab](command:thesmos.pantheon.chat.openInTab)",
         "when": "!thesmos.active"
       },
       {
         "view": "thesmos.agentActivity",
-        "contents": "No agent activity yet — god dispatches appear here live.\n\nSummon the full Pantheon: 67 specialist agents orchestrated by Zeus.\n[Get the Full Pantheon](https://holley.studio/thesmos)"
+        "contents": "No agent activity yet — god dispatches appear here live.\n\nSummon the full Pantheon: 67 specialist agents orchestrated by Zeus.\n[Get the Full Thesmos Pantheon](https://holley.studio/thesmos)"
       },
       {
         "view": "thesmos.agentsView",
-        "contents": "**Starter gods installed?** The free tier ships 6 gods — Zeus, Athena, Argus, Apollo, Hephaestus, and Hebe.\n\n[Install Starter Agents](command:thesmos.installAgents)\n\n**The Full Pantheon** — all 67 specialists, $24 one-time, yours forever.\n\n[Unlock Full Pantheon ($24)](command:thesmos.unlockPantheon)\n\n[Install Pantheon Pack…](command:thesmos.installPantheonPack)\n\nAlready bought? Download the zip from your Gumroad library, then use Install Pantheon Pack."
+        "contents": "**Starter gods installed?** The free tier ships 6 gods — Zeus, Athena, Argus, Apollo, Hephaestus, and Hebe.\n\n[Install Starter Agents](command:thesmos.installAgents)\n\n**The Full Thesmos Pantheon** — all 67 specialists, $24 one-time, yours forever.\n\n[Unlock Full Thesmos Pantheon ($24)](command:thesmos.unlockPantheon)\n\n[Install Pantheon Pack…](command:thesmos.installPantheonPack)\n\nAlready bought? Download the zip from your Gumroad library, then use Install Pantheon Pack."
       }
     ],
     "menus": {
@@ -526,12 +526,12 @@
             "active"
           ],
           "default": "beside",
-          "description": "Where 'Open Pantheon Chat in Editor' places the chat tab: split to the right of the active editor (beside) or in the active column."
+          "description": "Where 'Open Thesmos Chat in Editor' places the chat tab: split to the right of the active editor (beside) or in the active column."
         },
         "thesmos.chat.notifyOnTurnEnd": {
           "type": "boolean",
           "default": true,
-          "description": "Show a status-bar notice ('The gods have spoken') when a Pantheon Chat turn finishes while the panel is not visible."
+          "description": "Show a status-bar notice ('The gods have spoken') when a Thesmos Chat turn finishes while the panel is not visible."
         },
         "thesmos.runOnSave": {
           "type": "boolean",

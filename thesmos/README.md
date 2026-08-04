@@ -98,7 +98,7 @@ Other platforms give you AI assistants. Thesmos gives you a governed AI team —
 
 ### Pricing
 
-| | Free, forever | Full Pantheon — $24 one-time |
+| | Free, forever | Full Thesmos Pantheon — $24 one-time |
 | --- | --- | --- |
 | **Rules** | Complete 1,137-rule engine — every framework pack, every compliance pack (GDPR / HIPAA / EU AI Act / DORA), every BLOCKER | ✓ same |
 | **Starter agents** | 6 gods included in the npm tarball (Zeus, Athena, Argus, Apollo, Hephaestus, Hebe) | ✓ included |
@@ -106,13 +106,13 @@ Other platforms give you AI assistants. Thesmos gives you a governed AI team —
 | **Lifetime updates** | — | Re-download + re-run to update |
 | **Install** | `npm install --save-dev thesmos-governance` | `thesmos pantheon:install --pack <zip>` after purchase |
 
-**Purchase the Full Pantheon:** [holleystudio.gumroad.com/l/thesmos-pantheon](https://holleystudio.gumroad.com/l/thesmos-pantheon)
+**Purchase the Full Thesmos Pantheon:** [holleystudio.gumroad.com/l/thesmos-pantheon](https://holleystudio.gumroad.com/l/thesmos-pantheon)
 
 ---
 
 67 God Agents — a governed AI team named after Greek gods, covering every major business and engineering function. Every agent has deep methodology, failure mode taxonomy, domain mastery sections, and the Universal Intelligence Protocol injected by `thesmos adapters`.
 
-Install the Full Pantheon after purchase:
+Install the Full Thesmos Pantheon after purchase:
 
 ```bash
 thesmos pantheon:install --pack <path-to-purchased-zip>
@@ -126,7 +126,7 @@ Or download any agent directly — no install required:
 | Zeus | Executive orchestration | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/zeus-executive-agent.md) |
 | Athena | Business strategy | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/athena-strategy-agent.md) |
 | Hermes | Marketing | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/hermes-marketing-agent.md) |
-| Nike | Lead generation | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/nike-leadgen-agent.md) |
+| Lead Generation | Lead generation | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/lead-generation-agent.md) |
 | Ares | Sales | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/ares-sales-agent.md) |
 | Apollo | Content & copy | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/apollo-content-agent.md) |
 | Aphrodite | Creative direction | [Claude Code](https://raw.githubusercontent.com/Holley-Studio/thesmos-governance/main/pantheon/exports/claude-code/aphrodite-creative-agent.md) |
@@ -168,7 +168,7 @@ See [pantheon/README.md](../pantheon/README.md) for the full documentation, all 
 
 Zeus · Athena · Argus · Apollo · Hephaestus · Hebe
 
-### Full Pantheon Grid (67 agents — $24 one-time)
+### Full Thesmos Pantheon Grid (67 agents — $24 one-time)
 
 | | Agent | One-liner |
 | --- | --- | --- |

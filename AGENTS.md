@@ -39,7 +39,9 @@ Non-obvious gotchas for building/testing/running:
 
 ---
 
-## Available agents (43)
+## Available agents
+
+> Counts are computed from the catalog. Run `thesmos catalog:list` for the current roster; this document does not hard-code a total.
 
 ### Aphrodite — Creative Direction & Brand
 
@@ -349,11 +351,11 @@ Non-obvious gotchas for building/testing/running:
 
 ---
 
-### Nike — Lead Generation & Pipeline
+### Lead Generation — Lead Generation & Pipeline
 
 > Goddess of victory. Nike does not wait to be found — she hunts.
 
-**Agent ID:** `nike-leadgen-agent`
+**Agent ID:** `lead-generation-agent`
 **Tags:** `- pantheon`, `leadgen`, `outbound`, `pipeline`, `icp`, `gdpr-aware`
 **Trigger phrases:**
 - "Build me a prospect list for [segment]"

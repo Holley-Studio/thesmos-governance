@@ -742,7 +742,7 @@ function cmdInstall(agents: PantheonAgent[], argv: string[], root: string): void
         console.error(`\n  ✗ ${errors.length} agent(s) failed:\n`);
         for (const e of errors) console.error(`    ${e}`);
       }
-      console.log(`\n  ⚡ Full Pantheon installed: ${installed} new, ${skipped} updated${skillsInstalled > 0 ? `, ${skillsInstalled} skills` : ''}.`);
+      console.log(`\n  ⚡ Full Thesmos Pantheon installed: ${installed} new, ${skipped} updated${skillsInstalled > 0 ? `, ${skillsInstalled} skills` : ''}.`);
       console.log('  Adapters regenerated. The gods are at your service.\n');
       if (errors.length > 0 && installed + skipped === 0) process.exit(1);
     } catch (err) {
@@ -1023,7 +1023,7 @@ const AGENT_VOICES: Record<string, string> = {
   'apollo-content-agent':     'Write the headline, the three supporting proof points, and the call-to-action.',
   'daedalus-product-agent':   'Define the MVP scope, the first cut-line decision, and the feature that unlocks the next cohort.',
   'hera-operations-agent':    'Identify the process bottleneck, the SOP that needs writing, and the hiring unblock.',
-  'nike-leadgen-agent':       'Describe the ICP, the top-of-funnel hook, and the qualification signal that separates buyers from browsers.',
+  'lead-generation-agent':       'Describe the ICP, the top-of-funnel hook, and the qualification signal that separates buyers from browsers.',
   'heracles-bd-agent':        'Name the partner category with the highest leverage, the integration unlock, and the deal structure.',
   'mnemosyne-knowledge-agent':'Synthesize what institutional knowledge already exists, what the knowledge gap is, and what to document first.',
   'hestia-cx-agent':          'Define the moment of truth in the customer journey, the churn signal to watch, and the retention intervention.',

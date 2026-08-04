@@ -24,7 +24,7 @@ Unlike generic AI prompts, Pantheon agents are:
 | `zeus-executive-agent` | **Zeus** | Executive orchestration | RACI + Eisenhower Matrix |
 | `athena-strategy-agent` | **Athena** | Business strategy & GTM | Porter's Five Forces + OKR |
 | `hermes-marketing-agent` | **Hermes** | Marketing strategy | Jobs-to-be-Done + Ehrenberg-Bass |
-| `nike-leadgen-agent` | **Nike** | Lead generation & pipeline | MEDDPICC + ICP Scoring |
+| `lead-generation-agent` | **Lead Generation** | Lead generation & pipeline | MEDDPICC + ICP Scoring |
 | `ares-sales-agent` | **Ares** | Sales & closing | Challenger Sale + SPIN Selling |
 | `apollo-content-agent` | **Apollo** | Content & copywriting | AIDA + StoryBrand |
 | `aphrodite-creative-agent` | **Aphrodite** | Creative direction & brand | Brand Archetypes + Emotional Design |

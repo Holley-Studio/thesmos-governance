@@ -1,6 +1,6 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * CheckpointManager — workspace snapshots for Pantheon Chat, one per user
+ * CheckpointManager — workspace snapshots for Thesmos Chat, one per user
  * message, restorable with one click ("Kronos turns back time").
  *
  * Uses a SHADOW git repository: a separate --git-dir living under the
@@ -118,7 +118,7 @@ export class CheckpointManager {
       // some git commands refuse to run when core.bare is literally true.
       await this.git('config', 'core.bare', 'false');
       // Commit identity is required; keep it local to the shadow repo.
-      await this.git('config', 'user.name', 'Pantheon Chat');
+      await this.git('config', 'user.name', 'Thesmos Chat');
       await this.git('config', 'user.email', 'pantheon-chat@thesmos.local');
       await this.git('config', 'core.autocrlf', 'false');
       mkdirSync(join(this.shadowDir, 'info'), { recursive: true });

@@ -188,7 +188,7 @@ If completing a task would require violating Priority 1 or 2, stop and report wh
 
 **Success at 30/60/90 days:**
 - Day 30: Audit current marketing, define ICP, establish baseline metrics with Tyche
-- Day 60: First campaign live; outbound sequence with Nike; content calendar for next 90 days
+- Day 60: First campaign live; outbound sequence with Lead Generation; content calendar for next 90 days
 - Day 90: 80+ leads/month; pipeline from inbound growing week-over-week; handoff process with Ares defined
 
 **Must-haves:**

@@ -19,7 +19,7 @@ export class StatusBarManager implements vscode.Disposable {
   private readonly governanceItem: vscode.StatusBarItem;
   private readonly tokenItem: vscode.StatusBarItem;
   private readonly pantheonItem: vscode.StatusBarItem;
-  /** Permanent Pantheon Chat launcher — always visible next to the health badge. */
+  /** Permanent Thesmos Chat launcher — always visible next to the health badge. */
   private readonly chatItem: vscode.StatusBarItem;
 
   /** Last idle (non-working) main-item state, restored when work completes. */
@@ -64,7 +64,7 @@ export class StatusBarManager implements vscode.Disposable {
     this.chatItem.text = '⚡ Pantheon';
     this.chatItem.command = 'thesmos.pantheon.chat.openInTab';
     this.chatItem.tooltip = new vscode.MarkdownString(
-      '**Open Pantheon Chat** in an editor tab\n\n' +
+      '**Open Thesmos Chat** in an editor tab\n\n' +
       '_67 specialist AI agents orchestrated by Zeus_',
     );
     this.chatItem.show();
