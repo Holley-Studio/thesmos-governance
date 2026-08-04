@@ -1,6 +1,6 @@
 # The Thesmos Pantheon — Complete Guide
 
-**21 governed AI business agents. Every platform. Zero install required.**
+**68 Thesmos Agents. Every platform. Zero install required.**
 
 ---
 
@@ -17,7 +17,7 @@ Unlike generic AI prompts, Pantheon agents are:
 
 ---
 
-## The Team — 21 Agents at a Glance
+## The Team — 68 Thesmos Agents at a Glance
 
 | Agent | God | Role | Methodology |
 |---|---|---|---|
@@ -597,7 +597,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to propose a new Greek-god-named 
 ## FAQ
 
 **Q: Do I need to pay for Thesmos to use the agents?**
-A: The agent `.md` files are free and open source. Download them directly from the GitHub repo — no npm install required.
+A: The agent `.md` files are free and source-available. Download them directly from the GitHub repo — no npm install required.
 
 **Q: Can I use multiple agents in the same session?**
 A: Yes. In Claude Code, you can switch agents per message or run `thesmos pantheon:orchestrate` to have Zeus coordinate multiple agents on a single task.

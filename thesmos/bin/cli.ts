@@ -42,6 +42,8 @@ import { cmdBaseline } from './commands/baseline.ts';
 import { cmdExplain } from './commands/explain.ts';
 import { cmdAdvise } from './commands/advise.ts';
 import { cmdBrandLint } from './commands/brand.ts';
+import { cmdClaimsLint } from './commands/claims.ts';
+import { cmdCredentialsLint } from './commands/credentials.ts';
 import { cmdSavings } from './commands/savings.ts';
 import { cmdSuppressions } from './commands/suppressions.ts';
 import { cmdMetrics } from './commands/metrics.ts';
@@ -164,6 +166,9 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'hooks:uninstall': (argv) => cmdHooks(['uninstall', ...argv]),
   'hooks:status':    (argv) => cmdHooks(['status',    ...argv]),
   'brand:lint': cmdBrandLint,
+  'claims:check': (argv) => cmdClaimsLint(['check', ...argv]),
+  'claims:lint': (argv) => cmdClaimsLint(['lint', ...argv]),
+  'credentials:lint': cmdCredentialsLint,
   'catalog:list': (argv) => cmdCatalog(['list', ...argv]),
   'catalog:validate': (argv) => cmdCatalog(['validate', ...argv]),
   'catalog:enable': (argv) => cmdCatalog(['enable', ...argv]),
@@ -573,6 +578,8 @@ MISSION GRAPH
 
 CATALOG
   brand:lint               Enforce canonical naming on public surfaces
+  claims:lint              Enforce the product claims registry
+  credentials:lint         Detect fabricated agent credentials
   catalog:list             List all agents and skills
   catalog:validate         Validate catalog frontmatter
   catalog:enable           Enable agents/skills into .thesmos/registry.json

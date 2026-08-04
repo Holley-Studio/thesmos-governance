@@ -1,0 +1,203 @@
+{
+  "$schema": "./claims-registry.schema.json",
+  "version": "1.0.0",
+  "$comment": "Product claims registry (WS6). A clean claims lint means the repository follows THIS registry. It is NOT FTC approval, NOT legal compliance, and NOT independent certification.",
+  "disclaimer": "A passing claims lint asserts only that public copy matches the wording approved in this registry. It does not substantiate any claim, does not constitute legal review, and is not an independent audit or certification.",
+  "owner": "Holley Studio LLC",
+
+  "claims": [
+    {
+      "id": "CLM_AGENT_COUNT",
+      "claim": "Thesmos includes 68 available Thesmos Agents.",
+      "category": "product_fact",
+      "status": "substantiated",
+      "allowedWording": [
+        "68 Thesmos Agents",
+        "68 available agents",
+        "6 included with Thesmos Free, 62 with Thesmos Pro"
+      ],
+      "prohibitedWording": ["67 agents", "68 God Agents", "43 agents", "40 agents", "21 agents", "129 agents"],
+      "productScope": ["thesmos-governance"],
+      "evidence": [
+        { "type": "test", "location": "thesmos/product-facts.test.ts :: availableAgentCount", "verifiedAt": "2026-08-04" },
+        { "type": "source", "location": "thesmos/catalog/product-facts.json :: availableAgentCount", "verifiedAt": "2026-08-04" }
+      ],
+      "owner": "Holley Studio LLC"
+    },
+    {
+      "id": "CLM_RULE_COUNT",
+      "claim": "The governance engine ships 1,137 rules.",
+      "category": "product_fact",
+      "status": "substantiated",
+      "allowedWording": ["1,137 rules", "1137 rules"],
+      "productScope": ["thesmos-governance"],
+      "evidence": [
+        { "type": "source", "location": "thesmos/catalog/product-facts.json :: ruleCount (computed from THESMOS_RULES)", "verifiedAt": "2026-08-04" }
+      ],
+      "owner": "Holley Studio LLC"
+    },
+    {
+      "id": "CLM_PRO_PRICE",
+      "claim": "Thesmos Pro is $79 USD, one-time.",
+      "category": "commercial",
+      "status": "qualified",
+      "allowedWording": ["$79 one-time", "$79 USD, one-time purchase"],
+      "prohibitedWording": ["$24", "lifetime updates", "no renewal ever", "free updates forever"],
+      "productScope": ["thesmos-pro"],
+      "evidence": [
+        { "type": "source", "location": "docs/adr/2026-08-04-thesmos-pro-pricing.md (owner decision)", "verifiedAt": "2026-08-04" }
+      ],
+      "owner": "Holley Studio LLC",
+      "qualification": "Owner-approved repository truth. The external Gumroad checkout currently shows $24 and MUST be aligned before any deployment. Do not describe updates as 'lifetime' until the commercial terms define the scope."
+    },
+    {
+      "id": "CLM_CI_GATE",
+      "claim": "The configured CI gate can block a change when it detects an in-scope BLOCKER finding.",
+      "category": "product_fact",
+      "status": "substantiated",
+      "allowedWording": [
+        "The configured CI gate can block a change when it detects an in-scope BLOCKER finding",
+        "Reports BLOCKER findings detected by the enabled rule set"
+      ],
+      "prohibitedWording": [
+        "Zero BLOCKERs reach production",
+        "No blocker reaches main",
+        "every output checked",
+        "every turn checked",
+        "every file save checked"
+      ],
+      "productScope": ["thesmos-governance"],
+      "evidence": [
+        { "type": "test", "location": "thesmos/gate.test.ts", "verifiedAt": "2026-08-04" },
+        { "type": "source", "location": ".github/workflows/ci.yml :: Thesmos CI gate", "verifiedAt": "2026-08-04" }
+      ],
+      "owner": "Holley Studio LLC",
+      "qualification": "Scoped to enabled rules on supported surfaces. Findings outside the configured scope are not detected."
+    },
+    {
+      "id": "CLM_SECURITY_REVIEW",
+      "claim": "Security posture is internally reviewed, not independently audited.",
+      "category": "security",
+      "status": "qualified",
+      "allowedWording": [
+        "Internally reviewed against the documented threat model; this is not an independent security audit"
+      ],
+      "prohibitedWording": ["security-audited", "security audited", "independently audited", "penetration tested", "SOC 2", "ISO 27001"],
+      "productScope": ["thesmos-governance", "thesmos-governance-vscode"],
+      "versionScope": "5.1.0",
+      "evidence": [
+        { "type": "source", "location": "thesmos/rules/ (security rule catalog)", "verifiedAt": "2026-08-04" }
+      ],
+      "owner": "Holley Studio LLC",
+      "qualification": "No third-party security audit has been performed or commissioned. Any claim implying one is prohibited."
+    },
+    {
+      "id": "CLM_COMPLIANCE",
+      "claim": "Thesmos assists with selected control checks and does not establish legal compliance.",
+      "category": "compliance",
+      "status": "qualified",
+      "allowedWording": [
+        "Helps assess selected GDPR, HIPAA or EU AI Act controls; it does not establish legal compliance",
+        "assists with selected control checks"
+      ],
+      "prohibitedWording": ["fully compliant", "full compliance", "GDPR compliant", "HIPAA compliant", "ensures compliance", "guarantees compliance", "certified"],
+      "productScope": ["thesmos-governance"],
+      "evidence": [
+        { "type": "source", "location": "thesmos/compliance.ts", "verifiedAt": "2026-08-04" }
+      ],
+      "owner": "Holley Studio LLC",
+      "qualification": "Compliance is a legal determination made by counsel, not by a scanner."
+    },
+    {
+      "id": "CLM_VERIFICATION_REPORT",
+      "claim": "Thesmos generates a versioned verification report.",
+      "category": "certification",
+      "status": "qualified",
+      "allowedWording": ["Thesmos verification report generated by version X using rule catalog digest Y"],
+      "prohibitedWording": ["Thesmos Certified", "Certified by Thesmos", "certification", "certified secure"],
+      "productScope": ["thesmos-governance"],
+      "evidence": [
+        { "type": "source", "location": "thesmos/certificate*.ts", "verifiedAt": "2026-08-04" }
+      ],
+      "owner": "Holley Studio LLC",
+      "qualification": "An internally generated report is not an independent certification and must never be presented as one."
+    },
+    {
+      "id": "CLM_COST_SAVINGS",
+      "claim": "Model-tier routing can reduce cost relative to a deep-reasoning baseline.",
+      "category": "cost",
+      "status": "qualified",
+      "allowedWording": ["estimated saving vs the deep-reasoning baseline", "~$X estimated vs baseline"],
+      "prohibitedWording": ["guaranteed savings", "cheapest model that gets it right", "zero-token", "always cheaper"],
+      "productScope": ["thesmos-governance"],
+      "evidence": [
+        { "type": "test", "location": "thesmos/models/models.test.ts :: pricing", "verifiedAt": "2026-08-04" }
+      ],
+      "owner": "Holley Studio LLC",
+      "qualification": "Figures are estimates derived from the model registry's dated price windows. Unknown pricing reports 'unknown', never a number."
+    },
+    {
+      "id": "CLM_ABSOLUTE_QUALITY",
+      "claim": "Any absolute quality or safety promise.",
+      "category": "product_fact",
+      "status": "prohibited",
+      "prohibitedWording": [
+        "bug-free", "guaranteed", "prevents all failures", "eliminates drift",
+        "world-class", "never fails", "100% accurate", "universally safe"
+      ],
+      "productScope": ["thesmos-governance", "thesmos-pro", "thesmos-governance-vscode"],
+      "evidence": [],
+      "owner": "Holley Studio LLC",
+      "qualification": "No evidence can substantiate an absolute promise about software behaviour. These are prohibited outright."
+    },
+    {
+      "id": "CLM_CREDENTIAL_HANDLING",
+      "claim": "Statements about credential and payment-data handling.",
+      "category": "security",
+      "status": "prohibited",
+      "prohibitedWording": ["we never see card details", "never stored in plaintext", "we never store your keys", "zero knowledge"],
+      "productScope": ["thesmos-governance", "thesmos-governance-vscode"],
+      "evidence": [],
+      "owner": "Holley Studio LLC",
+      "qualification": "These are factual assertions about payment and credential infrastructure that this repository cannot substantiate. They require a documented data-flow review before any use."
+    },
+    {
+      "id": "CLM_THIRD_PARTY_COMPAT",
+      "claim": "Interoperability with third-party tools.",
+      "category": "compatibility",
+      "status": "substantiated",
+      "allowedWording": ["Compatible with", "Exports for", "Connects to when configured"],
+      "prohibitedWording": ["Powered by", "Official", "Endorsed by", "Partner of", "Certified by"],
+      "productScope": ["thesmos-governance"],
+      "evidence": [
+        { "type": "source", "location": "thesmos/catalog/brand-registry.json :: thirdPartyLanguage", "verifiedAt": "2026-08-04" },
+        { "type": "test", "location": "thesmos/brand.test.ts", "verifiedAt": "2026-08-04" }
+      ],
+      "owner": "Holley Studio LLC"
+    },
+    {
+      "id": "CLM_LICENSE",
+      "claim": "Licensing description.",
+      "category": "commercial",
+      "status": "qualified",
+      "allowedWording": ["source-available; see LICENSE"],
+      "prohibitedWording": ["open source", "OSI approved", "MIT licensed", "standard FSL"],
+      "productScope": ["thesmos-governance"],
+      "evidence": [
+        { "type": "source", "location": "docs/legal/LICENSE_REVIEW_REQUIRED.md", "verifiedAt": "2026-08-03" }
+      ],
+      "owner": "Holley Studio LLC",
+      "qualification": "The declared SPDX identifier does not match the shipped conversion terms. Attorney review is pending (decisions D1-D7). Do not describe any release as open source."
+    }
+  ],
+
+  "exceptions": [
+    { "path": "CHANGELOG.md", "reason": "historical release record — rewriting it falsifies history" },
+    { "path": "docs/audits/", "reason": "audit documents quote the claims they report" },
+    { "path": "docs/legal/", "reason": "legal specs quote prohibited wording in order to prohibit it" },
+    { "path": "docs/adr/", "reason": "decision records quote the decision under review" },
+    { "path": "catalog/claims-registry.json", "reason": "the registry defines the prohibited strings" },
+    { "path": "claims.ts", "reason": "the linter necessarily contains the patterns" },
+    { "path": "claims.test.ts", "reason": "tests assert on the patterns" }
+  ]
+}

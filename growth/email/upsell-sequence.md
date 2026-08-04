@@ -40,7 +40,7 @@ Here's what he means. The full Pantheon adds:
 
 One real example: [paste a council card screenshot from a real session]
 
-All 67 agents · 10 platforms · lifetime updates → [Gumroad link]
+All 68 Thesmos Agents · 10 platforms · updates as described in the commercial terms → [Gumroad link]
 
 ---
 
@@ -53,7 +53,7 @@ Straight to it: your starter-council discount expires in 48 hours.
 **[CODE: OLYMPUS40]** — 40% off the full 67-god Pantheon.
 
 What you unlock: every specialist, every platform, the Zeus orchestrator GPT
-with knowledge clusters, council bundles for Claude, and lifetime updates
+with knowledge clusters, council bundles for Claude, and updates as described in the commercial terms
 (new gods ship monthly).
 
 [Claim 40% off →]

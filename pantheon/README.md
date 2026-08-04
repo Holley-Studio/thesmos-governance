@@ -38,7 +38,7 @@ Named after Greek gods. Built on Thesmos governance. Downloadable for Claude, Ch
 
 ## Quick Start
 
-### Install all 21 agents (developers)
+### Install all 68 Thesmos Agents (developers)
 
 ```bash
 npm install -g thesmos-governance
@@ -96,7 +96,7 @@ Zeus routes to Pantheon specialists and may invoke external project, user, or pl
 - Single source of truth → 7 platform exports from one file
 - Zeus orchestration routes complex multi-domain tasks automatically
 - Versioned and upgradeable via `thesmos pantheon:upgrade`
-- Every output can be governance-certified via `thesmos certificate:generate`
+- Every output can be governance-verified by Thesmos via `thesmos certificate:generate`
 
 ---
 
@@ -146,7 +146,7 @@ thesmos pantheon:memory show --agent hermes
 ## Platform Commands
 
 ```bash
-thesmos pantheon:list                          # Show all 21 agents
+thesmos pantheon:list                          # Show all 68 Thesmos Agents
 thesmos pantheon:status                        # Show which agents are installed
 thesmos pantheon:export --target=all           # Generate exports for all 7 platforms
 thesmos pantheon:export --target=claude-code   # Generate .claude/agents/ files only

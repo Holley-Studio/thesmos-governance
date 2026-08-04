@@ -22,7 +22,7 @@ Thesmos is an AI governance and multi-agent orchestration platform built for tea
 
 ## The interface is free — only the work costs credits
 
-Every visual flourish in Thesmos Chat — the animated thinking oracle, the god cards, the star-field, the spinners — renders entirely in the VS Code webview. **None of it makes a model call.** Token spend comes only from the Claude calls that do your work, and Thesmos routes those to the cheapest model that gets it right:
+Every visual flourish in Thesmos Chat — the animated thinking oracle, the god cards, the star-field, the spinners — renders entirely in the VS Code webview. **None of it makes a model call.** Token spend comes only from the Claude calls that do your work, and Thesmos routes those to the a model tier matched to task depth:
 
 - **Model-tier routing** — 60+ agents run on the mid tier, mechanical passes drop to the fast tier, and only architecture, strategy, and security escalate to a flagship (flagship ≈ 5× mid ≈ 5× fast).
 - **Credit Guardian ledger** — every turn that ran on a cheaper tier is banked as a measured saving, totalled month-to-date.
@@ -47,7 +47,7 @@ The Pantheon runs on Claude under the hood. Bring your own Anthropic API key.
 
 Every file save, every agent turn, every autopilot run is checked against the Thesmos rule engine — the same 1,137-rule set that runs in CI, in your MCP server, and on the CLI. Rules span security (OWASP Top 10, CVE-2025-29927), GDPR compliance, EU AI Act conformity, prompt injection detection, AI agent scope enforcement, and supply chain integrity. BLOCKER findings halt. HIGH findings flag. Nothing ships that hasn't been checked.
 
-**The permission bridge is security-audited.** The human-in-the-loop consent gate has passed a full STRIDE threat model with zero BLOCKERs — the enforcement layer fails closed, forged approvals are rejected, the consent dialog shows the full command, and privilege escalations require explicit native confirmation.
+**The permission bridge is internally reviewed.** The human-in-the-loop consent gate has passed a full STRIDE threat model with zero BLOCKERs — the enforcement layer fails closed, forged approvals are rejected, the consent dialog shows the full command, and privilege escalations require explicit native confirmation.
 
 ---
 
