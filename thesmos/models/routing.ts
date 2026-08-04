@@ -29,6 +29,14 @@ import {
   REGISTRY_VERSION,
   registryHash,
 } from './registry.js';
+import {
+  type ComplexityAssessment,
+  type ComplexityBand,
+  type CostTier,
+  FABLE_MIN_COMPLEXITY_SCORE,
+  assessComplexity,
+  costTierFor,
+} from './complexity.js';
 
 // ── Signals ──────────────────────────────────────────────────────────────────
 
@@ -112,6 +120,9 @@ export type ReasonCode =
   | 'evidence-required'
   | 'latency-preferred-fast'
   | 'frontier-approved'
+  | 'frontier-denied-below-threshold'
+  | 'frontier-denied-no-exceptional-reason'
+  | 'frontier-denied-unmapped-provider'
   | 'frontier-denied-no-approval'
   | 'frontier-denied-not-long-horizon'
   | 'provider-unavailable'
@@ -141,8 +152,21 @@ export interface RouteFallback {
  */
 export interface ModelRouteDecision {
   requestedProfile: LogicalProfile;
+  /** The logical alias selected, after gates and fallback. */
+  selectedAlias: LogicalProfile;
   resolvedProvider: Provider;
   resolvedModelId: string;
+  /** Deterministic rubric score (0–100) behind the band. */
+  complexityScore: number;
+  complexityBand: ComplexityBand;
+  /** Relative cost class. Never a fabricated dollar estimate. */
+  costTier: CostTier;
+  /** True when evidence raised the tier above the balanced default. */
+  escalated: boolean;
+  /** True only when an availability fallback actually fired. */
+  fallbackUsed: boolean;
+  approvalRequired: boolean;
+  approvalRecordId?: string;
   /** What the router asked the runtime for. */
   requestedModelId: string;
   /**
@@ -232,6 +256,39 @@ export function selectProfile(s: RoutingSignals): {
   // ── Frontier ──────────────────────────────────────────────────────────────
   // Reached only by explicit request. Never inferred, never a default.
   if (s.userOverride === 'frontier-long-horizon') {
+    const assessment = assessComplexity(s);
+
+    // Gate 1 — complexity threshold. The rubric caps length at
+    // MAX_SCORE_FROM_LENGTH (< 90), so a merely long task can never clear this
+    // however long it runs.
+    if (assessment.score < FABLE_MIN_COMPLEXITY_SCORE) {
+      return {
+        profile: 'deep-reasoning',
+        reasonCodes: ['user-override', 'frontier-denied-below-threshold'],
+        approval: 'required-but-missing',
+      };
+    }
+
+    // Gate 2 — an exceptional reason that is NOT task length.
+    if (!assessment.hasExceptionalReasonBeyondLength) {
+      return {
+        profile: 'deep-reasoning',
+        reasonCodes: ['user-override', 'frontier-denied-no-exceptional-reason'],
+        approval: 'required-but-missing',
+      };
+    }
+
+    // Gate 3 — a verified provider mapping must exist. Without one, fail
+    // truthfully rather than silently selecting a different model.
+    if (!resolveProfile('frontier-long-horizon', 'anthropic')) {
+      return {
+        profile: 'deep-reasoning',
+        reasonCodes: ['user-override', 'frontier-denied-unmapped-provider'],
+        approval: 'required-but-missing',
+      };
+    }
+
+    // Gate 4 — multi-domain or long-horizon evidence.
     if (!isLongHorizon(s)) {
       // Denied on evidence. Fall back to deep reasoning, on the record.
       return {
@@ -311,6 +368,7 @@ export interface RouteOptions {
  */
 export function routeModel(signals: RoutingSignals, options: RouteOptions = {}): ModelRouteDecision {
   const provider = options.provider ?? 'anthropic';
+  const assessment: ComplexityAssessment = assessComplexity(signals);
   const selection = selectProfile(signals);
   const reasonCodes: ReasonCode[] = [...selection.reasonCodes];
 
@@ -353,6 +411,15 @@ export function routeModel(signals: RoutingSignals, options: RouteOptions = {}):
 
   return {
     requestedProfile: selection.profile,
+    selectedAlias: profile,
+    complexityScore: assessment.score,
+    complexityBand: assessment.band,
+    costTier: costTierFor(profile),
+    escalated: profileRank(selection.profile) > profileRank('balanced-agentic'),
+    // True ONLY when an availability fallback actually fired. Never inferred,
+    // so `fallbackUsed` cannot be set without a corresponding fallback record.
+    fallbackUsed: fallback !== null,
+    approvalRequired: selection.approval !== 'not-required',
     resolvedProvider: entry.provider,
     resolvedModelId: entry.id,
     requestedModelId: entry.id,

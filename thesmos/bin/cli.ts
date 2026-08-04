@@ -42,6 +42,8 @@ import { cmdBaseline } from './commands/baseline.ts';
 import { cmdExplain } from './commands/explain.ts';
 import { cmdAdvise } from './commands/advise.ts';
 import { cmdBrandLint } from './commands/brand.ts';
+import { cmdModelsLint } from './commands/models-lint.ts';
+import { cmdProductFacts } from './commands/product-facts.ts';
 import { cmdClaimsLint } from './commands/claims.ts';
 import { cmdCredentialsLint } from './commands/credentials.ts';
 import { cmdSavings } from './commands/savings.ts';
@@ -166,6 +168,10 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'hooks:uninstall': (argv) => cmdHooks(['uninstall', ...argv]),
   'hooks:status':    (argv) => cmdHooks(['status',    ...argv]),
   'brand:lint': cmdBrandLint,
+  'models:lint': cmdModelsLint,
+  'product-facts:lint': (argv) => cmdProductFacts(['lint', ...argv]),
+  'product-facts:check': (argv) => cmdProductFacts(['check', ...argv]),
+  'product-facts:generate': (argv) => cmdProductFacts(['generate', ...argv]),
   'claims:check': (argv) => cmdClaimsLint(['check', ...argv]),
   'claims:lint': (argv) => cmdClaimsLint(['lint', ...argv]),
   'credentials:lint': cmdCredentialsLint,
@@ -578,6 +584,9 @@ MISSION GRAPH
 
 CATALOG
   brand:lint               Enforce canonical naming on public surfaces
+  models:lint              Fail on raw provider model IDs outside the registry
+  product-facts:lint       Detect hard-coded product counts and prices
+  product-facts:check      Fail when committed product facts drift
   claims:lint              Enforce the product claims registry
   credentials:lint         Detect fabricated agent credentials
   catalog:list             List all agents and skills
