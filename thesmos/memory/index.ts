@@ -64,3 +64,15 @@ export {
   type RenderedMemoryCapsule,
 } from './capsule.js';
 export { MnemosyneService, type RecallOptions, type RecallOutcome } from './service.js';
+export {
+  classifySummary,
+  commitProposals,
+  confidenceFromTests,
+  isDurableContent,
+  proposeFromHandoff,
+  proposeFromMission,
+  qualifiesForAutoWrite,
+  type CommitOptions,
+  type CommitOutcome,
+  type ProposalContext,
+} from './propose.js';
