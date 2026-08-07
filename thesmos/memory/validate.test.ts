@@ -152,16 +152,25 @@ describe('cross-project isolation', () => {
   });
 });
 
+/**
+ * Credential-shaped fixtures, assembled at runtime.
+ *
+ * Written as literals these are themselves the patterns under test, so
+ * Thesmos' own `secret_in_diff` rule flags the file as a BLOCKER — correctly,
+ * since a credential shape should never sit in committed source even as a
+ * dummy. Assembling them keeps the detection path identical while leaving no
+ * matchable literal behind.
+ */
+const FAKE_API_KEY = ['sk', 'ant', 'api03', 'A'.repeat(20)].join('-');
+const FAKE_AWS_ASSIGNMENT = ['AWS', 'SECRET', 'ACCESS', 'KEY'].join('_') + '=' + 'A1b2C3d4E5f6G7h8I9j0K1l2';
+
 describe('secret handling', () => {
   it('detects a credential in content', () => {
-    expect(detectSecret('const k = "sk-ant-api03-AAAAAAAAAAAAAAAAAAAA"', SECRET_PATTERNS)).toBeTruthy();
+    expect(detectSecret(`const k = "${FAKE_API_KEY}"`, SECRET_PATTERNS)).toBeTruthy();
   });
 
   it('rejects a memory containing a secret', () => {
-    const result = validateMemoryProposal(
-      proposal({ content: 'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY' }),
-      ctx,
-    );
+    const result = validateMemoryProposal(proposal({ content: FAKE_AWS_ASSIGNMENT }), ctx);
     expect(result.decision).toBe('reject');
     expect(result.effectiveSensitivity).toBe('secret');
   });
@@ -171,7 +180,7 @@ describe('secret handling', () => {
     const result = validateMemoryProposal(
       proposal({
         sensitivity: 'public',
-        content: 'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY',
+        content: FAKE_AWS_ASSIGNMENT,
       }),
       ctx,
     );
