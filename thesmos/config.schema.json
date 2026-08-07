@@ -482,6 +482,10 @@
               "format": "uri",
               "description": "Ollama service endpoint. Loopback needs no approval; any non-loopback host is governed as data egress on the web permission channel.",
               "default": "http://127.0.0.1:11434"
+            },
+            "embeddingModel": {
+              "type": "string",
+              "description": "Ollama model used for Mnemosyne embeddings. Must be embedding-capable and already pulled — Thesmos never downloads a model for you. Omitted means the first embedding-capable installed model, chosen deterministically."
             }
           }
         }

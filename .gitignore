@@ -50,6 +50,12 @@ extensions/vscode/*.vsix
 .thesmos/token-session-id
 .thesmos/active-plan.md
 
+# Mnemosyne governed memory — per-machine local state, like a database file.
+# Records carry provenance tied to this checkout and vectors are namespaced to
+# the embedding model installed here, so committing them would import another
+# machine's memory (and its vector space) into every clone.
+.thesmos/memory/
+
 # Nested dogfood governance tree + generated adapters inside the package —
 # regenerable via `thesmos init && thesmos adapters` from thesmos/; the
 # canonical governance tree lives at the repo root.

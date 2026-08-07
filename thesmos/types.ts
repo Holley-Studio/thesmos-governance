@@ -198,6 +198,12 @@ export interface ThesmosConfig {
       enabled?: boolean;
       /** Loopback by default. Non-loopback is governed as egress on the `web` channel. */
       baseUrl?: string;
+      /**
+       * Embedding model for Mnemosyne. Must already be pulled — Thesmos never
+       * downloads a model on the user's behalf. Omitted means the first
+       * embedding-capable installed model, chosen deterministically.
+       */
+      embeddingModel?: string;
     };
   };
 
