@@ -62,7 +62,41 @@ export interface TaskRunContext {
   stepsRemaining: number;
   /** The only way to ask whether an action is allowed. */
   authorize(channel: CouncilPermissionChannel, target: string): TaskAuthorization;
+  /**
+   * Governed memory for this task, already bounded and filtered.
+   *
+   * Absent when no context provider was supplied, recall was disabled, or the
+   * memory subsystem was unavailable — a runner must treat it as optional and
+   * behave identically without it.
+   *
+   * The scope is derived from mission authority by the runtime, never asked for
+   * by the task: a runner cannot widen what it is allowed to remember any more
+   * than it can widen what it is allowed to touch.
+   */
+  memoryContext?: TaskMemoryContext;
 }
+
+/** Read-only memory handed to a task. */
+export interface TaskMemoryContext {
+  /** Fenced, sanitized memory block, ready to append below current evidence. */
+  capsule: string;
+  /** Ids of what was included — for receipts, never the content. */
+  memoryIds: string[];
+  /** Estimated tokens the block contributes. Estimated, not measured. */
+  tokensEstimate: number;
+}
+
+/**
+ * Supplies governed context for a task.
+ *
+ * Injected rather than imported so `execute.ts` stays pure and testable, and so
+ * a mission can run with no memory subsystem at all. Must never throw — the
+ * runtime treats a rejection as "no memory" and continues.
+ */
+export type MissionContextProvider = (
+  mission: Mission,
+  binding: TaskBinding,
+) => Promise<TaskMemoryContext | undefined>;
 
 export interface TaskRunResult {
   /** Raw handoff. Normalized and validated by the runtime before use. */
@@ -80,6 +114,11 @@ export interface ExecuteMissionOptions {
   runTask: TaskRunner;
   /** Repo root, used to keep absolute paths out of handoffs. */
   root?: string;
+  /**
+   * Optional governed-memory supplier. Omitted means missions run exactly as
+   * they did before — memory is additive, never load-bearing.
+   */
+  contextProvider?: MissionContextProvider;
 }
 
 export interface MissionExecutionResult {
@@ -225,11 +264,25 @@ export async function executeMission(
                   .map((dep) => handoffs.get(dep))
                   .filter((h): h is AgentHandoff => h !== undefined);
 
+                // Retrieval is read-only and its failure is absorbed here, so a
+                // memory outage can never fail a task or alter mission state.
+                // Awaited per task rather than shared, so ordering of persisted
+                // results stays exactly as deterministic as it was before.
+                let memoryContext: TaskMemoryContext | undefined;
+                if (options.contextProvider) {
+                  try {
+                    memoryContext = await options.contextProvider(mission, bound);
+                  } catch {
+                    memoryContext = undefined;
+                  }
+                }
+
                 const ctx: TaskRunContext = {
                   mission,
                   binding: bound,
                   upstream,
                   stepsRemaining: budget.remaining,
+                  memoryContext,
                   // Every answer is recorded, honoured or not. A `deny` the
                   // runner ignored still has to appear in the report, or the
                   // refusal is unauditable.

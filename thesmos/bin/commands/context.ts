@@ -8,7 +8,10 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
-import { generateContextCapsule, saveContextCapsule } from '../../context-capsule.js';
+import { buildMissionContext, generateContextCapsule, saveContextCapsule } from '../../context-capsule.js';
+import { loadConfig } from '../../config.js';
+import { OllamaProvider } from '../../runtime/providers/ollama/provider.js';
+import { resolveEmbeddingModel, type EmbeddingContext } from '../../memory/embeddings.js';
 import { parseArgs, flagVal, flag } from '../lib/args.ts';
 
 export async function cmdContext(argv: string[]): Promise<void> {
@@ -23,10 +26,115 @@ export async function cmdContext(argv: string[]): Promise<void> {
   if (sub === 'compact') {
     return runCompact(argv.slice(1));
   }
+  if (sub === 'explain') {
+    return runExplain(argv.slice(1));
+  }
 
   process.stderr.write(`thesmos context: unknown subcommand "${sub}"\n`);
-  process.stderr.write('Usage: thesmos context:snapshot | thesmos context:health | thesmos context:compact\n');
+  process.stderr.write(
+    'Usage: thesmos context:snapshot | context:health | context:compact | context:explain "<request>"\n',
+  );
   process.exit(1);
+}
+
+/**
+ * thesmos context:explain "<request>"
+ *
+ * Shows exactly what governed memory a request would pull in and — more
+ * usefully — what it would leave out and why. Context selection that cannot be
+ * inspected is indistinguishable from context selection that is wrong.
+ */
+async function runExplain(argv: string[]): Promise<void> {
+  const query = argv.filter((a) => !a.startsWith('--'))[0];
+  if (!query) {
+    process.stderr.write('Usage: thesmos context:explain "<request>"\n');
+    process.exit(1);
+  }
+
+  const root = process.cwd();
+  const config = loadConfig(root);
+  const asJson = argv.includes('--json');
+
+  const providers = (config as { providers?: { ollama?: { enabled?: boolean; baseUrl?: string; embeddingModel?: string } } })
+    .providers ?? {};
+
+  // Semantic when a usable embedding model is installed, lexical otherwise —
+  // and the output always says which, so a thin result is never a mystery.
+  let embedding: EmbeddingContext | undefined;
+  let mode = 'lexical (no embedding provider)';
+  if (providers.ollama?.enabled !== false) {
+    const provider = new OllamaProvider({ baseUrl: providers.ollama?.baseUrl });
+    const health = await provider.health();
+    if (!health.available) {
+      mode = `lexical — Ollama unavailable (${health.errorCode ?? 'unknown'})`;
+    } else {
+      const resolved = resolveEmbeddingModel(await provider.listModels(), providers.ollama?.embeddingModel);
+      if ('error' in resolved) {
+        mode = `lexical — ${resolved.error}`;
+      } else if (!resolved.model.embeddingDimensions) {
+        mode = `lexical — ${resolved.model.id} did not report a vector width`;
+      } else {
+        embedding = { provider, model: resolved.model.id, dimensions: resolved.model.embeddingDimensions };
+        mode = `semantic via ${resolved.model.id} (${resolved.model.embeddingDimensions}d)`;
+      }
+    }
+  }
+
+  const result = await buildMissionContext({
+    root,
+    query,
+    authority: { maxScope: 'repository', repoId: config.project },
+    embedding,
+  });
+
+  if (asJson) {
+    console.log(JSON.stringify({ query, mode, ...result.diagnostics, included: result.memoryIds }, null, 2));
+    return;
+  }
+
+  const d = result.diagnostics;
+  console.log('\n  Context Intelligence\n');
+  console.log(`  Request:   ${query}`);
+  console.log(`  Repo:      ${config.project ?? '(unidentified)'}`);
+  console.log(`  Retrieval: ${mode}`);
+  console.log(`  Recall:    ${d.recallAttempted ? 'yes' : 'no'} — ${d.recallReason}\n`);
+
+  if (!d.recallAttempted) {
+    console.log('  No memory was retrieved for this request.\n');
+    return;
+  }
+
+  console.log(`  ${d.candidates} candidates · ${d.included} included · ${d.excluded.length} excluded`);
+  console.log(`  ${d.retrievalMs}ms retrieval${d.embeddingMs !== undefined ? ` · ${d.embeddingMs}ms embedding` : ''}\n`);
+
+  if (result.included.length > 0) {
+    console.log('  Included:');
+    for (const r of result.included) {
+      console.log(`    ${r.memory.id.slice(0, 8)}  ${r.memory.type.padEnd(22)} ${r.relevanceScore.toFixed(3)}`);
+      console.log(`      ${r.memory.content.replace(/\s+/g, ' ').slice(0, 88)}`);
+    }
+    console.log('');
+  }
+
+  if (d.excluded.length > 0) {
+    console.log('  Excluded:');
+    // Grouped by reason: a list of 40 identical lines teaches nothing.
+    const byReason = d.excluded.reduce<Record<string, number>>((acc, e) => {
+      acc[e.reason] = (acc[e.reason] ?? 0) + 1;
+      return acc;
+    }, {});
+    for (const [reason, count] of Object.entries(byReason)) {
+      console.log(`    ${String(count).padStart(3)}  ${reason}`);
+    }
+    console.log('');
+  }
+
+  if (d.conflicts.length > 0) {
+    console.log(`  ⚠ ${d.conflicts.length} unresolved conflict(s) in the included set.\n`);
+  }
+
+  // Labelled an estimate because it is one — see estimateTokens.
+  console.log(`  Memory budget: ~${d.memoryTokensEstimate} estimated tokens (${d.memoryChars} chars)\n`);
 }
 
 async function runSnapshot(argv: string[]): Promise<void> {

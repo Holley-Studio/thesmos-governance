@@ -15,6 +15,24 @@ import { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync } fr
 import { join } from 'node:path';
 import { appendSavingsEntry, readSavingsEntries } from './savings.js';
 
+// ── Token estimation ──────────────────────────────────────────────────────────
+
+/**
+ * Approximate token count for a string.
+ *
+ * ~4 characters per token — the same rule of thumb `brain-learn` has always
+ * used, lifted here so there is exactly one estimator in the codebase. A second
+ * one would silently disagree with this at budget boundaries, and a context
+ * budget that two modules compute differently is worse than no budget.
+ *
+ * Deliberately an estimate, and named as one: real tokenization is
+ * model-specific and would require shipping a tokenizer per provider. Callers
+ * that report this to a user must label it estimated, never measured.
+ */
+export function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ModelCost {

@@ -632,3 +632,71 @@ describe('determinism', () => {
     expect(result.stateHash).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 });
+
+// ── Governed memory delivery ─────────────────────────────────────────────────
+
+describe('memoryContext', () => {
+  it('is absent when no context provider is supplied', async () => {
+    // Missions must run exactly as before; memory is additive, never required.
+    const seen: Array<unknown> = [];
+    const mission = missionFor([task('a')]);
+    await executeMission(mission, {
+      contracts: CONTRACTS,
+      runTask: (ctx) => {
+        seen.push(ctx.memoryContext);
+        return { handoff: { summary: 'ok' } };
+      },
+    });
+    expect(seen).toEqual([undefined]);
+  });
+
+  it('delivers the provider’s capsule to the runner', async () => {
+    const mission = missionFor([task('a')]);
+    let delivered: string | undefined;
+    await executeMission(mission, {
+      contracts: CONTRACTS,
+      contextProvider: async () => ({
+        capsule: '<retrieved-memory>\nprior decision\n</retrieved-memory>',
+        memoryIds: ['mem-1'],
+        tokensEstimate: 12,
+      }),
+      runTask: (ctx) => {
+        delivered = ctx.memoryContext?.capsule;
+        return { handoff: { summary: 'ok' } };
+      },
+    });
+    expect(delivered).toContain('prior decision');
+  });
+
+  it('absorbs a provider failure without failing the task', async () => {
+    // A memory outage must never take a mission down with it.
+    const mission = missionFor([task('a')]);
+    const result = await executeMission(mission, {
+      contracts: CONTRACTS,
+      contextProvider: async () => {
+        throw new Error('memory store on fire');
+      },
+      runTask: (ctx) => {
+        expect(ctx.memoryContext).toBeUndefined();
+        return { handoff: { summary: 'ok' } };
+      },
+    });
+    expect(result.issues.filter((i) => i.severity === 'error')).toEqual([]);
+  });
+
+  it('keeps mission state deterministic regardless of recall', async () => {
+    // Retrieval must not perturb ordering or the state hash.
+    const build = (withMemory: boolean) =>
+      executeMission(missionFor([task('c', 'worker', ['b']), task('b', 'worker', ['a']), task('a')]), {
+        contracts: CONTRACTS,
+        contextProvider: withMemory
+          ? async () => ({ capsule: 'x', memoryIds: ['m'], tokensEstimate: 1 })
+          : undefined,
+        runTask: () => ({ handoff: { summary: 'ok' } }),
+      });
+
+    const withoutMemory = await build(false);
+    const withMemory = await build(true);
+    expect(withMemory.stateHash).toBe(withoutMemory.stateHash);
+  });
+});

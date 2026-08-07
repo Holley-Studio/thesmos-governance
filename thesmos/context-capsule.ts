@@ -21,6 +21,32 @@ import type { ContextCapsule, ContextHealth } from './types.js';
 
 export type { ContextCapsule, ContextHealth };
 
+/**
+ * Context Intelligence — re-exported so this module stays the single import
+ * surface for context construction.
+ *
+ * `generateContextCapsule` below answers "what is true about this repo right
+ * now". `buildMissionContext` answers "what should this provider see for this
+ * request", composing that repo evidence with governed recall. One canonical
+ * path, split across two files only because they have different lifecycles and
+ * a merged file would exceed the repo's large-file threshold.
+ */
+export {
+  assembleContext,
+  buildMissionContext,
+  deriveQuery,
+  shouldRecall,
+  DEFAULT_CONTEXT_BUDGET,
+  type ContextAuthority,
+  type ContextBudget,
+  type ContextDiagnostics,
+  type ContextRequest,
+  type ContextResult,
+  type ExcludedMemory,
+  type ExclusionReason,
+  type RecallDecision,
+} from './context-intelligence.js';
+
 const CONTEXT_FILE     = '.thesmos/context.md';
 const CONTEXT_META_FILE = '.thesmos/context-meta.json';
 const CONFIG_FILE      = '.thesmos/config.json';

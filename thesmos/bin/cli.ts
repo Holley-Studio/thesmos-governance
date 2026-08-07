@@ -226,6 +226,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'context:snapshot':       (argv) => cmdContext(['snapshot', ...argv]),
   'context:health':         (argv) => cmdContext(['health', ...argv]),
   'context:compact':        (argv) => cmdContext(['compact', ...argv]),
+  'context:explain':        (argv) => cmdContext(['explain', ...argv]),
   'github:comment':         (argv) => cmdGithubComment(argv),
   'self:check':             (argv) => cmdSelf(['check', ...argv]),
   'self:update':            (argv) => cmdSelf(['update', ...argv]),
@@ -556,6 +557,7 @@ CUSTOM AGENTS
     --dry-run --delete
 
 FEDERATED AGENTS
+  context:explain "<request>"      What memory a request would pull in, and what it excludes
   memory:list [--all] [--json]     What Thesmos remembers
   memory:search "<query>" [--json] Governed retrieval (semantic when Ollama is up)
   memory:show <id>                 One record with full provenance
