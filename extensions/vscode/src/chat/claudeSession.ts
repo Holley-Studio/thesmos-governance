@@ -18,6 +18,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveBinary } from './binaryResolver.js';
+import type { RuntimeEvent } from '../../../../thesmos/runtime/types.js';
 
 export type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'auto';
 
@@ -35,28 +36,16 @@ export function resolveClaudeBinary(): string {
   return resolveBinary('claude', [join(homedir(), '.claude', 'local', 'claude')]);
 }
 
-/** Shaped events consumed by the chat controller. */
-export type SessionEvent =
-  | { kind: 'init'; sessionId: string; model: string }
-  | { kind: 'textDelta'; text: string }
-  | { kind: 'thinkingDelta'; text: string }
-  | { kind: 'assistantText'; text: string }
-  | { kind: 'toolUse'; toolUseId: string; name: string; input: Record<string, unknown> }
-  | { kind: 'toolResult'; toolUseId: string; summary: string; isError: boolean }
-  | {
-      kind: 'turnDone';
-      costUsd?: number;
-      durationMs?: number;
-      inputTokens?: number;
-      outputTokens?: number;
-      cacheReadTokens?: number;
-      cacheCreationTokens?: number;
-      isError: boolean;
-    }
-  | { kind: 'compacting'; trigger: string; preTokens?: number }
-  | { kind: 'usage'; contextTokens: number }
-  | { kind: 'stderr'; text: string }
-  | { kind: 'exit'; code: number | null };
+/**
+ * Shaped events consumed by the chat controller.
+ *
+ * This union now lives in Thesmos core as `RuntimeEvent` — it was always
+ * provider-neutral (Claude and Codex both emit it unchanged), so hosting it in
+ * the extension made Pantheon Chat the accidental owner of a contract the CLI
+ * and a future headless runtime need too. Re-exported under the original name
+ * so every existing import site keeps working.
+ */
+export type SessionEvent = RuntimeEvent;
 
 interface ContentBlock {
   type: string;

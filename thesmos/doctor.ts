@@ -14,6 +14,7 @@ import type { DoctorCheck, ThesmosConfig } from './types';
 import { ADAPTER_OUTPUT_PATHS, THESMOS_RULES, isAdapterFresh } from './adapters';
 import { extractGeneratedSection } from './output';
 import { validateConfig } from './config';
+import { parseEndpoint } from './runtime/endpoint.js';
 
 /** Generated-section budget (Operation Signal Phase 5). Measured on the
  *  THESMOS:GENERATED span only — pre-existing user-owned content elsewhere
@@ -324,6 +325,36 @@ function checkConfiguration(input: DoctorInput): DoctorCheck[] {
         : 'Run thesmos init to create a valid config.json, or ensure it contains "name" and "version" string fields',
     },
   ];
+
+  // Provider endpoints are validated here but never dialled: runDoctor is pure
+  // and synchronous by design. Live reachability belongs to `providers:doctor`,
+  // and an optional provider being switched off must not fail this gate.
+  const ollamaUrl = input.config.providers?.ollama?.baseUrl;
+  if (ollamaUrl !== undefined) {
+    let parsed: ReturnType<typeof parseEndpoint> | undefined;
+    let error: string | undefined;
+    try {
+      parsed = parseEndpoint(ollamaUrl);
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'invalid endpoint';
+    }
+
+    checks.push({
+      name: 'config:ollama-endpoint',
+      group: DOCTOR_GROUPS.CONFIG,
+      pass: parsed !== undefined,
+      message: parsed
+        ? parsed.locality === 'local'
+          ? `Ollama endpoint ${parsed.origin} is loopback — no data egress`
+          : `Ollama endpoint ${parsed.origin} is ${parsed.locality} — prompts leave this machine and need a web permission grant`
+        : `Ollama endpoint is invalid: ${error}`,
+      fixHint: parsed
+        ? parsed.locality === 'local'
+          ? undefined
+          : 'Grant it on the web channel, or set providers.ollama.baseUrl back to http://127.0.0.1:11434'
+        : 'Set providers.ollama.baseUrl to an http(s) URL, e.g. http://127.0.0.1:11434',
+    });
+  }
 
   const branches = input.config.protectedBranches;
   const hasBranches = Array.isArray(branches) && branches.length > 0;

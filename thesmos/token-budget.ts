@@ -50,9 +50,18 @@ export const TOKEN_BUDGET_DEFAULTS: TokenBudgetConfig = {
   hardStopAt: 1.00,
   modelCostTable: {
     // Canonical SDK model IDs (claude-<family>-<version>)
+    // Unmatched models fall back to Sonnet pricing in calcCost(), so every
+    // model the Pantheon agents can specify needs an entry here — otherwise a
+    // pricier model is silently undercounted.
+    'claude-fable-5':                 { inputPer1M: 10.00, outputPer1M: 50.00 },
+    'claude-opus-5':                  { inputPer1M: 5.00,  outputPer1M: 25.00 },
+    'claude-opus-4-8':                { inputPer1M: 5.00,  outputPer1M: 25.00 },
+    'claude-opus-4-7':                { inputPer1M: 5.00,  outputPer1M: 25.00 },
+    'claude-opus-4-6':                { inputPer1M: 5.00,  outputPer1M: 25.00 },
+    'claude-sonnet-5':                { inputPer1M: 3.00,  outputPer1M: 15.00 },
     'claude-sonnet-4-6':              { inputPer1M: 3.00,  outputPer1M: 15.00 },
-    'claude-opus-4-8':                { inputPer1M: 15.00, outputPer1M: 75.00 },
-    'claude-haiku-4-5-20251001':      { inputPer1M: 0.25,  outputPer1M: 1.25  },
+    'claude-haiku-4-5':               { inputPer1M: 1.00,  outputPer1M: 5.00  },
+    'claude-haiku-4-5-20251001':      { inputPer1M: 1.00,  outputPer1M: 5.00  },
     'claude-opus-4-5':                { inputPer1M: 15.00, outputPer1M: 75.00 },
     'claude-sonnet-4-5':              { inputPer1M: 3.00,  outputPer1M: 15.00 },
     // Legacy API date-suffixed model IDs reported by some Claude Code versions
@@ -62,7 +71,7 @@ export const TOKEN_BUDGET_DEFAULTS: TokenBudgetConfig = {
     'claude-3-5-haiku-20241022':      { inputPer1M: 0.80,  outputPer1M: 4.00  },
     'claude-3-haiku-20240307':        { inputPer1M: 0.25,  outputPer1M: 1.25  },
     'claude-opus-4-5-20251101':       { inputPer1M: 15.00, outputPer1M: 75.00 },
-    'claude-sonnet-4-5-20251101':     { inputPer1M: 3.00,  outputPer1M: 15.00 },
+    'claude-sonnet-4-5-20250929':     { inputPer1M: 3.00,  outputPer1M: 15.00 },
   },
 };
 

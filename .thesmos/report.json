@@ -20,408 +20,439 @@
     "testFiles"
   ],
   "_manualNote": "Keys not in _generatedSections are manually curated. Do not overwrite.",
-  "generatedAt": "2026-07-23T22:40:53.398Z",
+  "generatedAt": "2026-08-07T06:32:02.240Z",
   "scanVersion": "2.0.0",
   "pages": [],
   "apiRoutes": [],
   "componentCount": 0,
   "sharedUiFiles": [],
   "designSystemFiles": [
-    "pantheon-plugin/agents/techne-design-system.md",
-    "thesmos/catalog/agents/figma/techne-design-system.md",
-    "thesmos/catalog/agents/reviewers/design-system-reviewer.md",
-    "thesmos/catalog/skills/design-token-audit.md"
+    "pantheon-plugin\\agents\\techne-design-system.md",
+    "thesmos\\catalog\\agents\\figma\\techne-design-system.md",
+    "thesmos\\catalog\\agents\\reviewers\\design-system-reviewer.md",
+    "thesmos\\catalog\\skills\\design-token-audit.md"
   ],
   "storeFiles": [
-    "thesmos/brain-store.ts"
+    "thesmos\\brain-store.ts"
   ],
   "testFiles": [
-    "actions/pr-review/src/diff-lines.test.ts",
-    "actions/pr-review/src/formatter.test.ts",
-    "actions/pr-review/src/partition.test.ts",
-    "extensions/vscode/src/__tests__/checkpointManager.test.ts",
-    "extensions/vscode/src/__tests__/godMapper.test.ts",
-    "extensions/vscode/src/__tests__/permissionBridge.test.ts",
-    "extensions/vscode/src/__tests__/sanitizer.test.ts",
-    "extensions/vscode/src/__tests__/savingsLedger.test.ts",
-    "extensions/vscode/src/__tests__/sessionHistory.test.ts",
-    "extensions/vscode/src/__tests__/severityFilter.test.ts",
-    "extensions/vscode/src/__tests__/watcher.test.ts",
-    "extensions/vscode/src/__tests__/workingState.test.ts",
-    "thesmos/adapters.test.ts",
-    "thesmos/advise.test.ts",
-    "thesmos/agent-federation-stress.test.ts",
-    "thesmos/agent-lifecycle.test.ts",
-    "thesmos/agent-orchestration.test.ts",
-    "thesmos/agent-ownership.test.ts",
-    "thesmos/ai-lint.test.ts",
-    "thesmos/assurance.test.ts",
-    "thesmos/autopilot/adapters.test.ts",
-    "thesmos/autopilot/calibration.test.ts",
-    "thesmos/autopilot/conventions.test.ts",
-    "thesmos/autopilot/dependency-gate.test.ts",
-    "thesmos/autopilot/plan-parser.test.ts",
-    "thesmos/autopilot/recon.test.ts",
-    "thesmos/baseline.test.ts",
-    "thesmos/bin/commands/agent-create.test.ts",
-    "thesmos/bin/commands/agent-install.test.ts",
-    "thesmos/bin/commands/agent-run.test.ts",
-    "thesmos/bin/commands/agents-federation.test.ts",
-    "thesmos/bin/commands/audit.test.ts",
-    "thesmos/bin/commands/ci-check.test.ts",
-    "thesmos/bin/commands/diff.test.ts",
-    "thesmos/bin/commands/pack-create.test.ts",
-    "thesmos/bin/commands/pack-publish.test.ts",
-    "thesmos/bin/commands/pantheon-mode.test.ts",
-    "thesmos/bin/commands/pantheon-pack.test.ts",
-    "thesmos/bin/commands/review-baseline.test.ts",
-    "thesmos/bin/commands/review.test.ts",
-    "thesmos/bin/commands/scan.test.ts",
-    "thesmos/bin/commands/teams.test.ts",
-    "thesmos/bin/lib/args.test.ts",
-    "thesmos/bin/lib/git.test.ts",
-    "thesmos/bin/lib/oracle.test.ts",
-    "thesmos/builder/generators/rag.test.ts",
-    "thesmos/catalog.test.ts",
-    "thesmos/catalog/free-agents.test.ts",
-    "thesmos/ci-check.test.ts",
-    "thesmos/claude-govern.test.ts",
-    "thesmos/compliance-assurance.test.ts",
-    "thesmos/config.test.ts",
-    "thesmos/context-capsule.test.ts",
-    "thesmos/detector.test.ts",
-    "thesmos/doctor.test.ts",
-    "thesmos/drift.test.ts",
-    "thesmos/eval/suites.test.ts",
-    "thesmos/execution-receipt.test.ts",
-    "thesmos/explain.test.ts",
-    "thesmos/fix.test.ts",
-    "thesmos/gate.test.ts",
-    "thesmos/guard.cross-platform.test.ts",
-    "thesmos/hardening.test.ts",
-    "thesmos/health.test.ts",
-    "thesmos/hooks.test.ts",
-    "thesmos/import-scan.test.ts",
-    "thesmos/init.test.ts",
-    "thesmos/interactive.test.ts",
-    "thesmos/metrics-export.test.ts",
-    "thesmos/metrics.test.ts",
-    "thesmos/output.test.ts",
-    "thesmos/pack-gate.test.ts",
-    "thesmos/packs.test.ts",
-    "thesmos/pantheon-models.test.ts",
-    "thesmos/product-facts.test.ts",
-    "thesmos/registry.test.ts",
-    "thesmos/report.test.ts",
-    "thesmos/review.test.ts",
-    "thesmos/rules/agents.test.ts",
-    "thesmos/rules/commits.test.ts",
-    "thesmos/rules/csharp.test.ts",
-    "thesmos/rules/dast.test.ts",
-    "thesmos/rules/debt.test.ts",
-    "thesmos/rules/design.test.ts",
-    "thesmos/rules/django.test.ts",
-    "thesmos/rules/dockerfile.test.ts",
-    "thesmos/rules/dora.test.ts",
-    "thesmos/rules/eu-ai-act.test.ts",
-    "thesmos/rules/github-actions.test.ts",
-    "thesmos/rules/go.test.ts",
-    "thesmos/rules/helpers.test.ts",
-    "thesmos/rules/java.test.ts",
-    "thesmos/rules/jwt.test.ts",
-    "thesmos/rules/k8s.test.ts",
-    "thesmos/rules/license.test.ts",
-    "thesmos/rules/mcp.test.ts",
-    "thesmos/rules/php.test.ts",
-    "thesmos/rules/prototype.test.ts",
-    "thesmos/rules/python.test.ts",
-    "thesmos/rules/rag.test.ts",
-    "thesmos/rules/registry.test.ts",
-    "thesmos/rules/ruby.test.ts",
-    "thesmos/rules/rust.test.ts",
-    "thesmos/rules/self.test.ts",
-    "thesmos/rules/supply-chain.test.ts",
-    "thesmos/rules/terraform.test.ts",
-    "thesmos/rules/vercel.test.ts",
-    "thesmos/rules/vibe-coding.test.ts",
-    "thesmos/rules/websocket.test.ts",
-    "thesmos/savings.test.ts",
-    "thesmos/scanner/files.test.ts",
-    "thesmos/scanner/routes.test.ts",
-    "thesmos/scanner/walker.test.ts",
-    "thesmos/scope.test.ts",
-    "thesmos/secrets.test.ts",
-    "thesmos/severity.test.ts",
-    "thesmos/suppress.test.ts",
-    "thesmos/tiers.test.ts",
-    "thesmos/token-budget.test.ts",
-    "thesmos/watcher.test.ts"
+    "actions\\pr-review\\src\\diff-lines.test.ts",
+    "actions\\pr-review\\src\\formatter.test.ts",
+    "actions\\pr-review\\src\\partition.test.ts",
+    "extensions\\vscode\\src\\__tests__\\checkpointManager.test.ts",
+    "extensions\\vscode\\src\\__tests__\\codexSession.test.ts",
+    "extensions\\vscode\\src\\__tests__\\dispatchAdvisor.test.ts",
+    "extensions\\vscode\\src\\__tests__\\godMapper.test.ts",
+    "extensions\\vscode\\src\\__tests__\\permissionBridge.test.ts",
+    "extensions\\vscode\\src\\__tests__\\sanitizer.test.ts",
+    "extensions\\vscode\\src\\__tests__\\savingsLedger.test.ts",
+    "extensions\\vscode\\src\\__tests__\\sessionHistory.test.ts",
+    "extensions\\vscode\\src\\__tests__\\severityFilter.test.ts",
+    "extensions\\vscode\\src\\__tests__\\watcher.test.ts",
+    "extensions\\vscode\\src\\__tests__\\workingState.test.ts",
+    "thesmos\\adapters.test.ts",
+    "thesmos\\advise.test.ts",
+    "thesmos\\agent-federation-stress.test.ts",
+    "thesmos\\agent-lifecycle.test.ts",
+    "thesmos\\agent-orchestration.test.ts",
+    "thesmos\\agent-ownership.test.ts",
+    "thesmos\\ai-lint.test.ts",
+    "thesmos\\assurance.test.ts",
+    "thesmos\\autopilot\\adapters.test.ts",
+    "thesmos\\autopilot\\calibration.test.ts",
+    "thesmos\\autopilot\\conventions.test.ts",
+    "thesmos\\autopilot\\dependency-gate.test.ts",
+    "thesmos\\autopilot\\executor.test.ts",
+    "thesmos\\autopilot\\plan-parser.test.ts",
+    "thesmos\\autopilot\\recon.test.ts",
+    "thesmos\\baseline.test.ts",
+    "thesmos\\bin\\commands\\agent-create.test.ts",
+    "thesmos\\bin\\commands\\agent-install.test.ts",
+    "thesmos\\bin\\commands\\agent-run.test.ts",
+    "thesmos\\bin\\commands\\agents-federation.test.ts",
+    "thesmos\\bin\\commands\\audit.test.ts",
+    "thesmos\\bin\\commands\\ci-check.test.ts",
+    "thesmos\\bin\\commands\\council.test.ts",
+    "thesmos\\bin\\commands\\diff.test.ts",
+    "thesmos\\bin\\commands\\mission.test.ts",
+    "thesmos\\bin\\commands\\pack-create.test.ts",
+    "thesmos\\bin\\commands\\pack-publish.test.ts",
+    "thesmos\\bin\\commands\\pantheon-mode.test.ts",
+    "thesmos\\bin\\commands\\pantheon-pack.test.ts",
+    "thesmos\\bin\\commands\\review-baseline.test.ts",
+    "thesmos\\bin\\commands\\review.test.ts",
+    "thesmos\\bin\\commands\\scan.test.ts",
+    "thesmos\\bin\\commands\\teams.test.ts",
+    "thesmos\\bin\\lib\\args.test.ts",
+    "thesmos\\bin\\lib\\git.test.ts",
+    "thesmos\\bin\\lib\\oracle.test.ts",
+    "thesmos\\build-commands.test.ts",
+    "thesmos\\builder\\generators\\rag.test.ts",
+    "thesmos\\catalog.test.ts",
+    "thesmos\\catalog\\free-agents.test.ts",
+    "thesmos\\ci-check.test.ts",
+    "thesmos\\claude-govern.test.ts",
+    "thesmos\\compliance-assurance.test.ts",
+    "thesmos\\compliance.test.ts",
+    "thesmos\\config.test.ts",
+    "thesmos\\context-capsule.test.ts",
+    "thesmos\\council\\adapter-context.test.ts",
+    "thesmos\\council\\catalog-proof.test.ts",
+    "thesmos\\council\\compiler.test.ts",
+    "thesmos\\council\\handoff.test.ts",
+    "thesmos\\council\\load.test.ts",
+    "thesmos\\council\\matching.test.ts",
+    "thesmos\\council\\permissions.test.ts",
+    "thesmos\\council\\sanitize.test.ts",
+    "thesmos\\council\\validate.test.ts",
+    "thesmos\\detector.test.ts",
+    "thesmos\\doctor.test.ts",
+    "thesmos\\drift.test.ts",
+    "thesmos\\eval\\suites.test.ts",
+    "thesmos\\execution-receipt.test.ts",
+    "thesmos\\explain.test.ts",
+    "thesmos\\fix.test.ts",
+    "thesmos\\gate.test.ts",
+    "thesmos\\guard.cross-platform.test.ts",
+    "thesmos\\hardening.test.ts",
+    "thesmos\\health.test.ts",
+    "thesmos\\hooks.test.ts",
+    "thesmos\\import-scan.test.ts",
+    "thesmos\\init.test.ts",
+    "thesmos\\interactive.test.ts",
+    "thesmos\\manifest.test.ts",
+    "thesmos\\mcp.test.ts",
+    "thesmos\\metrics-export.test.ts",
+    "thesmos\\metrics.test.ts",
+    "thesmos\\mission\\authority.test.ts",
+    "thesmos\\mission\\execute.test.ts",
+    "thesmos\\mission\\graph.test.ts",
+    "thesmos\\mission\\limits.test.ts",
+    "thesmos\\mission\\source-hygiene.test.ts",
+    "thesmos\\mission\\state.test.ts",
+    "thesmos\\output.test.ts",
+    "thesmos\\pack-gate.test.ts",
+    "thesmos\\packs.test.ts",
+    "thesmos\\pantheon-models.test.ts",
+    "thesmos\\product-facts.test.ts",
+    "thesmos\\registry.test.ts",
+    "thesmos\\report.test.ts",
+    "thesmos\\review.test.ts",
+    "thesmos\\rules\\__fixtures__\\blocker-fixture-harness.test.ts",
+    "thesmos\\rules\\agents.test.ts",
+    "thesmos\\rules\\commits.test.ts",
+    "thesmos\\rules\\csharp.test.ts",
+    "thesmos\\rules\\dast.test.ts",
+    "thesmos\\rules\\debt.test.ts",
+    "thesmos\\rules\\design.test.ts",
+    "thesmos\\rules\\django.test.ts",
+    "thesmos\\rules\\dockerfile.test.ts",
+    "thesmos\\rules\\dora.test.ts",
+    "thesmos\\rules\\eu-ai-act.test.ts",
+    "thesmos\\rules\\github-actions.test.ts",
+    "thesmos\\rules\\go.test.ts",
+    "thesmos\\rules\\helpers.test.ts",
+    "thesmos\\rules\\java.test.ts",
+    "thesmos\\rules\\jwt.test.ts",
+    "thesmos\\rules\\k8s.test.ts",
+    "thesmos\\rules\\license.test.ts",
+    "thesmos\\rules\\mcp.test.ts",
+    "thesmos\\rules\\php.test.ts",
+    "thesmos\\rules\\prototype.test.ts",
+    "thesmos\\rules\\python.test.ts",
+    "thesmos\\rules\\rag.test.ts",
+    "thesmos\\rules\\registry.test.ts",
+    "thesmos\\rules\\ruby.test.ts",
+    "thesmos\\rules\\rust.test.ts",
+    "thesmos\\rules\\self.test.ts",
+    "thesmos\\rules\\slopsquatting.test.ts",
+    "thesmos\\rules\\supply-chain.test.ts",
+    "thesmos\\rules\\terraform.test.ts",
+    "thesmos\\rules\\vercel.test.ts",
+    "thesmos\\rules\\vibe-coding.test.ts",
+    "thesmos\\rules\\websocket.test.ts",
+    "thesmos\\sarif-shape.test.ts",
+    "thesmos\\savings.test.ts",
+    "thesmos\\scanner\\files.test.ts",
+    "thesmos\\scanner\\routes.test.ts",
+    "thesmos\\scanner\\walker.test.ts",
+    "thesmos\\scope.test.ts",
+    "thesmos\\secrets.test.ts",
+    "thesmos\\severity.test.ts",
+    "thesmos\\shell-command.test.ts",
+    "thesmos\\suppress.test.ts",
+    "thesmos\\tiers.test.ts",
+    "thesmos\\token-budget.test.ts",
+    "thesmos\\watcher.test.ts"
   ],
   "largeFiles": [
     {
-      "file": "thesmos/rules/python.ts",
+      "file": "thesmos\\rules\\python.ts",
       "lines": 1737
     },
     {
-      "file": "thesmos/rules/security.ts",
+      "file": "thesmos\\rules\\security.ts",
       "lines": 1705
     },
     {
-      "file": "thesmos/rules/ai.ts",
+      "file": "thesmos\\rules\\ai.ts",
       "lines": 1675
     },
     {
-      "file": "thesmos/rules/nextjs.ts",
+      "file": "thesmos\\rules\\nextjs.ts",
       "lines": 1610
     },
     {
-      "file": "thesmos/rules/agents.ts",
+      "file": "extensions\\vscode\\src\\chat\\chatViewProvider.ts",
+      "lines": 1598
+    },
+    {
+      "file": "thesmos\\rules\\agents.ts",
       "lines": 1450
     },
     {
-      "file": "extensions/vscode/src/chat/chatViewProvider.ts",
-      "lines": 1427
+      "file": "thesmos\\bin\\commands\\pantheon.ts",
+      "lines": 1444
     },
     {
-      "file": "thesmos/fix.ts",
+      "file": "thesmos\\fix.ts",
       "lines": 1425
     },
     {
-      "file": "thesmos/rules/vibe-coding.ts",
+      "file": "thesmos\\rules\\vibe-coding.ts",
       "lines": 1418
     },
     {
-      "file": "thesmos/rules/database.ts",
+      "file": "thesmos\\rules\\database.ts",
       "lines": 1350
     },
     {
-      "file": "thesmos/bin/commands/pantheon.ts",
-      "lines": 1261
-    },
-    {
-      "file": "thesmos/rules/typescript.ts",
+      "file": "thesmos\\rules\\typescript.ts",
       "lines": 1220
     },
     {
-      "file": "thesmos/fix.test.ts",
+      "file": "thesmos\\fix.test.ts",
       "lines": 1187
     },
     {
-      "file": "thesmos/rules/debt.ts",
+      "file": "extensions\\vscode\\src\\chat\\webview\\chat.ts",
+      "lines": 1180
+    },
+    {
+      "file": "thesmos\\rules\\slopsquatting.ts",
+      "lines": 1155
+    },
+    {
+      "file": "thesmos\\rules\\debt.ts",
       "lines": 1153
     },
     {
-      "file": "thesmos/scripts/export-agents.ts",
-      "lines": 1127
+      "file": "thesmos\\scripts\\export-agents.ts",
+      "lines": 1139
     },
     {
-      "file": "thesmos/rules/java.test.ts",
+      "file": "thesmos\\rules\\java.test.ts",
       "lines": 1126
     },
     {
-      "file": "thesmos/rules/react.ts",
+      "file": "thesmos\\rules\\react.ts",
       "lines": 1122
     },
     {
-      "file": "thesmos/rules/node.ts",
+      "file": "thesmos\\rules\\node.ts",
       "lines": 1108
     },
     {
-      "file": "thesmos/rules/performance.ts",
+      "file": "thesmos\\rules\\performance.ts",
       "lines": 1089
     },
     {
-      "file": "thesmos/rules/prisma.ts",
+      "file": "thesmos\\rules\\prisma.ts",
       "lines": 1086
     },
     {
-      "file": "thesmos/rules/zod.ts",
+      "file": "thesmos\\rules\\zod.ts",
       "lines": 1078
     },
     {
-      "file": "extensions/vscode/src/chat/webview/chat.ts",
-      "lines": 1030
-    },
-    {
-      "file": "thesmos/rules/terraform.ts",
+      "file": "thesmos\\rules\\terraform.ts",
       "lines": 1002
     },
     {
-      "file": "thesmos/rules/slopsquatting.ts",
-      "lines": 998
-    },
-    {
-      "file": "thesmos/bin/commands/build.ts",
+      "file": "thesmos\\bin\\commands\\build.ts",
       "lines": 989
     },
     {
-      "file": "thesmos/drift.test.ts",
+      "file": "thesmos\\shell-command.ts",
+      "lines": 964
+    },
+    {
+      "file": "thesmos\\drift.test.ts",
       "lines": 963
     },
     {
-      "file": "thesmos/rules/design.test.ts",
+      "file": "thesmos\\rules\\design.test.ts",
       "lines": 961
     },
     {
-      "file": "thesmos/rules/ruby.test.ts",
+      "file": "thesmos\\rules\\ruby.test.ts",
       "lines": 951
     },
     {
-      "file": "thesmos/rules/csharp.ts",
+      "file": "thesmos\\rules\\csharp.ts",
       "lines": 947
     },
     {
-      "file": "thesmos/rules/graphql.ts",
+      "file": "thesmos\\rules\\graphql.ts",
       "lines": 943
     },
     {
-      "file": "thesmos/rules/mcp.ts",
+      "file": "thesmos\\rules\\mcp.ts",
       "lines": 939
     },
     {
-      "file": "thesmos/rules/go.test.ts",
+      "file": "thesmos\\rules\\go.test.ts",
       "lines": 938
     },
     {
-      "file": "extensions/vscode/src/extension.ts",
+      "file": "extensions\\vscode\\src\\extension.ts",
       "lines": 922
     },
     {
-      "file": "thesmos/init.ts",
+      "file": "thesmos\\init.ts",
       "lines": 919
     },
     {
-      "file": "thesmos/rules/errors.ts",
+      "file": "thesmos\\rules\\errors.ts",
       "lines": 916
     },
     {
-      "file": "thesmos/rules/go.ts",
+      "file": "thesmos\\rules\\go.ts",
       "lines": 871
     },
     {
-      "file": "thesmos/rules/trpc.ts",
+      "file": "thesmos\\rules\\trpc.ts",
       "lines": 870
     },
     {
-      "file": "thesmos/agent-lifecycle.test.ts",
-      "lines": 860
+      "file": "thesmos\\agent-lifecycle.test.ts",
+      "lines": 862
     },
     {
-      "file": "extensions/vscode/src/commands.ts",
+      "file": "extensions\\vscode\\src\\commands.ts",
       "lines": 857
     },
     {
-      "file": "thesmos/rules/rust.ts",
+      "file": "thesmos\\rules\\rust.ts",
       "lines": 856
     },
     {
-      "file": "thesmos/rules/design.ts",
+      "file": "thesmos\\rules\\design.ts",
       "lines": 855
     },
     {
-      "file": "thesmos/rules/ruby.ts",
+      "file": "thesmos\\rules\\ruby.ts",
       "lines": 852
     },
     {
-      "file": "thesmos/rules/java.ts",
+      "file": "thesmos\\rules\\java.ts",
       "lines": 842
     },
     {
-      "file": "thesmos/rules/django.ts",
+      "file": "thesmos\\mcp-server.ts",
+      "lines": 830
+    },
+    {
+      "file": "thesmos\\rules\\django.ts",
       "lines": 828
     },
     {
-      "file": "thesmos/rules/php.ts",
+      "file": "thesmos\\rules\\php.ts",
       "lines": 828
     },
     {
-      "file": "thesmos/rules/rust.test.ts",
+      "file": "thesmos\\rules\\rust.test.ts",
       "lines": 818
     },
     {
-      "file": "thesmos/rules/gdpr.ts",
+      "file": "thesmos\\rules\\gdpr.ts",
       "lines": 811
     },
     {
-      "file": "thesmos/mcp-server.ts",
+      "file": "thesmos\\rules\\php.test.ts",
       "lines": 810
     },
     {
-      "file": "thesmos/rules/php.test.ts",
-      "lines": 810
-    },
-    {
-      "file": "thesmos/bin/commands/compliance.ts",
+      "file": "thesmos\\bin\\commands\\compliance.ts",
       "lines": 807
     },
     {
-      "file": "thesmos/rules/csharp.test.ts",
+      "file": "thesmos\\rules\\csharp.test.ts",
       "lines": 805
     }
   ],
   "riskyFiles": [],
-  "scriptFiles": [
-    "scripts/backup-to-drive.sh",
-    "scripts/build-product-json.mjs",
-    "scripts/github-setup.sh",
-    "scripts/restore-from-drive.sh"
-  ],
+  "scriptFiles": [],
   "envFiles": [],
   "clientBoundaryRisks": [
     {
-      "file": "thesmos/review.test.ts",
+      "file": "thesmos\\review.test.ts",
       "risk": "admin-client"
     },
     {
-      "file": "thesmos/rules/ai.ts",
-      "risk": "server-only-import"
-    },
-    {
-      "file": "thesmos/rules/database.ts",
+      "file": "thesmos\\rules\\__fixtures__\\SEC_001-admin-client-in-browser.fixture.ts",
       "risk": "direct-env-access"
     },
     {
-      "file": "thesmos/rules/imports.ts",
+      "file": "thesmos\\rules\\ai.ts",
       "risk": "server-only-import"
     },
     {
-      "file": "thesmos/rules/jwt.test.ts",
+      "file": "thesmos\\rules\\database.ts",
       "risk": "direct-env-access"
     },
     {
-      "file": "thesmos/rules/jwt.ts",
+      "file": "thesmos\\rules\\imports.ts",
+      "risk": "server-only-import"
+    },
+    {
+      "file": "thesmos\\rules\\jwt.test.ts",
       "risk": "direct-env-access"
     },
     {
-      "file": "thesmos/rules/nextjs.ts",
+      "file": "thesmos\\rules\\jwt.ts",
+      "risk": "direct-env-access"
+    },
+    {
+      "file": "thesmos\\rules\\nextjs.ts",
       "risk": "server-only-import"
     },
     {
-      "file": "thesmos/rules/registry.ts",
+      "file": "thesmos\\rules\\registry.ts",
       "risk": "server-only-import"
     },
     {
-      "file": "thesmos/rules/state.ts",
+      "file": "thesmos\\rules\\state.ts",
       "risk": "server-only-import"
     },
     {
-      "file": "thesmos/scanner/files.test.ts",
+      "file": "thesmos\\scanner\\files.test.ts",
       "risk": "admin-client"
     },
     {
-      "file": "thesmos/scanner/files.ts",
+      "file": "thesmos\\scanner\\files.ts",
       "risk": "admin-client"
     },
     {
-      "file": "thesmos/secrets.test.ts",
+      "file": "thesmos\\secrets.test.ts",
       "risk": "admin-client"
     },
     {
-      "file": "thesmos/secrets.ts",
+      "file": "thesmos\\secrets.ts",
       "risk": "admin-client"
     },
     {
-      "file": "thesmos/types.ts",
+      "file": "thesmos\\types.ts",
       "risk": "server-only-import"
     }
   ],
@@ -429,20 +460,26 @@
     {
       "language": "Other",
       "extension": "",
-      "fileCount": 493,
-      "lineCount": 107947
+      "fileCount": 516,
+      "lineCount": 108998
     },
     {
       "language": "TypeScript",
       "extension": ".ts",
-      "fileCount": 386,
-      "lineCount": 138793
+      "fileCount": 448,
+      "lineCount": 156818
     },
     {
       "language": "JavaScript",
       "extension": ".js",
-      "fileCount": 4,
-      "lineCount": 310
+      "fileCount": 5,
+      "lineCount": 458
+    },
+    {
+      "language": "Python",
+      "extension": ".py",
+      "fileCount": 1,
+      "lineCount": 163
     }
   ],
   "detectedStacks": [
@@ -456,6 +493,7 @@
       "AI_MODEL",
       "ALLOWED_ORIGIN",
       "ALLOWED_ORIGINS",
+      "ANON_KEY",
       "ANTHROPIC_API_KEY",
       "ANTHROPIC_KEY",
       "API_BASE",
@@ -472,6 +510,7 @@
       "COHERE_API_KEY",
       "CRON_SECRET",
       "DATABASE_URL",
+      "DB_PASSWORD",
       "DEEPGRAM_API_KEY",
       "DOT_VAR",
       "ELEVENLABS_API_KEY",
@@ -485,6 +524,7 @@
       "MCP_SECRET",
       "MY_KEY",
       "MY_URL",
+      "NEW_SECRET",
       "NEXTAUTH_SECRET",
       "NEXT_PUBLIC_API_KEY",
       "NEXT_PUBLIC_API_SECRET",
@@ -507,6 +547,7 @@
       "PORT",
       "REVALIDATE_SECRET",
       "SECRET",
+      "SERVICE_ROLE_KEY",
       "SHARED",
       "SHARED_KEY",
       "SHELL",
@@ -515,6 +556,8 @@
       "STRIPE_WEBHOOK_SECRET",
       "SUPABASE_SERVICE_ROLE_KEY",
       "THESMOS_PERM_SOCKET",
+      "UNTOUCHED_SECRET",
+      "URL",
       "USERPROFILE",
       "VAR",
       "VAR_A",
