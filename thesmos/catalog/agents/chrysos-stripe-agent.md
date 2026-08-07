@@ -24,6 +24,11 @@ skills:
   - migration-safety-check
   - database-schema-review
 enabled: true
+agent_kind: specialist
+availability: pro
+marketed: true
+routable: true
+exportable: true
 governance:
   rules:
     - SEC_007

@@ -22,6 +22,11 @@ skills:
   - rate-limit-audit
   - validate-rules
 enabled: true
+agent_kind: specialist
+availability: pro
+marketed: true
+routable: true
+exportable: true
 governance:
   rules:
     - AGNT_001

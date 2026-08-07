@@ -23,6 +23,11 @@ skills:
   - graphql-schema-review
   - refactor-impact-analysis
 enabled: true
+agent_kind: specialist
+availability: pro
+marketed: true
+routable: true
+exportable: true
 governance:
   rules:
     - MCP_001

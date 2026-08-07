@@ -11,6 +11,11 @@ tags:
   - database
   - input-validation
 enabled: true
+agent_kind: reviewer
+availability: internal
+marketed: false
+routable: false
+exportable: false
 model: claude-haiku-4-5-20251001
 ---
 

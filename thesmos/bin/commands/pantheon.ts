@@ -23,6 +23,12 @@ import { logAgentSpawn } from '../../agent-activity.ts';
 import { modelFor } from '../../generated/pantheon-models.ts';
 import { addAgentToRegistry, syncAdapters, installAgent, isIgnoredAgentFile } from '../../agent-lifecycle.ts';
 import { routeTask } from '../../pantheon/router.ts';
+import {
+  computePopulations,
+  loadClassifiedAgents,
+  type AgentPopulations,
+  type ClassifiedAgent,
+} from '../../agent-populations.ts';
 import { executeOrchestration } from '../../pantheon/orchestrate-execute.ts';
 
 // `import.meta.url` is undefined inside a Node SEA (single executable), where
@@ -159,29 +165,37 @@ interface PantheonAgent {
  */
 export function listRoutableAgents(): {
   agents: PantheonAgent[];
-  /** False when the holdback ledger could not be read — see below. */
+  /** False when classification could not be established — see below. */
   holdbackFilterApplied: boolean;
+  /** Canonical population counts, absent when classification failed. */
+  populations?: AgentPopulations;
 } {
-  let heldBack: ReadonlySet<string>;
-  let applied = true;
+  // Availability comes from explicit `agent_kind` / `availability` / `marketed`
+  // frontmatter via the canonical classifier — never from a folder name, a
+  // mythology field, or a separate ledger this function interprets itself.
+  // `loadClassifiedAgents` throws rather than skipping an unclassified agent,
+  // because a silently-skipped agent under-reports a population.
+  let classified: ClassifiedAgent[];
   try {
-    const raw = JSON.parse(readFileSync(join(AGENTS_DIR, '..', 'holdbacks.json'), 'utf8')) as {
-      holdbackAgentIds?: string[];
-    };
-    heldBack = new Set(raw.holdbackAgentIds ?? []);
+    classified = loadClassifiedAgents(join(AGENTS_DIR, '..', '..'));
   } catch {
-    // An unreadable ledger cannot be treated as "nothing is held back". Doing so
-    // silently *widens* availability, which is the one direction an availability
-    // control must never fail in — a held-back agent would become routable
-    // because of a packaging mistake. We cannot enumerate the exclusions without
-    // the file, so the caller is told the filter did not run and can refuse to
-    // present the list as authoritative.
-    heldBack = new Set();
-    applied = false;
+    // Classification unverifiable. Fail closed: report no routable agents and
+    // say the filter did not run, rather than falling back to unfiltered
+    // discovery. Widening availability is the one direction this must never
+    // fail in — an unreadable ledger previously made a held-back agent routable.
+    return { agents: [], holdbackFilterApplied: false };
   }
+
+  const routableIds = new Set(
+    classified
+      .filter((a) => a.marketed && (a.availability === 'free' || a.availability === 'pro'))
+      .map((a) => a.id),
+  );
+
   return {
-    agents: loadPantheonAgents().filter((a) => !heldBack.has(a.id)),
-    holdbackFilterApplied: applied,
+    agents: loadPantheonAgents().filter((a) => routableIds.has(a.id)),
+    holdbackFilterApplied: true,
+    populations: computePopulations(classified),
   };
 }
 

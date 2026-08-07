@@ -22,6 +22,11 @@ skills:
   - onboarding-audit
   - observability-review
 enabled: true
+agent_kind: specialist
+availability: pro
+marketed: true
+routable: true
+exportable: true
 governance:
   rules:
     - GDPR_001

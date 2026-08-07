@@ -151,7 +151,7 @@ const handlers: Record<RuntimeMethod, (params: Record<string, unknown>) => Promi
    * never sees them.
    */
   'pantheon.list': async () => {
-    const { agents, holdbackFilterApplied } = listRoutableAgents();
+    const { agents, holdbackFilterApplied, populations } = listRoutableAgents();
     return {
       agents: agents.map((a) => ({
         id: a.id,
@@ -167,6 +167,9 @@ const handlers: Record<RuntimeMethod, (params: Record<string, unknown>) => Promi
       // False means the holdback ledger was unreadable, so this list may include
       // an agent that should be unavailable. Surfaced rather than swallowed.
       holdbackFilterApplied,
+      // Canonical populations owned by core catalog services — the desktop
+      // never derives or hardcodes these.
+      populations,
     };
   },
 

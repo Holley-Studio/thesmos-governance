@@ -116,9 +116,19 @@ export const runtime = {
       limit,
     }),
   pantheon: () =>
-    call<{ agents: PantheonAgentSummary[]; routableCount: number; holdbackFilterApplied: boolean }>(
-      'pantheon.list',
-    ),
+    call<{
+      agents: PantheonAgentSummary[];
+      routableCount: number;
+      holdbackFilterApplied: boolean;
+      populations?: {
+        availableAgentCount: number;
+        heldBackAgentCount: number;
+        internalReviewerCount: number;
+        catalogAgentCount: number;
+        freeAgentCount: number;
+        proAgentCount: number;
+      };
+    }>('pantheon.list'),
   openProject: (root: string) =>
     call<{ projectRoot: string; memory: RuntimeHealth['memory'] }>('project.open', { root }),
 };
