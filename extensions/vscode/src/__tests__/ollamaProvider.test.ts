@@ -9,6 +9,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { PROVIDER_PRESETS, ProviderManager } from '../chat/providerManager.js';
 import { resetMockConfig, setMockConfig } from '../__mocks__/vscode.js';
+import { probeOllama } from '../chat/ollamaSession.js';
 
 /** Minimal ExtensionContext: globalState + secrets are all ProviderManager touches. */
 function fakeContext(initial?: Record<string, unknown>) {
@@ -143,5 +144,25 @@ describe('existing providers are unchanged', () => {
   it('has no probe for non-native providers', async () => {
     const manager = new ProviderManager(fakeContext({ [PROVIDER_STATE_KEY]: { id: 'anthropic' } }));
     await expect(manager.probeActive()).resolves.toBeUndefined();
+  });
+});
+
+describe('probeOllama', () => {
+  it('reports unavailable with no models when nothing is listening', async () => {
+    // Direct coverage for the exported probe the picker and header both rely on.
+    const probe = await probeOllama('http://127.0.0.1:49999');
+    expect(probe.available).toBe(false);
+    expect(probe.models).toEqual([]);
+    expect(probe.endpoint).toBe('http://127.0.0.1:49999');
+    expect(probe.detail).toMatch(/reachable/i);
+  });
+
+  it('defaults to the loopback endpoint when none is given', async () => {
+    const probe = await probeOllama();
+    expect(probe.endpoint).toBe('http://127.0.0.1:11434');
+  });
+
+  it('never throws for a malformed endpoint', async () => {
+    await expect(probeOllama('not-a-url')).resolves.toMatchObject({ available: false });
   });
 });

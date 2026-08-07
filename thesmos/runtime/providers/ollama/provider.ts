@@ -18,6 +18,7 @@ import {
   type EgressDecision,
   type ToolCallRequest,
 } from '../../governance.js';
+import { randomUUID } from 'node:crypto';
 import { parseEndpoint } from '../../endpoint.js';
 import { ProviderError } from '../../errors.js';
 import type { CouncilPermissionPolicy } from '../../../council/contract.js';
@@ -233,7 +234,10 @@ class OllamaSession implements AgentSession {
     private readonly options: SessionOptions,
     private readonly policy: CouncilPermissionPolicy | undefined,
   ) {
-    this.sessionId = `ollama-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    // randomUUID, not Math.random: this id keys session history and appears in
+    // receipts, so a guessable identifier is a real weakness rather than a
+    // stylistic one.
+    this.sessionId = `ollama-${randomUUID()}`;
     if (options.systemPrompt) {
       this.history.push({ role: 'system', content: options.systemPrompt });
     }

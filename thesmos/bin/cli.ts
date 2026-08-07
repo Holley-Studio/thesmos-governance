@@ -65,6 +65,7 @@ import { cmdTokens } from './commands/tokens.ts';
 import { cmdDebtScan } from './commands/debt.ts';
 import { cmdContext } from './commands/context.ts';
 import { cmdProviders } from './commands/providers.ts';
+import { cmdMemory } from './commands/memory.ts';
 import { cmdCommitLint, cmdCommitCreate } from './commands/commit-lint.ts';
 import { cmdVercelLint } from './commands/vercel-lint.ts';
 import { cmdCiGithubSecurity } from './commands/ci-github-security.ts';
@@ -174,6 +175,14 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'agent:adopt': cmdAgentAdopt,
   'agent:release': cmdAgentRelease,
   'agents': cmdAgents,
+  'memory:list': (argv) => cmdMemory('list', argv),
+  'memory:search': (argv) => cmdMemory('search', argv),
+  'memory:show': (argv) => cmdMemory('show', argv),
+  'memory:add': (argv) => cmdMemory('add', argv),
+  'memory:forget': (argv) => cmdMemory('forget', argv),
+  'memory:index': (argv) => cmdMemory('index', argv),
+  'memory:stats': (argv) => cmdMemory('stats', argv),
+  'memory:doctor': (argv) => cmdMemory('doctor', argv),
   'providers:list': (argv) => cmdProviders('list', argv),
   'providers:doctor': (argv) => cmdProviders('doctor', argv),
   'agents:list': cmdAgentsList,
@@ -547,6 +556,14 @@ CUSTOM AGENTS
     --dry-run --delete
 
 FEDERATED AGENTS
+  memory:list [--all] [--json]     What Thesmos remembers
+  memory:search "<query>" [--json] Governed retrieval (semantic when Ollama is up)
+  memory:show <id>                 One record with full provenance
+  memory:add "<text>" [--type=]    Record a decision or fact
+  memory:forget <id>|--mission=|--repo=  Delete a memory and its embedding
+  memory:index [--rebuild]         Build or refresh embeddings
+  memory:stats [--json]            Counts by scope, type and status
+  memory:doctor                    Store, index and provider health
   providers:list [--json] [--verbose]  Provider reachability and installed models
   providers:doctor [--json]        Same, exits non-zero if a required provider is down
   agents:list [--all] [--json]     List project, user, plugin, and Pantheon agents
