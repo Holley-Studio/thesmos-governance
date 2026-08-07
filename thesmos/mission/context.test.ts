@@ -170,3 +170,74 @@ describe('createMissionContextProvider', () => {
     expect(JSON.stringify(svc.store.all())).toBe(before);
   });
 });
+
+// ── Closed loop: a mission writes what a later mission recalls ────────────────
+
+describe('closed loop', () => {
+  it('a completed mission produces memory that a later mission retrieves', async () => {
+    // The whole point of Phase 4: recall was live, but the store only filled by
+    // hand. This proves the loop closes without a human in it.
+    const { proposeFromHandoff, commitProposals } = await import('../memory/propose.js');
+    const { validateMemoryProposal } = await import('../memory/validate.js');
+
+    const outcomes = commitProposals(
+      svc.store,
+      proposeFromHandoff(
+        {
+          schemaVersion: '1',
+          missionId: 'mission-earlier',
+          taskId: 'task-1',
+          agentId: 'argus',
+          status: 'complete',
+          summary: 'Staging migration repair requires a validated project ref before replay.',
+          evidenceRefs: ['receipt-abc123'],
+          changedFiles: [],
+          commandsRun: [],
+          testResults: [{ name: 'unit', status: 'passed', passed: 10 }],
+          unresolvedRisks: [],
+          recommendedNextTasks: [],
+        },
+        { repoId: 'repo-a' },
+      ),
+      (p) => validateMemoryProposal(p, { secretPatterns: CONFIG_DEFAULTS.secretPatterns }),
+    );
+    expect(outcomes[0].status).toBe('stored');
+
+    // A later, different mission asks about the same subject.
+    const provider = createMissionContextProvider({ root, repoId: 'repo-a' });
+    const context = await provider(mission({ id: 'mission-later' }), binding());
+
+    expect(context).toBeDefined();
+    expect(context!.capsule).toMatch(/validated project ref/i);
+  });
+
+  it('does not leak a harvested memory into another repository', async () => {
+    const { proposeFromHandoff, commitProposals } = await import('../memory/propose.js');
+    const { validateMemoryProposal } = await import('../memory/validate.js');
+
+    commitProposals(
+      svc.store,
+      proposeFromHandoff(
+        {
+          schemaVersion: '1',
+          missionId: 'm',
+          taskId: 't',
+          agentId: 'argus',
+          status: 'complete',
+          summary: 'Staging migration repair requires a validated project ref before replay.',
+          evidenceRefs: ['r1'],
+          changedFiles: [],
+          commandsRun: [],
+          testResults: [],
+          unresolvedRisks: [],
+          recommendedNextTasks: [],
+        },
+        { repoId: 'repo-a' },
+      ),
+      (p) => validateMemoryProposal(p, { secretPatterns: CONFIG_DEFAULTS.secretPatterns }),
+    );
+
+    const provider = createMissionContextProvider({ root, repoId: 'repo-b' });
+    await expect(provider(mission(), binding())).resolves.toBeUndefined();
+  });
+});
