@@ -25,11 +25,21 @@ import { addAgentToRegistry, syncAdapters, installAgent, isIgnoredAgentFile } fr
 import { routeTask } from '../../pantheon/router.ts';
 import { executeOrchestration } from '../../pantheon/orchestrate-execute.ts';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-// Resolve catalog path for both dev (bin/commands/) and bundle (dist/) locations.
+// `import.meta.url` is undefined inside a Node SEA (single executable), where
+// there is no module file to be relative to — passing that to fileURLToPath
+// throws before any command runs. Fall back to the executable's own directory,
+// which is where a packaged build ships its catalog.
+const __dirname = import.meta.url
+  ? dirname(fileURLToPath(import.meta.url))
+  : dirname(process.execPath);
+
+// Resolve catalog path for dev (bin/commands/), bundle (dist/) and packaged
+// (alongside the executable) locations.
 const _agentsDirCandidates = [
   join(__dirname, '../../catalog/agents'), // dev: bin/commands/ → thesmos/
   join(__dirname, '../catalog/agents'),    // bundle: dist/ → thesmos/
+  join(__dirname, 'catalog/agents'),       // packaged: next to the executable
+  join(__dirname, 'resources/catalog/agents'),
 ];
 const AGENTS_DIR = _agentsDirCandidates.find(p => existsSync(p)) ?? _agentsDirCandidates[0];
 
@@ -132,6 +142,47 @@ interface PantheonAgent {
   cursorGlobs: string;
   skillIds: string[];
   body: string;
+}
+
+/**
+ * The routable agent population — the runtime source of truth for mission
+ * selection.
+ *
+ * Discovered dynamically (see `loadPantheonAgents`) and then filtered by
+ * `holdbacks.json`, because a held-back agent must be unavailable everywhere,
+ * not merely absent from marketing. `pantheon:list` deliberately shows the
+ * unfiltered discovery count; anything that *routes* work must use this.
+ *
+ * Exported so surfaces — CLI, desktop, a future daemon — consume one list
+ * instead of each keeping its own. A hardcoded copy is exactly how 25 shipped
+ * agents previously went undiscoverable.
+ */
+export function listRoutableAgents(): {
+  agents: PantheonAgent[];
+  /** False when the holdback ledger could not be read — see below. */
+  holdbackFilterApplied: boolean;
+} {
+  let heldBack: ReadonlySet<string>;
+  let applied = true;
+  try {
+    const raw = JSON.parse(readFileSync(join(AGENTS_DIR, '..', 'holdbacks.json'), 'utf8')) as {
+      holdbackAgentIds?: string[];
+    };
+    heldBack = new Set(raw.holdbackAgentIds ?? []);
+  } catch {
+    // An unreadable ledger cannot be treated as "nothing is held back". Doing so
+    // silently *widens* availability, which is the one direction an availability
+    // control must never fail in — a held-back agent would become routable
+    // because of a packaging mistake. We cannot enumerate the exclusions without
+    // the file, so the caller is told the filter did not run and can refuse to
+    // present the list as authoritative.
+    heldBack = new Set();
+    applied = false;
+  }
+  return {
+    agents: loadPantheonAgents().filter((a) => !heldBack.has(a.id)),
+    holdbackFilterApplied: applied,
+  };
 }
 
 function loadPantheonAgents(): PantheonAgent[] {
