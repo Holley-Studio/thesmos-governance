@@ -1,0 +1,350 @@
+/* Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved. */
+/*
+ * Thesmos Desktop — shell styling.
+ *
+ * Composition is architectural: a colonnade, a plinth, a plane. Sections are
+ * divided by rules and inscribed labels rather than nested cards, so hierarchy
+ * comes from space and typography instead of stacked boxes with shadows.
+ *
+ * Every colour resolves to a token. No component hard-codes a hue, so both
+ * themes stay coherent and a palette change happens in exactly one file.
+ */
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Focus must always be visible — the ring is never removed, only shaped. */
+:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+
+/* ── Shell ─────────────────────────────────────────────────────────────── */
+
+.shell { display: grid; grid-template-columns: 232px 1fr; height: 100%; }
+
+.colonnade {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  padding: var(--s-8) var(--s-4);
+  background: var(--stone-sunken);
+  /* A single vertical rule, like the edge of a wall. */
+  border-right: 1px solid var(--edge);
+}
+
+.wordmark { padding: 0 var(--s-3); }
+
+.wordmark-text {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: var(--tracking-inscription);
+  color: var(--ink);
+}
+
+.wordmark-sub {
+  display: block;
+  margin-top: var(--s-1);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.nav-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.nav-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  background: none;
+  border: 0;
+  border-left: 2px solid transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--dur-quick) var(--ease-settle),
+              border-color var(--dur-quick) var(--ease-settle);
+}
+
+.nav-item:hover { color: var(--ink); }
+
+/* Current location marked by an inscribed edge, not a filled pill. */
+.nav-item[aria-current='page'] {
+  color: var(--ink);
+  border-left-color: var(--authority);
+  font-weight: 500;
+}
+
+.nav-item[aria-disabled='true'] { color: var(--ink-mute); cursor: default; }
+
+.nav-soon {
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.theme-toggle {
+  margin-top: auto;
+  padding: var(--s-2) var(--s-3);
+  background: none;
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--text-meta);
+  cursor: pointer;
+}
+.theme-toggle:hover { color: var(--ink); border-color: var(--authority); }
+
+.main { display: flex; flex-direction: column; min-width: 0; }
+
+.plinth {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-8);
+  padding: var(--s-4) var(--s-8);
+  border-bottom: 1px solid var(--edge);
+  background: var(--stone);
+}
+
+.label {
+  display: block;
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.project-button {
+  margin-top: 2px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--edge-strong);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.project-button:hover { border-bottom-color: var(--authority); }
+
+.plinth-runtime { text-align: right; }
+
+/*
+ * Divine/runtime state.
+ *
+ * Colour comes from the centralized state tokens; the *word* is always present,
+ * so state survives greyscale, colour blindness and screenshots.
+ */
+.runtime-state {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: var(--text-meta);
+  font-weight: 500;
+  color: var(--state-dormant);
+}
+.runtime-state[data-state='active'] { color: var(--state-active); font-weight: var(--state-active-weight); }
+.runtime-state[data-state='blocked'] { color: var(--state-blocked); font-weight: var(--state-blocked-weight); }
+.runtime-state[data-state='complete'] { color: var(--state-complete); font-weight: var(--state-complete-weight); }
+
+.plane { flex: 1; overflow-y: auto; padding: var(--s-12) var(--s-8) var(--s-16); }
+
+/* ── Home ──────────────────────────────────────────────────────────────── */
+
+.home { max-width: 780px; margin: 0 auto; }
+.home-monument { text-align: center; margin-bottom: var(--s-12); }
+
+.hero {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
+  font-weight: 500;
+  letter-spacing: var(--tracking-inscription);
+  color: var(--ink);
+}
+
+.hero-sub {
+  margin: var(--s-3) 0 0;
+  font-size: 1.0625rem;
+  color: var(--ink-soft);
+}
+
+/* The composer is a plane set into the page, not a floating card. */
+.composer {
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--radius-md);
+  background: var(--stone-raised);
+  box-shadow: var(--shadow-plane);
+  overflow: hidden;
+}
+
+.composer-input {
+  display: block;
+  width: 100%;
+  padding: var(--s-6);
+  border: 0;
+  resize: vertical;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.6;
+}
+.composer-input:focus { outline: none; }
+.composer-input::placeholder { color: var(--ink-mute); }
+
+.composer-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-6);
+  border-top: 1px solid var(--edge);
+  background: var(--stone);
+}
+
+.composer-note { font-size: var(--text-meta); color: var(--ink-mute); }
+
+.btn-authority {
+  padding: var(--s-2) var(--s-6);
+  border: 1px solid var(--authority);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--authority-strong);
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  cursor: pointer;
+  transition: background var(--dur-quick) var(--ease-settle);
+}
+.btn-authority:hover:not(:disabled) { background: var(--accent-wash); }
+.btn-authority:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.home-facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-8);
+  margin-top: var(--s-12);
+  padding-top: var(--s-6);
+  border-top: 1px solid var(--edge);
+}
+.fact-value { display: block; margin-top: 2px; font-weight: 500; }
+
+/* ── Sections ──────────────────────────────────────────────────────────── */
+
+.section { max-width: 900px; margin: 0 auto; }
+
+/* Inscribed heading: capitals, wide tracking, a rule beneath. */
+.inscription {
+  margin: 0 0 var(--s-6);
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--edge-strong);
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  font-weight: 500;
+  letter-spacing: var(--tracking-inscription);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.notice { color: var(--ink-mute); font-size: var(--text-meta); margin: var(--s-3) 0; }
+
+.facts { display: grid; grid-template-columns: 200px 1fr; gap: var(--s-3) var(--s-6); margin: 0; }
+.facts dt { color: var(--ink-mute); font-size: var(--text-meta); }
+.facts dd { margin: 0; }
+.mono { font-family: var(--font-mono); font-size: var(--text-meta); word-break: break-all; }
+
+/* ── Providers ─────────────────────────────────────────────────────────── */
+
+.provider { padding: var(--s-6) 0; border-bottom: 1px solid var(--edge); }
+.provider-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-6); }
+.provider-name { margin: 0; font-size: 1.0625rem; font-weight: 600; }
+.provider-meta { display: block; margin-top: 2px; font-size: var(--text-meta); color: var(--ink-mute); }
+
+.model-list { list-style: none; margin: var(--s-4) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-3); }
+.model { padding-left: var(--s-4); border-left: 2px solid var(--edge-strong); }
+.model-id { display: block; font-family: var(--font-mono); font-size: var(--text-meta); }
+.model-meta { display: block; margin-top: 2px; font-size: var(--text-micro); color: var(--ink-mute); }
+
+.unbuilt { margin-top: var(--s-8); padding: var(--s-4) var(--s-6); border-left: 2px solid var(--authority); background: var(--stone-sunken); }
+.unbuilt p { margin: var(--s-2) 0 0; font-size: var(--text-meta); color: var(--ink-soft); line-height: 1.6; }
+
+/* ── Archive ───────────────────────────────────────────────────────────── */
+
+.archive-stats { font-size: var(--text-meta); color: var(--ink-mute); margin: 0 0 var(--s-4); }
+.search-row { display: flex; gap: var(--s-3); margin-bottom: var(--s-6); }
+
+.search-input {
+  flex: 1;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--radius-sm);
+  background: var(--stone-raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+.memory { padding: var(--s-4) 0; border-bottom: 1px solid var(--edge); }
+.memory-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s-4); }
+.memory-type { font-size: var(--text-micro); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-mute); }
+.memory-content { margin: var(--s-2) 0; line-height: 1.6; }
+.memory-prov { margin: 0; font-size: var(--text-micro); color: var(--ink-mute); }
+
+/* ── Pantheon ──────────────────────────────────────────────────────────── */
+
+.rotunda {
+  list-style: none;
+  margin: var(--s-8) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--s-8) var(--s-6);
+}
+
+.god { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--s-2); }
+
+/* Dormant gods are stone. Light enters as state changes. */
+.sigil {
+  width: 48px; height: 48px;
+  stroke: var(--state-dormant);
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke var(--dur-reveal) var(--ease-reveal);
+}
+.god[data-state='active'] .sigil { stroke: var(--state-active); }
+.god[data-state='complete'] .sigil { stroke: var(--state-complete); }
+
+.god-name { font-family: var(--font-display); font-weight: 500; letter-spacing: var(--tracking-label); text-transform: uppercase; font-size: var(--text-meta); }
+.god-domain { font-size: var(--text-micro); color: var(--ink-mute); }
+.god-state { font-size: var(--text-micro); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--state-dormant); }
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 72px 1fr; }
+  .wordmark-sub, .nav-item span:first-child { display: none; }
+  .nav-item { justify-content: center; }
+  .home-facts { grid-template-columns: 1fr; gap: var(--s-4); }
+  .plane { padding: var(--s-8) var(--s-4); }
+}

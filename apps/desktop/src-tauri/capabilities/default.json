@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimum surface Thesmos Desktop needs. The webview gets no filesystem, shell, process or arbitrary network capability — every privileged operation goes through the two commands in lib.rs, and from there through Thesmos governance.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:allow-open"
+  ]
+}
