@@ -161,7 +161,7 @@ function loadPantheonAgents(): PantheonAgent[] {
 }
 
 function parsePantheonAgent(raw: string, fallbackId: string): PantheonAgent | null {
-  const fmMatch = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (!fmMatch) return null;
   const fm = fmMatch[1]!;
   const body = fmMatch[2]!.trim();
@@ -509,7 +509,7 @@ function cmdList(agents: PantheonAgent[]): void {
 
 /** True when a file parses as a Claude Code agent (frontmatter with name+description). */
 function isAgentFileContent(content: string): boolean {
-  const fm = content.match(/^---\n([\s\S]*?)\n---\n/);
+  const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
   if (!fm) return false;
   return /^name:\s*\S/m.test(fm[1]!) && /^description:\s*\S/m.test(fm[1]!);
 }
