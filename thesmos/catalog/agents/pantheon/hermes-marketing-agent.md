@@ -21,6 +21,11 @@ skills:
   - analytics-compliance
   - seo-audit
 enabled: true
+agent_kind: specialist
+availability: pro
+marketed: true
+routable: true
+exportable: true
 governance:
   rules:
     - GDPR_002

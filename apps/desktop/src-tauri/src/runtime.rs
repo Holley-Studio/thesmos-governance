@@ -29,6 +29,7 @@ const ALLOWED_METHODS: &[&str] = &[
     "memory.search",
     "memory.stats",
     "project.open",
+    "pantheon.list",
 ];
 
 #[derive(Debug, Serialize, Deserialize)]

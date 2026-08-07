@@ -14,3 +14,7 @@ src-tauri/resources/runtime.cjs
 # mobile targets are ever added.
 src-tauri/icons/android/
 src-tauri/icons/ios/
+
+# Catalog staged into resources at build time from thesmos/catalog — source of
+# truth lives there, not here.
+src-tauri/resources/catalog/

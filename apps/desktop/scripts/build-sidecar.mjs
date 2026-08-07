@@ -24,7 +24,7 @@
 import { build } from 'esbuild';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -53,6 +53,32 @@ await build({
   logLevel: 'info',
 });
 console.log('[sidecar] bundled →', bundlePath);
+
+// ── 1b. Stage the agent catalog ──────────────────────────────────────────────
+// The runtime classifies agents from `.md` frontmatter, so the catalog must
+// ship beside the executable. Staged on every build rather than once by hand:
+// a stale copy fails classification, and the runtime then fails closed and
+// reports zero routable agents — correct, but a confusing way to discover that
+// a build step was skipped.
+const catalogSrc = resolve(appDir, '..', '..', 'thesmos', 'catalog');
+const catalogDst = join(outDir, 'catalog');
+
+function copyMarkdownTree(src, dst) {
+  mkdirSync(dst, { recursive: true });
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
+    const from = join(src, entry.name);
+    const to = join(dst, entry.name);
+    if (entry.isDirectory()) copyMarkdownTree(from, to);
+    else if (entry.name.endsWith('.md')) copyFileSync(from, to);
+  }
+}
+
+rmSync(catalogDst, { recursive: true, force: true });
+copyMarkdownTree(join(catalogSrc, 'agents'), join(catalogDst, 'agents'));
+for (const ledger of ['holdbacks.json', 'free-agents.json']) {
+  copyFileSync(join(catalogSrc, ledger), join(catalogDst, ledger));
+}
+console.log('[sidecar] catalog staged →', catalogDst);
 
 // ── 2. Seal into a single executable ─────────────────────────────────────────
 const seaConfig = join(workDir, 'sea-config.json');
