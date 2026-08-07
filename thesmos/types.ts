@@ -187,6 +187,20 @@ export interface ThesmosConfig {
     requiredIdeDirs: string[];
   };
 
+  /**
+   * Optional execution providers Thesmos drives natively through
+   * `thesmos/runtime`. Absent means defaults apply — an optional provider that
+   * is simply not running must never fail a gate.
+   */
+  providers?: {
+    ollama?: {
+      /** true makes it required; false hides it; omitted means available-if-running. */
+      enabled?: boolean;
+      /** Loopback by default. Non-loopback is governed as egress on the `web` channel. */
+      baseUrl?: string;
+    };
+  };
+
   // Design governance
   design?: DesignConfig;
 

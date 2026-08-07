@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ClaudeSession, type SessionEvent, type PermissionMode } from './claudeSession.js';
 import { CodexSession } from './codexSession.js';
+import { OllamaChatSession } from './ollamaSession.js';
 import { CheckpointManager } from './checkpointManager.js';
 import { GodMapper, type GodEntry } from './godMapper.js';
 import { PermissionBridge, type PermissionRequest } from './permissionBridge.js';
@@ -27,8 +28,13 @@ import { runAdvise, shouldGate, budgetState, type DispatchAdvice } from './dispa
 
 interface GodUiInfo extends GodEntry {}
 
-/** Both classes share the id/running/start/send/stop/dispose surface the controller needs. */
-type AgentSession = ClaudeSession | CodexSession;
+/**
+ * Every session class shares the id/running/start/send/stop/dispose surface the
+ * controller needs — the contract now defined in `thesmos/runtime` as
+ * `AgentSession`. Kept as a union rather than the core interface because the
+ * CLI-backed classes predate it and carry extra members the controller uses.
+ */
+type AgentSession = ClaudeSession | CodexSession | OllamaChatSession;
 
 type UiItem =
   | { kind: 'user'; text: string; checkpointId?: string; queued?: boolean }
@@ -262,6 +268,16 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       });
       return null;
     }
+    if (preset.native === 'ollama') {
+      // Executed by Thesmos through thesmos/runtime — no CLI subprocess, no
+      // compatibility proxy, no API key. Governance (endpoint egress, tool
+      // authority) is applied inside the provider, not here.
+      return new OllamaChatSession(this.workspaceRoot, (e) => this.onSessionEvent(e), {
+        model: this.modelId || undefined,
+        baseUrl: this.providers.ollamaBaseUrl,
+        systemPrompt: PANTHEON_SYSTEM_PROMPT,
+      });
+    }
     if (preset.cli === 'codex') {
       // Codex's own permission model (--ask-for-approval) is set inside
       // CodexSession — the in-chat permission dialog is Claude-only for now.
@@ -323,12 +339,32 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
 
   private broadcastProviderInfo(): void {
     const preset = this.providers.active;
+    // Static presets resolve immediately; native providers are discovered live,
+    // so the header paints with what we have and refreshes when the probe lands
+    // rather than blocking the UI on a service that may not be running.
     this.broadcast({
       type: 'providerInfo',
       label: preset.label,
       models: preset.models,
       currentModel: this.modelId,
     });
+    if (!preset.native) return;
+
+    void this.providers
+      .modelsForActive()
+      .then((models) => {
+        // The user may have switched providers while the probe was in flight.
+        if (this.providers.active.id !== preset.id) return;
+        this.broadcast({
+          type: 'providerInfo',
+          label: preset.label,
+          models,
+          currentModel: this.modelId,
+        });
+      })
+      .catch(() => {
+        /* Discovery failure already surfaces through the picker's warning. */
+      });
   }
 
   /** Lazily create and start the permission bridge for this conversation. */

@@ -25,12 +25,19 @@
  */
 
 import * as vscode from 'vscode';
+import { probeOllama, OLLAMA_DEFAULT_ENDPOINT } from './ollamaSession.js';
 
 export interface ProviderPreset {
   id: string;
   label: string;
   /** Which CLI binary drives this provider. Defaults to 'claude'. */
   cli?: 'claude' | 'codex';
+  /**
+   * Native providers Thesmos executes itself through `thesmos/runtime`, with no
+   * CLI subprocess and no Anthropic-compatible shim in the path. Their models
+   * are discovered live rather than listed here.
+   */
+  native?: 'ollama';
   /** Anthropic-compatible endpoint; undefined = provider's own default. */
   baseUrl?: string;
   /** Model choices shown in the chat header for this provider. */
@@ -63,6 +70,16 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     detail:
       'Your ChatGPT/Codex subscription login via the official codex CLI. ' +
       'Note: OpenAI has not published explicit terms for third-party apps built on a subscription-authenticated Codex CLI — you are running the official binary yourself, but link with that in mind.',
+  },
+  {
+    id: 'ollama',
+    label: '◉ Ollama — Local',
+    native: 'ollama',
+    // Populated live from the running service; a hardcoded list would offer
+    // models the user has not pulled and hide the ones they have.
+    models: [],
+    needsKey: false,
+    detail: 'Local open models via the Ollama service — no API key, nothing leaves your machine.',
   },
   {
     id: 'glm',
@@ -138,6 +155,10 @@ export class ProviderManager {
    */
   async envForActive(): Promise<Record<string, string> | undefined | null> {
     const preset = this.active;
+    // Native providers are executed by Thesmos itself. They must never be
+    // handed ANTHROPIC_* env — routing them through a Claude-compatible shim is
+    // exactly the architecture this provider exists to avoid.
+    if (preset.native) return undefined;
     if (!preset.baseUrl) return undefined;
     const key = await this.context.secrets.get(secretKey(preset.id));
     if (!key) return null;
@@ -175,6 +196,23 @@ export class ProviderManager {
         .filter(Boolean);
     }
 
+    if (preset.native === 'ollama') {
+      // Probe before committing so the user learns the service is down at the
+      // moment they choose it, not on their first prompt. Selection is still
+      // allowed — they may be about to start it — and we never install or pull
+      // anything on their behalf.
+      const probe = await probeOllama(this.ollamaBaseUrl);
+      if (!probe.available) {
+        void vscode.window.showWarningMessage(
+          `Ollama isn't reachable at ${probe.endpoint}. Start Ollama, then retry.`,
+        );
+      } else if (probe.models.length === 0) {
+        void vscode.window.showWarningMessage(
+          `Ollama is running at ${probe.endpoint} but has no models installed. Pull one with \`ollama pull <model>\`.`,
+        );
+      }
+    }
+
     if (preset.cli === 'codex') {
       // Subscription login owned entirely by `codex login`'s own OAuth flow —
       // we never see a token, so there is nothing for us to store or manage.
@@ -203,6 +241,42 @@ export class ProviderManager {
 
     await this.context.globalState.update(STATE_KEY, state);
     return true;
+  }
+
+  /**
+   * Models to show for the active provider.
+   *
+   * Native providers are asked at call time: what a user has pulled is a fact
+   * about their machine, not something a preset can know. Static presets return
+   * their declared list unchanged, so Claude and Codex behaviour is untouched.
+   */
+  async modelsForActive(): Promise<Array<{ id: string; label: string }>> {
+    const preset = this.active;
+    if (preset.native !== 'ollama') return preset.models;
+
+    const probe = await probeOllama(this.ollamaBaseUrl);
+    if (!probe.available) return [];
+    return probe.models.map((m) => ({
+      id: m.id,
+      // Surface the size when Ollama reported it — picking between a 4B and a
+      // 70B is the main decision here, and the id alone rarely makes it obvious.
+      label: m.parameterSize ? `${m.id} (${m.parameterSize})` : m.id,
+    }));
+  }
+
+  /** Configured Ollama endpoint. Loopback default; see `.thesmos/config.json`. */
+  get ollamaBaseUrl(): string {
+    const configured = vscode.workspace
+      .getConfiguration('thesmos')
+      .get<string>('providers.ollama.baseUrl');
+    return configured?.trim() || OLLAMA_DEFAULT_ENDPOINT;
+  }
+
+  /** Reachability for the active native provider, for status messaging. */
+  async probeActive(): Promise<{ available: boolean; endpoint: string; detail?: string } | undefined> {
+    if (this.active.native !== 'ollama') return undefined;
+    const probe = await probeOllama(this.ollamaBaseUrl);
+    return { available: probe.available, endpoint: probe.endpoint, detail: probe.detail };
   }
 
   /** Remove a linked key (used by the unlink command). */

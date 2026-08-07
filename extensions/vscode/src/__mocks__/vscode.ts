@@ -60,14 +60,46 @@ export function getLastMockWatcher(): MockFileSystemWatcher | null {
   return _lastWatcher;
 }
 
+/** Settings backing `workspace.getConfiguration`. Tests set keys directly. */
+const _config = new Map<string, unknown>();
+
+export function setMockConfig(key: string, value: unknown): void {
+  _config.set(key, value);
+}
+
+export function resetMockConfig(): void {
+  _config.clear();
+}
+
 export const workspace = {
   createFileSystemWatcher: (_pattern: unknown): MockFileSystemWatcher => {
     _lastWatcher = new MockFileSystemWatcher();
     return _lastWatcher;
   },
+  getConfiguration: (section?: string) => ({
+    get: <T>(key: string): T | undefined =>
+      _config.get(section ? `${section}.${key}` : key) as T | undefined,
+  }),
 };
 
+/** Messages surfaced during a test, so assertions can check what the user saw. */
+export const shownMessages: Array<{ level: string; message: string }> = [];
+
+export function resetShownMessages(): void {
+  shownMessages.length = 0;
+}
+
 export const window = {
-  showErrorMessage: (_msg: string) => Promise.resolve(undefined),
-  showInformationMessage: (_msg: string) => Promise.resolve(undefined),
+  showErrorMessage: (msg: string) => {
+    shownMessages.push({ level: 'error', message: msg });
+    return Promise.resolve(undefined);
+  },
+  showInformationMessage: (msg: string) => {
+    shownMessages.push({ level: 'info', message: msg });
+    return Promise.resolve(undefined);
+  },
+  showWarningMessage: (msg: string) => {
+    shownMessages.push({ level: 'warning', message: msg });
+    return Promise.resolve(undefined);
+  },
 };
