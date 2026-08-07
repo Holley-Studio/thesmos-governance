@@ -39,7 +39,7 @@ interface TeamFrontmatter {
 function parseTeamFile(filePath: string): { frontmatter: TeamFrontmatter; body: string } | null {
   try {
     const raw = readFileSync(filePath, 'utf8');
-    const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+    const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
     if (!match) return null;
 
     const yamlBlock = match[1] ?? '';
@@ -108,7 +108,7 @@ function validateTeamSequence(sequence: string[]): string[] {
 
 /** Extract fenced Zeus prompt — allows optional prose between heading and opening fence. */
 export function extractZeusPrompt(body: string): string {
-  const section = body.match(/## Zeus orchestration prompt[\s\S]*?```\n([\s\S]*?)```/);
+  const section = body.match(/## Zeus orchestration prompt[\s\S]*?```\r?\n([\s\S]*?)```/);
   return section?.[1]?.trim() ?? '';
 }
 
