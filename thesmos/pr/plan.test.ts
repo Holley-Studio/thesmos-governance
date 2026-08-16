@@ -90,6 +90,34 @@ describe('computePlan', () => {
     expect(three!.reason).not.toBe('CYCLE');
   });
 
+  it('halts a PR as OBSOLETE when every file it changes is gone from the target', () => {
+    // Mirrors the #9/#6 case: a PR bumping a dependency file a merged PR has
+    // already deleted. Unmergeable and pointless — close it, don't merge it.
+    // pr()'s default files (package-lock.json only) classify as reversible,
+    // so a non-empty halted[] here can only be the OBSOLETE check firing.
+    const plan = computePlan(
+      [pr(9, 'dep', 'main')],
+      { ...opts, pathsOnTarget: new Set(['some-other-file.txt']) },
+    );
+    expect(plan.waves.flat()).toEqual([]);
+    expect(plan.halted[0].reason).toBe('OBSOLETE');
+  });
+
+  it('does not halt a PR as OBSOLETE when at least one changed file still exists', () => {
+    const plan = computePlan(
+      [pr(9, 'dep', 'main')],
+      { ...opts, pathsOnTarget: new Set(['package-lock.json']) },
+    );
+    expect(plan.waves.flat().map((e) => e.number)).toEqual([9]);
+    expect(plan.halted).toEqual([]);
+  });
+
+  it('skips the OBSOLETE check entirely when pathsOnTarget is not supplied, rather than treating "no data" as "everything is obsolete"', () => {
+    const plan = computePlan([pr(9, 'dep', 'main')], opts); // no pathsOnTarget
+    expect(plan.waves.flat().map((e) => e.number)).toEqual([9]);
+    expect(plan.halted).toEqual([]);
+  });
+
   it('names every branch a red base blocks in a non-linear stack, leaving an unrelated tree untouched', () => {
     const plan = computePlan([
       pr(100, 'runtime', 'main', { mergeStateStatus: 'UNSTABLE' }),

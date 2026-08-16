@@ -5,6 +5,7 @@
  */
 import { buildGraph } from './graph.ts';
 import { classify, type Reversibility } from './classify.ts';
+import { detectObsolete } from './lock.ts';
 import type { PullRequest } from './types.ts';
 
 export type HaltReason =
@@ -18,6 +19,14 @@ export interface PlanOptions {
   defaultBranch: string;
   blockers: Set<number>;
   autonomy: 'reversible' | 'recoverable' | 'all';
+  /**
+   * Every path that exists on the target branch. When supplied, a PR whose
+   * changed files are all absent here is halted as OBSOLETE rather than
+   * planned. Left undefined, the check is skipped entirely — never pass an
+   * empty set to mean "nothing to compare against": detectObsolete would
+   * then read every PR with any files as obsolete.
+   */
+  pathsOnTarget?: Set<string>;
 }
 
 const ALLOWED: Record<PlanOptions['autonomy'], Reversibility[]> = {
@@ -92,6 +101,10 @@ export function computePlan(prs: PullRequest[], opts: PlanOptions): MergePlan {
     if (blocked.has(pr.number)) continue;
 
     if (opts.blockers.has(pr.number)) { halt(pr.number, 'BLOCKER', 'Thesmos BLOCKER finding'); continue; }
+    if (opts.pathsOnTarget && detectObsolete(pr, opts.pathsOnTarget)) {
+      halt(pr.number, 'OBSOLETE', 'every file it changes is already gone from main — close it');
+      continue;
+    }
     if (pr.mergeStateStatus === 'DIRTY') { halt(pr.number, 'DIRTY', 'merge conflict — needs a human'); continue; }
     if (pr.mergeStateStatus === 'UNSTABLE' || pr.mergeStateStatus === 'BLOCKED') {
       halt(pr.number, 'RED_BASE', 'checks are failing'); continue;

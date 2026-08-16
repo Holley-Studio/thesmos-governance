@@ -64,6 +64,38 @@ export function detectDefaultBranch(gh: GhRunner): string {
   return name || DEFAULT_BRANCH_FALLBACK;
 }
 
+/**
+ * Every path present on `branch`, for computePlan's OBSOLETE check
+ * (detectObsolete in ../../pr/lock.ts). Returns undefined — never an empty
+ * set — whenever the result cannot be trusted: the gh call failed, the
+ * response was not parseable, GitHub reports the tree as `truncated` (it
+ * caps recursive listings for very large repos, and a partial listing here
+ * would make real-but-unlisted files look deleted), or the listing came
+ * back empty. detectObsolete flags a PR once none of its files are found in
+ * this set, so an empty set would read every PR with any changed files as
+ * obsolete — undefined disables the check instead, which is the only safe
+ * failure mode for a check whose job is to recommend closing a PR outright.
+ */
+export function fetchPathsOnTarget(gh: GhRunner, branch: string): Set<string> | undefined {
+  const res = gh([
+    'api', `repos/{owner}/{repo}/git/trees/${branch}?recursive=1`,
+    '--jq', '{truncated: .truncated, paths: [.tree[] | select(.type=="blob") | .path]}',
+  ]);
+  if (!res.ok) return undefined;
+
+  let parsed: { truncated?: boolean; paths?: unknown };
+  try {
+    parsed = JSON.parse(res.stdout) as { truncated?: boolean; paths?: unknown };
+  } catch {
+    return undefined;
+  }
+
+  if (parsed.truncated) return undefined;
+  if (!Array.isArray(parsed.paths) || parsed.paths.length === 0) return undefined;
+
+  return new Set(parsed.paths as string[]);
+}
+
 /** Pure formatter for `pr:explain <number>` — no gh calls, so it's directly testable. */
 export function formatExplain(raw: string | undefined, prs: PullRequest[], plan: MergePlan): string {
   const n = Number(raw);
@@ -103,7 +135,8 @@ export function runMerge(
 ): { merged: number[]; failed: number[] } {
   const prs = fetchPullRequests(deps.gh);
   const defaultBranch = detectDefaultBranch(deps.gh);
-  const plan = computePlan(prs, { defaultBranch, blockers: new Set(), autonomy: 'recoverable' });
+  const pathsOnTarget = fetchPathsOnTarget(deps.gh, defaultBranch);
+  const plan = computePlan(prs, { defaultBranch, blockers: new Set(), autonomy: 'recoverable', pathsOnTarget });
 
   const waves = opts.wave === 'all' ? plan.waves : [plan.waves[opts.wave] ?? []];
   const merged: number[] = [];
@@ -328,7 +361,8 @@ export function runPr(argv: string[], deps: PrDeps): void {
 
   const prs = fetchPullRequests(deps.gh);
   const defaultBranch = detectDefaultBranch(deps.gh);
-  const plan = computePlan(prs, { defaultBranch, blockers: new Set(), autonomy: 'recoverable' });
+  const pathsOnTarget = fetchPathsOnTarget(deps.gh, defaultBranch);
+  const plan = computePlan(prs, { defaultBranch, blockers: new Set(), autonomy: 'recoverable', pathsOnTarget });
 
   if (sub === 'explain') {
     deps.write(formatExplain(argv[1], prs, plan));

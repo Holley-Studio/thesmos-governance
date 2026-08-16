@@ -207,6 +207,104 @@ describe('runPr — pr:explain formatting is actually used for a PR that was nev
   });
 });
 
+// ── runPr — OBSOLETE wiring: the plan actually fetches the target branch's tree ──
+//
+// Task 10 built detectObsolete as a pure function in thesmos/pr/lock.ts, but
+// a pure function nobody calls in production is dead code. These tests
+// prove runPr itself (not just detectObsolete in isolation) fetches the
+// target branch's file listing via gh and threads it into computePlan as
+// pathsOnTarget, and that a lookup gh can't answer degrades safely — never
+// silently marks every open PR obsolete.
+
+const treeJson = (paths: string[], truncated = false): string => JSON.stringify({ truncated, paths });
+
+/** A GhRunner answering `gh repo view`, `gh pr list`, and the git-trees lookup used for pathsOnTarget. */
+function fakeGhWithTree(
+  defaultBranch: string,
+  prListJson: string,
+  tree: { ok: boolean; stdout?: string },
+): GhRunner {
+  return (args) => {
+    if (args[0] === 'repo') return { ok: true, stdout: `${defaultBranch}\n`, stderr: '' };
+    if (args[0] === 'api' && args[1]?.includes('git/trees')) {
+      return { ok: tree.ok, stdout: tree.stdout ?? '', stderr: tree.ok ? '' : 'HTTP 404' };
+    }
+    return { ok: true, stdout: prListJson, stderr: '' };
+  };
+}
+
+describe('runPr — OBSOLETE fires end-to-end through pr:queue via a real gh-shaped tree lookup', () => {
+  it('halts a PR whose only changed file is absent from the fetched target-branch tree', () => {
+    // Mirrors the #9/#6 case from the spec: a PR bumping a workflow file a
+    // merged PR has already deleted.
+    const prListJson = ghPrListJson([
+      { number: 9, title: 'chore(deps): bump codeql-action', baseRefName: 'main', headRefName: 'dep', files: ['.github/workflows/codeql.yml'] },
+    ]);
+    const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson(['.github/workflows/ci.yml', 'README.md']) });
+
+    let out = '';
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+
+    expect(out).toMatch(/✗ #9/);
+    expect(out).toMatch(/files it changes no longer exist/);
+    expect(out).not.toMatch(/ready to merge/);
+  });
+
+  it('never touches a PR whose changed file is still present in the fetched tree', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson(['package-lock.json', 'README.md']) });
+
+    let out = '';
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+
+    expect(out).toContain('✓ 1 ready to merge');
+  });
+});
+
+describe('runPr — a failed or unusable tree lookup never marks every PR obsolete', () => {
+  it('still plans a normal PR when the git-trees gh call fails outright', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const gh = fakeGhWithTree('main', prListJson, { ok: false });
+
+    let out = '';
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+
+    expect(out).toContain('✓ 1 ready to merge');
+    expect(out).not.toMatch(/no longer exist/);
+  });
+
+  it('still plans a normal PR when gh reports the tree as truncated', () => {
+    // GitHub truncates very large recursive tree listings — a truncated
+    // response cannot be trusted to prove absence, so it must be treated
+    // the same as a failed lookup, not as ground truth.
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson(['package-lock.json'], true) });
+
+    let out = '';
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+
+    expect(out).toContain('✓ 1 ready to merge');
+  });
+
+  it('still plans a normal PR when gh returns an empty tree', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson([]) });
+
+    let out = '';
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+
+    expect(out).toContain('✓ 1 ready to merge');
+  });
+});
+
 describe('parseWaveArg', () => {
   it('defaults to wave 0 when no flag is given', () => {
     // Number(undefined) is NaN, and NaN ?? 0 stays NaN because ?? only
