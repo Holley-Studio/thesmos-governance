@@ -147,34 +147,64 @@ export function parseRangeArg(argv: string[]): number {
 }
 
 /**
+ * A check run's conclusion is null while it is still queued or in progress
+ * — GitHub only sets it once status is "completed". Anything not in this
+ * set (an unrecognized or future conclusion string) is treated as failing,
+ * the same conservative default the original count-only version used.
+ */
+const PASSING_CONCLUSIONS = new Set(['success', 'neutral', 'skipped']);
+const PENDING_MARKER = 'pending';
+
+/**
  * Whether main is currently red, read through the GitHub Checks API
  * (`checks: read`) rather than the legacy commit-status endpoint
  * (`statuses: read`): this repo's CI runs as GitHub Actions jobs, which
  * report results through Check Runs, not classic commit statuses — reading
  * the status endpoint here would always see an empty result and pr:watch
- * would never fire. 'unknown' on any lookup failure (bad response, gh
- * error, non-numeric output): watch must never guess a color it can't
- * verify, because a wrong guess of 'red' triggers a real revert.
+ * would never fire.
+ *
+ * Returns four states, not three:
+ *   'red'     — at least one check run has already concluded as a failure.
+ *   'pending' — nothing has failed yet, but at least one check run is still
+ *               queued/in_progress (conclusion is null). This is NOT green:
+ *               thesmos-watch.yml fires on the same push event ci.yml does,
+ *               and watch is a single `gh api` call against a multi-job,
+ *               multi-minute matrix build — it will typically finish while
+ *               CI is still running. Reading that as green would mean
+ *               auto-revert systematically never fires on the push that
+ *               triggered it, which is the one failure mode this whole
+ *               mechanism exists to catch.
+ *   'green'   — every check run has concluded, and none failed.
+ *   'unknown' — the API call itself failed, or nothing came back at all
+ *               (no check runs reported for this commit). Also the state
+ *               for any response watch can't parse — it must never guess a
+ *               color it can't verify, because a wrong guess of 'red'
+ *               triggers a real revert and a wrong guess of 'green' means
+ *               a real regression goes unreverted.
  */
-export function mainCheckStatus(gh: GhRunner, sha: string): 'green' | 'red' | 'unknown' {
+export function mainCheckStatus(gh: GhRunner, sha: string): 'green' | 'red' | 'pending' | 'unknown' {
   const res = gh([
     'api', `repos/{owner}/{repo}/commits/${sha}/check-runs`,
-    '--jq', '[.check_runs[] | select(.conclusion != null and .conclusion != "success" and .conclusion != "neutral" and .conclusion != "skipped")] | length',
+    '--jq', `.check_runs[] | (.conclusion // "${PENDING_MARKER}")`,
   ]);
   if (!res.ok) return 'unknown';
-  const trimmed = res.stdout.trim();
-  // Number('') is 0, not NaN — an empty response must not silently read as
-  // "0 failing checks" (green). Only a real numeric answer counts.
-  if (trimmed === '') return 'unknown';
-  const n = Number(trimmed);
-  if (!Number.isFinite(n)) return 'unknown';
-  return n > 0 ? 'red' : 'green';
+
+  const conclusions = res.stdout.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (conclusions.length === 0) return 'unknown';
+
+  let anyPending = false;
+  for (const c of conclusions) {
+    if (c === PENDING_MARKER) { anyPending = true; continue; }
+    if (!PASSING_CONCLUSIONS.has(c)) return 'red'; // a real failure outranks any pending check
+  }
+  return anyPending ? 'pending' : 'green';
 }
 
 export type WatchResult =
   | { status: 'unreadable-history' }
   | { status: 'no-history' }
   | { status: 'unknown' }
+  | { status: 'pending' }
   | { status: 'green' }
   | { status: 'no-culprit' }
   | { status: 'reverted'; pr: number }
@@ -201,6 +231,11 @@ export function runWatch(
 
   const status = mainCheckStatus(deps.gh, range[0]);
   if (status === 'unknown') return { status: 'unknown' };
+  // Pending must never fall through to the ledger/revert path: outstanding
+  // checks are not evidence of anything yet, and treating them as green
+  // would mean auto-revert silently never fires on the push that triggered
+  // watch — see mainCheckStatus's doc comment.
+  if (status === 'pending') return { status: 'pending' };
   if (status === 'green') return { status: 'green' };
 
   const culprit = chooseCulprit(readEntries(root), range);
@@ -216,6 +251,7 @@ export function formatWatchResult(result: WatchResult): string {
     case 'unreadable-history': return '  Could not read the recent history of main; doing nothing.\n';
     case 'no-history': return '  main has no commit history to check; doing nothing.\n';
     case 'unknown': return '  Could not tell whether main is currently green or red; doing nothing.\n';
+    case 'pending': return "  main's checks are still running; nothing to judge yet.\n";
     case 'green': return '  main is currently green. Nothing to do.\n';
     case 'no-culprit': return '  Nothing of ours in the failing range.\n';
     case 'reverted': return `  ✓ reverted #${result.pr} — main went red after it merged\n`;

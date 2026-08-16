@@ -374,15 +374,49 @@ describe('parseRangeArg', () => {
   });
 });
 
+// mainCheckStatus is driven by realistic Checks API payloads — one
+// conclusion string per check run, exactly what
+// `.check_runs[] | (.conclusion // "pending")` actually prints (verified
+// against a real `gh api` call: gh's --jq output is raw/unquoted, matching
+// jq -r, not JSON-encoded) — not a pre-reduced count. A count-based mock
+// can't distinguish "0 failures, all settled" from "0 failures, one still
+// running", which is exactly the bug this rule exists to catch.
 describe('mainCheckStatus', () => {
-  it('reports red when the Checks API reports at least one failing check run', () => {
-    const gh: GhRunner = () => ({ ok: true, stdout: '1\n', stderr: '' });
+  it('reports green when every check run has concluded successfully', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'success\nsuccess\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('green');
+  });
+
+  it('reports red when at least one check run concluded as a failure', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'success\nfailure\n', stderr: '' });
     expect(mainCheckStatus(gh, 'abc123')).toBe('red');
   });
 
-  it('reports green when no check run failed', () => {
-    const gh: GhRunner = () => ({ ok: true, stdout: '0\n', stderr: '' });
-    expect(mainCheckStatus(gh, 'abc123')).toBe('green');
+  it('reports red for any concluded-but-not-passing conclusion, not just "failure" literally', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'cancelled\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('red');
+  });
+
+  it('reports pending, not green, when a settled success sits alongside a still-running check run', () => {
+    // conclusion is null while a check run is queued/in_progress — GitHub
+    // only sets it once status is "completed". The real jq filter maps
+    // that null to the literal string "pending". thesmos-watch.yml fires
+    // on the same push event a multi-job, multi-minute ci.yml matrix
+    // reacts to, and watch is a single fast `gh api` call, so this mixed
+    // shape — one check already green, others still running — is the
+    // *normal* case on a real push, not an edge case.
+    const gh: GhRunner = () => ({ ok: true, stdout: 'success\npending\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('pending');
+  });
+
+  it('reports pending when every check run is still queued or in progress', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'pending\npending\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('pending');
+  });
+
+  it('reports red even when a failure is mixed with still-pending checks — a real failure outranks a pending one', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'pending\nfailure\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('red');
   });
 
   it('reports unknown when the API call itself fails, rather than guessing a color', () => {
@@ -390,7 +424,7 @@ describe('mainCheckStatus', () => {
     expect(mainCheckStatus(gh, 'abc123')).toBe('unknown');
   });
 
-  it('reports unknown on a non-numeric response instead of letting NaN read as falsy-green', () => {
+  it('reports unknown when no check runs were reported for the commit at all', () => {
     const gh: GhRunner = () => ({ ok: true, stdout: '', stderr: '' });
     expect(mainCheckStatus(gh, 'abc123')).toBe('unknown');
   });
@@ -402,6 +436,7 @@ describe('formatWatchResult', () => {
       [{ status: 'unreadable-history' }, /could not read.*history/i],
       [{ status: 'no-history' }, /no commit history/i],
       [{ status: 'unknown' }, /could not tell whether main/i],
+      [{ status: 'pending' }, /still running/i],
       [{ status: 'green' }, /currently green/i],
       [{ status: 'no-culprit' }, /nothing of ours/i],
       [{ status: 'reverted', pr: 12 }, /reverted #12/],
@@ -420,13 +455,15 @@ function freshWatchRoot(): string {
 }
 
 /** A GhRunner covering the calls pr:watch makes: the recent-commit list, the
- * check-runs lookup for a given sha, and (when a revert is warranted) `gh pr
- * revert` / `gh pr merge`, matching performRevert's own expectations. */
+ * check-runs lookup for a given sha (a realistic one-conclusion-per-line
+ * payload, matching `.check_runs[] | (.conclusion // "pending")`, not a
+ * pre-reduced count), and (when a revert is warranted) `gh pr revert` /
+ * `gh pr merge`, matching performRevert's own expectations. */
 function fakeWatchGh(opts: { shas: string[]; failingShas: Set<string> }): GhRunner {
   return (args) => {
     if (args[0] === 'api' && args[1]?.includes('/check-runs')) {
       const sha = args[1].split('/commits/')[1]?.split('/check-runs')[0];
-      return { ok: true, stdout: `${opts.failingShas.has(sha ?? '') ? 1 : 0}\n`, stderr: '' };
+      return { ok: true, stdout: `${opts.failingShas.has(sha ?? '') ? 'failure' : 'success'}\n`, stderr: '' };
     }
     if (args[0] === 'api' && args[1]?.includes('/commits?')) {
       return { ok: true, stdout: opts.shas.join('\n') + '\n', stderr: '' };
@@ -453,6 +490,31 @@ describe('runPr — pr:watch does nothing when main is green', () => {
     runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow });
 
     expect(out).toMatch(/green/i);
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
+  });
+});
+
+describe('runPr — pr:watch treats outstanding checks as pending, never as green', () => {
+  it('does not consult the ledger or revert while a check run is still in progress', () => {
+    // The exact shape watch will typically see on a real push: this repo's
+    // ci.yml runs a multi-job, multi-minute matrix on the same push event
+    // thesmos-watch.yml reacts to, and watch is one fast `gh api` call —
+    // some checks settled green, one still running. Reading that as green
+    // is the bug this test exists to catch.
+    const root = freshWatchRoot();
+    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, testNow());
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => {
+      calls.push(args);
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'success\npending\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\nzzz\n', stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    let out = '';
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow });
+
+    expect(out).toMatch(/still running/i);
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
   });
 });
@@ -496,7 +558,7 @@ describe('runPr — pr:watch surfaces a failed revert and leaves autonomy off', 
     const root = freshWatchRoot();
     appendEntry(root, { action: 'merge', pr: 3, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, testNow());
     const gh: GhRunner = (args) => {
-      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: '1\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
       if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
       if (args[0] === 'pr' && args[1] === 'revert') return { ok: false, stdout: '', stderr: 'no permission' };
       throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
@@ -517,7 +579,7 @@ describe('runPr — pr:watch honors --range for how much history to check', () =
     const gh: GhRunner = (args) => {
       calls.push(args);
       if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
-      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: '0\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'success\n', stderr: '' };
       throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
     };
 

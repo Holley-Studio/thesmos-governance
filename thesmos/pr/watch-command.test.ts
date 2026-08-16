@@ -16,13 +16,16 @@ beforeEach(() => {
   mkdirSync(join(root, '.thesmos'), { recursive: true });
 });
 
-/** Answers the commit-list and check-runs lookups from fixtures, plus the
- * `gh pr revert` / `gh pr merge` calls performRevert issues. */
+/** Answers the commit-list and check-runs lookups from fixtures — the
+ * check-runs response is a realistic one-conclusion-per-line payload
+ * (matching `.check_runs[] | (.conclusion // "pending")`), not a
+ * pre-reduced count — plus the `gh pr revert` / `gh pr merge` calls
+ * performRevert issues. */
 function fakeWatchGh(opts: { shas: string[]; failingShas: Set<string> }): GhRunner {
   return (args) => {
     if (args[0] === 'api' && args[1]?.includes('/check-runs')) {
       const sha = args[1].split('/commits/')[1]?.split('/check-runs')[0];
-      return { ok: true, stdout: `${opts.failingShas.has(sha ?? '') ? 1 : 0}\n`, stderr: '' };
+      return { ok: true, stdout: `${opts.failingShas.has(sha ?? '') ? 'failure' : 'success'}\n`, stderr: '' };
     }
     if (args[0] === 'api' && args[1]?.includes('/commits?')) {
       return { ok: true, stdout: opts.shas.join('\n') + '\n', stderr: '' };
@@ -80,7 +83,7 @@ describe('runWatch', () => {
   it('reports revert-failed and leaves autonomy off when the revert itself fails', () => {
     appendEntry(root, { action: 'merge', pr: 3, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
     const gh: GhRunner = (args) => {
-      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: '1\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
       if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
       if (args[0] === 'pr' && args[1] === 'revert') return { ok: false, stdout: '', stderr: 'no permission' };
       throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
@@ -102,6 +105,26 @@ describe('runWatch', () => {
     expect(runWatch(root, { range: 5 }, { gh, now })).toEqual({ status: 'unknown' });
   });
 
+  it('reports pending, not green, and never consults the ledger while a check run is still in progress', () => {
+    // The realistic mid-build shape: one check settled green, one still
+    // running (conclusion null, printed by jq as the literal "pending").
+    // watch is a single fast `gh api` call reacting to the same push event
+    // a multi-minute CI matrix does — this is what it will normally see.
+    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => {
+      calls.push(args);
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'success\npending\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    const result = runWatch(root, { range: 5 }, { gh, now });
+
+    expect(result).toEqual({ status: 'pending' });
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
+  });
+
   it('reports unreadable-history when the commit-list lookup fails, and never queries check-runs', () => {
     const calls: string[][] = [];
     const gh: GhRunner = (args) => {
@@ -118,7 +141,7 @@ describe('runWatch', () => {
     const gh: GhRunner = (args) => {
       calls.push(args);
       if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
-      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: '0\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'success\n', stderr: '' };
       throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
     };
 
