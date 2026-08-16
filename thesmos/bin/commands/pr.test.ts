@@ -1,9 +1,9 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { mkdtempSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { classifyGhResult, detectDefaultBranch, formatExplain, makeGhRunner, runPr, type RawGhResult } from './pr.ts';
+import { classifyGhResult, detectDefaultBranch, formatExplain, makeGhRunner, parseWaveArg, runPr, type RawGhResult } from './pr.ts';
 import type { MergePlan } from '../../pr/plan.ts';
 import { buildGraph } from '../../pr/graph.ts';
 import { isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
@@ -206,6 +206,29 @@ describe('runPr — pr:explain formatting is actually used for a PR that was nev
   });
 });
 
+describe('parseWaveArg', () => {
+  it('defaults to wave 0 when no flag is given', () => {
+    // Number(undefined) is NaN, and NaN ?? 0 stays NaN because ?? only
+    // replaces null/undefined — a naive `Number(argv[i+1] ?? 0)` reads as a
+    // safe default but silently produces NaN here, which downstream turns
+    // into "merge nothing, report success" instead of merging wave 0.
+    expect(parseWaveArg(['merge'])).toBe(0);
+  });
+
+  it('reads the number after --wave', () => {
+    expect(parseWaveArg(['merge', '--wave', '2'])).toBe(2);
+  });
+
+  it("returns 'all' when --all is present, taking priority over --wave", () => {
+    expect(parseWaveArg(['merge', '--all'])).toBe('all');
+    expect(parseWaveArg(['merge', '--wave', '1', '--all'])).toBe('all');
+  });
+
+  it('falls back to wave 0 for a non-numeric --wave value instead of propagating NaN', () => {
+    expect(parseWaveArg(['merge', '--wave', 'banana'])).toBe(0);
+  });
+});
+
 // ── runPr — pr:merge and autonomy dispatch ──────────────────────────────────
 //
 // runMerge itself is exercised directly (with a fake gh) in
@@ -239,6 +262,23 @@ describe('runPr — pr:merge is actually wired to runMerge', () => {
     expect(out).not.toContain('#2');
     const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
     expect(merges).toEqual(['1']);
+  });
+
+  it('merges wave 0 by default when no --wave flag is given at all', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const baseGh = fakeGh('main', prListJson);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow });
+
+    const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
+    expect(merges).toEqual(['1']);
+    expect(out).toContain('#1');
   });
 });
 

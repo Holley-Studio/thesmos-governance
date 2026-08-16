@@ -116,12 +116,19 @@ describe('runMerge', () => {
   });
 
   it('derives the default branch from gh instead of assuming "main"', () => {
-    // Repo default branch is "develop". A hardcoded 'main' here would fail to
-    // root PR 20 under the graph at all (baseRefName "develop" would never
-    // match a hardcoded 'main' root), so nothing would ever be planned or merged.
+    // Repo default branch is "develop". PR 1's branch happens to be literally
+    // named "develop" (a realistic incidental collision, e.g. a one-off
+    // sync/mirror PR) and is a major bump — one-way, so it is halted. PR 2 is
+    // an independent PR based on the repo's real default branch, "develop".
+    // A hardcoded defaultBranch of 'main' looks up "develop" (PR 2's base) in
+    // the head-ref map, wrongly nests PR 2 underneath halted PR 1, and PR 2's
+    // PARENT_BLOCKED cascade removes it from every wave — it would never be
+    // merged. Deriving the branch correctly recognizes PR 2 as its own root.
     const developPrs = JSON.stringify([
-      { number: 20, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', isDraft: false, baseRefName: 'develop',
-        headRefName: 'a', mergeStateStatus: 'CLEAN', changedFiles: 1, files: [{ path: 'package-lock.json' }] },
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 2.0.0', isDraft: false, baseRefName: 'main',
+        headRefName: 'develop', mergeStateStatus: 'CLEAN', changedFiles: 1, files: [{ path: 'package-lock.json' }] },
+      { number: 2, title: 'chore(deps): bump b from 1.0.0 to 1.0.1', isDraft: false, baseRefName: 'develop',
+        headRefName: 'feature-x', mergeStateStatus: 'CLEAN', changedFiles: 1, files: [{ path: 'package-lock.json' }] },
     ]);
     const calls: string[][] = [];
     const gh = (args: string[]) => {
@@ -133,6 +140,8 @@ describe('runMerge', () => {
 
     const result = runMerge(root, { wave: 0 }, { gh, now });
 
-    expect(result.merged).toEqual([20]);
+    expect(result.merged).toEqual([2]);
+    const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
+    expect(merges).toEqual(['2']);
   });
 });
