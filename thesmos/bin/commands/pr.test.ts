@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { classifyGhResult, detectDefaultBranch, formatExplain, formatWatchResult, mainCheckStatus, makeGhRunner, parseRangeArg, parseWaveArg, runPr, type RawGhResult, type WatchResult } from './pr.ts';
+import { classifyGhResult, cmdPr, detectDefaultBranch, formatExplain, formatWatchResult, mainCheckStatus, makeGhRunner, parseRangeArg, parseWaveArg, runPr, type RawGhResult, type WatchResult } from './pr.ts';
 import type { MergePlan } from '../../pr/plan.ts';
 import { buildGraph } from '../../pr/graph.ts';
 import { isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
@@ -654,6 +654,7 @@ describe('mainCheckStatus', () => {
 describe('formatWatchResult', () => {
   it('formats each status without user-facing jargon', () => {
     const cases: Array<[WatchResult, RegExp]> = [
+      [{ status: 'autonomy-off' }, /autonomy is off/i],
       [{ status: 'unreadable-history' }, /could not read.*history/i],
       [{ status: 'no-history' }, /no commit history/i],
       [{ status: 'unknown' }, /could not tell whether main/i],
@@ -790,6 +791,161 @@ describe('runPr — pr:watch surfaces a failed revert and leaves autonomy off', 
 
     expect(out).toMatch(/could not revert #3/i);
     expect(isAutonomyDisabled(root)).toBe(true);
+  });
+});
+
+// ── exit codes — a failed revert must not show a green check ────────────────
+//
+// runWatch returned revert-failed / unknown / unreadable-history as plain
+// values, cmdPr returned normally, and cli.ts only exits non-zero on a
+// thrown error. So a run that failed to revert a regression and switched
+// autonomy off finished with a green tick in the Actions tab — the only
+// signal a user would ever have noticed.
+
+describe('runPr — exit codes', () => {
+  it('exits non-zero when the revert failed', () => {
+    const root = freshWatchRoot();
+    appendEntry(root, { action: 'merge', pr: 3, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, testNow());
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'revert') return { ok: false, stdout: '', stderr: 'no permission' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    expect(runPr(['watch'], { gh, write: () => {}, root, now: testNow, git: testGit })).toBe(1);
+  });
+
+  it("exits non-zero when it could not tell whether main is green or red", () => {
+    const root = freshWatchRoot();
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: false, stdout: '', stderr: 'HTTP 403' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+    expect(runPr(['watch'], { gh, write: () => {}, root, now: testNow, git: testGit })).toBe(1);
+  });
+
+  it("exits non-zero when main's history could not be read at all", () => {
+    const root = freshWatchRoot();
+    const gh: GhRunner = () => ({ ok: false, stdout: '', stderr: 'not logged in' });
+    expect(runPr(['watch'], { gh, write: () => {}, root, now: testNow, git: testGit })).toBe(1);
+  });
+
+  it('exits zero on the ordinary outcomes — green, pending, nothing of ours', () => {
+    const root = freshWatchRoot();
+    const gh = fakeWatchGh({ shas: ['aaa'], failingShas: new Set() });
+    expect(runPr(['watch'], { gh, write: () => {}, root, now: testNow, git: testGit })).toBe(0);
+  });
+
+  it('exits non-zero when a merge failed, instead of reporting a clean run', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'repo') return { ok: true, stdout: 'main\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: prListJson, stderr: '' };
+      if (args[1] === 'merge') return { ok: false, stdout: '', stderr: 'boom' };
+      return { ok: true, stdout: '', stderr: '' };
+    };
+
+    let out = '';
+    const code = runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+    expect(out).toMatch(/stopped at #1/);
+    expect(code).toBe(1);
+  });
+
+  it('exits zero on a merge run where everything landed', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+    expect(runPr(['merge'], { gh: fakeGh('main', prListJson), write: () => {}, root, now: testNow, git: testGit }))
+      .toBe(0);
+  });
+
+  it('exits zero for the read-only queue', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore: a', baseRefName: 'main', headRefName: 'a', files: ['README.md'] },
+    ]);
+    expect(runPr(['queue'], { gh: fakeGh('main', prListJson), write: () => {}, root: UNUSED_ROOT, now: testNow, git: testGit }))
+      .toBe(0);
+  });
+});
+
+describe('cmdPr — the exit code actually reaches the process', () => {
+  // runPr returning the right number proves nothing on its own: the single
+  // line that assigns it to process.exitCode was deleted in a sabotage run
+  // and the entire suite stayed green. This is that line's test.
+  it('sets a non-zero process.exitCode when the revert failed, and clears it on a clean run', async () => {
+    const previous = process.exitCode;
+    try {
+      const root = freshWatchRoot();
+      appendEntry(root, { action: 'merge', pr: 3, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, testNow());
+      const failing: GhRunner = (args) => {
+        if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
+        if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+        if (args[0] === 'pr' && args[1] === 'revert') return { ok: false, stdout: '', stderr: 'no permission' };
+        throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+      };
+
+      await cmdPr(['watch'], { gh: failing, git: testGit, write: () => {}, root, now: testNow });
+      expect(process.exitCode).toBe(1);
+
+      const cleanRoot = freshWatchRoot();
+      const green = fakeWatchGh({ shas: ['aaa'], failingShas: new Set() });
+      await cmdPr(['watch'], { gh: green, git: testGit, write: () => {}, root: cleanRoot, now: testNow });
+      expect(process.exitCode).toBe(0);
+    } finally {
+      process.exitCode = previous;
+    }
+  });
+});
+
+describe('runPr — pr:watch refuses to act while autonomy is off', () => {
+  it('says so plainly and never calls gh', () => {
+    const root = freshWatchRoot();
+    setAutonomy(root, false);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); throw new Error('gh must not be called'); };
+
+    let out = '';
+    const code = runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(calls).toEqual([]);
+    expect(out).toMatch(/autonomy is off/i);
+    expect(code).toBe(0); // a switch the user set on purpose is not a failure
+  });
+});
+
+describe('runPr — pr:merge distinguishes a wave that does not exist from an empty queue', () => {
+  it('names the missing group instead of saying nothing was ready', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+
+    let out = '';
+    runPr(['merge', '--wave', '7'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root, now: testNow, git: testGit });
+    expect(out).toMatch(/no group 7/i);
+    expect(out).not.toMatch(/nothing was ready/i);
+
+    out = '';
+    runPr(['merge', '--wave', '-1'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root, now: testNow, git: testGit });
+    expect(out).toMatch(/no group -1/i);
+  });
+
+  it('still says "nothing was ready" when the plan genuinely has no groups', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([]);
+
+    let out = '';
+    runPr(['merge'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root, now: testNow, git: testGit });
+    expect(out).toMatch(/nothing was ready/i);
   });
 });
 

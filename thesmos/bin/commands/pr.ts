@@ -185,7 +185,9 @@ export function runMerge(
     // A --wave index nobody planned is not the same as "nothing was ready",
     // and reporting them identically leaves someone who typed --wave 7 (or
     // --wave -1) believing the queue is empty when it is not.
-    const unknownWave = opts.wave !== 'all' && plan.waves[opts.wave] === undefined;
+    // Only when the plan HAS groups but not this one. With no groups at all
+    // the honest answer is "nothing was ready", not "there is no group 0".
+    const unknownWave = opts.wave !== 'all' && plan.waves.length > 0 && plan.waves[opts.wave] === undefined;
     const waves = opts.wave === 'all' ? plan.waves : [plan.waves[opts.wave] ?? []];
     const merged: number[] = [];
     const failed: number[] = [];
@@ -292,6 +294,7 @@ export function mainCheckStatus(gh: GhRunner, sha: string): 'green' | 'red' | 'p
 }
 
 export type WatchResult =
+  | { status: 'autonomy-off' }
   | { status: 'unreadable-history' }
   | { status: 'no-history' }
   | { status: 'unknown' }
@@ -314,6 +317,17 @@ export function runWatch(
   opts: { range: number },
   deps: { gh: GhRunner; now: () => Date; git: Runner },
 ): WatchResult {
+  // Before anything, including the commit-list lookup: this command performs
+  // two real mutations (`gh pr revert` opens a PR, `gh pr merge` lands it on
+  // the default branch) and had no autonomy check anywhere in its path, so
+  // spec §6.3's "checked before any mutation" held for pr:merge only.
+  //
+  // It is also what makes "one revert attempt per incident, it must never
+  // thrash" (spec §6.2) true: performRevert switches autonomy off when a
+  // revert fails, and until this check existed nothing ever read that back —
+  // every subsequent push retried the same failing revert.
+  if (isAutonomyDisabled(root)) return { status: 'autonomy-off' };
+
   const log = deps.gh(['api', `repos/{owner}/{repo}/commits?per_page=${opts.range}`, '--jq', '.[].sha']);
   if (!log.ok) return { status: 'unreadable-history' };
 
@@ -341,6 +355,8 @@ export function runWatch(
 /** Pure formatter for `pr:watch` — no gh calls, so it's directly testable like formatExplain. */
 export function formatWatchResult(result: WatchResult): string {
   switch (result.status) {
+    case 'autonomy-off':
+      return '  Autonomy is off, so I am not touching anything. Turn it back on with: thesmos autonomy on\n';
     case 'unreadable-history': return '  Could not read the recent history of main; doing nothing.\n';
     case 'no-history': return '  main has no commit history to check; doing nothing.\n';
     case 'unknown': return '  Could not tell whether main is currently green or red; doing nothing.\n';
@@ -351,6 +367,29 @@ export function formatWatchResult(result: WatchResult): string {
       return `  ✓ reverted #${result.pr} — main went red after it merged\n` + formatSyncFailure(result.sync);
     case 'revert-failed':
       return `  ✗ could not revert #${result.pr}. Autonomy is now OFF and needs you.\n` + formatSyncFailure(result.sync);
+  }
+}
+
+const OK = 0;
+const FAILED = 1;
+
+/**
+ * A watch run that could not do its job must not look like one that had
+ * nothing to do. `revert-failed` means a regression is still on the default
+ * branch and autonomy has switched itself off; `unknown` and
+ * `unreadable-history` mean the watcher could not even determine whether
+ * that is the case — indeterminate, not fine. `autonomy-off` is a state the
+ * operator chose, `green`/`pending`/`no-culprit`/`no-history` are ordinary
+ * nothing-to-do outcomes, and `reverted` is success — those are all zero.
+ */
+export function exitCodeForWatch(result: WatchResult): number {
+  switch (result.status) {
+    case 'revert-failed':
+    case 'unknown':
+    case 'unreadable-history':
+      return FAILED;
+    default:
+      return OK;
   }
 }
 
@@ -381,7 +420,7 @@ export interface PrDeps {
  * all), and refusing a merge while autonomy is off must not first waste a
  * network round-trip fetching PRs it is about to refuse to touch.
  */
-export function runPr(argv: string[], deps: PrDeps): void {
+export function runPr(argv: string[], deps: PrDeps): number {
   const [sub] = argv;
 
   if (sub === 'autonomy') {
@@ -401,30 +440,30 @@ export function runPr(argv: string[], deps: PrDeps): void {
       setAutonomy(deps.root, true);
       deps.write('  Autonomy is on. Thesmos may merge pull requests that meet the rules in place.\n');
       publish('chore(thesmos): autonomy on');
-      return;
+      return OK;
     }
     if (arg === 'off') {
       setAutonomy(deps.root, false);
       deps.write('  Autonomy is off. Thesmos will not merge or change any pull request until you turn it back on: thesmos autonomy on\n');
       publish('chore(thesmos): autonomy off');
-      return;
+      return OK;
     }
     const state = isAutonomyDisabled(deps.root) ? 'off' : 'on';
     deps.write(`  Autonomy is currently ${state}.\n`);
-    return;
+    return OK;
   }
 
   if (sub === 'merge') {
     if (isAutonomyDisabled(deps.root)) {
       deps.write('  Autonomy is off. Turn it back on with: thesmos autonomy on\n');
-      return;
+      return OK;  // a switch the operator set on purpose is not a failure
     }
     const wave = parseWaveArg(argv);
     const result = runMerge(deps.root, { wave }, { gh: deps.gh, now: deps.now, git: deps.git });
 
     if (result.locked) {
       deps.write('  Another Thesmos run is already merging. Try again shortly.\n');
-      return;
+      return OK;
     }
 
     if (result.merged.length === 0 && result.failed.length === 0) {
@@ -440,13 +479,15 @@ export function runPr(argv: string[], deps: PrDeps): void {
       }
     }
     if (result.sync) deps.write(formatSyncFailure(result.sync));
-    return;
+    // A wave that stopped at a failed merge is a failed run. Reporting it as
+    // success is what put a green tick on a run that left the queue stuck.
+    return result.failed.length ? FAILED : OK;
   }
 
   if (sub === 'watch') {
     const result = runWatch(deps.root, { range: parseRangeArg(argv) }, { gh: deps.gh, now: deps.now, git: deps.git });
     deps.write(formatWatchResult(result));
-    return;
+    return exitCodeForWatch(result);
   }
 
   const prs = fetchPullRequests(deps.gh);
@@ -458,16 +499,34 @@ export function runPr(argv: string[], deps: PrDeps): void {
 
   if (sub === 'explain') {
     deps.write(formatExplain(argv[1], prs, plan));
-    return;
+    return OK;
   }
 
   deps.write(renderPlan(plan, prs));
   deps.write(formatGovernanceCoverage(governanceCoverage(prs)));
+  return OK;
 }
 
-export async function cmdPr(argv: string[]): Promise<void> {
+/** The real dependencies. Built lazily so tests never touch createContext(). */
+export function defaultPrDeps(): PrDeps {
   const { root } = createContext();
-  await runPr(argv, {
-    gh: realGh, git: realGit, write: (s) => process.stdout.write(s), root, now: () => new Date(),
-  });
+  return { gh: realGh, git: realGit, write: (s) => process.stdout.write(s), root, now: () => new Date() };
+}
+
+/**
+ * deps is a defaulted parameter rather than a hardcoded construction so the
+ * line below — the one that turns a returned status into an actual process
+ * exit — is itself testable. It was not, and a sabotage run proved a test
+ * suite that was entirely green with this assignment deleted. That is the
+ * shape of bug this branch has shipped six times.
+ *
+ * cli.ts only exits non-zero on a *thrown* error, so a status returned as a
+ * value — a failed revert, an unreadable history, a merge that stopped part
+ * way — showed a green tick in the Actions tab, which is the only signal
+ * anyone would ever have looked at. Setting exitCode rather than throwing
+ * keeps the plain-language output as the primary report and adds the machine
+ * signal alongside it.
+ */
+export async function cmdPr(argv: string[], deps: PrDeps = defaultPrDeps()): Promise<void> {
+  process.exitCode = await runPr(argv, deps);
 }

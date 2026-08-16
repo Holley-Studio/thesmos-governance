@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runWatch } from '../bin/commands/pr.ts';
 import { appendEntry } from './ledger.ts';
-import { isAutonomyDisabled } from './execute.ts';
+import { isAutonomyDisabled, setAutonomy } from './execute.ts';
 import type { GhRunner } from './execute.ts';
 import type { Runner } from './sync.ts';
 
@@ -43,6 +43,55 @@ function fakeWatchGh(opts: { shas: string[]; failingShas: Set<string> }): GhRunn
     throw new Error(`unexpected gh call in runWatch test: ${JSON.stringify(args)}`);
   };
 }
+
+describe('runWatch — the kill switch reaches the unattended half (spec §6.3)', () => {
+  it('makes zero gh calls of any kind while autonomy is off', () => {
+    // pr:watch performs two real mutations — `gh pr revert` opens a PR and
+    // `gh pr merge` lands it on main — and had no autonomy check anywhere in
+    // its path. "A single AUTONOMY_DISABLED sentinel is checked before any
+    // mutation" was true of pr:merge only. Asserting zero calls rather than
+    // "no revert call": the check must come before the commit-list lookup,
+    // so a disabled repo makes no network requests at all.
+    setAutonomy(root, false);
+    appendEntry(root, { action: 'merge', pr: 7, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); throw new Error('gh must not be called'); };
+
+    const result = runWatch(root, { range: 5 }, { gh, now, git: okGit });
+
+    expect(result).toEqual({ status: 'autonomy-off' });
+    expect(calls).toEqual([]);
+  });
+
+  it('resumes checking once autonomy is back on', () => {
+    // Guards against the check being written in a way that never lets go.
+    setAutonomy(root, false);
+    setAutonomy(root, true);
+    const gh = fakeWatchGh({ shas: ['aaa'], failingShas: new Set() });
+    expect(runWatch(root, { range: 5 }, { gh, now, git: okGit })).toEqual({ status: 'green' });
+  });
+
+  it('does not retry a revert that already failed and switched autonomy off', () => {
+    // Spec §6.2: one revert attempt per incident, it must never thrash. The
+    // setAutonomy(root, false) inside performRevert was the guard meant to
+    // enforce that, and nothing read it — so every subsequent push retried.
+    appendEntry(root, { action: 'merge', pr: 3, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
+    const failingRevert: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'revert') return { ok: false, stdout: '', stderr: 'no permission' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    expect(runWatch(root, { range: 5 }, { gh: failingRevert, now, git: okGit }).status).toBe('revert-failed');
+
+    // The next push to main. Nothing about the repository changed.
+    const secondRun: string[][] = [];
+    const gh: GhRunner = (args) => { secondRun.push(args); return failingRevert(args); };
+    expect(runWatch(root, { range: 5 }, { gh, now, git: okGit })).toEqual({ status: 'autonomy-off' });
+    expect(secondRun).toEqual([]);
+  });
+});
 
 describe('runWatch', () => {
   it('reports green and never calls gh pr revert when main has no failing check runs', () => {
