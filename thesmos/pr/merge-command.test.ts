@@ -174,20 +174,27 @@ describe('runMerge', () => {
   });
 
   it('never merges a PR that is obsolete — every file it changes is already gone from the target branch', () => {
-    // Mirrors the #9/#6 case: #1 is a normal reversible bump; #9 only
-    // touches a file the target branch no longer has. #9 must never reach
-    // `gh pr merge`, not just be flagged in a queue listing.
+    // #1 and #9 are deliberately identical in every way classify() cares
+    // about — patch bump, single lockfile-only diff — so both would
+    // otherwise be planned as reversible and merged. Only #9's file
+    // (pnpm-lock.yaml) is absent from the fetched target tree, mirroring
+    // the #9/#6 case: a PR editing a file a merge already deleted. If #9 is
+    // excluded here for any reason other than the OBSOLETE check firing —
+    // e.g. because its shape happens to classify as one-way regardless —
+    // this test would pass without the wiring actually doing anything,
+    // which is exactly the failure mode this test exists to rule out.
     const prsWithObsolete = JSON.stringify([
       { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', isDraft: false, baseRefName: 'main',
         headRefName: 'a', mergeStateStatus: 'CLEAN', changedFiles: 1, files: [{ path: 'package-lock.json' }] },
-      { number: 9, title: 'chore(deps): bump codeql-action', isDraft: false, baseRefName: 'main',
-        headRefName: 'dep', mergeStateStatus: 'CLEAN', changedFiles: 1, files: [{ path: '.github/workflows/codeql.yml' }] },
+      { number: 9, title: 'chore(deps): bump c from 1.0.0 to 1.0.1', isDraft: false, baseRefName: 'main',
+        headRefName: 'c', mergeStateStatus: 'CLEAN', changedFiles: 1, files: [{ path: 'pnpm-lock.yaml' }] },
     ]);
     const calls: string[][] = [];
     const gh = (args: string[]) => {
       calls.push(args);
       if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: prsWithObsolete, stderr: '' };
       if (args[0] === 'api' && args[1]?.includes('git/trees')) {
+        // pnpm-lock.yaml is not in the target tree — this repo dropped pnpm.
         return { ok: true, stdout: JSON.stringify({ truncated: false, paths: ['package-lock.json', 'README.md'] }), stderr: '' };
       }
       return { ok: true, stdout: '', stderr: '' };
