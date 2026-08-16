@@ -18,6 +18,13 @@ export interface PrNode {
   parent: number | null;
   children: number[];
   depth: number;
+  /**
+   * True when baseRefName is neither the default branch nor the head of any
+   * PR in this fetch — i.e. the parent is not visible. Distinct from
+   * `parent === null`, which such a node also has: without this flag the two
+   * cases are indistinguishable and an invisible parent reads as "no parent".
+   */
+  unresolvedBase: boolean;
 }
 
 export interface PrGraph {

@@ -135,6 +135,60 @@ describe('computePlan', () => {
     expect(plan.waves[1].map((e) => e.number)).toEqual([301]);
   });
 
+  // ── mergeability is an allowlist, not a denylist (spec §5.2 item 2) ──
+
+  it('never plans a PR whose mergeability GitHub has not finished computing', () => {
+    // GitHub computes mergeStateStatus in the background and reports UNKNOWN
+    // until it settles — routine on a cold `gh pr list` over a large backlog,
+    // which is this tool's exact use case. The old denylist (halt on DIRTY /
+    // UNSTABLE / BLOCKED, proceed otherwise) read UNKNOWN as mergeable.
+    const plan = computePlan([pr(1, 'a', 'main', { mergeStateStatus: 'UNKNOWN' })], opts);
+    expect(plan.waves.flat()).toEqual([]);
+    expect(plan.halted[0].reason).toBe('UNKNOWN_STATE');
+  });
+
+  it('plans BEHIND exactly as readily as CLEAN — behind is auto-updatable', () => {
+    const plan = computePlan([pr(1, 'a', 'main', { mergeStateStatus: 'BEHIND' })], opts);
+    expect(plan.waves.flat().map((e) => e.number)).toEqual([1]);
+  });
+
+  it('halts any state outside the allowlist as a red base rather than proceeding', () => {
+    for (const state of ['UNSTABLE', 'BLOCKED'] as const) {
+      const plan = computePlan([pr(1, 'a', 'main', { mergeStateStatus: state })], opts);
+      expect(plan.waves.flat(), state).toEqual([]);
+      expect(plan.halted[0].reason, state).toBe('RED_BASE');
+    }
+  });
+
+  // ── a base nobody can see is not a root (spec §1 item 2) ──
+
+  it('halts a PR whose base is neither the default branch nor any PR in this fetch', () => {
+    // The `byHead.get(base) ?? null` fallback conflated "independent PR" with
+    // "parent not visible" — a PR whose parent was truncated out of the fetch
+    // became a root, landed in wave 0, and would merge BEFORE its parent.
+    const plan = computePlan([pr(141, 'memory', 'runtime')], opts); // #140 (head: runtime) not fetched
+    expect(plan.waves.flat()).toEqual([]);
+    expect(plan.halted[0].reason).toBe('UNRESOLVED_BASE');
+    expect(plan.halted[0].detail).toContain('runtime');
+  });
+
+  it('still treats a PR based on the default branch as an ordinary root', () => {
+    const plan = computePlan([pr(1, 'a', 'main')], opts);
+    expect(plan.waves.flat().map((e) => e.number)).toEqual([1]);
+  });
+
+  it('never merges a child ahead of a visible parent that is itself unrooted', () => {
+    // #141 stacks on #140, #140 stacks on a branch nobody fetched. Neither may
+    // move, and #141 must be reported as waiting rather than silently dropped.
+    const plan = computePlan([
+      pr(140, 'runtime', 'nowhere'),
+      pr(141, 'memory', 'runtime'),
+    ], opts);
+    expect(plan.waves.flat()).toEqual([]);
+    expect(plan.halted.find((h) => h.number === 140)!.reason).toBe('UNRESOLVED_BASE');
+    expect(plan.halted.find((h) => h.number === 141)!.reason).toBe('PARENT_BLOCKED');
+  });
+
   it('names the repo\'s actual default branch in the OBSOLETE detail, not a hardcoded "main"', () => {
     const plan = computePlan(
       [pr(9, 'dep', 'develop')],

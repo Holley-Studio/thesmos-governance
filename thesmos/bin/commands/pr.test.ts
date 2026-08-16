@@ -184,13 +184,20 @@ describe('runPr — default branch derivation is actually used by pr:queue', () 
       { number: 2, title: 'feat: on develop', baseRefName: 'develop', headRefName: 'feature-x', files: ['README.md'] },
     ]);
 
+    // #1 targets "main", which on this repo is neither the default branch nor
+    // any fetched PR's head, so it is now halted as UNRESOLVED_BASE rather
+    // than quietly treated as a root — the ordering fix from the same review.
+    // #2 is the one that must come out planned and unstacked.
     let out = '';
     runPr(['queue'], { gh: fakeGh('develop', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
 
-    expect(out).toContain('✓ 2 ready to merge');
+    expect(out).toContain('✓ 1 ready to merge');
     const line2 = out.split('\n').find((l) => l.includes('#2'));
     expect(line2).toBeDefined();
-    expect(line2).not.toMatch(/after wave/);
+    expect(line2).not.toMatch(/goes in after/);
+    // Against a hardcoded 'main', #2 nests under #1 and renders as stacked;
+    // against the derived 'develop' it is its own root.
+    expect(out).toMatch(/#1.*can't see/);
   });
 });
 

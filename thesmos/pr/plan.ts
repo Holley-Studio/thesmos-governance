@@ -8,7 +8,18 @@ import { classify, type Reversibility } from './classify.ts';
 import type { PullRequest } from './types.ts';
 
 export type HaltReason =
-  | 'RED_BASE' | 'CYCLE' | 'DIRTY' | 'BLOCKER' | 'OBSOLETE' | 'DRAFT' | 'ONE_WAY' | 'PARENT_BLOCKED';
+  | 'RED_BASE' | 'CYCLE' | 'DIRTY' | 'BLOCKER' | 'OBSOLETE' | 'DRAFT' | 'ONE_WAY' | 'PARENT_BLOCKED'
+  | 'UNKNOWN_STATE' | 'UNRESOLVED_BASE';
+
+/**
+ * The only mergeStateStatus values that permit a merge (spec §5.2 item 2).
+ * An allowlist, deliberately: the previous denylist halted DIRTY/UNSTABLE/
+ * BLOCKED and let everything else through, so UNKNOWN — which GitHub returns
+ * while it computes mergeability in the background, routinely on a cold
+ * `gh pr list` over a large backlog — read as mergeable. Any value not named
+ * here, including one GitHub adds later, halts.
+ */
+const MERGEABLE_STATES: ReadonlySet<PullRequest['mergeStateStatus']> = new Set(['CLEAN', 'BEHIND']);
 
 /**
  * True when every file the PR touches is absent from the target branch.
@@ -123,12 +134,21 @@ export function computePlan(prs: PullRequest[], opts: PlanOptions): MergePlan {
     if (blocked.has(pr.number)) continue;
 
     if (opts.blockers.has(pr.number)) { halt(pr.number, 'BLOCKER', 'Thesmos BLOCKER finding'); continue; }
+    if (node.unresolvedBase) {
+      halt(pr.number, 'UNRESOLVED_BASE',
+        `it is built on "${pr.baseRefName}", which is neither ${opts.defaultBranch} nor any pull request I can see`);
+      continue;
+    }
     if (opts.pathsOnTarget && detectObsolete(pr, opts.pathsOnTarget)) {
       halt(pr.number, 'OBSOLETE', `every file it changes is already gone from ${opts.defaultBranch} — close it`);
       continue;
     }
     if (pr.mergeStateStatus === 'DIRTY') { halt(pr.number, 'DIRTY', 'merge conflict — needs a human'); continue; }
-    if (pr.mergeStateStatus === 'UNSTABLE' || pr.mergeStateStatus === 'BLOCKED') {
+    if (pr.mergeStateStatus === 'UNKNOWN') {
+      halt(pr.number, 'UNKNOWN_STATE', 'GitHub has not finished working out whether this one can merge');
+      continue;
+    }
+    if (!MERGEABLE_STATES.has(pr.mergeStateStatus)) {
       halt(pr.number, 'RED_BASE', 'checks are failing'); continue;
     }
     if (pr.isDraft) { halt(pr.number, 'DRAFT', 'still a draft'); continue; }

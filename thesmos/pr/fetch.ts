@@ -6,8 +6,18 @@ import type { PullRequest } from './types.ts';
 
 const FIELDS = 'number,title,isDraft,baseRefName,headRefName,mergeStateStatus,changedFiles,files';
 
+/**
+ * How many open PRs a single plan may consider. The old value was 100 with no
+ * truncation signal at all, which is the worst shape available here: a PR
+ * whose parent fell off the end of the page has an invisible base, and the
+ * graph used to promote that to "root" and merge it ahead of its own parent.
+ * Raised far past any realistic backlog, and hitting it now refuses to plan
+ * rather than planning against a partial graph.
+ */
+const PR_LIMIT = 1000;
+
 export function fetchPullRequests(gh: GhRunner): PullRequest[] {
-  const res = gh(['pr', 'list', '--state', 'open', '--limit', '100', '--json', FIELDS]);
+  const res = gh(['pr', 'list', '--state', 'open', '--limit', String(PR_LIMIT), '--json', FIELDS]);
   if (!res.ok) {
     const detail = res.stderr.trim() || 'no further detail was given — try running `gh pr list` directly to see the raw error';
     throw new Error(`could not read pull requests: ${detail}`);
@@ -18,6 +28,14 @@ export function fetchPullRequests(gh: GhRunner): PullRequest[] {
     parsed = JSON.parse(res.stdout) as Array<Record<string, unknown>>;
   } catch {
     throw new Error('could not read pull requests: gh returned output that was not valid JSON');
+  }
+
+  if (parsed.length >= PR_LIMIT) {
+    throw new Error(
+      `there are too many open pull requests for me to plan safely (I can look at ${PR_LIMIT} at a time, and got that many back). ` +
+      'Some of them would be invisible to the plan, and a pull request built on an invisible one could be merged out of order. ' +
+      'Close or merge some by hand first.',
+    );
   }
 
   return parsed.map((raw) => ({
@@ -41,6 +59,8 @@ const PLAIN: Record<string, string> = {
   CYCLE: 'these depend on each other in a loop',
   PARENT_BLOCKED: 'it is waiting on another PR',
   OBSOLETE: 'the files it changes no longer exist',
+  UNKNOWN_STATE: "GitHub hasn't finished checking this one — try again in a moment",
+  UNRESOLVED_BASE: "it is built on a branch I can't see, so I don't know what has to land first",
 };
 
 export function renderPlan(plan: MergePlan, prs: PullRequest[]): string {

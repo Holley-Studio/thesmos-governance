@@ -11,8 +11,21 @@ export function buildGraph(prs: PullRequest[], defaultBranch: string): PrGraph {
 
   const nodes = new Map<number, PrNode>();
   for (const pr of prs) {
-    const parent = pr.baseRefName === defaultBranch ? null : byHead.get(pr.baseRefName) ?? null;
-    nodes.set(pr.number, { pr, parent, children: [], depth: 0 });
+    // `parent === null` used to mean two different things: "based on the
+    // default branch, so it is a root" and "based on a branch we cannot see,
+    // so we have no idea what has to land first". The second was silently
+    // promoted to the first, which put a stacked PR into wave 0 and merged it
+    // ahead of its own parent — spec §1 item 2, verbatim. They are now
+    // distinguishable, and plan.ts refuses to plan the second.
+    const onDefault = pr.baseRefName === defaultBranch;
+    const parentNumber = onDefault ? undefined : byHead.get(pr.baseRefName);
+    nodes.set(pr.number, {
+      pr,
+      parent: parentNumber ?? null,
+      children: [],
+      depth: 0,
+      unresolvedBase: !onDefault && parentNumber === undefined,
+    });
   }
 
   for (const node of nodes.values()) {
