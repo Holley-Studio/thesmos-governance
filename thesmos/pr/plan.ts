@@ -31,21 +31,46 @@ export function computePlan(prs: PullRequest[], opts: PlanOptions): MergePlan {
   const halted: HaltEntry[] = [];
   const blocked = new Set<number>();
 
-  for (const cycle of graph.cycles) {
-    for (const n of cycle) {
-      halted.push({ number: n, reason: 'CYCLE', detail: `dependency cycle: ${cycle.join(' → ')}`, blocks: [] });
-      blocked.add(n);
-    }
-  }
-
+  // Cycle-safe: a cycle member's children loop back to another cycle member,
+  // so an unguarded walk would recurse forever. The visited set (seeded with
+  // the start node) makes this safe for every caller, cyclic or not.
   const descendantsOf = (n: number): number[] => {
     const out: number[] = [];
+    const visited = new Set<number>([n]);
     const walk = (id: number) => {
-      for (const c of graph.nodes.get(id)?.children ?? []) { out.push(c); walk(c); }
+      for (const c of graph.nodes.get(id)?.children ?? []) {
+        if (visited.has(c)) continue;
+        visited.add(c);
+        out.push(c);
+        walk(c);
+      }
     };
     walk(n);
     return out;
   };
+
+  // Mark every cycle member blocked up front, across all cycles, before any
+  // cascade runs. This guarantees the PARENT_BLOCKED cascade below (and the
+  // one in halt()) can never relabel a cycle member — the `blocked.has`
+  // guard always sees it as already claimed by CYCLE.
+  for (const cycle of graph.cycles) {
+    for (const n of cycle) blocked.add(n);
+  }
+  for (const cycle of graph.cycles) {
+    const cycleSet = new Set(cycle);
+    for (const n of cycle) {
+      // A PR stacked on a cycle member inherits the halt too — a red base
+      // poisons its whole column even when the base itself is cyclic.
+      const blocks = descendantsOf(n).filter((d) => !cycleSet.has(d));
+      halted.push({ number: n, reason: 'CYCLE', detail: `dependency cycle: ${cycle.join(' → ')}`, blocks });
+      for (const d of blocks) {
+        if (!blocked.has(d)) {
+          halted.push({ number: d, reason: 'PARENT_BLOCKED', detail: `waiting on #${n}`, blocks: [] });
+          blocked.add(d);
+        }
+      }
+    }
+  }
 
   const halt = (n: number, reason: HaltReason, detail: string) => {
     if (blocked.has(n)) return;

@@ -69,4 +69,41 @@ describe('computePlan', () => {
     expect(plan.halted.every((h) => h.reason === 'CYCLE')).toBe(true);
     expect(plan.waves.flat()).toEqual([]);
   });
+
+  it('halts a PR stacked on a cycle instead of letting it escape quarantine', () => {
+    // Regression: #3 is stacked on #2, which is itself a cycle member.
+    // descendantsOf() must be cycle-safe (1 and 2 are mutual descendants of
+    // each other) — an unguarded walk here would hang instead of returning.
+    // If the walk regresses this test times out rather than passing.
+    const plan = computePlan([
+      pr(1, 'a', 'b'), pr(2, 'b', 'a'), pr(3, 'c', 'b'),
+    ], opts);
+
+    expect(plan.waves.flat()).toEqual([]);
+
+    const cycleEntries = plan.halted.filter((h) => h.number === 1 || h.number === 2);
+    expect(cycleEntries).toHaveLength(2);
+    expect(cycleEntries.every((h) => h.reason === 'CYCLE')).toBe(true);
+
+    const three = plan.halted.find((h) => h.number === 3);
+    expect(three).toBeDefined();
+    expect(three!.reason).not.toBe('CYCLE');
+  });
+
+  it('names every branch a red base blocks in a non-linear stack, leaving an unrelated tree untouched', () => {
+    const plan = computePlan([
+      pr(100, 'runtime', 'main', { mergeStateStatus: 'UNSTABLE' }),
+      pr(101, 'a', 'runtime'), pr(102, 'b', 'runtime'),
+      pr(103, 'c', 'a'), pr(104, 'd', 'b'),
+      pr(300, 'p', 'main'), pr(301, 'q', 'p'),
+    ], opts);
+
+    const red = plan.halted.find((h) => h.number === 100)!;
+    expect(red.reason).toBe('RED_BASE');
+    expect(red.blocks.sort((a, b) => a - b)).toEqual([101, 102, 103, 104]);
+    expect(plan.halted.filter((h) => h.number !== 100).every((h) => h.reason === 'PARENT_BLOCKED')).toBe(true);
+
+    expect(plan.waves[0].map((e) => e.number)).toEqual([300]);
+    expect(plan.waves[1].map((e) => e.number)).toEqual([301]);
+  });
 });
