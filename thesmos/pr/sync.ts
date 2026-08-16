@@ -1,0 +1,133 @@
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
+/**
+ * Commits and pushes the small amount of Thesmos state the *other half* of
+ * this system has to see (spec §6.2): the action ledger and the autonomy
+ * sentinel.
+ *
+ * WHY THIS MODULE HAS TO EXIST. The CLI merges on a laptop; `pr:watch` runs
+ * as a GitHub Action on a fresh `actions/checkout`. Those two halves share
+ * exactly one thing — files in the repository — because the design has no
+ * Thesmos-operated service holding state. While `.thesmos/pr-ledger.jsonl`
+ * was git-ignored, the Action's checkout never contained it: `readEntries`
+ * returned `[]` every time, `chooseCulprit` returned null every time, and
+ * auto-revert — the whole reason merging without asking is defensible —
+ * could not fire in production at all. Same for the sentinel: `autonomy off`
+ * on a laptop was invisible to the unattended half that actually mutates
+ * GitHub.
+ *
+ * WHAT IT DOES NOT GUARANTEE — read this before trusting recovery:
+ *
+ *  1. THE PUSH CAN FAIL, AND FAILURE IS NOT FATAL. A protected default
+ *     branch (rulesets, required PRs, required reviews) will reject a direct
+ *     push of the ledger — this repo's own `main` is configured that way.
+ *     When that happens the merges still happened, so callers report the
+ *     failure loudly and carry on; reporting a merge as not-happened because
+ *     its receipt could not be filed would be the worse lie. But the
+ *     practical consequence is real and must be said out loud: on a repo
+ *     where this push cannot land, the Action keeps reading a stale ledger
+ *     and auto-revert stays as blind as it was before. Phase 1 reports it;
+ *     it does not solve it. Closing it needs either a bot identity with
+ *     bypass, or a different transport for the ledger.
+ *  2. IT IS NOT ATOMIC WITH THE MERGE. The ledger is fsynced locally before
+ *     each action (thesmos/pr/ledger.ts), but published afterwards. A crash
+ *     between the two leaves a correct local ledger and a stale remote one.
+ *     The next successful sync republishes everything, because the file is
+ *     append-only and committed whole.
+ *  3. IT ONLY EVER TOUCHES THE PATHS IT IS GIVEN. `git commit -- <paths>`
+ *     commits those paths regardless of what else is staged, so a user's
+ *     work-in-progress index is never swept into a Thesmos commit.
+ *
+ * Every commit it writes carries `[skip ci]`: these commits contain nothing
+ * but Thesmos's own state files, so running the full CI matrix on them is
+ * waste — and, more importantly, `thesmos-watch.yml` triggers on push to the
+ * default branch, so a ledger push would otherwise re-trigger the very
+ * watcher that wrote it.
+ */
+
+export type Runner = (args: string[]) => { ok: boolean; stdout: string; stderr: string };
+
+export interface SyncResult {
+  /** False only when the state did not reach the remote. */
+  ok: boolean;
+  /** True when there was genuinely nothing to publish. */
+  noop?: boolean;
+  /** Plain-language reason, present whenever ok is false. */
+  detail?: string;
+}
+
+/** Paths the Action half has to be able to read. Relative to the repo root. */
+export const LEDGER_PATH = '.thesmos/pr-ledger.jsonl';
+export const SENTINEL_PATH = '.thesmos/autonomy-disabled';
+
+// An automated state commit is not the operator's own work, and in an Action
+// there is no configured identity at all — an unset user.email is the most
+// common way a headless `git commit` fails.
+const BOT_NAME = 'thesmos';
+const BOT_EMAIL = 'thesmos@users.noreply.github.com';
+
+function short(s: string, fallback: string): string {
+  return s.trim().slice(0, 200) || fallback;
+}
+
+export function syncState(
+  root: string,
+  paths: string[],
+  message: string,
+  deps: { git: Runner },
+): SyncResult {
+  const git = (args: string[]) => {
+    try {
+      return deps.git(['-C', root, ...args]);
+    } catch (err) {
+      return { ok: false, stdout: '', stderr: String(err) };
+    }
+  };
+
+  // Per-path, and a failure here is tolerated on purpose: `git add -A -- x`
+  // errors when x has never existed and was never tracked, which is the
+  // ordinary state of the sentinel on a repo where autonomy was never turned
+  // off. -A (not plain add) so that *removing* the sentinel — `autonomy on`
+  // — is staged as the deletion it is.
+  for (const path of paths) git(['add', '-A', '--', path]);
+
+  const staged = git(['diff', '--cached', '--name-only', '--', ...paths]);
+  if (!staged.ok) {
+    return { ok: false, detail: short(staged.stderr, 'could not work out what had changed') };
+  }
+  if (!staged.stdout.trim()) return { ok: true, noop: true };
+
+  const committed = git([
+    '-c', `user.name=${BOT_NAME}`, '-c', `user.email=${BOT_EMAIL}`,
+    'commit', '-m', `${message} [skip ci]`, '--', ...paths,
+  ]);
+  if (!committed.ok) {
+    return { ok: false, detail: short(committed.stderr, 'the commit was refused') };
+  }
+
+  // `git push` with no arguments depends on push.default and an upstream that
+  // may not be configured; naming the branch explicitly does not. A detached
+  // HEAD has no branch to name, and pushing a guess would be worse than
+  // saying so.
+  const head = git(['rev-parse', '--abbrev-ref', 'HEAD']);
+  const branch = head.ok ? head.stdout.trim() : '';
+  if (!branch || branch === 'HEAD') {
+    return { ok: false, detail: 'the record was committed here, but there is no branch checked out to push it to' };
+  }
+
+  const pushed = git(['push', 'origin', branch]);
+  if (!pushed.ok) {
+    return { ok: false, detail: short(pushed.stderr, 'the push was rejected') };
+  }
+  return { ok: true };
+}
+
+/**
+ * The one-line warning shown when state could not be published. Says what
+ * still definitely happened before it says what failed — a merge that
+ * happened must never read as a merge that did not.
+ */
+export function formatSyncFailure(result: SyncResult): string {
+  if (result.ok) return '';
+  return `  Note: everything above really did happen, but I could not save the record of it to the repository (${result.detail}). ` +
+    'Until that record is pushed, the automatic revert that runs on GitHub cannot see these merges.\n';
+}

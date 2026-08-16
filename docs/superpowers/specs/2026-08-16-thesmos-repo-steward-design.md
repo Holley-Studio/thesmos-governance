@@ -440,7 +440,13 @@ Fake clocks throughout. No retries masking flakes.
 Local-first, consistent with existing Thesmos guarantees. No Thesmos-operated service, no
 stored credentials — `gh`'s existing auth is used and never read. The ledger records PR
 numbers, SHAs, and outcomes; never diffs, source, or secrets. Ledger lives in `.thesmos/`
-and is git-ignored. No telemetry leaves the machine.
+and is **committed to the repository**, per §6.2 — it is the only state the local CLI and
+the `pr:watch` Action share, and git-ignoring it (an earlier draft of this line, carried
+over from the local-only `savings.jsonl` pattern) makes auto-revert structurally unable to
+fire: the Action's fresh checkout would never contain it. Committing it leaks nothing,
+because of what it records. The autonomy sentinel is committed for the same reason — a
+kill switch the unattended half cannot see does not switch anything off. No telemetry
+leaves the machine.
 
 ---
 

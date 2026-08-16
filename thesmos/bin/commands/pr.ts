@@ -8,6 +8,7 @@ import { executeWave, isAutonomyDisabled, setAutonomy, type GhRunner } from '../
 import { acquireLock, releaseLock } from '../../pr/lock.ts';
 import { chooseCulprit, performRevert } from '../../pr/revert.ts';
 import { deriveBlockers, governanceCoverage } from '../../pr/blockers.ts';
+import { syncState, formatSyncFailure, LEDGER_PATH, SENTINEL_PATH, type Runner, type SyncResult } from '../../pr/sync.ts';
 import { readEntries } from '../../pr/ledger.ts';
 import type { PullRequest } from '../../pr/types.ts';
 
@@ -51,6 +52,18 @@ export function makeGhRunner(spawn: (args: string[]) => RawGhResult): GhRunner {
 }
 
 export const realGh: GhRunner = makeGhRunner((args) => spawnSync('gh', args, { encoding: 'utf8' }));
+
+/**
+ * The real git, for publishing ledger/sentinel state (thesmos/pr/sync.ts).
+ * Written out rather than reusing makeGhRunner because that helper's ENOENT
+ * path names the GitHub CLI specifically, and telling someone to install
+ * `gh` when what is missing is `git` is a worse dead end than the raw error.
+ */
+export const realGit: Runner = (args) => {
+  const r = spawnSync('git', args, { encoding: 'utf8' });
+  if (r.error) return { ok: false, stdout: '', stderr: r.error.message };
+  return { ok: r.status === 0, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
+};
 
 /**
  * The repo's actual default branch, via gh — falling back to 'main' only
@@ -155,8 +168,8 @@ export function formatExplain(raw: string | undefined, prs: PullRequest[], plan:
 export function runMerge(
   root: string,
   opts: { wave: number | 'all' },
-  deps: { gh: GhRunner; now: () => Date },
-): { merged: number[]; failed: number[]; locked?: boolean } {
+  deps: { gh: GhRunner; now: () => Date; git: Runner },
+): { merged: number[]; failed: number[]; locked?: boolean; unknownWave?: boolean; sync?: SyncResult } {
   if (!acquireLock(root, deps.now())) {
     return { merged: [], failed: [], locked: true };
   }
@@ -169,6 +182,10 @@ export function runMerge(
       defaultBranch, blockers: deriveBlockers(prs), autonomy: 'recoverable', pathsOnTarget,
     });
 
+    // A --wave index nobody planned is not the same as "nothing was ready",
+    // and reporting them identically leaves someone who typed --wave 7 (or
+    // --wave -1) believing the queue is empty when it is not.
+    const unknownWave = opts.wave !== 'all' && plan.waves[opts.wave] === undefined;
     const waves = opts.wave === 'all' ? plan.waves : [plan.waves[opts.wave] ?? []];
     const merged: number[] = [];
     const failed: number[] = [];
@@ -180,7 +197,14 @@ export function runMerge(
       if (r.failed.length) break; // never continue past a failed wave
     }
 
-    return { merged, failed };
+    // Publish only when the ledger actually gained rows. Merged *or* failed:
+    // a failed attempt is recorded too, and a record of an attempt that the
+    // Action cannot see is as useless as a record of a success it cannot see.
+    const sync = merged.length || failed.length
+      ? syncState(root, [LEDGER_PATH], 'chore(thesmos): record merged pull requests', { git: deps.git })
+      : undefined;
+
+    return { merged, failed, unknownWave, sync };
   } finally {
     releaseLock(root);
   }
@@ -274,8 +298,8 @@ export type WatchResult =
   | { status: 'pending' }
   | { status: 'green' }
   | { status: 'no-culprit' }
-  | { status: 'reverted'; pr: number }
-  | { status: 'revert-failed'; pr: number };
+  | { status: 'reverted'; pr: number; sync: SyncResult }
+  | { status: 'revert-failed'; pr: number; sync: SyncResult };
 
 /**
  * The `pr:watch` logic, pulled out of runPr's dispatch (same shape as
@@ -288,7 +312,7 @@ export type WatchResult =
 export function runWatch(
   root: string,
   opts: { range: number },
-  deps: { gh: GhRunner; now: () => Date },
+  deps: { gh: GhRunner; now: () => Date; git: Runner },
 ): WatchResult {
   const log = deps.gh(['api', `repos/{owner}/{repo}/commits?per_page=${opts.range}`, '--jq', '.[].sha']);
   if (!log.ok) return { status: 'unreadable-history' };
@@ -308,8 +332,10 @@ export function runWatch(
   const culprit = chooseCulprit(readEntries(root), range);
   if (!culprit) return { status: 'no-culprit' };
 
-  const ok = performRevert(root, culprit, deps);
-  return ok ? { status: 'reverted', pr: culprit.pr } : { status: 'revert-failed', pr: culprit.pr };
+  const { ok, sync } = performRevert(root, culprit, deps);
+  return ok
+    ? { status: 'reverted', pr: culprit.pr, sync }
+    : { status: 'revert-failed', pr: culprit.pr, sync };
 }
 
 /** Pure formatter for `pr:watch` — no gh calls, so it's directly testable like formatExplain. */
@@ -321,8 +347,10 @@ export function formatWatchResult(result: WatchResult): string {
     case 'pending': return "  main's checks are still running; nothing to judge yet.\n";
     case 'green': return '  main is currently green. Nothing to do.\n';
     case 'no-culprit': return '  Nothing of ours in the failing range.\n';
-    case 'reverted': return `  ✓ reverted #${result.pr} — main went red after it merged\n`;
-    case 'revert-failed': return `  ✗ could not revert #${result.pr}. Autonomy is now OFF and needs you.\n`;
+    case 'reverted':
+      return `  ✓ reverted #${result.pr} — main went red after it merged\n` + formatSyncFailure(result.sync);
+    case 'revert-failed':
+      return `  ✗ could not revert #${result.pr}. Autonomy is now OFF and needs you.\n` + formatSyncFailure(result.sync);
   }
 }
 
@@ -331,6 +359,13 @@ export interface PrDeps {
   write: (s: string) => void;
   root: string;
   now: () => Date;
+  /**
+   * Publishes ledger/sentinel state (thesmos/pr/sync.ts). Required, not
+   * optional with a real-git default: an omitted dependency that silently
+   * falls back to running real `git` in a test is exactly how this branch
+   * kept shipping mechanisms nothing invoked.
+   */
+  git: Runner;
 }
 
 /**
@@ -351,14 +386,27 @@ export function runPr(argv: string[], deps: PrDeps): void {
 
   if (sub === 'autonomy') {
     const arg = argv[1];
+    // The switch is published, not just written locally: the half of this
+    // system that mutates GitHub unattended is a GitHub Action reading a
+    // fresh checkout, so a sentinel that never leaves the laptop turns off
+    // nothing that matters (spec §6.3).
+    const publish = (message: string): void => {
+      const sync = syncState(deps.root, [SENTINEL_PATH], message, { git: deps.git });
+      if (!sync.ok) {
+        deps.write(`  Note: the switch is set here, but I could not publish it to the repository (${sync.detail}), ` +
+          'so the automatic checks that run on GitHub may not see it yet.\n');
+      }
+    };
     if (arg === 'on') {
       setAutonomy(deps.root, true);
       deps.write('  Autonomy is on. Thesmos may merge pull requests that meet the rules in place.\n');
+      publish('chore(thesmos): autonomy on');
       return;
     }
     if (arg === 'off') {
       setAutonomy(deps.root, false);
       deps.write('  Autonomy is off. Thesmos will not merge or change any pull request until you turn it back on: thesmos autonomy on\n');
+      publish('chore(thesmos): autonomy off');
       return;
     }
     const state = isAutonomyDisabled(deps.root) ? 'off' : 'on';
@@ -372,7 +420,7 @@ export function runPr(argv: string[], deps: PrDeps): void {
       return;
     }
     const wave = parseWaveArg(argv);
-    const result = runMerge(deps.root, { wave }, { gh: deps.gh, now: deps.now });
+    const result = runMerge(deps.root, { wave }, { gh: deps.gh, now: deps.now, git: deps.git });
 
     if (result.locked) {
       deps.write('  Another Thesmos run is already merging. Try again shortly.\n');
@@ -380,7 +428,9 @@ export function runPr(argv: string[], deps: PrDeps): void {
     }
 
     if (result.merged.length === 0 && result.failed.length === 0) {
-      deps.write('  Nothing was ready to merge.\n');
+      deps.write(result.unknownWave
+        ? `  There is no group ${wave} in the current plan. Run "thesmos pr:queue" to see the groups there are.\n`
+        : '  Nothing was ready to merge.\n');
     } else {
       if (result.merged.length) {
         deps.write(`  ✓ merged ${result.merged.length}: ${result.merged.map((n) => `#${n}`).join(', ')}\n`);
@@ -389,11 +439,12 @@ export function runPr(argv: string[], deps: PrDeps): void {
         deps.write(`  ✗ stopped at #${result.failed[0]} — nothing after it was attempted\n`);
       }
     }
+    if (result.sync) deps.write(formatSyncFailure(result.sync));
     return;
   }
 
   if (sub === 'watch') {
-    const result = runWatch(deps.root, { range: parseRangeArg(argv) }, { gh: deps.gh, now: deps.now });
+    const result = runWatch(deps.root, { range: parseRangeArg(argv) }, { gh: deps.gh, now: deps.now, git: deps.git });
     deps.write(formatWatchResult(result));
     return;
   }
@@ -416,5 +467,7 @@ export function runPr(argv: string[], deps: PrDeps): void {
 
 export async function cmdPr(argv: string[]): Promise<void> {
   const { root } = createContext();
-  await runPr(argv, { gh: realGh, write: (s) => process.stdout.write(s), root, now: () => new Date() });
+  await runPr(argv, {
+    gh: realGh, git: realGit, write: (s) => process.stdout.write(s), root, now: () => new Date(),
+  });
 }

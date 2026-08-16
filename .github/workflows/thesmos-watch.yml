@@ -11,7 +11,10 @@
 ## (see thesmos/pr/revert.ts and thesmos/bin/commands/pr.ts).
 ##
 ## Required permissions (set at job level below — no repo-wide change needed):
-##   contents:      write  — checkout the code, and let `gh pr merge` land the revert commit
+##   contents:      write  — checkout the code, let `gh pr merge` land the revert commit, and
+##                           push the updated ledger/sentinel back (see thesmos/pr/sync.ts;
+##                           a protected default branch may reject that push, which is
+##                           reported, not fatal)
 ##   pull-requests: write  — open the revert PR (`gh pr revert`) and merge it (`gh pr merge`)
 ##   checks:        read   — read main's check-run conclusions via the GitHub Checks API to
 ##                           tell "a push just happened" apart from "checks came back red".
@@ -22,7 +25,9 @@
 ## Setup:
 ##   Nothing to configure. Generated as part of the governed PR merge engine
 ##   (`thesmos pr:watch`); reads and writes .thesmos/pr-ledger.jsonl in the
-##   checked-out repo.
+##   checked-out repo. That file is deliberately NOT git-ignored — it is the
+##   only state this Action and the local CLI share, and while it was ignored
+##   this job read an empty ledger on every run and could never revert anything.
 ##
 
 name: Thesmos Watch

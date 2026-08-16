@@ -7,6 +7,11 @@ import { chooseCulprit, performRevert } from './revert.ts';
 import { appendEntry, readEntries } from './ledger.ts';
 import { executeWave, isAutonomyDisabled } from './execute.ts';
 import type { GhRunner } from './execute.ts';
+import type { Runner } from './sync.ts';
+
+/** A git that succeeds at everything and moves no bytes — these tests are
+ *  about the revert, not the publish; sync.test.ts owns that half. */
+const okGit: Runner = () => ({ ok: true, stdout: 'main\n', stderr: '' });
 
 let root: string;
 const now = () => new Date('2026-08-16T12:00:00Z');
@@ -48,7 +53,7 @@ describe('performRevert', () => {
       return { ok: true, stdout: 'https://github.com/o/r/pull/99\n', stderr: '' };
     };
 
-    expect(performRevert(root, culprit, { gh, now })).toBe(true);
+    expect(performRevert(root, culprit, { gh, now, git: okGit }).ok).toBe(true);
     expect(calls[0].slice(0, 3)).toEqual(['pr', 'revert', '1']);
     expect(calls[1].slice(0, 3)).toEqual(['pr', 'merge', '99']);  // the new PR, not the original
   });
@@ -57,7 +62,7 @@ describe('performRevert', () => {
     appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
     const culprit = chooseCulprit(readEntries(root), ['aaa'])!;
 
-    const ok = performRevert(root, culprit, { gh: () => ({ ok: false, stdout: '', stderr: 'no' }), now });
+    const { ok } = performRevert(root, culprit, { gh: () => ({ ok: false, stdout: '', stderr: 'no' }), now, git: okGit });
 
     expect(ok).toBe(false);
     expect(readEntries(root).some((e) => e.action === 'revert' && e.ok === false)).toBe(true);
@@ -82,7 +87,7 @@ describe('performRevert', () => {
         ? { ok: true, stdout: 'https://github.com/o/r/pull/99\n', stderr: '' }
         : { ok: false, stdout: '', stderr: 'merge conflict on revert PR' };
 
-    const ok = performRevert(root, culprit, { gh, now });
+    const { ok } = performRevert(root, culprit, { gh, now, git: okGit });
 
     expect(ok).toBe(false);
     expect(isAutonomyDisabled(root)).toBe(true);

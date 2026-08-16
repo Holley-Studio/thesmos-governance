@@ -7,6 +7,10 @@ import { runWatch } from '../bin/commands/pr.ts';
 import { appendEntry } from './ledger.ts';
 import { isAutonomyDisabled } from './execute.ts';
 import type { GhRunner } from './execute.ts';
+import type { Runner } from './sync.ts';
+
+const okGit: Runner = () => ({ ok: true, stdout: 'main\n', stderr: '' });
+const PUBLISHED = { ok: true };
 
 let root: string;
 const now = () => new Date('2026-08-16T12:00:00Z');
@@ -47,7 +51,7 @@ describe('runWatch', () => {
     const baseGh = fakeWatchGh({ shas: ['aaa', 'zzz'], failingShas: new Set() });
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
-    const result = runWatch(root, { range: 5 }, { gh, now });
+    const result = runWatch(root, { range: 5 }, { gh, now, git: okGit });
 
     expect(result).toEqual({ status: 'green' });
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
@@ -58,7 +62,7 @@ describe('runWatch', () => {
     const baseGh = fakeWatchGh({ shas: ['aaa'], failingShas: new Set(['aaa']) });
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
-    const result = runWatch(root, { range: 5 }, { gh, now });
+    const result = runWatch(root, { range: 5 }, { gh, now, git: okGit });
 
     expect(result).toEqual({ status: 'no-culprit' });
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
@@ -70,9 +74,9 @@ describe('runWatch', () => {
     const baseGh = fakeWatchGh({ shas: ['aaa', 'zzz'], failingShas: new Set(['aaa']) });
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
-    const result = runWatch(root, { range: 5 }, { gh, now });
+    const result = runWatch(root, { range: 5 }, { gh, now, git: okGit });
 
-    expect(result).toEqual({ status: 'reverted', pr: 7 });
+    expect(result).toEqual({ status: 'reverted', pr: 7, sync: PUBLISHED });
     // The revert PR (#999) is what gets merged, never the original (#7) —
     // proves this drives performRevert's actual create-then-merge sequence,
     // not a stub that just reports success.
@@ -89,9 +93,9 @@ describe('runWatch', () => {
       throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
     };
 
-    const result = runWatch(root, { range: 5 }, { gh, now });
+    const result = runWatch(root, { range: 5 }, { gh, now, git: okGit });
 
-    expect(result).toEqual({ status: 'revert-failed', pr: 3 });
+    expect(result).toEqual({ status: 'revert-failed', pr: 3, sync: PUBLISHED });
     expect(isAutonomyDisabled(root)).toBe(true);
   });
 
@@ -102,7 +106,7 @@ describe('runWatch', () => {
       throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
     };
 
-    expect(runWatch(root, { range: 5 }, { gh, now })).toEqual({ status: 'unknown' });
+    expect(runWatch(root, { range: 5 }, { gh, now, git: okGit })).toEqual({ status: 'unknown' });
   });
 
   it('reports pending, not green, and never consults the ledger while a check run is still in progress', () => {
@@ -119,7 +123,7 @@ describe('runWatch', () => {
       throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
     };
 
-    const result = runWatch(root, { range: 5 }, { gh, now });
+    const result = runWatch(root, { range: 5 }, { gh, now, git: okGit });
 
     expect(result).toEqual({ status: 'pending' });
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
@@ -132,7 +136,7 @@ describe('runWatch', () => {
       return { ok: false, stdout: '', stderr: 'not logged in' };
     };
 
-    expect(runWatch(root, { range: 5 }, { gh, now })).toEqual({ status: 'unreadable-history' });
+    expect(runWatch(root, { range: 5 }, { gh, now, git: okGit })).toEqual({ status: 'unreadable-history' });
     expect(calls.some((c) => c[1]?.includes('/check-runs'))).toBe(false);
   });
 
@@ -145,7 +149,7 @@ describe('runWatch', () => {
       throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
     };
 
-    runWatch(root, { range: 10 }, { gh, now });
+    runWatch(root, { range: 10 }, { gh, now, git: okGit });
 
     const commitsCall = calls.find((c) => c[0] === 'api' && c[1]?.includes('/commits?'));
     expect(commitsCall?.[1]).toContain('per_page=10');

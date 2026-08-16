@@ -8,10 +8,15 @@ import type { MergePlan } from '../../pr/plan.ts';
 import { buildGraph } from '../../pr/graph.ts';
 import { isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
 import { acquireLock } from '../../pr/lock.ts';
+import type { Runner } from '../../pr/sync.ts';
 import { appendEntry } from '../../pr/ledger.ts';
 import type { CheckContext, PullRequest } from '../../pr/types.ts';
 
 const testNow = () => new Date('2026-08-16T12:00:00Z');
+
+/** A git that reports success and stages nothing — publishing the ledger is
+ *  proven end-to-end in thesmos/pr/ledger-handoff.test.ts. */
+const testGit: Runner = () => ({ ok: true, stdout: 'main\n', stderr: '' });
 
 /** A root dir for tests that never touch the filesystem (queue/explain paths). */
 const UNUSED_ROOT = '/dev/null/thesmos-unused-root';
@@ -198,7 +203,7 @@ describe('runPr — default branch derivation is actually used by pr:queue', () 
     // than quietly treated as a root — the ordering fix from the same review.
     // #2 is the one that must come out planned and unstacked.
     let out = '';
-    runPr(['queue'], { gh: fakeGh('develop', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+    runPr(['queue'], { gh: fakeGh('develop', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
 
     expect(out).toContain('✓ 1 ready to merge');
     const line2 = out.split('\n').find((l) => l.includes('#2'));
@@ -218,7 +223,7 @@ describe('runPr — pr:explain formatting is actually used for a PR that was nev
     ]);
 
     let out = '';
-    runPr(['explain', '999'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+    runPr(['explain', '999'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
 
     expect(out).toBe('  #999 is not among the 2 open pull requests I looked at. Run "thesmos pr:queue" to see the current list.\n');
   });
@@ -260,7 +265,7 @@ describe('runPr — OBSOLETE fires end-to-end through pr:queue via a real gh-sha
     const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson(['.github/workflows/ci.yml', 'README.md']) });
 
     let out = '';
-    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
 
     expect(out).toMatch(/✗ #9/);
     expect(out).toMatch(/files it changes no longer exist/);
@@ -274,7 +279,7 @@ describe('runPr — OBSOLETE fires end-to-end through pr:queue via a real gh-sha
     const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson(['package-lock.json', 'README.md']) });
 
     let out = '';
-    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
 
     expect(out).toContain('✓ 1 ready to merge');
   });
@@ -288,7 +293,7 @@ describe('runPr — a failed or unusable tree lookup never marks every PR obsole
     const gh = fakeGhWithTree('main', prListJson, { ok: false });
 
     let out = '';
-    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
 
     expect(out).toContain('✓ 1 ready to merge');
     expect(out).not.toMatch(/no longer exist/);
@@ -304,7 +309,7 @@ describe('runPr — a failed or unusable tree lookup never marks every PR obsole
     const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson(['package-lock.json'], true) });
 
     let out = '';
-    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
 
     expect(out).toContain('✓ 1 ready to merge');
   });
@@ -316,7 +321,7 @@ describe('runPr — a failed or unusable tree lookup never marks every PR obsole
     const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson([]) });
 
     let out = '';
-    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
 
     expect(out).toContain('✓ 1 ready to merge');
   });
@@ -372,7 +377,7 @@ describe('runPr — pr:merge is actually wired to runMerge', () => {
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
     let out = '';
-    runPr(['merge', '--wave', '0'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['merge', '--wave', '0'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
 
     expect(out).toContain('#1');
     expect(out).not.toContain('#2');
@@ -390,7 +395,7 @@ describe('runPr — pr:merge is actually wired to runMerge', () => {
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
     let out = '';
-    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
 
     const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
     expect(merges).toEqual(['1']);
@@ -425,7 +430,7 @@ describe('runPr — a PR whose Thesmos governance check failed is never merged',
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
     let out = '';
-    runPr(['merge', '--all'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['merge', '--all'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
 
     const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
     expect(merges).toEqual(['1']);
@@ -442,7 +447,7 @@ describe('runPr — pr:queue explains a BLOCKER halt in plain language', () => {
     ]);
 
     let out = '';
-    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
 
     expect(out).toMatch(/✗ #2/);
     expect(out).toContain('Thesmos found something that must not ship');
@@ -456,7 +461,7 @@ describe('runPr — pr:queue explains a BLOCKER halt in plain language', () => {
     ]);
 
     let out = '';
-    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
 
     expect(out).toContain('✓ 1 ready to merge');
     expect(out).toMatch(/none of these pull requests has a Thesmos governance result yet/i);
@@ -470,7 +475,7 @@ describe('runPr — pr:queue explains a BLOCKER halt in plain language', () => {
     ]);
 
     let out = '';
-    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
 
     expect(out).not.toMatch(/governance result yet/i);
   });
@@ -488,7 +493,7 @@ describe('runPr — pr:merge refuses when autonomy is off (governing property 3)
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
     let out = '';
-    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
 
     expect(out).toMatch(/autonomy is off/i);
     expect(calls).toEqual([]);
@@ -511,7 +516,7 @@ describe('runPr — pr:merge refuses when another Thesmos run already holds the 
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
     let out = '';
-    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
 
     expect(out).toMatch(/already merging/i);
     expect(calls).toEqual([]);
@@ -524,16 +529,16 @@ describe('runPr — autonomy on/off/status', () => {
     const gh: GhRunner = () => { throw new Error('gh must never be called to toggle a local switch'); };
 
     let out = '';
-    runPr(['autonomy', 'off'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['autonomy', 'off'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
     expect(isAutonomyDisabled(root)).toBe(true);
     expect(out).toMatch(/off/i);
 
     out = '';
-    runPr(['autonomy'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['autonomy'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
     expect(out).toMatch(/off/i);
 
     out = '';
-    runPr(['autonomy', 'on'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['autonomy', 'on'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
     expect(isAutonomyDisabled(root)).toBe(false);
     expect(out).toMatch(/on/i);
   });
@@ -655,8 +660,8 @@ describe('formatWatchResult', () => {
       [{ status: 'pending' }, /still running/i],
       [{ status: 'green' }, /currently green/i],
       [{ status: 'no-culprit' }, /nothing of ours/i],
-      [{ status: 'reverted', pr: 12 }, /reverted #12/],
-      [{ status: 'revert-failed', pr: 12 }, /could not revert #12/],
+      [{ status: 'reverted', pr: 12, sync: { ok: true } }, /reverted #12/],
+      [{ status: 'revert-failed', pr: 12, sync: { ok: true } }, /could not revert #12/],
     ];
     for (const [result, expected] of cases) {
       expect(formatWatchResult(result)).toMatch(expected);
@@ -703,7 +708,7 @@ describe('runPr — pr:watch does nothing when main is green', () => {
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
     let out = '';
-    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
 
     expect(out).toMatch(/green/i);
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
@@ -728,7 +733,7 @@ describe('runPr — pr:watch treats outstanding checks as pending, never as gree
     };
 
     let out = '';
-    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
 
     expect(out).toMatch(/still running/i);
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
@@ -743,7 +748,7 @@ describe('runPr — pr:watch when main is red but nothing of ours is in range', 
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
     let out = '';
-    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
 
     expect(out).toMatch(/nothing of ours/i);
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
@@ -759,7 +764,7 @@ describe('runPr — pr:watch reaches chooseCulprit and performRevert when main i
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
     let out = '';
-    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
 
     expect(out).toMatch(/reverted #7/);
     // Proves the wiring reaches performRevert's actual two-call sequence
@@ -781,7 +786,7 @@ describe('runPr — pr:watch surfaces a failed revert and leaves autonomy off', 
     };
 
     let out = '';
-    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
 
     expect(out).toMatch(/could not revert #3/i);
     expect(isAutonomyDisabled(root)).toBe(true);
@@ -799,7 +804,7 @@ describe('runPr — pr:watch honors --range for how much history to check', () =
       throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
     };
 
-    runPr(['watch', '--range', '10'], { gh, write: () => {}, root, now: testNow });
+    runPr(['watch', '--range', '10'], { gh, write: () => {}, root, now: testNow, git: testGit });
 
     const commitsCall = calls.find((c) => c[0] === 'api' && c[1]?.includes('/commits?'));
     expect(commitsCall?.[1]).toContain('per_page=10');

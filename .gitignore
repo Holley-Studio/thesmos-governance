@@ -129,5 +129,7 @@ pantheon/exports/**
 rclone.conf
 *.credentials.json
 
-# Thesmos PR action ledger (local runtime state)
-.thesmos/pr-ledger.jsonl
+# NOTE: .thesmos/pr-ledger.jsonl is deliberately NOT ignored. It is the only
+# state the `thesmos pr:watch` GitHub Action and the local CLI share (spec
+# §6.2); ignoring it meant the Action's fresh checkout never contained it and
+# auto-revert could never fire. It holds PR numbers, SHAs and outcomes only.

@@ -6,6 +6,11 @@ import { join } from 'node:path';
 import { runMerge } from '../bin/commands/pr.ts';
 import { setAutonomy } from './execute.ts';
 import { acquireLock } from './lock.ts';
+import type { Runner } from './sync.ts';
+
+/** Publishing the ledger is proven in sync.test.ts and ledger-handoff.test.ts;
+ *  here it only has to not get in the way. */
+const okGit: Runner = () => ({ ok: true, stdout: 'main\n', stderr: '' });
 
 let root: string;
 const now = () => new Date('2026-08-16T12:00:00Z');
@@ -30,7 +35,7 @@ describe('runMerge', () => {
       return { ok: true, stdout: args[0] === 'pr' && args[1] === 'list' ? PRS : '', stderr: '' };
     };
 
-    const result = runMerge(root, { wave: 0 }, { gh, now });
+    const result = runMerge(root, { wave: 0 }, { gh, now, git: okGit });
 
     expect(result.merged).toEqual([1]);
     const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
@@ -46,7 +51,7 @@ describe('runMerge', () => {
       return { ok: true, stdout: args[0] === 'pr' && args[1] === 'list' ? PRS : '', stderr: '' };
     };
 
-    const result = runMerge(root, { wave: 'all' }, { gh, now });
+    const result = runMerge(root, { wave: 'all' }, { gh, now, git: okGit });
 
     expect(result.merged).toEqual([1]);
     expect(result.failed).toEqual([]);
@@ -73,7 +78,7 @@ describe('runMerge', () => {
       return { ok: true, stdout: '', stderr: '' };
     };
 
-    const result = runMerge(root, { wave: 'all' }, { gh, now });
+    const result = runMerge(root, { wave: 'all' }, { gh, now, git: okGit });
 
     expect(result.merged).toEqual([]);
     expect(result.failed).toEqual([10]);
@@ -95,7 +100,7 @@ describe('runMerge', () => {
       return { ok: true, stdout: '', stderr: '' };
     };
 
-    const result = runMerge(root, { wave: 'all' }, { gh, now });
+    const result = runMerge(root, { wave: 'all' }, { gh, now, git: okGit });
 
     expect(result.merged).toEqual([10, 11]);
     expect(result.failed).toEqual([]);
@@ -109,7 +114,7 @@ describe('runMerge', () => {
       return { ok: true, stdout: args[0] === 'pr' && args[1] === 'list' ? PRS : '', stderr: '' };
     };
 
-    const result = runMerge(root, { wave: 0 }, { gh, now });
+    const result = runMerge(root, { wave: 0 }, { gh, now, git: okGit });
 
     expect(result.merged).toEqual([]);
     expect(result.failed).toEqual([]);
@@ -139,7 +144,7 @@ describe('runMerge', () => {
       return { ok: true, stdout: '', stderr: '' };
     };
 
-    const result = runMerge(root, { wave: 0 }, { gh, now });
+    const result = runMerge(root, { wave: 0 }, { gh, now, git: okGit });
 
     expect(result.merged).toEqual([2]);
     const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
@@ -156,7 +161,7 @@ describe('runMerge', () => {
       return { ok: true, stdout: args[0] === 'pr' && args[1] === 'list' ? PRS : '', stderr: '' };
     };
 
-    const result = runMerge(root, { wave: 0 }, { gh, now });
+    const result = runMerge(root, { wave: 0 }, { gh, now, git: okGit });
 
     expect(result.locked).toBe(true);
     expect(result.merged).toEqual([]);
@@ -167,7 +172,7 @@ describe('runMerge', () => {
   it('releases the lock even when the merge path throws, so a crash cannot wedge the tool', () => {
     const throwingGh = (): never => { throw new Error('boom — simulated crash before any merge'); };
 
-    expect(() => runMerge(root, { wave: 0 }, { gh: throwingGh, now })).toThrow('boom');
+    expect(() => runMerge(root, { wave: 0 }, { gh: throwingGh, now, git: okGit })).toThrow('boom');
 
     // If the lock were still held, this would return false.
     expect(acquireLock(root, now())).toBe(true);
@@ -200,7 +205,7 @@ describe('runMerge', () => {
       return { ok: true, stdout: '', stderr: '' };
     };
 
-    const result = runMerge(root, { wave: 'all' }, { gh, now });
+    const result = runMerge(root, { wave: 'all' }, { gh, now, git: okGit });
 
     expect(result.merged).toEqual([1]);
     const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
