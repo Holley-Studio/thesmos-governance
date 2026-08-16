@@ -57,6 +57,7 @@ import { cmdReport } from './commands/report.ts';
 import { cmdAiLint } from './commands/ai-lint.ts';
 import { cmdPackCreate } from './commands/pack-create.ts';
 import { cmdPackPublish } from './commands/pack-publish.ts';
+import { cmdPr } from './commands/pr.ts';
 import { cmdAutopilot } from './commands/autopilot.ts';
 import { cmdClaudeGovern } from './commands/claude-govern.ts';
 import { cmdImportScan } from './commands/import-scan.ts';
@@ -115,6 +116,8 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'pack:validate': (argv) => cmdPacks('validate', argv),
   'pack:create': cmdPackCreate,
   'pack:publish': cmdPackPublish,
+  'pr:queue':   (argv) => cmdPr(['queue', ...argv]),
+  'pr:explain': (argv) => cmdPr(['explain', ...argv]),
   health: cmdHealth,
   ci: cmdCiGate,
   'ci:github-security': cmdCiGithubSecurity,
@@ -529,6 +532,10 @@ PACKS
     --dry-run                  Preview without publishing
     --access=<level>           npm publish access (default: public)
     --tag=<tag>                npm dist-tag (e.g. --tag=beta)
+
+PULL REQUESTS  (read-only queue view — plain-language status, no jargon)
+  pr:queue                 Show which open pull requests are ready to merge and which are stuck
+  pr:explain <number>      Explain why one pull request is stuck (or confirm it is ready)
 
 CUSTOM AGENTS
   agent:create "<Name>"    Scaffold a new agent in .thesmos/agents/ and register it
