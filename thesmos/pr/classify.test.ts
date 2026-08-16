@@ -25,6 +25,18 @@ describe('classify', () => {
     expect(classify(pr()).class).toBe('reversible');
   });
 
+  it('rejects an empty patch bump as one-way (vacuous truth guard)', () => {
+    const result = classify(pr({ files: [], title: 'chore(deps): bump x from 1.0.0 to 1.0.1' }));
+    expect(result.class).toBe('one-way');
+    expect(result.reason).not.toMatch(/lockfile/);
+  });
+
+  it('treats a minor bump as recoverable', () => {
+    const result = classify(pr({ title: 'chore(deps): bump lodash from 4.17.0 to 4.18.0' }));
+    expect(result.class).toBe('recoverable');
+    expect(result.reason).toMatch(/minor/i);
+  });
+
   it('treats a major bump as one-way even when green', () => {
     const result = classify(pr({ title: 'chore(deps): bump chokidar from 4.0.3 to 5.0.0' }));
     expect(result.class).toBe('one-way');

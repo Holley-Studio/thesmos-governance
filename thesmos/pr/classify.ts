@@ -39,7 +39,7 @@ export function classify(pr: PullRequest): { class: Reversibility; reason: strin
   if (bump === 'major') {
     return { class: 'one-way', reason: 'major version bump — may contain breaking changes' };
   }
-  if (bump === 'patch' && pr.files.every((f) => LOCKFILE_ONLY.test(f))) {
+  if (bump === 'patch' && pr.files.length > 0 && pr.files.every((f) => LOCKFILE_ONLY.test(f))) {
     return { class: 'reversible', reason: 'patch bump, lockfile only' };
   }
   if (bump === 'minor') {
