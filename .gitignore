@@ -128,3 +128,6 @@ pantheon/exports/**
 # defense-in-depth only. See docs/backup-recovery.md.
 rclone.conf
 *.credentials.json
+
+# Thesmos PR action ledger (local runtime state)
+.thesmos/pr-ledger.jsonl
