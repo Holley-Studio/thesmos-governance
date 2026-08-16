@@ -21,6 +21,21 @@ describe('fetchPullRequests', () => {
     expect(() => fetchPullRequests(() => ({ ok: false, stdout: '', stderr: 'not logged in' })))
       .toThrow(/not logged in/);
   });
+
+  it('throws a named error instead of a raw parse exception when gh returns malformed JSON', () => {
+    expect(() => fetchPullRequests(() => ({ ok: true, stdout: 'not valid json{', stderr: '' })))
+      .toThrow(/could not read pull requests.*not valid JSON/i);
+  });
+
+  it('degrades a PR missing files/mergeStateStatus to safe defaults instead of crashing', () => {
+    const sparse = JSON.stringify([
+      { number: 200, title: 'chore: sparse', isDraft: false, baseRefName: 'main', headRefName: 'sparse' },
+    ]);
+    const prs = fetchPullRequests(() => ({ ok: true, stdout: sparse, stderr: '' }));
+    expect(prs[0].files).toEqual([]);
+    expect(prs[0].mergeStateStatus).toBe('UNKNOWN');
+    expect(prs[0].changedFiles).toBe(0);
+  });
 });
 
 describe('renderPlan', () => {
