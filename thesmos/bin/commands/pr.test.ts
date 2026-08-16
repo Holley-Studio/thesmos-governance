@@ -468,6 +468,22 @@ describe('runPr — pr:queue explains a BLOCKER halt in plain language', () => {
     expect(out).toMatch(/nothing was checked against the rules/i);
   });
 
+  it('says it on the merge path too, not only on the read-only queue', () => {
+    // Someone who only ever runs pr:merge would otherwise never learn the
+    // governance gate had nothing to read — the one way that gate goes quiet.
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+
+    let out = '';
+    runPr(['merge'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toMatch(/merged 1/);
+    expect(out).toMatch(/none of these pull requests has a Thesmos governance result yet/i);
+  });
+
   it('stays quiet about coverage once a governance result is present', () => {
     const prListJson = ghPrListJson([
       { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',

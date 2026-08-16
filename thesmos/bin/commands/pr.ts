@@ -169,7 +169,10 @@ export function runMerge(
   root: string,
   opts: { wave: number | 'all' },
   deps: { gh: GhRunner; now: () => Date; git: Runner },
-): { merged: number[]; failed: number[]; locked?: boolean; unknownWave?: boolean; sync?: SyncResult } {
+): {
+  merged: number[]; failed: number[]; locked?: boolean; unknownWave?: boolean;
+  sync?: SyncResult; coverage?: { seen: number; total: number };
+} {
   if (!acquireLock(root, deps.now())) {
     return { merged: [], failed: [], locked: true };
   }
@@ -206,7 +209,10 @@ export function runMerge(
       ? syncState(root, [LEDGER_PATH], 'chore(thesmos): record merged pull requests', { git: deps.git })
       : undefined;
 
-    return { merged, failed, unknownWave, sync };
+    // Reported on the merge path too, not only on pr:queue: someone who only
+    // ever runs pr:merge would otherwise never learn that the governance gate
+    // had nothing to read, which is the one way that gate goes quiet.
+    return { merged, failed, unknownWave, sync, coverage: governanceCoverage(prs) };
   } finally {
     releaseLock(root);
   }
@@ -478,6 +484,7 @@ export function runPr(argv: string[], deps: PrDeps): number {
         deps.write(`  ✗ stopped at #${result.failed[0]} — nothing after it was attempted\n`);
       }
     }
+    if (result.coverage) deps.write(formatGovernanceCoverage(result.coverage));
     if (result.sync) deps.write(formatSyncFailure(result.sync));
     // A wave that stopped at a failed merge is a failed run. Reporting it as
     // success is what put a green tick on a run that left the queue stuck.

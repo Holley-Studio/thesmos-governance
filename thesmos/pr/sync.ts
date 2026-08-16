@@ -44,6 +44,9 @@
  * watcher that wrote it.
  */
 
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
 export type Runner = (args: string[]) => { ok: boolean; stdout: string; stderr: string };
 
 export interface SyncResult {
@@ -83,12 +86,24 @@ export function syncState(
     }
   };
 
-  // Per-path, and a failure here is tolerated on purpose: `git add -A -- x`
-  // errors when x has never existed and was never tracked, which is the
-  // ordinary state of the sentinel on a repo where autonomy was never turned
-  // off. -A (not plain add) so that *removing* the sentinel — `autonomy on`
-  // — is staged as the deletion it is.
-  for (const path of paths) git(['add', '-A', '--', path]);
+  // Per-path. A failure is tolerated ONLY when the file is genuinely absent
+  // from disk: `git add -A -- x` errors when x has never existed and was
+  // never tracked, which is the ordinary state of the sentinel on a repo
+  // where autonomy was never switched off. -A (not plain add) so that
+  // *removing* the sentinel — `autonomy on` — is staged as the deletion it is.
+  //
+  // A file that IS on disk and still cannot be staged is a hard failure, not
+  // a no-op. The case that matters: if the ledger were ever git-ignored
+  // again, `git add` would refuse it, nothing would be staged, and the
+  // "nothing to publish" path below would report ok — reviving Critical 1
+  // exactly, and silently. Found by sweeping this module for the very
+  // pattern it was written to fix.
+  for (const path of paths) {
+    const added = git(['add', '-A', '--', path]);
+    if (!added.ok && existsSync(join(root, path))) {
+      return { ok: false, detail: short(`${path} is on disk but git refused to stage it: ${added.stderr}`, `could not stage ${path}`) };
+    }
+  }
 
   const staged = git(['diff', '--cached', '--name-only', '--', ...paths]);
   if (!staged.ok) {

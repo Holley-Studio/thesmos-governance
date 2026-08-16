@@ -1,6 +1,9 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { syncState, formatSyncFailure, LEDGER_PATH, type Runner } from './sync.ts';
 
 /** Records every git invocation and answers from a table of prefixes. */
@@ -76,6 +79,27 @@ describe('syncState', () => {
     const result = syncState('/repo', [LEDGER_PATH], 'msg', { git });
     expect(result.ok).toBe(false);
     expect(result.detail).toMatch(/git exploded/);
+  });
+
+  it('fails loudly when a file that is on disk cannot be staged, instead of reporting a quiet no-op', () => {
+    // The revival scenario for CRITICAL 1: if the ledger were git-ignored
+    // again, `git add` refuses it, nothing lands in the index, and the
+    // "nothing to publish" branch would otherwise report ok — leaving
+    // auto-revert blind with no signal at all. Distinguishing "absent" from
+    // "refused" is what makes the tolerance above safe.
+    const root = mkdtempSync(join(tmpdir(), 'thesmos-sync-'));
+    mkdirSync(join(root, '.thesmos'), { recursive: true });
+    writeFileSync(join(root, LEDGER_PATH), '{"pr":1}\n');
+
+    const git = fakeGit({
+      'add': { ok: false, stderr: 'The following paths are ignored by one of your .gitignore files:\n.thesmos/pr-ledger.jsonl' },
+      'diff': { ok: true, stdout: '' },
+    }, []);
+
+    const result = syncState(root, [LEDGER_PATH], 'msg', { git });
+    expect(result.ok).toBe(false);
+    expect(result.noop).toBeUndefined();
+    expect(result.detail).toMatch(/on disk but git refused to stage it/);
   });
 
   it('tolerates a path that has never existed, so an absent sentinel is not an error', () => {
