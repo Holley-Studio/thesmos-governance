@@ -5,9 +5,12 @@ import { createContext } from '../lib/context.ts';
 import { fetchPullRequests, renderPlan } from '../../pr/fetch.ts';
 import { computePlan, type MergePlan } from '../../pr/plan.ts';
 import { executeWave, isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
+import { chooseCulprit, performRevert } from '../../pr/revert.ts';
+import { readEntries } from '../../pr/ledger.ts';
 import type { PullRequest } from '../../pr/types.ts';
 
 const DEFAULT_BRANCH_FALLBACK = 'main';
+const DEFAULT_WATCH_RANGE = 5;
 
 /** Shape of what spawnSync gives us — narrowed so the ENOENT path is testable without spawning a process. */
 export interface RawGhResult {
@@ -131,6 +134,95 @@ export function parseWaveArg(argv: string[]): number | 'all' {
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * Parses `--range <n>` out of a `pr:watch` argv. Same NaN trap as
+ * parseWaveArg above (Number(undefined) is NaN, and NaN ?? default stays
+ * NaN), so this is an explicit Number.isFinite check rather than `??`.
+ */
+export function parseRangeArg(argv: string[]): number {
+  const i = argv.indexOf('--range');
+  if (i === -1) return DEFAULT_WATCH_RANGE;
+  const n = Number(argv[i + 1]);
+  return Number.isFinite(n) ? n : DEFAULT_WATCH_RANGE;
+}
+
+/**
+ * Whether main is currently red, read through the GitHub Checks API
+ * (`checks: read`) rather than the legacy commit-status endpoint
+ * (`statuses: read`): this repo's CI runs as GitHub Actions jobs, which
+ * report results through Check Runs, not classic commit statuses — reading
+ * the status endpoint here would always see an empty result and pr:watch
+ * would never fire. 'unknown' on any lookup failure (bad response, gh
+ * error, non-numeric output): watch must never guess a color it can't
+ * verify, because a wrong guess of 'red' triggers a real revert.
+ */
+export function mainCheckStatus(gh: GhRunner, sha: string): 'green' | 'red' | 'unknown' {
+  const res = gh([
+    'api', `repos/{owner}/{repo}/commits/${sha}/check-runs`,
+    '--jq', '[.check_runs[] | select(.conclusion != null and .conclusion != "success" and .conclusion != "neutral" and .conclusion != "skipped")] | length',
+  ]);
+  if (!res.ok) return 'unknown';
+  const trimmed = res.stdout.trim();
+  // Number('') is 0, not NaN — an empty response must not silently read as
+  // "0 failing checks" (green). Only a real numeric answer counts.
+  if (trimmed === '') return 'unknown';
+  const n = Number(trimmed);
+  if (!Number.isFinite(n)) return 'unknown';
+  return n > 0 ? 'red' : 'green';
+}
+
+export type WatchResult =
+  | { status: 'unreadable-history' }
+  | { status: 'no-history' }
+  | { status: 'unknown' }
+  | { status: 'green' }
+  | { status: 'no-culprit' }
+  | { status: 'reverted'; pr: number }
+  | { status: 'revert-failed'; pr: number };
+
+/**
+ * The `pr:watch` logic, pulled out of runPr's dispatch (same shape as
+ * runMerge above) so it is directly testable and runPr's dispatch body
+ * stays a thin call-and-format. Checks whether main is currently red before
+ * touching the ledger at all: the workflow that calls this fires on every
+ * push to main, not just a failing one, so watch must determine that for
+ * itself rather than assume the trigger means main broke.
+ */
+export function runWatch(
+  root: string,
+  opts: { range: number },
+  deps: { gh: GhRunner; now: () => Date },
+): WatchResult {
+  const log = deps.gh(['api', `repos/{owner}/{repo}/commits?per_page=${opts.range}`, '--jq', '.[].sha']);
+  if (!log.ok) return { status: 'unreadable-history' };
+
+  const range = log.stdout.split('\n').filter(Boolean);
+  if (range.length === 0) return { status: 'no-history' };
+
+  const status = mainCheckStatus(deps.gh, range[0]);
+  if (status === 'unknown') return { status: 'unknown' };
+  if (status === 'green') return { status: 'green' };
+
+  const culprit = chooseCulprit(readEntries(root), range);
+  if (!culprit) return { status: 'no-culprit' };
+
+  const ok = performRevert(root, culprit, deps);
+  return ok ? { status: 'reverted', pr: culprit.pr } : { status: 'revert-failed', pr: culprit.pr };
+}
+
+/** Pure formatter for `pr:watch` — no gh calls, so it's directly testable like formatExplain. */
+export function formatWatchResult(result: WatchResult): string {
+  switch (result.status) {
+    case 'unreadable-history': return '  Could not read the recent history of main; doing nothing.\n';
+    case 'no-history': return '  main has no commit history to check; doing nothing.\n';
+    case 'unknown': return '  Could not tell whether main is currently green or red; doing nothing.\n';
+    case 'green': return '  main is currently green. Nothing to do.\n';
+    case 'no-culprit': return '  Nothing of ours in the failing range.\n';
+    case 'reverted': return `  ✓ reverted #${result.pr} — main went red after it merged\n`;
+    case 'revert-failed': return `  ✗ could not revert #${result.pr}. Autonomy is now OFF and needs you.\n`;
+  }
+}
+
 export interface PrDeps {
   gh: GhRunner;
   write: (s: string) => void;
@@ -189,6 +281,12 @@ export function runPr(argv: string[], deps: PrDeps): void {
         deps.write(`  ✗ stopped at #${result.failed[0]} — nothing after it was attempted\n`);
       }
     }
+    return;
+  }
+
+  if (sub === 'watch') {
+    const result = runWatch(deps.root, { range: parseRangeArg(argv) }, { gh: deps.gh, now: deps.now });
+    deps.write(formatWatchResult(result));
     return;
   }
 

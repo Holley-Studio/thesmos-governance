@@ -3,10 +3,11 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { classifyGhResult, detectDefaultBranch, formatExplain, makeGhRunner, parseWaveArg, runPr, type RawGhResult } from './pr.ts';
+import { classifyGhResult, detectDefaultBranch, formatExplain, formatWatchResult, mainCheckStatus, makeGhRunner, parseRangeArg, parseWaveArg, runPr, type RawGhResult, type WatchResult } from './pr.ts';
 import type { MergePlan } from '../../pr/plan.ts';
 import { buildGraph } from '../../pr/graph.ts';
 import { isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
+import { appendEntry } from '../../pr/ledger.ts';
 import type { PullRequest } from '../../pr/types.ts';
 
 const testNow = () => new Date('2026-08-16T12:00:00Z');
@@ -344,5 +345,185 @@ describe('makeGhRunner', () => {
   it('passes a clean spawn result through unchanged', () => {
     const gh = makeGhRunner(() => ({ error: undefined, status: 0, stdout: '[]', stderr: '' }));
     expect(gh(['pr', 'list'])).toEqual({ ok: true, stdout: '[]', stderr: '' });
+  });
+});
+
+// ── pr:watch — reads main's check state, then reaches chooseCulprit/performRevert ──
+//
+// Task 8 built chooseCulprit/performRevert and the workflow that invokes
+// `thesmos pr:watch`, but nothing registered the subcommand. These tests
+// prove: (1) pr:watch actually determines whether main is currently red
+// before doing anything (a push-triggered workflow fires on every push, not
+// just failures, so watch must check this itself), and (2) when it is red,
+// the wiring genuinely reaches chooseCulprit and performRevert — not just a
+// message that looks right.
+
+describe('parseRangeArg', () => {
+  it('defaults to 5 when no --range flag is given', () => {
+    expect(parseRangeArg(['watch'])).toBe(5);
+  });
+
+  it('reads the number after --range', () => {
+    expect(parseRangeArg(['watch', '--range', '10'])).toBe(10);
+  });
+
+  it('falls back to 5 for a non-numeric --range value instead of propagating NaN', () => {
+    // Same NaN trap as parseWaveArg: Number(undefined) is NaN and NaN ?? 5
+    // stays NaN, so this must be an explicit Number.isFinite check.
+    expect(parseRangeArg(['watch', '--range', 'banana'])).toBe(5);
+  });
+});
+
+describe('mainCheckStatus', () => {
+  it('reports red when the Checks API reports at least one failing check run', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: '1\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('red');
+  });
+
+  it('reports green when no check run failed', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: '0\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('green');
+  });
+
+  it('reports unknown when the API call itself fails, rather than guessing a color', () => {
+    const gh: GhRunner = () => ({ ok: false, stdout: '', stderr: 'HTTP 403' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('unknown');
+  });
+
+  it('reports unknown on a non-numeric response instead of letting NaN read as falsy-green', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: '', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('unknown');
+  });
+});
+
+describe('formatWatchResult', () => {
+  it('formats each status without user-facing jargon', () => {
+    const cases: Array<[WatchResult, RegExp]> = [
+      [{ status: 'unreadable-history' }, /could not read.*history/i],
+      [{ status: 'no-history' }, /no commit history/i],
+      [{ status: 'unknown' }, /could not tell whether main/i],
+      [{ status: 'green' }, /currently green/i],
+      [{ status: 'no-culprit' }, /nothing of ours/i],
+      [{ status: 'reverted', pr: 12 }, /reverted #12/],
+      [{ status: 'revert-failed', pr: 12 }, /could not revert #12/],
+    ];
+    for (const [result, expected] of cases) {
+      expect(formatWatchResult(result)).toMatch(expected);
+    }
+  });
+});
+
+function freshWatchRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), 'thesmos-pr-watch-'));
+  mkdirSync(join(root, '.thesmos'), { recursive: true });
+  return root;
+}
+
+/** A GhRunner covering the calls pr:watch makes: the recent-commit list, the
+ * check-runs lookup for a given sha, and (when a revert is warranted) `gh pr
+ * revert` / `gh pr merge`, matching performRevert's own expectations. */
+function fakeWatchGh(opts: { shas: string[]; failingShas: Set<string> }): GhRunner {
+  return (args) => {
+    if (args[0] === 'api' && args[1]?.includes('/check-runs')) {
+      const sha = args[1].split('/commits/')[1]?.split('/check-runs')[0];
+      return { ok: true, stdout: `${opts.failingShas.has(sha ?? '') ? 1 : 0}\n`, stderr: '' };
+    }
+    if (args[0] === 'api' && args[1]?.includes('/commits?')) {
+      return { ok: true, stdout: opts.shas.join('\n') + '\n', stderr: '' };
+    }
+    if (args[0] === 'pr' && args[1] === 'revert') {
+      return { ok: true, stdout: 'https://github.com/o/r/pull/999\n', stderr: '' };
+    }
+    if (args[0] === 'pr' && args[1] === 'merge') {
+      return { ok: true, stdout: '', stderr: '' };
+    }
+    throw new Error(`unexpected gh call in pr:watch test: ${JSON.stringify(args)}`);
+  };
+}
+
+describe('runPr — pr:watch does nothing when main is green', () => {
+  it('checks the newest commit, reports green, and never calls gh pr revert', () => {
+    const root = freshWatchRoot();
+    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, testNow());
+    const calls: string[][] = [];
+    const baseGh = fakeWatchGh({ shas: ['aaa', 'zzz'], failingShas: new Set() });
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow });
+
+    expect(out).toMatch(/green/i);
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
+  });
+});
+
+describe('runPr — pr:watch when main is red but nothing of ours is in range', () => {
+  it('reports plainly and never calls gh pr revert', () => {
+    const root = freshWatchRoot(); // empty ledger — no Thesmos merges at all
+    const calls: string[][] = [];
+    const baseGh = fakeWatchGh({ shas: ['aaa'], failingShas: new Set(['aaa']) });
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow });
+
+    expect(out).toMatch(/nothing of ours/i);
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
+  });
+});
+
+describe('runPr — pr:watch reaches chooseCulprit and performRevert when main is red', () => {
+  it('reverts the Thesmos merge inside the failing range and reports success', () => {
+    const root = freshWatchRoot();
+    appendEntry(root, { action: 'merge', pr: 7, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, testNow());
+    const calls: string[][] = [];
+    const baseGh = fakeWatchGh({ shas: ['aaa', 'zzz'], failingShas: new Set(['aaa']) });
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow });
+
+    expect(out).toMatch(/reverted #7/);
+    // Proves the wiring reaches performRevert's actual two-call sequence
+    // (create, then merge the *new* PR — #999, not #7), not a stub.
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert' && c[2] === '7')).toBe(true);
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'merge' && c[2] === '999')).toBe(true);
+  });
+});
+
+describe('runPr — pr:watch surfaces a failed revert and leaves autonomy off', () => {
+  it('reports the failure instead of crashing or claiming success', () => {
+    const root = freshWatchRoot();
+    appendEntry(root, { action: 'merge', pr: 3, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, testNow());
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: '1\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'revert') return { ok: false, stdout: '', stderr: 'no permission' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    let out = '';
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow });
+
+    expect(out).toMatch(/could not revert #3/i);
+    expect(isAutonomyDisabled(root)).toBe(true);
+  });
+});
+
+describe('runPr — pr:watch honors --range for how much history to check', () => {
+  it('passes the requested count through to the commit-list lookup', () => {
+    const root = freshWatchRoot();
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => {
+      calls.push(args);
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: '0\n', stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    runPr(['watch', '--range', '10'], { gh, write: () => {}, root, now: testNow });
+
+    const commitsCall = calls.find((c) => c[0] === 'api' && c[1]?.includes('/commits?'));
+    expect(commitsCall?.[1]).toContain('per_page=10');
   });
 });

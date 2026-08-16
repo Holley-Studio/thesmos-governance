@@ -119,6 +119,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'pr:queue':   (argv) => cmdPr(['queue', ...argv]),
   'pr:explain': (argv) => cmdPr(['explain', ...argv]),
   'pr:merge':   (argv) => cmdPr(['merge', ...argv]),
+  'pr:watch':   (argv) => cmdPr(['watch', ...argv]),
   'autonomy':   (argv) => cmdPr(['autonomy', ...argv]),
   health: cmdHealth,
   ci: cmdCiGate,
@@ -541,6 +542,8 @@ PULL REQUESTS  (governed merge engine — plain-language status, no jargon)
   pr:merge                 Merge the next ready wave of pull requests (stops at the first failure)
     --wave <n>               Merge only wave n (default: 0)
     --all                    Merge every ready wave, in order
+  pr:watch                 Used by CI: check whether main just went red, and undo the merge that caused it
+    --range <n>               How many recent commits on main to check (default: 5)
   autonomy                 Show whether Thesmos is allowed to merge pull requests right now
   autonomy on              Allow Thesmos to merge pull requests that meet the rules in place
   autonomy off             Stop Thesmos from merging or changing any pull request
