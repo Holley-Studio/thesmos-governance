@@ -60,11 +60,19 @@ describe('ledger', () => {
     expect(armedMerges(readEntries(root)).map((e) => e.pr)).toEqual([1]);
   });
 
-  it('handles multiple merges of the same PR (latest wins)', () => {
+  it('handles multiple successful merges of the same PR', () => {
+    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'a' }, AT);
+    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'b' }, AT);
+
+    const armed = armedMerges(readEntries(root));
+    expect(armed.map((e) => e.pr)).toEqual([1]);
+  });
+
+  it('does not un-arm a merge when a retry fails', () => {
     appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'a' }, AT);
     appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: false, detail: 'conflict' }, AT);
 
     const armed = armedMerges(readEntries(root));
-    expect(armed.map((e) => e.pr)).toEqual([]);
+    expect(armed.map((e) => e.pr)).toEqual([1]);
   });
 });

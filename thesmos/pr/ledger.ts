@@ -31,7 +31,7 @@ export function appendEntry(root: string, entry: Omit<LedgerEntry, 'ts'>, now: D
 
   // Durability: open once in append mode, write, and fsync to guarantee the record
   // survives a process crash on all platforms (Windows requires write-capable fd).
-  // Power-loss durability: guaranteed on Linux via fsync; weaker on macOS/Windows.
+  // Power-loss durability: guaranteed on Linux via fsync; weaker on macOS.
   const fd = openSync(path, 'a');
   try { writeSync(fd, line); fsyncSync(fd); } finally { closeSync(fd); }
 }
@@ -60,14 +60,15 @@ export function armedMerges(entries: LedgerEntry[]): LedgerEntry[] {
 
   // Armed merge: merge with ok:true where either:
   // 1. The latest action for that PR is this merge (not reverted, or re-landed after revert)
-  // 2. The latest action for that PR is a failed revert (ok !== true)
+  // 2. The latest action for that PR failed (ok !== true) — a failed outcome of any action
+  //    never changes armed status; the original merge remains live.
   return entries.filter((e) => {
     if (!(e.action === 'merge' && e.phase === 'outcome' && e.ok === true)) {
       return false;
     }
     const latest = latestOutcome.get(e.pr);
     if (!latest) return false;
-    // This merge is armed if it's the latest action, or if latest is a failed revert
-    return latest === e || (latest.action === 'revert' && latest.ok !== true);
+    // This merge is armed if it's the latest action, or if latest outcome failed
+    return latest === e || (latest.ok !== true);
   });
 }
