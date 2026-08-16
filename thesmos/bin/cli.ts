@@ -118,6 +118,8 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'pack:publish': cmdPackPublish,
   'pr:queue':   (argv) => cmdPr(['queue', ...argv]),
   'pr:explain': (argv) => cmdPr(['explain', ...argv]),
+  'pr:merge':   (argv) => cmdPr(['merge', ...argv]),
+  'autonomy':   (argv) => cmdPr(['autonomy', ...argv]),
   health: cmdHealth,
   ci: cmdCiGate,
   'ci:github-security': cmdCiGithubSecurity,
@@ -533,9 +535,15 @@ PACKS
     --access=<level>           npm publish access (default: public)
     --tag=<tag>                npm dist-tag (e.g. --tag=beta)
 
-PULL REQUESTS  (read-only queue view — plain-language status, no jargon)
+PULL REQUESTS  (governed merge engine — plain-language status, no jargon)
   pr:queue                 Show which open pull requests are ready to merge and which are stuck
   pr:explain <number>      Explain why one pull request is stuck (or confirm it is ready)
+  pr:merge                 Merge the next ready wave of pull requests (stops at the first failure)
+    --wave <n>               Merge only wave n (default: 0)
+    --all                    Merge every ready wave, in order
+  autonomy                 Show whether Thesmos is allowed to merge pull requests right now
+  autonomy on              Allow Thesmos to merge pull requests that meet the rules in place
+  autonomy off             Stop Thesmos from merging or changing any pull request
 
 CUSTOM AGENTS
   agent:create "<Name>"    Scaffold a new agent in .thesmos/agents/ and register it

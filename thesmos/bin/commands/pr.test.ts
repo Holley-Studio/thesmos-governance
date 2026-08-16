@@ -1,10 +1,18 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { mkdtempSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { classifyGhResult, detectDefaultBranch, formatExplain, makeGhRunner, runPr, type RawGhResult } from './pr.ts';
 import type { MergePlan } from '../../pr/plan.ts';
 import { buildGraph } from '../../pr/graph.ts';
-import type { GhRunner } from '../../pr/execute.ts';
+import { isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
 import type { PullRequest } from '../../pr/types.ts';
+
+const testNow = () => new Date('2026-08-16T12:00:00Z');
+
+/** A root dir for tests that never touch the filesystem (queue/explain paths). */
+const UNUSED_ROOT = '/dev/null/thesmos-unused-root';
 
 const pr = (number: number): PullRequest => ({
   number,
@@ -175,7 +183,7 @@ describe('runPr — default branch derivation is actually used by pr:queue', () 
     ]);
 
     let out = '';
-    runPr(['queue'], { gh: fakeGh('develop', prListJson), write: (s) => { out += s; } });
+    runPr(['queue'], { gh: fakeGh('develop', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
 
     expect(out).toContain('✓ 2 ready to merge');
     const line2 = out.split('\n').find((l) => l.includes('#2'));
@@ -192,9 +200,85 @@ describe('runPr — pr:explain formatting is actually used for a PR that was nev
     ]);
 
     let out = '';
-    runPr(['explain', '999'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; } });
+    runPr(['explain', '999'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
 
     expect(out).toBe('  #999 is not among the 2 open pull requests I looked at. Run "thesmos pr:queue" to see the current list.\n');
+  });
+});
+
+// ── runPr — pr:merge and autonomy dispatch ──────────────────────────────────
+//
+// runMerge itself is exercised directly (with a fake gh) in
+// thesmos/pr/merge-command.test.ts. These tests drive the dispatch inside
+// runPr — the same seam queue/explain are proven through above — so a
+// regression in the *wiring* between the CLI subcommand and runMerge/
+// setAutonomy/isAutonomyDisabled fails a test, not just a regression in the
+// extracted logic.
+
+function freshRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), 'thesmos-pr-cmd-'));
+  mkdirSync(join(root, '.thesmos'), { recursive: true });
+  return root;
+}
+
+describe('runPr — pr:merge is actually wired to runMerge', () => {
+  it('merges the reversible PR, never the one-way PR, and reports it in the output', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+      { number: 2, title: 'chore(deps): bump b from 1.0.0 to 2.0.0', baseRefName: 'main', headRefName: 'b', files: ['package-lock.json'] },
+    ]);
+    const baseGh = fakeGh('main', prListJson);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['merge', '--wave', '0'], { gh, write: (s) => { out += s; }, root, now: testNow });
+
+    expect(out).toContain('#1');
+    expect(out).not.toContain('#2');
+    const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
+    expect(merges).toEqual(['1']);
+  });
+});
+
+describe('runPr — pr:merge refuses when autonomy is off (governing property 3)', () => {
+  it('never calls gh at all and says plainly that autonomy is off', () => {
+    const root = freshRoot();
+    setAutonomy(root, false);
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const baseGh = fakeGh('main', prListJson);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow });
+
+    expect(out).toMatch(/autonomy is off/i);
+    expect(calls).toEqual([]);
+  });
+});
+
+describe('runPr — autonomy on/off/status', () => {
+  it('toggles the sentinel via setAutonomy and reports plain-language state, without ever calling gh', () => {
+    const root = freshRoot();
+    const gh: GhRunner = () => { throw new Error('gh must never be called to toggle a local switch'); };
+
+    let out = '';
+    runPr(['autonomy', 'off'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    expect(isAutonomyDisabled(root)).toBe(true);
+    expect(out).toMatch(/off/i);
+
+    out = '';
+    runPr(['autonomy'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    expect(out).toMatch(/off/i);
+
+    out = '';
+    runPr(['autonomy', 'on'], { gh, write: (s) => { out += s; }, root, now: testNow });
+    expect(isAutonomyDisabled(root)).toBe(false);
+    expect(out).toMatch(/on/i);
   });
 });
 
