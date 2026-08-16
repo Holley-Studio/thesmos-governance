@@ -1,8 +1,9 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 import { describe, it, expect } from 'vitest';
-import { classifyGhResult, detectDefaultBranch, formatExplain, type RawGhResult } from './pr.ts';
+import { classifyGhResult, detectDefaultBranch, formatExplain, makeGhRunner, runPr, type RawGhResult } from './pr.ts';
 import type { MergePlan } from '../../pr/plan.ts';
 import { buildGraph } from '../../pr/graph.ts';
+import type { GhRunner } from '../../pr/execute.ts';
 import type { PullRequest } from '../../pr/types.ts';
 
 const pr = (number: number): PullRequest => ({
@@ -15,6 +16,26 @@ const pr = (number: number): PullRequest => ({
   changedFiles: 1,
   files: ['a.ts'],
 });
+
+/** Builds the raw JSON `gh pr list --json ...` would return, from plain fixtures. */
+const ghPrListJson = (list: Array<{
+  number: number; title: string; baseRefName: string; headRefName: string; files?: string[];
+}>): string => JSON.stringify(list.map((p) => ({
+  number: p.number,
+  title: p.title,
+  isDraft: false,
+  baseRefName: p.baseRefName,
+  headRefName: p.headRefName,
+  mergeStateStatus: 'CLEAN',
+  changedFiles: p.files?.length ?? 0,
+  files: (p.files ?? []).map((path) => ({ path })),
+})));
+
+/** A GhRunner that answers both `gh repo view` and `gh pr list` from fixtures. */
+const fakeGh = (defaultBranch: string, prListJson: string): GhRunner => (args) =>
+  args[0] === 'repo'
+    ? { ok: true, stdout: `${defaultBranch}\n`, stderr: '' }
+    : { ok: true, stdout: prListJson, stderr: '' };
 
 describe('classifyGhResult', () => {
   it('names the missing CLI clearly when gh is not installed (ENOENT)', () => {
@@ -129,5 +150,75 @@ describe('formatExplain', () => {
     const out = formatExplain('99999', prs, plan);
     expect(out).toMatch(/#99999 is not among the 2 open pull requests/);
     expect(out).not.toMatch(/ready to merge/);
+  });
+});
+
+// ── runPr — proves the wiring, not just the extracted pieces ───────────────
+//
+// classifyGhResult, detectDefaultBranch, and formatExplain were all tested
+// above in isolation, but nothing proved cmdPr actually calls them with the
+// right arguments. These tests drive runPr — the function cmdPr delegates
+// to with real dependencies — with fake gh/write, so a regression in the
+// *wiring* (not just the extracted logic) fails a test.
+
+describe('runPr — default branch derivation is actually used by pr:queue', () => {
+  it('roots the plan by the branch gh reports, not a hardcoded "main"', () => {
+    // PR #1's branch happens to be literally named "develop" (a realistic
+    // incidental collision — e.g. a one-off sync/mirror PR). PR #2 is an
+    // independent PR based on the repo's real default branch, "develop".
+    // If runPr ever hardcodes defaultBranch back to 'main', PR #2's base
+    // ("develop") gets looked up in the head-ref map, finds PR #1, and #2
+    // is wrongly nested underneath it instead of being its own root.
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore: sync', baseRefName: 'main', headRefName: 'develop', files: ['README.md'] },
+      { number: 2, title: 'feat: on develop', baseRefName: 'develop', headRefName: 'feature-x', files: ['README.md'] },
+    ]);
+
+    let out = '';
+    runPr(['queue'], { gh: fakeGh('develop', prListJson), write: (s) => { out += s; } });
+
+    expect(out).toContain('✓ 2 ready to merge');
+    const line2 = out.split('\n').find((l) => l.includes('#2'));
+    expect(line2).toBeDefined();
+    expect(line2).not.toMatch(/after wave/);
+  });
+});
+
+describe('runPr — pr:explain formatting is actually used for a PR that was never open', () => {
+  it('reports "not among the open pull requests", not "ready to merge"', () => {
+    const prListJson = ghPrListJson([
+      { number: 100, title: 'chore: a', baseRefName: 'main', headRefName: 'a', files: ['README.md'] },
+      { number: 101, title: 'chore: b', baseRefName: 'main', headRefName: 'b', files: ['README.md'] },
+    ]);
+
+    let out = '';
+    runPr(['explain', '999'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; } });
+
+    expect(out).toBe('  #999 is not among the 2 open pull requests I looked at. Run "thesmos pr:queue" to see the current list.\n');
+  });
+});
+
+// ── makeGhRunner — proves classifyGhResult is wired into realGh's exact composition ──
+//
+// realGh is defined as makeGhRunner(spawn), so testing makeGhRunner with a
+// fake spawn function exercises the identical composition that produces
+// realGh, not a parallel reimplementation. The one thing this cannot prove
+// without an actual missing `gh` binary or a mocked child_process module is
+// that `spawnSync` itself (Node's real implementation) is the function
+// passed in — that seam is accepted as untested here.
+
+describe('makeGhRunner', () => {
+  it('surfaces the ENOENT hint through the same spawn-then-classify path realGh uses', () => {
+    const enoent = Object.assign(new Error('spawnSync gh ENOENT'), { code: 'ENOENT' });
+    const gh = makeGhRunner(() => ({ error: enoent, status: null, stdout: null, stderr: null }));
+    const result = gh(['pr', 'list']);
+    expect(result.ok).toBe(false);
+    expect(result.stderr).toMatch(/gh.*not found/i);
+    expect(result.stderr).toMatch(/cli\.github\.com/);
+  });
+
+  it('passes a clean spawn result through unchanged', () => {
+    const gh = makeGhRunner(() => ({ error: undefined, status: 0, stdout: '[]', stderr: '' }));
+    expect(gh(['pr', 'list'])).toEqual({ ok: true, stdout: '[]', stderr: '' });
   });
 });

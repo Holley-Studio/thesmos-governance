@@ -35,7 +35,17 @@ export function classifyGhResult(r: RawGhResult): { ok: boolean; stdout: string;
   return { ok: r.status === 0, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
 }
 
-export const realGh: GhRunner = (args) => classifyGhResult(spawnSync('gh', args, { encoding: 'utf8' }));
+/**
+ * Builds a GhRunner from anything that can produce a RawGhResult for a
+ * given argv. Split out so `realGh`'s exact composition — spawn, then
+ * classifyGhResult — can be exercised in a test with a fake spawn function,
+ * instead of only proving classifyGhResult works in isolation.
+ */
+export function makeGhRunner(spawn: (args: string[]) => RawGhResult): GhRunner {
+  return (args) => classifyGhResult(spawn(args));
+}
+
+export const realGh: GhRunner = makeGhRunner((args) => spawnSync('gh', args, { encoding: 'utf8' }));
 
 /**
  * The repo's actual default branch, via gh — falling back to 'main' only
@@ -71,17 +81,33 @@ export function formatExplain(raw: string | undefined, prs: PullRequest[], plan:
   return `  #${n} is ready to merge.\n`;
 }
 
-export async function cmdPr(argv: string[]): Promise<void> {
+export interface PrDeps {
+  gh: GhRunner;
+  write: (s: string) => void;
+}
+
+/**
+ * The actual queue/explain logic, with gh and stdout injected. This is the
+ * function tests call — cmdPr itself is deliberately too thin to test
+ * without a real gh process, so pulling the wiring in here (rather than
+ * testing fetchPullRequests/detectDefaultBranch/formatExplain only in
+ * isolation) is what proves cmdPr's dispatch actually uses them.
+ */
+export function runPr(argv: string[], deps: PrDeps): void {
   const [sub] = argv;
-  createContext();
-  const prs = fetchPullRequests(realGh);
-  const defaultBranch = detectDefaultBranch(realGh);
+  const prs = fetchPullRequests(deps.gh);
+  const defaultBranch = detectDefaultBranch(deps.gh);
   const plan = computePlan(prs, { defaultBranch, blockers: new Set(), autonomy: 'recoverable' });
 
   if (sub === 'explain') {
-    process.stdout.write(formatExplain(argv[1], prs, plan));
+    deps.write(formatExplain(argv[1], prs, plan));
     return;
   }
 
-  process.stdout.write(renderPlan(plan, prs));
+  deps.write(renderPlan(plan, prs));
+}
+
+export async function cmdPr(argv: string[]): Promise<void> {
+  createContext();
+  runPr(argv, { gh: realGh, write: (s) => process.stdout.write(s) });
 }
