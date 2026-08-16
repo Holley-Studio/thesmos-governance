@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mkdtempSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { executeWave, isAutonomyDisabled, setAutonomy } from './execute.ts';
+import { executeWave, isAutonomyDisabled, setAutonomy, type GhRunner } from './execute.ts';
 import { readEntries } from './ledger.ts';
 
 let root: string;
@@ -26,11 +26,19 @@ describe('executeWave', () => {
     // ever called gh before (or without) writing the intent row, `order` would
     // capture an empty phases list instead of ['intent'], and the assertion below
     // would fail.
+    // Filtered to the merge call specifically: executeWave also issues a
+    // second `gh pr view` call after a successful merge (to capture the
+    // merge commit SHA — see the mergeCommit tests below), and that second
+    // call happens after the intent row too. Filtering keeps this test's
+    // claim scoped to what it actually proves — intent-before-first-mutation
+    // — without coupling it to the unrelated SHA-lookup call count.
     const order: string[] = [];
-    const gh: import('./execute.ts').GhRunner = () => {
-      const seen = readEntries(root).map((e) => e.phase);
-      order.push(...seen);
-      order.push('gh');
+    const gh: GhRunner = (args) => {
+      if (args[1] === 'merge') {
+        const seen = readEntries(root).map((e) => e.phase);
+        order.push(...seen);
+        order.push('gh');
+      }
       return okGh();
     };
     executeWave(root, [{ number: 7, wave: 0 }], { gh, now });
@@ -108,9 +116,15 @@ describe('executeWave', () => {
     // even after a concurrent operator disables autonomy. Here the injected gh
     // disables autonomy as a side effect of handling PR 7, then asserts PR 8 is
     // never attempted.
-    let calls = 0;
-    const gh: import('./execute.ts').GhRunner = () => {
-      calls += 1;
+    // Tracks which PR numbers gh was ever invoked for, rather than a raw call
+    // count: executeWave's mergeCommit lookup (see below) legitimately calls
+    // gh a second time for PR 7 itself, so "gh was called exactly once" is no
+    // longer the right proxy for "PR 8 was never touched." The property this
+    // test actually guards — nothing after the disable point runs — is
+    // exactly what `touched` checks.
+    const touched = new Set<string>();
+    const gh: GhRunner = (args) => {
+      touched.add(args[2]);
       setAutonomy(root, false);
       return okGh();
     };
@@ -119,8 +133,66 @@ describe('executeWave', () => {
       { number: 7, wave: 0 }, { number: 8, wave: 0 },
     ], { gh, now });
 
-    expect(calls).toBe(1);
+    expect(touched.has('8')).toBe(false);
     expect(result.merged).toEqual([7]);
     expect(result.failed).toEqual([]);
+  });
+});
+
+describe('executeWave — merge commit capture (chooseCulprit needs this to ever fire)', () => {
+  it('records the merge commit SHA after a successful merge', () => {
+    const gh: GhRunner = (args) => {
+      if (args[1] === 'merge') return okGh();
+      if (args[1] === 'view') return { ok: true, stdout: 'deadbeef123\n', stderr: '' };
+      throw new Error(`unexpected gh call: ${args.join(' ')}`);
+    };
+    executeWave(root, [{ number: 7, wave: 0 }], { gh, now });
+
+    const outcome = readEntries(root).find((e) => e.phase === 'outcome')!;
+    expect(outcome.mergeCommit).toBe('deadbeef123');
+  });
+
+  it('does not attempt a mergeCommit lookup when the merge itself failed', () => {
+    let viewCalled = false;
+    const gh: GhRunner = (args) => {
+      if (args[1] === 'view') viewCalled = true;
+      if (args[1] === 'merge') return { ok: false, stdout: '', stderr: 'conflict' };
+      return okGh();
+    };
+    executeWave(root, [{ number: 7, wave: 0 }], { gh, now });
+
+    expect(viewCalled).toBe(false);
+    const outcome = readEntries(root).find((e) => e.phase === 'outcome')!;
+    expect(outcome.mergeCommit).toBeUndefined();
+  });
+
+  it('records a truthful outcome without fabricating a SHA when the lookup call fails', () => {
+    const gh: GhRunner = (args) => {
+      if (args[1] === 'merge') return okGh();
+      if (args[1] === 'view') return { ok: false, stdout: '', stderr: 'API rate limited' };
+      throw new Error(`unexpected gh call: ${args.join(' ')}`);
+    };
+    executeWave(root, [{ number: 7, wave: 0 }], { gh, now });
+
+    const outcome = readEntries(root).find((e) => e.phase === 'outcome')!;
+    // The merge itself succeeded — that must stay true even though the SHA
+    // lookup afterward failed. Conflating the two would report a merge as
+    // failed when it was not.
+    expect(outcome.ok).toBe(true);
+    expect(outcome.mergeCommit).toBeUndefined();
+    expect(outcome.detail).toBeTruthy();
+  });
+
+  it('does not fabricate a SHA when the lookup succeeds but returns nothing usable', () => {
+    const gh: GhRunner = (args) => {
+      if (args[1] === 'merge') return okGh();
+      if (args[1] === 'view') return { ok: true, stdout: '\n', stderr: '' };
+      throw new Error(`unexpected gh call: ${args.join(' ')}`);
+    };
+    executeWave(root, [{ number: 7, wave: 0 }], { gh, now });
+
+    const outcome = readEntries(root).find((e) => e.phase === 'outcome')!;
+    expect(outcome.ok).toBe(true);
+    expect(outcome.mergeCommit).toBeUndefined();
   });
 });

@@ -1,0 +1,43 @@
+# Thesmos Watch — Revert Watcher
+#
+# Runs as a GitHub Action, not a local poll: a safety guarantee that depends
+# on the user keeping a terminal open is not a guarantee. On every push to
+# main, checks whether main went red and, if a Thesmos-performed merge is the
+# culprit, opens and merges a revert PR (see thesmos/pr/revert.ts).
+#
+# `thesmos pr:watch` is wired in a later task; this workflow only invokes it.
+
+name: Thesmos Watch
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  watch:
+    name: Revert on regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 20
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check main and revert a Thesmos merge if it regressed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npx tsx thesmos/bin/cli.ts pr:watch --range 5

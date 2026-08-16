@@ -29,6 +29,28 @@ export function setAutonomy(root: string, enabled: boolean): void {
   }
 }
 
+/**
+ * Looks up the merge commit SHA for a PR that was just merged. Without this,
+ * chooseCulprit (thesmos/pr/revert.ts) has nothing to match a failing range
+ * against and auto-revert can never fire. Must never fabricate a SHA: a
+ * lookup that fails, or returns nothing usable, comes back with mergeCommit
+ * unset and a truthful reason in `issue`, never an invented value.
+ */
+function lookupMergeCommit(gh: GhRunner, prNumber: number): { mergeCommit?: string; issue?: string } {
+  try {
+    const res = gh(['pr', 'view', String(prNumber), '--json', 'mergeCommit', '--jq', '.mergeCommit.oid']);
+    const sha = res.ok ? res.stdout.trim() : '';
+    if (sha) return { mergeCommit: sha };
+    return {
+      issue: res.ok
+        ? 'merge commit SHA lookup returned nothing usable'
+        : (res.stderr.slice(0, 200) || 'merge commit SHA lookup failed'),
+    };
+  } catch (err) {
+    return { issue: String(err).slice(0, 200) };
+  }
+}
+
 export function executeWave(
   root: string,
   wave: PlanEntry[],
@@ -56,9 +78,19 @@ export function executeWave(
       result = { ok: false, stdout: '', stderr: String(err) };
     }
 
+    // Looked up right after a successful merge, on the same gh-injected seam,
+    // so tests stay offline and the SHA lands on this same outcome row.
+    const { mergeCommit, issue: shaIssue } = result.ok
+      ? lookupMergeCommit(deps.gh, entry.number)
+      : {};
+
     appendEntry(root, {
       action: 'merge', pr: entry.number, phase: 'outcome',
-      ok: result.ok, detail: result.ok ? undefined : result.stderr.slice(0, 200),
+      ok: result.ok,
+      mergeCommit,
+      detail: result.ok
+        ? (shaIssue ? `merged, but ${shaIssue}` : undefined)
+        : result.stderr.slice(0, 200),
     }, deps.now());
 
     if (!result.ok) { failed.push(entry.number); break; }
