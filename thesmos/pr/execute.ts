@@ -65,7 +65,7 @@ export function executeWave(
     // sentinel) must stop the *next* PR, not just refuse waves that start disabled.
     if (isAutonomyDisabled(root)) break;
 
-    appendEntry(root, { action: 'merge', pr: entry.number, phase: 'intent' }, deps.now());
+    appendEntry(root, { action: 'merge', pr: entry.number, phase: 'intent', class: entry.class }, deps.now());
 
     // GhRunner's type promises a total function that never throws, but nothing
     // enforces that at runtime — a real subprocess wrapper can still throw. Treat
@@ -86,6 +86,7 @@ export function executeWave(
 
     appendEntry(root, {
       action: 'merge', pr: entry.number, phase: 'outcome',
+      class: entry.class,
       ok: result.ok,
       mergeCommit,
       detail: result.ok

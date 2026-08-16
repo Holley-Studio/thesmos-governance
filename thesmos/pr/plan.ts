@@ -5,13 +5,31 @@
  */
 import { buildGraph } from './graph.ts';
 import { classify, type Reversibility } from './classify.ts';
-import { detectObsolete } from './lock.ts';
 import type { PullRequest } from './types.ts';
 
 export type HaltReason =
   | 'RED_BASE' | 'CYCLE' | 'DIRTY' | 'BLOCKER' | 'OBSOLETE' | 'DRAFT' | 'ONE_WAY' | 'PARENT_BLOCKED';
 
-export interface PlanEntry { number: number; wave: number }
+/**
+ * True when every file the PR touches is absent from the target branch.
+ *
+ * Lives here rather than in lock.ts (where it was first written) so this
+ * module stays pure: lock.ts does real filesystem I/O, and importing it from
+ * the planner dragged that I/O into the one module whose whole contract is
+ * "no network, no filesystem".
+ */
+export function detectObsolete(pr: PullRequest, pathsOnTarget: Set<string>): boolean {
+  if (pr.files.length === 0) return false;
+  return pr.files.every((f) => !pathsOnTarget.has(f));
+}
+
+/**
+ * `class` is carried through to the ledger at merge time (thesmos/pr/
+ * execute.ts), so the record of what Thesmos landed says what *kind* of
+ * change it was, not just its number. Required, not optional: a planned entry
+ * whose class is unknown is a planned entry nobody can audit afterwards.
+ */
+export interface PlanEntry { number: number; wave: number; class: Reversibility }
 export interface HaltEntry { number: number; reason: HaltReason; detail: string; blocks: number[] }
 export interface MergePlan { waves: PlanEntry[][]; halted: HaltEntry[] }
 
@@ -95,6 +113,10 @@ export function computePlan(prs: PullRequest[], opts: PlanOptions): MergePlan {
   };
 
   const allowed = ALLOWED[opts.autonomy];
+  // Classified up front for every PR, not lazily inside the halt cascade, so
+  // the wave builder below can read a class for any node it plans without a
+  // fallback that could disagree with the one the halt check used.
+  const classOf = new Map(prs.map((p) => [p.number, classify(p)]));
 
   for (const node of [...graph.nodes.values()].sort((a, b) => a.depth - b.depth)) {
     const { pr } = node;
@@ -102,7 +124,7 @@ export function computePlan(prs: PullRequest[], opts: PlanOptions): MergePlan {
 
     if (opts.blockers.has(pr.number)) { halt(pr.number, 'BLOCKER', 'Thesmos BLOCKER finding'); continue; }
     if (opts.pathsOnTarget && detectObsolete(pr, opts.pathsOnTarget)) {
-      halt(pr.number, 'OBSOLETE', 'every file it changes is already gone from main — close it');
+      halt(pr.number, 'OBSOLETE', `every file it changes is already gone from ${opts.defaultBranch} — close it`);
       continue;
     }
     if (pr.mergeStateStatus === 'DIRTY') { halt(pr.number, 'DIRTY', 'merge conflict — needs a human'); continue; }
@@ -111,14 +133,16 @@ export function computePlan(prs: PullRequest[], opts: PlanOptions): MergePlan {
     }
     if (pr.isDraft) { halt(pr.number, 'DRAFT', 'still a draft'); continue; }
 
-    const cls = classify(pr);
+    const cls = classOf.get(pr.number)!;
     if (!allowed.includes(cls.class)) { halt(pr.number, 'ONE_WAY', cls.reason); continue; }
   }
 
   const waves: PlanEntry[][] = [];
   for (const node of graph.nodes.values()) {
     if (blocked.has(node.pr.number)) continue;
-    (waves[node.depth] ??= []).push({ number: node.pr.number, wave: node.depth });
+    (waves[node.depth] ??= []).push({
+      number: node.pr.number, wave: node.depth, class: classOf.get(node.pr.number)!.class,
+    });
   }
 
   const sized = new Map(prs.map((p) => [p.number, p.changedFiles]));

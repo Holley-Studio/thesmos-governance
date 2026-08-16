@@ -47,6 +47,27 @@ describe('renderPlan', () => {
     );
     expect(out).toMatch(/#140/);
     expect(out).toMatch(/#141/);
-    expect(out).not.toMatch(/rebase|topolog|speculat/i);
+    expect(out).not.toMatch(/rebase|topolog|speculat|wave/i);
+  });
+
+  it('names the PR a stacked one waits on instead of an internal wave index', () => {
+    const stacked = JSON.stringify([
+      { number: 140, title: 'feat: runtime', isDraft: false, baseRefName: 'main',
+        headRefName: 'runtime', mergeStateStatus: 'CLEAN', changedFiles: 1, files: [{ path: 'README.md' }] },
+      { number: 141, title: 'feat: memory', isDraft: false, baseRefName: 'runtime',
+        headRefName: 'memory', mergeStateStatus: 'CLEAN', changedFiles: 1, files: [{ path: 'docs/a.md' }] },
+    ]);
+    const prs = fetchPullRequests(() => ({ ok: true, stdout: stacked, stderr: '' }));
+    const out = renderPlan(
+      computePlan(prs, { defaultBranch: 'main', blockers: new Set(), autonomy: 'recoverable' }),
+      prs,
+    );
+    expect(out).toMatch(/#141.*goes in after #140 lands/);
+    expect(out).not.toMatch(/wave/i);
+  });
+
+  it('says plainly that there is nothing to do when there are no pull requests at all', () => {
+    const out = renderPlan({ waves: [], halted: [] }, []);
+    expect(out).toContain('Nothing to do.');
   });
 });

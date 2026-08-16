@@ -3,8 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { acquireLock, releaseLock, detectObsolete } from './lock.ts';
-import type { PullRequest } from './types.ts';
+import { acquireLock, releaseLock } from './lock.ts';
 
 let root: string;
 const T0 = new Date('2026-08-16T12:00:00Z');
@@ -52,21 +51,5 @@ describe('lock', () => {
     // real infrastructure failure behind a false "lock is held" reading.
     const missingRoot = mkdtempSync(join(tmpdir(), 'thesmos-lock-missing-'));
     expect(() => acquireLock(missingRoot, T0)).toThrow();
-  });
-});
-
-describe('detectObsolete', () => {
-  const pr: PullRequest = {
-    number: 9, title: 'bump codeql-action', isDraft: false, baseRefName: 'main',
-    headRefName: 'dep', mergeStateStatus: 'CLEAN', changedFiles: 1,
-    files: ['.github/workflows/codeql.yml'],
-  };
-
-  it('flags a PR whose only file no longer exists on the target', () => {
-    expect(detectObsolete(pr, new Set(['.github/workflows/ci.yml']))).toBe(true);
-  });
-
-  it('does not flag a PR whose files still exist', () => {
-    expect(detectObsolete(pr, new Set(['.github/workflows/codeql.yml']))).toBe(false);
   });
 });

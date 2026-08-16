@@ -151,12 +151,12 @@ describe('formatExplain', () => {
   });
 
   it('says a PR is ready when it is in the list and not halted', () => {
-    const plan: MergePlan = { waves: [[{ number: 102, wave: 0 }]], halted: [] };
+    const plan: MergePlan = { waves: [[{ number: 102, wave: 0, class: 'reversible' }]], halted: [] };
     expect(formatExplain('102', prs, plan)).toBe('  #102 is ready to merge.\n');
   });
 
   it('distinguishes "not found" from "ready" for a PR number that was never open, instead of misreporting it as ready', () => {
-    const plan: MergePlan = { waves: [[{ number: 102, wave: 0 }]], halted: [] };
+    const plan: MergePlan = { waves: [[{ number: 102, wave: 0, class: 'reversible' }]], halted: [] };
     const out = formatExplain('99999', prs, plan);
     expect(out).toMatch(/#99999 is not among the 2 open pull requests/);
     expect(out).not.toMatch(/ready to merge/);

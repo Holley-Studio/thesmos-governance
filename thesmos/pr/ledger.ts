@@ -1,11 +1,26 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * Append-only JSONL record of every autonomous action, mirroring the shipped
- * .thesmos/savings.jsonl pattern. Intent is durable before the action runs, so
- * a merge that left no record cannot happen. Corrupt lines are isolated.
+ * Append-only JSONL record of every autonomous action. Intent is durable
+ * before the action runs, so a merge that left no record cannot happen.
+ * Corrupt lines are isolated.
+ *
+ * COMMITTED TO THE REPOSITORY, not local-only runtime state (spec §6.2). The
+ * CLI writes it at merge time and the `thesmos pr:watch` GitHub Action reads
+ * it from a fresh `actions/checkout` — the two halves share this file and
+ * nothing else, with no Thesmos-operated service holding state. While it was
+ * git-ignored (the shape it was first built in, mirroring .thesmos/
+ * savings.jsonl) the Action's checkout never contained it, `readEntries`
+ * returned `[]` on every run, `chooseCulprit` returned null, and auto-revert
+ * could not fire in production at all. It holds PR numbers, SHAs, classes and
+ * outcomes — never diffs, source, prompts, or secrets.
+ *
+ * Committing it is thesmos/pr/sync.ts's job, and that push can legitimately
+ * fail (see that module's header) — a merge is never reported as
+ * not-happened just because the record of it could not be pushed.
  */
 import { existsSync, mkdirSync, openSync, fsyncSync, closeSync, readFileSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import type { Reversibility } from './classify.ts';
 
 export type LedgerAction = 'merge' | 'revert' | 'close';
 
@@ -14,7 +29,8 @@ export interface LedgerEntry {
   action: LedgerAction;
   pr: number;
   phase: 'intent' | 'outcome';
-  class?: string;
+  /** Reversibility class the planner assigned, carried from PlanEntry. */
+  class?: Reversibility;
   mergeCommit?: string;
   ok?: boolean;
   detail?: string;

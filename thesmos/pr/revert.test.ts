@@ -106,7 +106,7 @@ describe('end-to-end: executeWave records a mergeCommit that chooseCulprit can a
       throw new Error(`unexpected gh call in this test: ${args.join(' ')}`);
     };
 
-    const wave = executeWave(root, [{ number: 42, wave: 0 }], { gh, now });
+    const wave = executeWave(root, [{ number: 42, wave: 0, class: 'reversible' }], { gh, now });
     expect(wave.merged).toEqual([42]);
 
     const culprit = chooseCulprit(readEntries(root), ['unrelated-sha', 'realsha789abc']);
@@ -122,7 +122,7 @@ describe('end-to-end: executeWave records a mergeCommit that chooseCulprit can a
       throw new Error(`unexpected gh call in this test: ${args.join(' ')}`);
     };
 
-    executeWave(root, [{ number: 42, wave: 0 }], { gh, now });
+    executeWave(root, [{ number: 42, wave: 0, class: 'reversible' }], { gh, now });
 
     expect(chooseCulprit(readEntries(root), ['some-other-sha'])).toBeNull();
   });

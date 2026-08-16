@@ -45,19 +45,41 @@ const PLAIN: Record<string, string> = {
 
 export function renderPlan(plan: MergePlan, prs: PullRequest[]): string {
   const title = new Map(prs.map((p) => [p.number, p.title]));
+  // "wave" is internal vocabulary (spec §10 forbids it in user-facing copy).
+  // A stacked PR is named by the PR it waits on instead, which is both plainer
+  // and strictly more information than the wave index it replaces.
+  const parentOf = new Map<number, number>();
+  const byHead = new Map(prs.map((p) => [p.headRefName, p.number]));
+  for (const p of prs) {
+    const parent = byHead.get(p.baseRefName);
+    if (parent !== undefined && parent !== p.number) parentOf.set(p.number, parent);
+  }
+
   const lines: string[] = [];
   const ready = plan.waves.flat().length;
+  const shown = plan.halted.filter((x) => x.reason !== 'PARENT_BLOCKED');
 
   lines.push(`  Looked at ${prs.length} open pull requests.`, '');
+  if (ready === 0 && shown.length === 0) {
+    lines.push('  Nothing to do.');
+    return lines.join('\n') + '\n';
+  }
+
   if (ready > 0) {
     lines.push(`  ✓ ${ready} ready to merge`);
     plan.waves.forEach((wave, i) => {
-      for (const e of wave) lines.push(`      #${e.number}  ${title.get(e.number) ?? ''}${i > 0 ? `  (after wave ${i})` : ''}`);
+      for (const e of wave) {
+        const parent = parentOf.get(e.number);
+        const after = i > 0
+          ? (parent !== undefined ? `  (goes in after #${parent} lands)` : '  (goes in after the ones above it land)')
+          : '';
+        lines.push(`      #${e.number}  ${title.get(e.number) ?? ''}${after}`);
+      }
     });
     lines.push('');
   }
 
-  for (const h of plan.halted.filter((x) => x.reason !== 'PARENT_BLOCKED')) {
+  for (const h of shown) {
     lines.push(`  ✗ #${h.number} — ${PLAIN[h.reason] ?? h.reason}`);
     if (h.detail) lines.push(`      ${h.detail}`);
     if (h.blocks.length) {

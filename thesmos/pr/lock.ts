@@ -1,12 +1,14 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * Single-holder lock so two Thesmos runs cannot double-merge a wave, plus
- * obsolete-PR detection: a PR editing only files that no longer exist on the
- * target can never be useful, and should be closed rather than merged.
+ * Single-holder lock so two Thesmos runs cannot double-merge a wave.
+ *
+ * `detectObsolete` used to live here as well, which meant plan.ts — a module
+ * whose contract is "pure: no network, no filesystem" — imported from a
+ * module that does real file I/O. It now lives in plan.ts alongside its only
+ * caller.
  */
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { PullRequest } from './types.ts';
 
 const DEFAULT_TTL_MS = 30 * 60 * 1000;
 
@@ -59,10 +61,4 @@ export function acquireLock(root: string, now: Date, ttlMs: number = DEFAULT_TTL
 
 export function releaseLock(root: string): void {
   rmSync(lockPath(root), { force: true });
-}
-
-/** True when every file the PR touches is absent from the target branch. */
-export function detectObsolete(pr: PullRequest, pathsOnTarget: Set<string>): boolean {
-  if (pr.files.length === 0) return false;
-  return pr.files.every((f) => !pathsOnTarget.has(f));
 }

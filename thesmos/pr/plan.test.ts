@@ -1,6 +1,6 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 import { describe, it, expect } from 'vitest';
-import { computePlan } from './plan.ts';
+import { computePlan, detectObsolete } from './plan.ts';
 import type { PullRequest } from './types.ts';
 
 function pr(number: number, head: string, base: string, over: Partial<PullRequest> = {}): PullRequest {
@@ -133,5 +133,46 @@ describe('computePlan', () => {
 
     expect(plan.waves[0].map((e) => e.number)).toEqual([300]);
     expect(plan.waves[1].map((e) => e.number)).toEqual([301]);
+  });
+
+  it('names the repo\'s actual default branch in the OBSOLETE detail, not a hardcoded "main"', () => {
+    const plan = computePlan(
+      [pr(9, 'dep', 'develop')],
+      { ...opts, defaultBranch: 'develop', pathsOnTarget: new Set(['some-other-file.txt']) },
+    );
+    expect(plan.halted[0].reason).toBe('OBSOLETE');
+    expect(plan.halted[0].detail).toContain('develop');
+    expect(plan.halted[0].detail).not.toContain('main');
+  });
+
+  it('carries the reversibility class on every planned entry, so the ledger can record what it landed', () => {
+    // Without this the ledger's `class` field has no writer at all and every
+    // merge row records only a number — no way to audit afterwards whether
+    // what Thesmos landed unattended was ever supposed to be automatic.
+    const plan = computePlan([
+      pr(1, 'a', 'main'),
+      pr(2, 'b', 'main', { title: 'docs: readme', files: ['README.md'] }),
+    ], opts);
+    const byNumber = new Map(plan.waves.flat().map((e) => [e.number, e.class]));
+    expect(byNumber.get(1)).toBe('reversible');
+    expect(byNumber.get(2)).toBe('recoverable');
+  });
+});
+
+// Moved here from lock.test.ts along with the function itself: detectObsolete
+// is the planner's, and plan.ts must not import from a module that does file I/O.
+describe('detectObsolete', () => {
+  const obsoletePr: PullRequest = {
+    number: 9, title: 'bump codeql-action', isDraft: false, baseRefName: 'main',
+    headRefName: 'dep', mergeStateStatus: 'CLEAN', changedFiles: 1,
+    files: ['.github/workflows/codeql.yml'],
+  };
+
+  it('flags a PR whose only file no longer exists on the target', () => {
+    expect(detectObsolete(obsoletePr, new Set(['.github/workflows/ci.yml']))).toBe(true);
+  });
+
+  it('does not flag a PR whose files still exist', () => {
+    expect(detectObsolete(obsoletePr, new Set(['.github/workflows/codeql.yml']))).toBe(false);
   });
 });

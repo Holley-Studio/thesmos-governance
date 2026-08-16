@@ -41,7 +41,7 @@ describe('executeWave', () => {
       }
       return okGh();
     };
-    executeWave(root, [{ number: 7, wave: 0 }], { gh, now });
+    executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], { gh, now });
 
     // At the moment gh was invoked, the ledger already contained exactly the
     // intent row — proving the write happened strictly before the call.
@@ -52,13 +52,24 @@ describe('executeWave', () => {
     expect(entries.at(-1)!.phase).toBe('outcome');
   });
 
+  it('records the reversibility class the planner assigned on both the intent and outcome rows', () => {
+    // LedgerEntry.class had no writer at all until this: the field existed,
+    // was typed, and was documented, but every row Thesmos ever wrote left it
+    // undefined. A record of an unattended merge that cannot say what kind of
+    // change it landed is not an audit trail.
+    executeWave(root, [{ number: 7, wave: 0, class: 'recoverable' }], { gh: okGh, now });
+
+    const entries = readEntries(root).filter((e) => e.pr === 7);
+    expect(entries.map((e) => e.class)).toEqual(['recoverable', 'recoverable']);
+  });
+
   it('halts the wave on the first failure', () => {
     const gh = (args: string[]) => args.includes('8')
       ? { ok: false, stdout: '', stderr: 'boom' }
       : okGh();
 
     const result = executeWave(root, [
-      { number: 7, wave: 0 }, { number: 8, wave: 0 }, { number: 9, wave: 0 },
+      { number: 7, wave: 0, class: 'reversible' }, { number: 8, wave: 0, class: 'reversible' }, { number: 9, wave: 0, class: 'reversible' },
     ], { gh, now });
 
     expect(result.merged).toEqual([7]);
@@ -70,7 +81,7 @@ describe('executeWave', () => {
     expect(isAutonomyDisabled(root)).toBe(true);
 
     let called = false;
-    executeWave(root, [{ number: 7, wave: 0 }], { gh: () => { called = true; return okGh(); }, now });
+    executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], { gh: () => { called = true; return okGh(); }, now });
     expect(called).toBe(false);
   });
 
@@ -82,7 +93,7 @@ describe('executeWave', () => {
     expect(isAutonomyDisabled(root)).toBe(false);
 
     let called = false;
-    const result = executeWave(root, [{ number: 7, wave: 0 }], {
+    const result = executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], {
       gh: () => { called = true; return okGh(); }, now,
     });
     expect(called).toBe(true);
@@ -96,7 +107,7 @@ describe('executeWave', () => {
     // ambiguous ledger state the ledger-before-action property exists to avoid.
     const gh = (): never => { throw new Error('gh: command not found'); };
 
-    const result = executeWave(root, [{ number: 7, wave: 0 }], { gh, now });
+    const result = executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], { gh, now });
 
     expect(result.merged).toEqual([]);
     expect(result.failed).toEqual([7]);
@@ -130,7 +141,7 @@ describe('executeWave', () => {
     };
 
     const result = executeWave(root, [
-      { number: 7, wave: 0 }, { number: 8, wave: 0 },
+      { number: 7, wave: 0, class: 'reversible' }, { number: 8, wave: 0, class: 'reversible' },
     ], { gh, now });
 
     expect(touched.has('8')).toBe(false);
@@ -146,7 +157,7 @@ describe('executeWave — merge commit capture (chooseCulprit needs this to ever
       if (args[1] === 'view') return { ok: true, stdout: 'deadbeef123\n', stderr: '' };
       throw new Error(`unexpected gh call: ${args.join(' ')}`);
     };
-    executeWave(root, [{ number: 7, wave: 0 }], { gh, now });
+    executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], { gh, now });
 
     const outcome = readEntries(root).find((e) => e.phase === 'outcome')!;
     expect(outcome.mergeCommit).toBe('deadbeef123');
@@ -159,7 +170,7 @@ describe('executeWave — merge commit capture (chooseCulprit needs this to ever
       if (args[1] === 'merge') return { ok: false, stdout: '', stderr: 'conflict' };
       return okGh();
     };
-    executeWave(root, [{ number: 7, wave: 0 }], { gh, now });
+    executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], { gh, now });
 
     expect(viewCalled).toBe(false);
     const outcome = readEntries(root).find((e) => e.phase === 'outcome')!;
@@ -172,7 +183,7 @@ describe('executeWave — merge commit capture (chooseCulprit needs this to ever
       if (args[1] === 'view') return { ok: false, stdout: '', stderr: 'API rate limited' };
       throw new Error(`unexpected gh call: ${args.join(' ')}`);
     };
-    executeWave(root, [{ number: 7, wave: 0 }], { gh, now });
+    executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], { gh, now });
 
     const outcome = readEntries(root).find((e) => e.phase === 'outcome')!;
     // The merge itself succeeded — that must stay true even though the SHA
@@ -189,7 +200,7 @@ describe('executeWave — merge commit capture (chooseCulprit needs this to ever
       if (args[1] === 'view') return { ok: true, stdout: '\n', stderr: '' };
       throw new Error(`unexpected gh call: ${args.join(' ')}`);
     };
-    executeWave(root, [{ number: 7, wave: 0 }], { gh, now });
+    executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], { gh, now });
 
     const outcome = readEntries(root).find((e) => e.phase === 'outcome')!;
     expect(outcome.ok).toBe(true);
