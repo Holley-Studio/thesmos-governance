@@ -4,7 +4,7 @@
  * .thesmos/savings.jsonl pattern. Intent is durable before the action runs, so
  * a merge that left no record cannot happen. Corrupt lines are isolated.
  */
-import { appendFileSync, existsSync, mkdirSync, openSync, fsyncSync, closeSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, openSync, fsyncSync, closeSync, readFileSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 export type LedgerAction = 'merge' | 'revert' | 'close';
@@ -28,11 +28,12 @@ export function appendEntry(root: string, entry: Omit<LedgerEntry, 'ts'>, now: D
   const path = ledgerPath(root);
   mkdirSync(dirname(path), { recursive: true });
   const line = JSON.stringify({ ts: now.toISOString(), ...entry }) + '\n';
-  appendFileSync(path, line, 'utf8');
 
-  // Durability: the record must survive a crash between write and action.
-  const fd = openSync(path, 'r');
-  try { fsyncSync(fd); } finally { closeSync(fd); }
+  // Durability: open once in append mode, write, and fsync to guarantee the record
+  // survives a process crash on all platforms (Windows requires write-capable fd).
+  // Power-loss durability: guaranteed on Linux via fsync; weaker on macOS/Windows.
+  const fd = openSync(path, 'a');
+  try { writeSync(fd, line); fsyncSync(fd); } finally { closeSync(fd); }
 }
 
 export function readEntries(root: string): LedgerEntry[] {
@@ -48,10 +49,25 @@ export function readEntries(root: string): LedgerEntry[] {
 
 /** Merges Thesmos performed that have not since been reverted. */
 export function armedMerges(entries: LedgerEntry[]): LedgerEntry[] {
-  const reverted = new Set(
-    entries.filter((e) => e.action === 'revert' && e.phase === 'outcome').map((e) => e.pr),
-  );
-  return entries.filter(
-    (e) => e.action === 'merge' && e.phase === 'outcome' && e.ok === true && !reverted.has(e.pr),
-  );
+  // Track the latest outcome action for each PR to handle re-lands after reverts
+  // and to distinguish failed reverts (ok:false) from successful ones.
+  const latestOutcome = new Map<number, LedgerEntry>();
+  for (const e of entries) {
+    if (e.phase === 'outcome') {
+      latestOutcome.set(e.pr, e);
+    }
+  }
+
+  // Armed merge: merge with ok:true where either:
+  // 1. The latest action for that PR is this merge (not reverted, or re-landed after revert)
+  // 2. The latest action for that PR is a failed revert (ok !== true)
+  return entries.filter((e) => {
+    if (!(e.action === 'merge' && e.phase === 'outcome' && e.ok === true)) {
+      return false;
+    }
+    const latest = latestOutcome.get(e.pr);
+    if (!latest) return false;
+    // This merge is armed if it's the latest action, or if latest is a failed revert
+    return latest === e || (latest.action === 'revert' && latest.ok !== true);
+  });
 }

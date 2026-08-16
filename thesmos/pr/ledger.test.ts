@@ -44,4 +44,27 @@ describe('ledger', () => {
 
     expect(armedMerges(readEntries(root)).map((e) => e.pr)).toEqual([2]);
   });
+
+  it('reports re-merged PRs (merge after revert)', () => {
+    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'a' }, AT);
+    appendEntry(root, { action: 'revert', pr: 1, phase: 'outcome', ok: true }, AT);
+    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'c' }, AT);
+
+    expect(armedMerges(readEntries(root)).map((e) => e.pr)).toEqual([1]);
+  });
+
+  it('reports merges whose revert failed as armed', () => {
+    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'a' }, AT);
+    appendEntry(root, { action: 'revert', pr: 1, phase: 'outcome', ok: false, detail: 'conflict' }, AT);
+
+    expect(armedMerges(readEntries(root)).map((e) => e.pr)).toEqual([1]);
+  });
+
+  it('handles multiple merges of the same PR (latest wins)', () => {
+    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'a' }, AT);
+    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: false, detail: 'conflict' }, AT);
+
+    const armed = armedMerges(readEntries(root));
+    expect(armed.map((e) => e.pr)).toEqual([]);
+  });
 });
