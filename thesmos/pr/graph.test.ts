@@ -1,3 +1,5 @@
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
+
 import { describe, it, expect } from 'vitest';
 import { buildGraph } from './graph.ts';
 import type { PullRequest } from './types.ts';
