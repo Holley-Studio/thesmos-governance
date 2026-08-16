@@ -5,6 +5,7 @@ import { createContext } from '../lib/context.ts';
 import { fetchPullRequests, renderPlan } from '../../pr/fetch.ts';
 import { computePlan, type MergePlan } from '../../pr/plan.ts';
 import { executeWave, isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
+import { acquireLock, releaseLock } from '../../pr/lock.ts';
 import { chooseCulprit, performRevert } from '../../pr/revert.ts';
 import { readEntries } from '../../pr/ledger.ts';
 import type { PullRequest } from '../../pr/types.ts';
@@ -125,6 +126,15 @@ export function formatExplain(raw: string | undefined, prs: PullRequest[], plan:
  * Execution halts at the first failed wave (governing property 2) — that
  * halt is enforced by executeWave per-PR and reinforced here across waves.
  *
+ * Holds the single-holder lock (thesmos/pr/lock.ts) for the full duration of
+ * a run (governing property 4): two Thesmos runs merging concurrently could
+ * otherwise both plan the same wave and double-merge it. Acquired first,
+ * before any gh call — a run that cannot get the lock must not read PR
+ * state at all, since that state could already be stale by the time it acts
+ * on it. Released in `finally` so a throw partway through a merge (a gh
+ * call that throws instead of returning a failure, a bug in plan
+ * computation, anything) can never leave the lock held forever.
+ *
  * root is a parameter, not derived via createContext() here, so this stays
  * testable with a fake gh and a throwaway temp directory.
  */
@@ -132,24 +142,32 @@ export function runMerge(
   root: string,
   opts: { wave: number | 'all' },
   deps: { gh: GhRunner; now: () => Date },
-): { merged: number[]; failed: number[] } {
-  const prs = fetchPullRequests(deps.gh);
-  const defaultBranch = detectDefaultBranch(deps.gh);
-  const pathsOnTarget = fetchPathsOnTarget(deps.gh, defaultBranch);
-  const plan = computePlan(prs, { defaultBranch, blockers: new Set(), autonomy: 'recoverable', pathsOnTarget });
-
-  const waves = opts.wave === 'all' ? plan.waves : [plan.waves[opts.wave] ?? []];
-  const merged: number[] = [];
-  const failed: number[] = [];
-
-  for (const wave of waves) {
-    const r = executeWave(root, wave, deps);
-    merged.push(...r.merged);
-    failed.push(...r.failed);
-    if (r.failed.length) break; // never continue past a failed wave
+): { merged: number[]; failed: number[]; locked?: boolean } {
+  if (!acquireLock(root, deps.now())) {
+    return { merged: [], failed: [], locked: true };
   }
 
-  return { merged, failed };
+  try {
+    const prs = fetchPullRequests(deps.gh);
+    const defaultBranch = detectDefaultBranch(deps.gh);
+    const pathsOnTarget = fetchPathsOnTarget(deps.gh, defaultBranch);
+    const plan = computePlan(prs, { defaultBranch, blockers: new Set(), autonomy: 'recoverable', pathsOnTarget });
+
+    const waves = opts.wave === 'all' ? plan.waves : [plan.waves[opts.wave] ?? []];
+    const merged: number[] = [];
+    const failed: number[] = [];
+
+    for (const wave of waves) {
+      const r = executeWave(root, wave, deps);
+      merged.push(...r.merged);
+      failed.push(...r.failed);
+      if (r.failed.length) break; // never continue past a failed wave
+    }
+
+    return { merged, failed };
+  } finally {
+    releaseLock(root);
+  }
 }
 
 /**
@@ -339,6 +357,11 @@ export function runPr(argv: string[], deps: PrDeps): void {
     }
     const wave = parseWaveArg(argv);
     const result = runMerge(deps.root, { wave }, { gh: deps.gh, now: deps.now });
+
+    if (result.locked) {
+      deps.write('  Another Thesmos run is already merging. Try again shortly.\n');
+      return;
+    }
 
     if (result.merged.length === 0 && result.failed.length === 0) {
       deps.write('  Nothing was ready to merge.\n');

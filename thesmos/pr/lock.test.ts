@@ -1,6 +1,6 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 import { describe, it, expect, beforeEach } from 'vitest';
-import { mkdtempSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { acquireLock, releaseLock, detectObsolete } from './lock.ts';
@@ -30,6 +30,28 @@ describe('lock', () => {
     acquireLock(root, T0);
     releaseLock(root);
     expect(acquireLock(root, T0)).toBe(true);
+  });
+
+  it('refuses a fresh lock file that was written by something other than this process\'s acquireLock call', () => {
+    // Simulates the exclusive-create path (O_EXCL / 'wx') seeing a winner
+    // from a genuinely concurrent process: the file exists on disk before
+    // acquireLock ever runs, not because this process wrote it.
+    writeFileSync(join(root, '.thesmos', 'pr-lock.json'), JSON.stringify({ at: T0.toISOString(), pid: 999999 }) + '\n', 'utf8');
+    expect(acquireLock(root, T0)).toBe(false);
+  });
+
+  it('treats a corrupt lock file as stale rather than wedging the tool forever', () => {
+    writeFileSync(join(root, '.thesmos', 'pr-lock.json'), 'not valid json{{{', 'utf8');
+    expect(acquireLock(root, T0)).toBe(true);
+  });
+
+  it('propagates a genuine filesystem error instead of silently reporting "not acquired"', () => {
+    // No .thesmos directory exists under this root, so the exclusive write
+    // fails with ENOENT, not EEXIST. The lock must only treat EEXIST as
+    // "someone else holds it" — swallowing every error here would hide a
+    // real infrastructure failure behind a false "lock is held" reading.
+    const missingRoot = mkdtempSync(join(tmpdir(), 'thesmos-lock-missing-'));
+    expect(() => acquireLock(missingRoot, T0)).toThrow();
   });
 });
 

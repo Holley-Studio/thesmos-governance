@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runMerge } from '../bin/commands/pr.ts';
 import { setAutonomy } from './execute.ts';
+import { acquireLock } from './lock.ts';
 
 let root: string;
 const now = () => new Date('2026-08-16T12:00:00Z');
@@ -143,5 +144,60 @@ describe('runMerge', () => {
     expect(result.merged).toEqual([2]);
     const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
     expect(merges).toEqual(['2']);
+  });
+
+  // ── the concurrency lock — two runs merging at once must not double-merge a wave ──
+
+  it('refuses to merge at all while another run holds the lock, without ever calling gh', () => {
+    acquireLock(root, now()); // simulates a concurrent Thesmos run already in progress
+    const calls: string[][] = [];
+    const gh = (args: string[]) => {
+      calls.push(args);
+      return { ok: true, stdout: args[0] === 'pr' && args[1] === 'list' ? PRS : '', stderr: '' };
+    };
+
+    const result = runMerge(root, { wave: 0 }, { gh, now });
+
+    expect(result.locked).toBe(true);
+    expect(result.merged).toEqual([]);
+    expect(result.failed).toEqual([]);
+    expect(calls).toEqual([]);
+  });
+
+  it('releases the lock even when the merge path throws, so a crash cannot wedge the tool', () => {
+    const throwingGh = (): never => { throw new Error('boom — simulated crash before any merge'); };
+
+    expect(() => runMerge(root, { wave: 0 }, { gh: throwingGh, now })).toThrow('boom');
+
+    // If the lock were still held, this would return false.
+    expect(acquireLock(root, now())).toBe(true);
+  });
+
+  it('never merges a PR that is obsolete — every file it changes is already gone from the target branch', () => {
+    // Mirrors the #9/#6 case: #1 is a normal reversible bump; #9 only
+    // touches a file the target branch no longer has. #9 must never reach
+    // `gh pr merge`, not just be flagged in a queue listing.
+    const prsWithObsolete = JSON.stringify([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', isDraft: false, baseRefName: 'main',
+        headRefName: 'a', mergeStateStatus: 'CLEAN', changedFiles: 1, files: [{ path: 'package-lock.json' }] },
+      { number: 9, title: 'chore(deps): bump codeql-action', isDraft: false, baseRefName: 'main',
+        headRefName: 'dep', mergeStateStatus: 'CLEAN', changedFiles: 1, files: [{ path: '.github/workflows/codeql.yml' }] },
+    ]);
+    const calls: string[][] = [];
+    const gh = (args: string[]) => {
+      calls.push(args);
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: prsWithObsolete, stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('git/trees')) {
+        return { ok: true, stdout: JSON.stringify({ truncated: false, paths: ['package-lock.json', 'README.md'] }), stderr: '' };
+      }
+      return { ok: true, stdout: '', stderr: '' };
+    };
+
+    const result = runMerge(root, { wave: 'all' }, { gh, now });
+
+    expect(result.merged).toEqual([1]);
+    const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
+    expect(merges).toEqual(['1']);
+    expect(merges).not.toContain('9');
   });
 });

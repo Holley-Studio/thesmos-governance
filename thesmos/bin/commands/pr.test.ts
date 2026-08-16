@@ -7,6 +7,7 @@ import { classifyGhResult, detectDefaultBranch, formatExplain, formatWatchResult
 import type { MergePlan } from '../../pr/plan.ts';
 import { buildGraph } from '../../pr/graph.ts';
 import { isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
+import { acquireLock } from '../../pr/lock.ts';
 import { appendEntry } from '../../pr/ledger.ts';
 import type { PullRequest } from '../../pr/types.ts';
 
@@ -396,6 +397,29 @@ describe('runPr — pr:merge refuses when autonomy is off (governing property 3)
     runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow });
 
     expect(out).toMatch(/autonomy is off/i);
+    expect(calls).toEqual([]);
+  });
+});
+
+describe('runPr — pr:merge refuses when another Thesmos run already holds the lock', () => {
+  it('never calls gh at all and says plainly that another run is already merging', () => {
+    // Proves the wiring reaches production through the actual CLI dispatch
+    // path, not just runMerge in isolation (thesmos/pr/merge-command.test.ts
+    // proves that half already) — a lock nothing in runPr's dispatch checks
+    // would still let a second `thesmos pr:merge` invocation through.
+    const root = freshRoot();
+    acquireLock(root, testNow()); // simulates a concurrent Thesmos run already in progress
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const baseGh = fakeGh('main', prListJson);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow });
+
+    expect(out).toMatch(/already merging/i);
     expect(calls).toEqual([]);
   });
 });
