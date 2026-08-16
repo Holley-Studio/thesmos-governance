@@ -304,5 +304,5 @@ export function runPr(argv: string[], deps: PrDeps): void {
 
 export async function cmdPr(argv: string[]): Promise<void> {
   const { root } = createContext();
-  runPr(argv, { gh: realGh, write: (s) => process.stdout.write(s), root, now: () => new Date() });
+  await runPr(argv, { gh: realGh, write: (s) => process.stdout.write(s), root, now: () => new Date() });
 }
