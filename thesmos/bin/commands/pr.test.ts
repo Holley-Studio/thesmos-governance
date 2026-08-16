@@ -9,7 +9,7 @@ import { buildGraph } from '../../pr/graph.ts';
 import { isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
 import { acquireLock } from '../../pr/lock.ts';
 import { appendEntry } from '../../pr/ledger.ts';
-import type { PullRequest } from '../../pr/types.ts';
+import type { CheckContext, PullRequest } from '../../pr/types.ts';
 
 const testNow = () => new Date('2026-08-16T12:00:00Z');
 
@@ -25,11 +25,13 @@ const pr = (number: number): PullRequest => ({
   mergeStateStatus: 'CLEAN',
   changedFiles: 1,
   files: ['a.ts'],
+  checks: [],
 });
 
 /** Builds the raw JSON `gh pr list --json ...` would return, from plain fixtures. */
 const ghPrListJson = (list: Array<{
   number: number; title: string; baseRefName: string; headRefName: string; files?: string[];
+  checks?: CheckContext[];
 }>): string => JSON.stringify(list.map((p) => ({
   number: p.number,
   title: p.title,
@@ -39,7 +41,14 @@ const ghPrListJson = (list: Array<{
   mergeStateStatus: 'CLEAN',
   changedFiles: p.files?.length ?? 0,
   files: (p.files ?? []).map((path) => ({ path })),
+  statusCheckRollup: p.checks ?? [],
 })));
+
+/** The shape gh reports for this repo's own governance workflow. */
+const GOVERNANCE_FAILED: CheckContext = {
+  name: 'Governance Review', workflowName: 'Thesmos Governance PR Review', conclusion: 'FAILURE',
+};
+const GOVERNANCE_PASSED: CheckContext = { ...GOVERNANCE_FAILED, conclusion: 'SUCCESS' };
 
 /** A GhRunner that answers both `gh repo view` and `gh pr list` from fixtures. */
 const fakeGh = (defaultBranch: string, prListJson: string): GhRunner => (args) =>
@@ -386,6 +395,84 @@ describe('runPr — pr:merge is actually wired to runMerge', () => {
     const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
     expect(merges).toEqual(['1']);
     expect(out).toContain('#1');
+  });
+});
+
+// ── the governance severity gate — the product's entire wedge (spec §2) ──
+//
+// computePlan's `blockers` was `new Set()` at both call sites, so the BLOCKER
+// halt in plan.ts was dead code: `pr:merge` merged PRs Thesmos itself had
+// refused, and the plain-language BLOCKER string in fetch.ts could never
+// print. These tests drive the real CLI path with a real gh-shaped payload.
+
+describe('runPr — a PR whose Thesmos governance check failed is never merged', () => {
+  it('halts it as a BLOCKER while merging its otherwise-identical twin', () => {
+    // #1 and #2 are deliberately identical in every dimension the planner
+    // cares about — same patch bump, same single lockfile diff, same CLEAN
+    // merge state, both roots — and differ ONLY in the governance check's
+    // verdict. If #2 is excluded for any other reason this test would pass
+    // without the gate doing anything, which is the failure mode it exists
+    // to rule out.
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'], checks: [GOVERNANCE_PASSED] },
+      { number: 2, title: 'chore(deps): bump b from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'b',
+        files: ['package-lock.json'], checks: [GOVERNANCE_FAILED] },
+    ]);
+    const baseGh = fakeGh('main', prListJson);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['merge', '--all'], { gh, write: (s) => { out += s; }, root, now: testNow });
+
+    const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
+    expect(merges).toEqual(['1']);
+    expect(merges).not.toContain('2');
+    expect(out).toContain('#1');
+  });
+});
+
+describe('runPr — pr:queue explains a BLOCKER halt in plain language', () => {
+  it('prints the BLOCKER string that could never print while blockers was always empty', () => {
+    const prListJson = ghPrListJson([
+      { number: 2, title: 'chore(deps): bump b from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'b',
+        files: ['package-lock.json'], checks: [GOVERNANCE_FAILED] },
+    ]);
+
+    let out = '';
+    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+
+    expect(out).toMatch(/✗ #2/);
+    expect(out).toContain('Thesmos found something that must not ship');
+    expect(out).not.toMatch(/ready to merge/);
+  });
+
+  it('says out loud when no PR reported a governance result, instead of letting silence read as approval', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+
+    let out = '';
+    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+
+    expect(out).toContain('✓ 1 ready to merge');
+    expect(out).toMatch(/none of these pull requests has a Thesmos governance result yet/i);
+    expect(out).toMatch(/nothing was checked against the rules/i);
+  });
+
+  it('stays quiet about coverage once a governance result is present', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'], checks: [GOVERNANCE_PASSED] },
+    ]);
+
+    let out = '';
+    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow });
+
+    expect(out).not.toMatch(/governance result yet/i);
   });
 });
 

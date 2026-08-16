@@ -4,7 +4,10 @@ import type { GhRunner } from './execute.ts';
 import type { MergePlan } from './plan.ts';
 import type { PullRequest } from './types.ts';
 
-const FIELDS = 'number,title,isDraft,baseRefName,headRefName,mergeStateStatus,changedFiles,files';
+// statusCheckRollup carries the governance gate's verdict (thesmos/pr/
+// blockers.ts) on the same call the planner already makes — no extra
+// round-trip per PR.
+const FIELDS = 'number,title,isDraft,baseRefName,headRefName,mergeStateStatus,changedFiles,files,statusCheckRollup';
 
 /**
  * How many open PRs a single plan may consider. The old value was 100 with no
@@ -47,6 +50,7 @@ export function fetchPullRequests(gh: GhRunner): PullRequest[] {
     mergeStateStatus: (raw.mergeStateStatus ?? 'UNKNOWN') as PullRequest['mergeStateStatus'],
     changedFiles: (raw.changedFiles ?? 0) as number,
     files: ((raw.files ?? []) as Array<{ path: string }>).map((f) => f.path),
+    checks: (raw.statusCheckRollup ?? []) as PullRequest['checks'],
   }));
 }
 

@@ -7,7 +7,7 @@ import type { PullRequest } from './types.ts';
 function pr(number: number, headRefName: string, baseRefName: string): PullRequest {
   return {
     number, title: `pr-${number}`, isDraft: false, baseRefName, headRefName,
-    mergeStateStatus: 'CLEAN', changedFiles: 1, files: [],
+    mergeStateStatus: 'CLEAN', changedFiles: 1, files: [], checks: [],
   };
 }
 

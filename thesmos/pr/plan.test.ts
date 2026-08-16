@@ -7,7 +7,7 @@ function pr(number: number, head: string, base: string, over: Partial<PullReques
   return {
     number, title: `chore(deps): bump p${number} from 1.0.0 to 1.0.1`, isDraft: false,
     baseRefName: base, headRefName: head, mergeStateStatus: 'CLEAN',
-    changedFiles: 1, files: ['package-lock.json'], ...over,
+    changedFiles: 1, files: ['package-lock.json'], checks: [], ...over,
   };
 }
 
@@ -219,7 +219,7 @@ describe('detectObsolete', () => {
   const obsoletePr: PullRequest = {
     number: 9, title: 'bump codeql-action', isDraft: false, baseRefName: 'main',
     headRefName: 'dep', mergeStateStatus: 'CLEAN', changedFiles: 1,
-    files: ['.github/workflows/codeql.yml'],
+    files: ['.github/workflows/codeql.yml'], checks: [],
   };
 
   it('flags a PR whose only file no longer exists on the target', () => {

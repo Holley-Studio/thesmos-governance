@@ -7,6 +7,7 @@ import { computePlan, type MergePlan } from '../../pr/plan.ts';
 import { executeWave, isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
 import { acquireLock, releaseLock } from '../../pr/lock.ts';
 import { chooseCulprit, performRevert } from '../../pr/revert.ts';
+import { deriveBlockers, governanceCoverage } from '../../pr/blockers.ts';
 import { readEntries } from '../../pr/ledger.ts';
 import type { PullRequest } from '../../pr/types.ts';
 
@@ -97,6 +98,19 @@ export function fetchPathsOnTarget(gh: GhRunner, branch: string): Set<string> | 
   return new Set(parsed.paths as string[]);
 }
 
+/**
+ * Says out loud when the governance gate had nothing to read. An empty
+ * blocker set has two very different causes — "every PR passed governance"
+ * and "no PR reported a governance check at all" — and rendering them
+ * identically is how a safety gate quietly becomes decoration. Silent when
+ * at least one PR reported a check: the common case needs no commentary.
+ */
+export function formatGovernanceCoverage(coverage: { seen: number; total: number }): string {
+  if (coverage.total === 0 || coverage.seen > 0) return '';
+  return '  Note: none of these pull requests has a Thesmos governance result yet, ' +
+    'so nothing was checked against the rules — only the merge order and reversibility were.\n';
+}
+
 /** Pure formatter for `pr:explain <number>` — no gh calls, so it's directly testable. */
 export function formatExplain(raw: string | undefined, prs: PullRequest[], plan: MergePlan): string {
   const n = Number(raw);
@@ -151,7 +165,9 @@ export function runMerge(
     const prs = fetchPullRequests(deps.gh);
     const defaultBranch = detectDefaultBranch(deps.gh);
     const pathsOnTarget = fetchPathsOnTarget(deps.gh, defaultBranch);
-    const plan = computePlan(prs, { defaultBranch, blockers: new Set(), autonomy: 'recoverable', pathsOnTarget });
+    const plan = computePlan(prs, {
+      defaultBranch, blockers: deriveBlockers(prs), autonomy: 'recoverable', pathsOnTarget,
+    });
 
     const waves = opts.wave === 'all' ? plan.waves : [plan.waves[opts.wave] ?? []];
     const merged: number[] = [];
@@ -385,7 +401,9 @@ export function runPr(argv: string[], deps: PrDeps): void {
   const prs = fetchPullRequests(deps.gh);
   const defaultBranch = detectDefaultBranch(deps.gh);
   const pathsOnTarget = fetchPathsOnTarget(deps.gh, defaultBranch);
-  const plan = computePlan(prs, { defaultBranch, blockers: new Set(), autonomy: 'recoverable', pathsOnTarget });
+  const plan = computePlan(prs, {
+    defaultBranch, blockers: deriveBlockers(prs), autonomy: 'recoverable', pathsOnTarget,
+  });
 
   if (sub === 'explain') {
     deps.write(formatExplain(argv[1], prs, plan));
@@ -393,6 +411,7 @@ export function runPr(argv: string[], deps: PrDeps): void {
   }
 
   deps.write(renderPlan(plan, prs));
+  deps.write(formatGovernanceCoverage(governanceCoverage(prs)));
 }
 
 export async function cmdPr(argv: string[]): Promise<void> {

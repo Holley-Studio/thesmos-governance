@@ -7,7 +7,7 @@ function pr(over: Partial<PullRequest> = {}): PullRequest {
   return {
     number: 1, title: 'chore(deps): bump left-pad from 1.0.0 to 1.0.1',
     isDraft: false, baseRefName: 'main', headRefName: 'dep', mergeStateStatus: 'CLEAN',
-    changedFiles: 2, files: ['package.json', 'package-lock.json'], ...over,
+    changedFiles: 2, files: ['package.json', 'package-lock.json'], checks: [], ...over,
   };
 }
 
