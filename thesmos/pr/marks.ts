@@ -37,7 +37,16 @@
  *     `ok: false` when it cannot read the list, and never an empty array. An
  *     empty array means "main is red and none of it is ours"; a failed lookup
  *     means "I do not know". Reading the second as the first is the exact
- *     shape of bug this module was written to remove.
+ *     shape of bug this module was written to remove. A full page sets
+ *     `partial`, which callers must treat the same way when they find no
+ *     match, for the same reason.
+ *  3. A ROW WITH NO MERGE COMMIT IS SKIPPED SILENTLY. There is nothing to
+ *     match against a failing range without one, and inventing a SHA would
+ *     revert something at random — but it does mean such a merge is invisible
+ *     here and nothing says so. Thesmos merges with `--squash`, which always
+ *     produces exactly one merge commit, so its own marked merges always have
+ *     one; a `thesmos-merged` pull request without a merge commit would mean
+ *     the label was applied by something other than Thesmos.
  */
 import type { GhRunner } from './execute.ts';
 import type { LedgerEntry } from './ledger.ts';
@@ -73,6 +82,13 @@ export interface ArmedMergesResult {
   ok: boolean;
   entries: LedgerEntry[];
   detail?: string;
+  /**
+   * True when GitHub returned a full page, so there may be marked merges this
+   * list does not contain. Callers must not read "no match here" as "nothing
+   * of ours" while this is set — that is the same indeterminate-reads-as-safe
+   * shape as an outright failed lookup.
+   */
+  partial?: boolean;
 }
 
 /** GhRunner's type promises it never throws; a real subprocess wrapper can. */
@@ -186,5 +202,7 @@ export function armedMergesFromGitHub(gh: GhRunner): ArmedMergesResult {
   }
 
   entries.sort((a, b) => (a.ts === b.ts ? a.pr - b.pr : a.ts < b.ts ? -1 : 1));
-  return { ok: true, entries };
+  return parsed.length >= LOOKUP_LIMIT
+    ? { ok: true, entries, partial: true }
+    : { ok: true, entries };
 }

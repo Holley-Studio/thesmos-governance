@@ -22,6 +22,20 @@
  * at all. The Action now reconstructs what Thesmos merged from GitHub itself
  * (thesmos/pr/marks.ts) and never reads this file. Do not reintroduce a
  * consumer of it on the unattended side.
+ *
+ * CONSEQUENCE, STATED PLAINLY BECAUSE IT LOOKS LIKE A DEFECT: `readEntries`
+ * and `armedMerges` now have NO production caller on the merge or watch path.
+ * `appendEntry` is called on every action, so this file is written and never
+ * read outside tests. That is correct for an audit trail — its readers are a
+ * human, `git log`, and spec §6.2's not-yet-built `reconcile` step — but it
+ * means no test of `readEntries`/`armedMerges` proves anything about running
+ * behaviour, and a bug in either would be invisible in production. They are
+ * kept because the record they read is real and the reconcile step is
+ * planned; they are NOT evidence that anything consults the ledger at
+ * runtime. `chooseCulprit` (thesmos/pr/revert.ts) does still call
+ * `armedMerges`, but only over rows synthesised from GitHub in which each
+ * pull request appears exactly once — so its revert/re-land bookkeeping,
+ * written for an append-only log, decides nothing there either.
  */
 import { existsSync, mkdirSync, openSync, fsyncSync, closeSync, readFileSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';

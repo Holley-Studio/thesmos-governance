@@ -252,6 +252,30 @@ describe('runWatch', () => {
     expect(result.status === 'unreadable-merges' && result.detail).toMatch(/403/);
   });
 
+  it('will not say "nothing of ours" off the back of a list that might be incomplete', () => {
+    // GitHub returned a full page, so a merge in the failing range could be
+    // sitting on page two. Standing down here would be a guess dressed as a
+    // fact.
+    const limit = 100;
+    const page = Array.from({ length: limit }, (_, i) => ({
+      number: i + 1,
+      labels: [{ name: MERGED_LABEL }],
+      mergeCommit: { oid: `other-sha-${i}` },
+      mergedAt: `2026-08-16T10:00:0${i % 10}Z`,
+    }));
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') {
+        expect(Number(args[args.indexOf('--limit') + 1]), 'the fixture must fill exactly one page').toBe(limit);
+        return { ok: true, stdout: JSON.stringify(page), stderr: '' };
+      }
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    expect(runWatch(root, { range: 5 }, { gh, now, git: okGit }).status).toBe('unreadable-merges');
+  });
+
   it('switches autonomy off when the revert lands but cannot be marked', () => {
     // The revert succeeded, so the change is off main — but nothing now
     // stops a later red build choosing the same pull request again, and

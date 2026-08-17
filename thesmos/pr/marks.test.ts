@@ -207,4 +207,28 @@ describe('armedMergesFromGitHub — the Action rebuilds its own view from GitHub
     const gh: GhRunner = () => ({ ok: true, stdout: '[]', stderr: '' });
     expect(armedMergesFromGitHub(gh)).toEqual({ ok: true, entries: [] });
   });
+
+  it('does not claim the list is complete when GitHub filled the whole page', () => {
+    // A full page means there may be more. "I found no match in a list that
+    // might be missing entries" is not "there is no match" — same
+    // indeterminate-reads-as-safe shape as a failed lookup.
+    const limit = Number(/--limit\D+(\d+)/.exec(
+      (() => { let seen = ''; armedMergesFromGitHub((a) => { seen = a.join(' '); return { ok: true, stdout: '[]', stderr: '' }; }); return seen; })(),
+    )?.[1]);
+    expect(limit, 'the fixture below has to fill exactly one page').toBeGreaterThan(0);
+
+    const full = Array.from({ length: limit }, (_, i) => ({ number: i + 1, mergedAt: `2026-08-16T10:00:0${i % 10}Z` }));
+    const gh: GhRunner = () => ({ ok: true, stdout: listJson(full), stderr: '' });
+
+    const result = armedMergesFromGitHub(gh);
+    expect(result.ok).toBe(true);
+    expect(result.partial).toBe(true);
+  });
+
+  it('does not flag a short page as partial', () => {
+    const gh: GhRunner = () => ({
+      ok: true, stdout: listJson([{ number: 7, mergedAt: '2026-08-16T10:00:00Z' }]), stderr: '',
+    });
+    expect(armedMergesFromGitHub(gh).partial).toBeUndefined();
+  });
 });

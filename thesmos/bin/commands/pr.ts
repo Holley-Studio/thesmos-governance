@@ -383,7 +383,13 @@ export function runWatch(
   if (!armed.ok) return { status: 'unreadable-merges', detail: armed.detail };
 
   const culprit = chooseCulprit(armed.entries, range);
-  if (!culprit) return { status: 'no-culprit' };
+  // Finding nothing in a list that may be incomplete is not the same as
+  // finding nothing. Only a complete list earns "nothing of ours".
+  if (!culprit) {
+    return armed.partial
+      ? { status: 'unreadable-merges', detail: 'there are more marked merges than I can list in one go, so I cannot be sure none of them is in this range' }
+      : { status: 'no-culprit' };
+  }
 
   const { ok, sync, mark } = performRevert(root, culprit, deps);
   return ok
