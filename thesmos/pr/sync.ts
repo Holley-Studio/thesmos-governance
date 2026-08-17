@@ -4,30 +4,29 @@
  * this system has to see (spec §6.2): the action ledger and the autonomy
  * sentinel.
  *
- * WHY THIS MODULE HAS TO EXIST. The CLI merges on a laptop; `pr:watch` runs
- * as a GitHub Action on a fresh `actions/checkout`. Those two halves share
- * exactly one thing — files in the repository — because the design has no
- * Thesmos-operated service holding state. While `.thesmos/pr-ledger.jsonl`
- * was git-ignored, the Action's checkout never contained it: `readEntries`
- * returned `[]` every time, `chooseCulprit` returned null every time, and
- * auto-revert — the whole reason merging without asking is defensible —
- * could not fire in production at all. Same for the sentinel: `autonomy off`
- * on a laptop was invisible to the unattended half that actually mutates
- * GitHub.
+ * WHY THIS MODULE STILL EXISTS. The CLI merges on a laptop; `pr:watch` runs
+ * as a GitHub Action on a fresh `actions/checkout`. The two carry two
+ * different kinds of state, and only one of them still travels this way:
+ *
+ *  - THE LEDGER is the local audit trail (thesmos/pr/ledger.ts). Publishing
+ *    it shares that record instead of trapping it on one machine. Auto-revert
+ *    no longer reads it: the Action rebuilds what Thesmos merged from GitHub
+ *    itself (thesmos/pr/marks.ts), because on a repository with a protected
+ *    default branch this push is rejected and the file never arrived at all.
+ *  - THE AUTONOMY SENTINEL genuinely does still travel this way. A kill
+ *    switch the unattended half cannot see does not switch anything off, and
+ *    the same protected branch rejects it. See limitation 4 below.
  *
  * WHAT IT DOES NOT GUARANTEE — read this before trusting recovery:
  *
  *  1. THE PUSH CAN FAIL, AND FAILURE IS NOT FATAL. A protected default
  *     branch (rulesets, required PRs, required reviews) will reject a direct
- *     push of the ledger — this repo's own `main` is configured that way.
- *     When that happens the merges still happened, so callers report the
- *     failure loudly and carry on; reporting a merge as not-happened because
- *     its receipt could not be filed would be the worse lie. But the
- *     practical consequence is real and must be said out loud: on a repo
- *     where this push cannot land, the Action keeps reading a stale ledger
- *     and auto-revert stays as blind as it was before. Phase 1 reports it;
- *     it does not solve it. Closing it needs either a bot identity with
- *     bypass, or a different transport for the ledger.
+ *     push — this repo's own `main` is configured that way, with an empty
+ *     `bypass_actors` list, so nothing can bypass it. When that happens the
+ *     merges still happened, so callers report the failure loudly and carry
+ *     on; reporting a merge as not-happened because its receipt could not be
+ *     filed would be the worse lie. Auto-revert is no longer affected by
+ *     this; the audit trail simply stays local until a push succeeds.
  *  2. IT IS NOT ATOMIC WITH THE MERGE. The ledger is fsynced locally before
  *     each action (thesmos/pr/ledger.ts), but published afterwards. A crash
  *     between the two leaves a correct local ledger and a stale remote one.
@@ -36,6 +35,18 @@
  *  3. IT ONLY EVER TOUCHES THE PATHS IT IS GIVEN. `git commit -- <paths>`
  *     commits those paths regardless of what else is staged, so a user's
  *     work-in-progress index is never swept into a Thesmos commit.
+ *  4. THE SENTINEL HAS NO SECOND TRANSPORT, AND THAT IS A REAL GAP. The
+ *     ledger's dependency on this push was removed; the kill switch's was
+ *     not. On a repository where the push is rejected, `thesmos autonomy off`
+ *     set on a laptop never reaches the Action, and a failed revert's
+ *     "autonomy off, do not retry" sentinel dies with the runner that wrote
+ *     it. Two things narrow the blast radius rather than close it: the
+ *     Action's own merges cannot be chosen twice (thesmos/pr/marks.ts marks
+ *     a reverted merge on GitHub, which does survive), and every failure
+ *     here is reported in plain language at the call site. It is not closed.
+ *     Closing it needs the switch to live somewhere both halves can write —
+ *     a repository variable, a label, or a bot identity with ruleset bypass —
+ *     which is a design decision, not an implementation detail.
  *
  * Every commit it writes carries `[skip ci]`: these commits contain nothing
  * but Thesmos's own state files, so running the full CI matrix on them is

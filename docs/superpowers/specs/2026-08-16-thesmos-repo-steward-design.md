@@ -141,8 +141,9 @@ New modules under `thesmos/`, each independently testable:
 | `deps/semver.ts` | Parse Dependabot titles into `{ecosystem, package, from, to, bump}` | — |
 | `deps/policy.ts` | Grouping config generation and safe-upgrade analysis | `deps/semver` |
 | `health/score.ts` | Compute repo health from ledger + `gh` data. Pure | `ledger` |
-| `ledger.ts` | Append-only action log, digest-chained | — |
-| `revert.ts` | Watch `main`, detect regression, execute revert | `ledger`, `pr/execute` |
+| `ledger.ts` | Append-only local action log — the audit trail, not a transport | — |
+| `pr/marks.ts` | Label Thesmos's own merges on GitHub; rebuild that list for the Action | `ledger` (shape only) |
+| `revert.ts` | Watch `main`, detect regression, execute revert | `pr/marks`, `ledger`, `pr/execute` |
 
 The pure/impure split is deliberate: `graph`, `plan`, `classify`, `semver`, and `score`
 are pure functions over fixtures, so the difficult logic is testable without network
@@ -274,15 +275,17 @@ job that justifies the split:
 
 ```
 CLI, at merge time:
-  fsync { pr, mergeCommit, timestamp, class, watch: armed } to ledger
+  fsync { pr, mergeCommit, timestamp, class } to ledger   # local audit trail
   then perform the merge          # ledger-before-action, always
+  then label the merged PR `thesmos-merged` on GitHub
 
 Action (`thesmos-watch.yml`), on push to default branch:
   if head check suite fails
-     AND a ledger entry marks a Thesmos merge within the last N commits:
-        culprit  = newest armed Thesmos merge in the failing range
+     AND GitHub reports a merged PR labelled `thesmos-merged`, not
+     `thesmos-reverted`, whose merge commit is within the last N commits:
+        culprit  = newest such merge in the failing range
         open revert PR, merge it
-        append revert to ledger
+        label the culprit `thesmos-reverted`
         report loudly: what, why, and how to re-land
 
 CLI, on next run:
@@ -293,8 +296,24 @@ CLI, on next run:
 Defaults: N = 5 commits, one revert attempt per incident. If a revert itself fails,
 autonomy halts entirely and demands human attention — it must never thrash.
 
-Because the ledger is committed to the repository, the Action and the CLI share one source
-of truth without any Thesmos-operated service holding state.
+**The shared state is GitHub, not a file.** An earlier draft of this section had the CLI
+commit the ledger and the Action read it out of its `actions/checkout`. That cannot work on
+a repository whose default branch is protected: the push is rejected (this repo's `main`
+enforces `pull_request` and `required_status_checks` with an empty `bypass_actors` list),
+the checkout contains no ledger, and auto-revert cannot fire at all. Granting a bot a
+ruleset bypass is the repository owner's security decision and no implementation may assume
+it. So the two halves recognise Thesmos's own merges through labels on GitHub — the one
+system both halves already authenticate to, needing no write access to the default branch —
+and still without any Thesmos-operated service holding state.
+
+The ledger remains: it is the local audit trail and the record that makes
+"no action without a preceding intent row" true. It is still committed when it can be, so
+that record is shared rather than trapped on one machine, but nothing on the unattended side
+reads it. A merge that could not be labelled is reported loudly, because it is a merge
+auto-revert cannot undo.
+
+The autonomy sentinel (§6.3) is the one piece of state that still travels through the
+repository, and it inherits the same rejected-push limitation. See §13.
 
 **Auto-revert never applies to one-way actions**, because they were never automatic.
 
@@ -438,15 +457,28 @@ Fake clocks throughout. No retries masking flakes.
 ## 13. Security and privacy
 
 Local-first, consistent with existing Thesmos guarantees. No Thesmos-operated service, no
-stored credentials — `gh`'s existing auth is used and never read. The ledger records PR
-numbers, SHAs, and outcomes; never diffs, source, or secrets. Ledger lives in `.thesmos/`
-and is **committed to the repository**, per §6.2 — it is the only state the local CLI and
-the `pr:watch` Action share, and git-ignoring it (an earlier draft of this line, carried
-over from the local-only `savings.jsonl` pattern) makes auto-revert structurally unable to
-fire: the Action's fresh checkout would never contain it. Committing it leaks nothing,
-because of what it records. The autonomy sentinel is committed for the same reason — a
-kill switch the unattended half cannot see does not switch anything off. No telemetry
-leaves the machine.
+stored credentials — `gh`'s existing auth is used and never read. No telemetry leaves the
+machine.
+
+**The ledger** records PR numbers, SHAs, classes, and outcomes; never diffs, source,
+prompts, or secrets. It lives in `.thesmos/` and is the **local audit trail** — the durable
+record that makes "no autonomous action without a preceding intent row" true. It is
+**committed to the repository** so that record is shared rather than trapped on one laptop,
+which leaks nothing given what it records. It is *not* how the `pr:watch` Action learns what
+Thesmos merged: that runs through labels on GitHub (§6.2), because a protected default
+branch rejects the ledger push outright and a transport that cannot deliver is not a
+transport. Nothing on the unattended side reads this file.
+
+**The autonomy sentinel** is committed too, and here the reason is transport: a kill switch
+the unattended half cannot see does not switch anything off. It inherits the limitation the
+ledger shed — on a repository with a protected default branch the push is rejected, so
+`thesmos autonomy off` set locally may not reach the Action, and a failed revert's
+"do not retry" sentinel dies with the runner. The blast radius is narrowed by the
+`thesmos-reverted` label, which does survive and stops the same merge being reverted twice,
+but the gap is real and is reported in plain language every time it happens. Closing it
+needs the switch to live somewhere both halves can write — a repository variable, a label,
+or a bot identity with ruleset bypass — which is an owner's decision, not an implementation
+detail.
 
 ---
 

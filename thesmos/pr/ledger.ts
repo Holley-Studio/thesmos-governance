@@ -4,19 +4,24 @@
  * before the action runs, so a merge that left no record cannot happen.
  * Corrupt lines are isolated.
  *
- * COMMITTED TO THE REPOSITORY, not local-only runtime state (spec §6.2). The
- * CLI writes it at merge time and the `thesmos pr:watch` GitHub Action reads
- * it from a fresh `actions/checkout` — the two halves share this file and
- * nothing else, with no Thesmos-operated service holding state. While it was
- * git-ignored (the shape it was first built in, mirroring .thesmos/
- * savings.jsonl) the Action's checkout never contained it, `readEntries`
- * returned `[]` on every run, `chooseCulprit` returned null, and auto-revert
- * could not fire in production at all. It holds PR numbers, SHAs, classes and
+ * THIS IS THE LOCAL AUDIT TRAIL, NOT A TRANSPORT (spec §6.2). It is the CLI's
+ * own durable record of every autonomous action, and nothing else depends on
+ * it reaching another machine. It holds PR numbers, SHAs, classes and
  * outcomes — never diffs, source, prompts, or secrets.
  *
- * Committing it is thesmos/pr/sync.ts's job, and that push can legitimately
- * fail (see that module's header) — a merge is never reported as
- * not-happened just because the record of it could not be pushed.
+ * It is committed to the repository (thesmos/pr/sync.ts) so that record is
+ * shared rather than trapped on one laptop, and that push can legitimately
+ * fail — a protected default branch rejects it outright. A merge is never
+ * reported as not-happened just because the record of it could not be pushed.
+ *
+ * IT USED TO BE THE ACTION'S ONLY SOURCE OF TRUTH, and that did not work.
+ * `thesmos pr:watch` runs on a fresh `actions/checkout`; on any repository
+ * whose default branch is protected the ledger push is rejected, so that
+ * checkout contained no ledger, `readEntries` returned `[]` on every run,
+ * `chooseCulprit` returned null, and auto-revert could not fire in production
+ * at all. The Action now reconstructs what Thesmos merged from GitHub itself
+ * (thesmos/pr/marks.ts) and never reads this file. Do not reintroduce a
+ * consumer of it on the unattended side.
  */
 import { existsSync, mkdirSync, openSync, fsyncSync, closeSync, readFileSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';

@@ -10,12 +10,26 @@
 ## Thesmos-performed merge is the culprit, it opens and merges a revert PR
 ## (see thesmos/pr/revert.ts and thesmos/bin/commands/pr.ts).
 ##
+## How it knows what Thesmos merged: it ASKS GITHUB, not the checked-out tree.
+## `thesmos pr:merge` labels every pull request it merges `thesmos-merged`, and this job
+## lists merged pull requests carrying that label (and not `thesmos-reverted`) to find a
+## culprit — see thesmos/pr/marks.ts. It deliberately does NOT read
+## .thesmos/pr-ledger.jsonl: that file only reaches a checkout if the CLI can push it to
+## the default branch, and this repository's `main` ruleset rejects that push with no
+## bypass actor, so the ledger was empty on every run and this job could never revert
+## anything. The ledger remains the local audit trail; it is not this job's input.
+##
 ## Required permissions (set at job level below — no repo-wide change needed):
 ##   contents:      write  — checkout the code, let `gh pr merge` land the revert commit, and
 ##                           push the updated ledger/sentinel back (see thesmos/pr/sync.ts;
 ##                           a protected default branch may reject that push, which is
-##                           reported, not fatal)
-##   pull-requests: write  — open the revert PR (`gh pr revert`) and merge it (`gh pr merge`)
+##                           reported, not fatal — auto-revert no longer depends on it)
+##   pull-requests: write  — open the revert PR (`gh pr revert`), merge it (`gh pr merge`),
+##                           and label merges/reverts (`gh pr edit --add-label`)
+##   issues:        write  — create the `thesmos-merged` / `thesmos-reverted` labels the
+##                           first time they are needed (`gh label create`). Labels are
+##                           issue-scoped in the REST API, so `pull-requests: write` alone
+##                           cannot create one.
 ##   checks:        read   — read main's check-run conclusions via the GitHub Checks API to
 ##                           tell "a push just happened" apart from "checks came back red".
 ##                           This repo's CI runs as GitHub Actions jobs, which report through
@@ -24,10 +38,7 @@
 ##
 ## Setup:
 ##   Nothing to configure. Generated as part of the governed PR merge engine
-##   (`thesmos pr:watch`); reads and writes .thesmos/pr-ledger.jsonl in the
-##   checked-out repo. That file is deliberately NOT git-ignored — it is the
-##   only state this Action and the local CLI share, and while it was ignored
-##   this job read an empty ledger on every run and could never revert anything.
+##   (`thesmos pr:watch`).
 ##
 
 name: Thesmos Watch
@@ -39,6 +50,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
   checks: read
 
 jobs:
