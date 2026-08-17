@@ -4,12 +4,12 @@ import { spawnSync } from 'node:child_process';
 import { createContext } from '../lib/context.ts';
 import { fetchPullRequests, renderPlan } from '../../pr/fetch.ts';
 import { computePlan, type MergePlan } from '../../pr/plan.ts';
-import { executeWave, isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
+import { executeWave, isAutonomyDisabled, setAutonomy, type GhRunner, type UnmarkedMerge } from '../../pr/execute.ts';
 import { acquireLock, releaseLock } from '../../pr/lock.ts';
 import { chooseCulprit, performRevert } from '../../pr/revert.ts';
 import { deriveBlockers, governanceCoverage } from '../../pr/blockers.ts';
 import { syncState, formatSyncFailure, LEDGER_PATH, SENTINEL_PATH, type Runner, type SyncResult } from '../../pr/sync.ts';
-import { readEntries } from '../../pr/ledger.ts';
+import { armedMergesFromGitHub, MERGED_LABEL, REVERTED_LABEL, type MarkResult } from '../../pr/marks.ts';
 import type { PullRequest } from '../../pr/types.ts';
 
 const DEFAULT_BRANCH_FALLBACK = 'main';
@@ -124,6 +124,21 @@ export function formatGovernanceCoverage(coverage: { seen: number; total: number
     'so nothing was checked against the rules — only the merge order and reversibility were.\n';
 }
 
+/**
+ * Says out loud when a merge happened but could not be marked. The mark is
+ * how the auto-revert Action learns a merge was Thesmos's own
+ * (thesmos/pr/marks.ts), so an unmarked merge is one that cannot be undone
+ * automatically — the single case where the recoverability that justifies
+ * unattended merging is genuinely absent. Silent when everything was marked.
+ */
+export function formatUnmarked(unmarked: UnmarkedMerge[]): string {
+  if (unmarked.length === 0) return '';
+  return unmarked.map((u) =>
+    `  Note: #${u.pr} really did merge, but I could not label it "${MERGED_LABEL}" (${u.detail}). ` +
+    'Until that label is there, the automatic revert cannot undo this one. ' +
+    `Add it by hand with: gh pr edit ${u.pr} --add-label ${MERGED_LABEL}\n`).join('');
+}
+
 /** Pure formatter for `pr:explain <number>` — no gh calls, so it's directly testable. */
 export function formatExplain(raw: string | undefined, prs: PullRequest[], plan: MergePlan): string {
   const n = Number(raw);
@@ -170,11 +185,12 @@ export function runMerge(
   opts: { wave: number | 'all' },
   deps: { gh: GhRunner; now: () => Date; git: Runner },
 ): {
-  merged: number[]; failed: number[]; locked?: boolean; unknownWave?: boolean;
+  merged: number[]; failed: number[]; unmarked: UnmarkedMerge[];
+  locked?: boolean; unknownWave?: boolean;
   sync?: SyncResult; coverage?: { seen: number; total: number };
 } {
   if (!acquireLock(root, deps.now())) {
-    return { merged: [], failed: [], locked: true };
+    return { merged: [], failed: [], unmarked: [], locked: true };
   }
 
   try {
@@ -194,11 +210,13 @@ export function runMerge(
     const waves = opts.wave === 'all' ? plan.waves : [plan.waves[opts.wave] ?? []];
     const merged: number[] = [];
     const failed: number[] = [];
+    const unmarked: UnmarkedMerge[] = [];
 
     for (const wave of waves) {
       const r = executeWave(root, wave, deps);
       merged.push(...r.merged);
       failed.push(...r.failed);
+      unmarked.push(...r.unmarked);
       if (r.failed.length) break; // never continue past a failed wave
     }
 
@@ -212,7 +230,7 @@ export function runMerge(
     // Reported on the merge path too, not only on pr:queue: someone who only
     // ever runs pr:merge would otherwise never learn that the governance gate
     // had nothing to read, which is the one way that gate goes quiet.
-    return { merged, failed, unknownWave, sync, coverage: governanceCoverage(prs) };
+    return { merged, failed, unmarked, unknownWave, sync, coverage: governanceCoverage(prs) };
   } finally {
     releaseLock(root);
   }
@@ -306,17 +324,25 @@ export type WatchResult =
   | { status: 'unknown' }
   | { status: 'pending' }
   | { status: 'green' }
+  | { status: 'unreadable-merges'; detail?: string }
   | { status: 'no-culprit' }
-  | { status: 'reverted'; pr: number; sync: SyncResult }
+  | { status: 'reverted'; pr: number; sync: SyncResult; mark?: MarkResult }
   | { status: 'revert-failed'; pr: number; sync: SyncResult };
 
 /**
  * The `pr:watch` logic, pulled out of runPr's dispatch (same shape as
  * runMerge above) so it is directly testable and runPr's dispatch body
  * stays a thin call-and-format. Checks whether main is currently red before
- * touching the ledger at all: the workflow that calls this fires on every
+ * looking for a culprit at all: the workflow that calls this fires on every
  * push to main, not just a failing one, so watch must determine that for
  * itself rather than assume the trigger means main broke.
+ *
+ * The candidate merges come from GitHub (thesmos/pr/marks.ts), not from the
+ * local ledger. This function runs on a fresh `actions/checkout`, and on any
+ * repository with a protected default branch the ledger push is rejected, so
+ * that checkout contains no ledger at all — `readEntries` returned `[]` here
+ * on every real run. Selection is still `chooseCulprit`; only the source of
+ * the list changed.
  */
 export function runWatch(
   root: string,
@@ -349,12 +375,19 @@ export function runWatch(
   if (status === 'pending') return { status: 'pending' };
   if (status === 'green') return { status: 'green' };
 
-  const culprit = chooseCulprit(readEntries(root), range);
+  // A lookup that failed is not the same as a lookup that found nothing, and
+  // reporting them identically is how this safety net went inert the first
+  // time: "none of it is ours, stand down" and "I could not find out" must
+  // never render as the same outcome.
+  const armed = armedMergesFromGitHub(deps.gh);
+  if (!armed.ok) return { status: 'unreadable-merges', detail: armed.detail };
+
+  const culprit = chooseCulprit(armed.entries, range);
   if (!culprit) return { status: 'no-culprit' };
 
-  const { ok, sync } = performRevert(root, culprit, deps);
+  const { ok, sync, mark } = performRevert(root, culprit, deps);
   return ok
-    ? { status: 'reverted', pr: culprit.pr, sync }
+    ? { status: 'reverted', pr: culprit.pr, sync, mark }
     : { status: 'revert-failed', pr: culprit.pr, sync };
 }
 
@@ -368,11 +401,22 @@ export function formatWatchResult(result: WatchResult): string {
     case 'unknown': return '  Could not tell whether main is currently green or red; doing nothing.\n';
     case 'pending': return "  main's checks are still running; nothing to judge yet.\n";
     case 'green': return '  main is currently green. Nothing to do.\n';
+    case 'unreadable-merges':
+      return `  Could not read which of these commits were mine (${result.detail ?? 'no further detail'}), ` +
+        'so I cannot tell whether anything should be reverted; doing nothing.\n';
     case 'no-culprit': return '  Nothing of ours in the failing range.\n';
     case 'reverted':
-      return `  ✓ reverted #${result.pr} — main went red after it merged\n` + formatSyncFailure(result.sync);
+      return `  ✓ reverted #${result.pr} — main went red after it merged\n`
+        + (result.mark && !result.mark.ok
+          ? `  I could not label #${result.pr} "${REVERTED_LABEL}" (${result.mark.detail}), so I cannot promise not to revert it again. ` +
+            `Autonomy is now OFF. Add the label by hand, then: thesmos autonomy on\n`
+          : '')
+        + formatSyncFailure(result.sync);
     case 'revert-failed':
-      return `  ✗ could not revert #${result.pr}. Autonomy is now OFF and needs you.\n` + formatSyncFailure(result.sync);
+      return `  ✗ could not revert #${result.pr}. Autonomy is now OFF and needs you.\n`
+        + (result.sync.ok
+          ? ''
+          : `  I could not publish that OFF switch to the repository (${result.sync.detail}), so a later push here could attempt the same revert again.\n`);
   }
 }
 
@@ -382,17 +426,19 @@ const FAILED = 1;
 /**
  * A watch run that could not do its job must not look like one that had
  * nothing to do. `revert-failed` means a regression is still on the default
- * branch and autonomy has switched itself off; `unknown` and
- * `unreadable-history` mean the watcher could not even determine whether
- * that is the case — indeterminate, not fine. `autonomy-off` is a state the
- * operator chose, `green`/`pending`/`no-culprit`/`no-history` are ordinary
- * nothing-to-do outcomes, and `reverted` is success — those are all zero.
+ * branch and autonomy has switched itself off; `unknown`,
+ * `unreadable-history` and `unreadable-merges` mean the watcher could not
+ * even determine whether that is the case — indeterminate, not fine.
+ * `autonomy-off` is a state the operator chose,
+ * `green`/`pending`/`no-culprit`/`no-history` are ordinary nothing-to-do
+ * outcomes, and `reverted` is success — those are all zero.
  */
 export function exitCodeForWatch(result: WatchResult): number {
   switch (result.status) {
     case 'revert-failed':
     case 'unknown':
     case 'unreadable-history':
+    case 'unreadable-merges':
       return FAILED;
     default:
       return OK;
@@ -484,6 +530,7 @@ export function runPr(argv: string[], deps: PrDeps): number {
         deps.write(`  ✗ stopped at #${result.failed[0]} — nothing after it was attempted\n`);
       }
     }
+    deps.write(formatUnmarked(result.unmarked));
     if (result.coverage) deps.write(formatGovernanceCoverage(result.coverage));
     if (result.sync) deps.write(formatSyncFailure(result.sync));
     // A wave that stopped at a failed merge is a failed run. Reporting it as

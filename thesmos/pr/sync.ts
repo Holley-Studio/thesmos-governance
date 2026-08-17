@@ -140,9 +140,15 @@ export function syncState(
  * The one-line warning shown when state could not be published. Says what
  * still definitely happened before it says what failed — a merge that
  * happened must never read as a merge that did not.
+ *
+ * It no longer claims auto-revert has gone blind, because that is no longer
+ * true: the Action reconstructs what Thesmos merged from GitHub's own record
+ * (thesmos/pr/marks.ts), not from this file. It does not go quiet either —
+ * a failed push still means the audit trail exists only on this machine.
  */
 export function formatSyncFailure(result: SyncResult): string {
   if (result.ok) return '';
-  return `  Note: everything above really did happen, but I could not save the record of it to the repository (${result.detail}). ` +
-    'Until that record is pushed, the automatic revert that runs on GitHub cannot see these merges.\n';
+  return `  Note: everything above really did happen, but I could not publish the record of it to the repository (${result.detail}). ` +
+    'The audit trail in .thesmos/pr-ledger.jsonl is complete here; it just exists only on this machine until that push succeeds. ' +
+    'The automatic revert on GitHub does not read this file, so it is unaffected.\n';
 }

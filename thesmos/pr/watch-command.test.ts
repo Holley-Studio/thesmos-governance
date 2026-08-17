@@ -6,11 +6,13 @@ import { join } from 'node:path';
 import { runWatch } from '../bin/commands/pr.ts';
 import { appendEntry } from './ledger.ts';
 import { isAutonomyDisabled, setAutonomy } from './execute.ts';
+import { MERGED_LABEL, REVERTED_LABEL } from './marks.ts';
 import type { GhRunner } from './execute.ts';
 import type { Runner } from './sync.ts';
 
 const okGit: Runner = () => ({ ok: true, stdout: 'main\n', stderr: '' });
 const PUBLISHED = { ok: true };
+const MARKED = { ok: true };
 
 let root: string;
 const now = () => new Date('2026-08-16T12:00:00Z');
@@ -20,12 +22,26 @@ beforeEach(() => {
   mkdirSync(join(root, '.thesmos'), { recursive: true });
 });
 
+/** A merge Thesmos has marked on GitHub — the Action's only record of it. */
+interface Marked { pr: number; sha: string; reverted?: boolean }
+
+/** The JSON `gh pr list --state merged --label thesmos-merged --json ...` prints. */
+function mergedListJson(marked: Marked[]): string {
+  return JSON.stringify(marked.map((m, i) => ({
+    number: m.pr,
+    labels: [{ name: MERGED_LABEL }, ...(m.reverted ? [{ name: REVERTED_LABEL }] : [])],
+    mergeCommit: { oid: m.sha },
+    mergedAt: `2026-08-16T11:0${i}:00Z`,
+  })));
+}
+
 /** Answers the commit-list and check-runs lookups from fixtures — the
  * check-runs response is a realistic one-conclusion-per-line payload
  * (matching `.check_runs[] | (.conclusion // "pending")`), not a
- * pre-reduced count — plus the `gh pr revert` / `gh pr merge` calls
+ * pre-reduced count — the merged-pull-request listing the Action rebuilds
+ * its view from, and the `gh pr revert` / `gh pr merge` / `gh pr edit` calls
  * performRevert issues. */
-function fakeWatchGh(opts: { shas: string[]; failingShas: Set<string> }): GhRunner {
+function fakeWatchGh(opts: { shas: string[]; failingShas: Set<string>; marked?: Marked[] }): GhRunner {
   return (args) => {
     if (args[0] === 'api' && args[1]?.includes('/check-runs')) {
       const sha = args[1].split('/commits/')[1]?.split('/check-runs')[0];
@@ -33,6 +49,12 @@ function fakeWatchGh(opts: { shas: string[]; failingShas: Set<string> }): GhRunn
     }
     if (args[0] === 'api' && args[1]?.includes('/commits?')) {
       return { ok: true, stdout: opts.shas.join('\n') + '\n', stderr: '' };
+    }
+    if (args[0] === 'pr' && args[1] === 'list') {
+      return { ok: true, stdout: mergedListJson(opts.marked ?? []), stderr: '' };
+    }
+    if (args[0] === 'pr' && args[1] === 'edit') {
+      return { ok: true, stdout: '', stderr: '' };
     }
     if (args[0] === 'pr' && args[1] === 'revert') {
       return { ok: true, stdout: 'https://github.com/o/r/pull/999\n', stderr: '' };
@@ -53,7 +75,6 @@ describe('runWatch — the kill switch reaches the unattended half (spec §6.3)'
     // "no revert call": the check must come before the commit-list lookup,
     // so a disabled repo makes no network requests at all.
     setAutonomy(root, false);
-    appendEntry(root, { action: 'merge', pr: 7, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
     const calls: string[][] = [];
     const gh: GhRunner = (args) => { calls.push(args); throw new Error('gh must not be called'); };
 
@@ -75,10 +96,10 @@ describe('runWatch — the kill switch reaches the unattended half (spec §6.3)'
     // Spec §6.2: one revert attempt per incident, it must never thrash. The
     // setAutonomy(root, false) inside performRevert was the guard meant to
     // enforce that, and nothing read it — so every subsequent push retried.
-    appendEntry(root, { action: 'merge', pr: 3, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
     const failingRevert: GhRunner = (args) => {
       if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
       if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: mergedListJson([{ pr: 3, sha: 'aaa' }]), stderr: '' };
       if (args[0] === 'pr' && args[1] === 'revert') return { ok: false, stdout: '', stderr: 'no permission' };
       throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
     };
@@ -95,18 +116,19 @@ describe('runWatch — the kill switch reaches the unattended half (spec §6.3)'
 
 describe('runWatch', () => {
   it('reports green and never calls gh pr revert when main has no failing check runs', () => {
-    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
     const calls: string[][] = [];
-    const baseGh = fakeWatchGh({ shas: ['aaa', 'zzz'], failingShas: new Set() });
+    const baseGh = fakeWatchGh({ shas: ['aaa', 'zzz'], failingShas: new Set(), marked: [{ pr: 1, sha: 'aaa' }] });
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
     const result = runWatch(root, { range: 5 }, { gh, now, git: okGit });
 
     expect(result).toEqual({ status: 'green' });
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
+    // A green main must not even ask which merges were ours.
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'list')).toBe(false);
   });
 
-  it('reports no-culprit when main is red but the ledger holds no Thesmos merge in range', () => {
+  it('reports no-culprit when main is red but GitHub holds no marked Thesmos merge in range', () => {
     const calls: string[][] = [];
     const baseGh = fakeWatchGh({ shas: ['aaa'], failingShas: new Set(['aaa']) });
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
@@ -118,26 +140,28 @@ describe('runWatch', () => {
   });
 
   it('reaches chooseCulprit and performRevert, reverting the culprit through the real two-call sequence', () => {
-    appendEntry(root, { action: 'merge', pr: 7, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
     const calls: string[][] = [];
-    const baseGh = fakeWatchGh({ shas: ['aaa', 'zzz'], failingShas: new Set(['aaa']) });
+    const baseGh = fakeWatchGh({ shas: ['aaa', 'zzz'], failingShas: new Set(['aaa']), marked: [{ pr: 7, sha: 'aaa' }] });
     const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
 
     const result = runWatch(root, { range: 5 }, { gh, now, git: okGit });
 
-    expect(result).toEqual({ status: 'reverted', pr: 7, sync: PUBLISHED });
+    expect(result).toEqual({ status: 'reverted', pr: 7, sync: PUBLISHED, mark: MARKED });
     // The revert PR (#999) is what gets merged, never the original (#7) —
     // proves this drives performRevert's actual create-then-merge sequence,
     // not a stub that just reports success.
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert' && c[2] === '7')).toBe(true);
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'merge' && c[2] === '999')).toBe(true);
+    // And the culprit is marked reverted, so a later red build cannot pick it
+    // again and re-land the change by reverting the revert.
+    expect(calls).toContainEqual(['pr', 'edit', '7', '--add-label', REVERTED_LABEL]);
   });
 
   it('reports revert-failed and leaves autonomy off when the revert itself fails', () => {
-    appendEntry(root, { action: 'merge', pr: 3, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
     const gh: GhRunner = (args) => {
       if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
       if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: mergedListJson([{ pr: 3, sha: 'aaa' }]), stderr: '' };
       if (args[0] === 'pr' && args[1] === 'revert') return { ok: false, stdout: '', stderr: 'no permission' };
       throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
     };
@@ -158,12 +182,13 @@ describe('runWatch', () => {
     expect(runWatch(root, { range: 5 }, { gh, now, git: okGit })).toEqual({ status: 'unknown' });
   });
 
-  it('reports pending, not green, and never consults the ledger while a check run is still in progress', () => {
+  it('reports pending, not green, and never looks for a culprit while a check run is still in progress', () => {
     // The realistic mid-build shape: one check settled green, one still
     // running (conclusion null, printed by jq as the literal "pending").
     // watch is a single fast `gh api` call reacting to the same push event
     // a multi-minute CI matrix does — this is what it will normally see.
-    appendEntry(root, { action: 'merge', pr: 1, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
+    // The gh fake throws on anything past the two lookups, so reaching the
+    // merged-list query at all fails this test.
     const calls: string[][] = [];
     const gh: GhRunner = (args) => {
       calls.push(args);
@@ -187,6 +212,67 @@ describe('runWatch', () => {
 
     expect(runWatch(root, { range: 5 }, { gh, now, git: okGit })).toEqual({ status: 'unreadable-history' });
     expect(calls.some((c) => c[1]?.includes('/check-runs'))).toBe(false);
+  });
+
+  it('is not armed by the local ledger at all — GitHub is the only source', () => {
+    // The transport this replaces. A ledger row used to be the ONLY thing
+    // that armed a revert, and on a fresh runner there is never one. If
+    // runWatch ever reads the ledger again, this test goes green for the
+    // wrong reason and the production failure comes straight back.
+    appendEntry(root, { action: 'merge', pr: 7, phase: 'outcome', ok: true, mergeCommit: 'aaa' }, now());
+    const calls: string[][] = [];
+    const baseGh = fakeWatchGh({ shas: ['aaa'], failingShas: new Set(['aaa']), marked: [] });
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    expect(runWatch(root, { range: 5 }, { gh, now, git: okGit })).toEqual({ status: 'no-culprit' });
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
+  });
+
+  it('never picks a merge GitHub already has marked reverted', () => {
+    const gh = fakeWatchGh({
+      shas: ['aaa'], failingShas: new Set(['aaa']), marked: [{ pr: 7, sha: 'aaa', reverted: true }],
+    });
+    expect(runWatch(root, { range: 5 }, { gh, now, git: okGit })).toEqual({ status: 'no-culprit' });
+  });
+
+  it('reports that it could not read its own merges, rather than standing down as if there were none', () => {
+    // "None of these commits are mine" and "I could not find out" have
+    // opposite consequences, and rendering the second as the first is the
+    // failure mode that made this whole mechanism inert once already.
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: false, stdout: '', stderr: 'HTTP 403' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    const result = runWatch(root, { range: 5 }, { gh, now, git: okGit });
+
+    expect(result.status).toBe('unreadable-merges');
+    expect(result.status === 'unreadable-merges' && result.detail).toMatch(/403/);
+  });
+
+  it('switches autonomy off when the revert lands but cannot be marked', () => {
+    // The revert succeeded, so the change is off main — but nothing now
+    // stops a later red build choosing the same pull request again, and
+    // reverting a revert re-lands the regression. Failing closed is the only
+    // safe answer.
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: mergedListJson([{ pr: 7, sha: 'aaa' }]), stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'revert') return { ok: true, stdout: 'https://github.com/o/r/pull/999\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'merge') return { ok: true, stdout: '', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'edit') return { ok: false, stdout: '', stderr: 'HTTP 403' };
+      if (args[0] === 'label') return { ok: false, stdout: '', stderr: 'HTTP 403' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    const result = runWatch(root, { range: 5 }, { gh, now, git: okGit });
+
+    expect(result.status, 'the revert really did happen').toBe('reverted');
+    expect(result.status === 'reverted' && result.mark?.ok).toBe(false);
+    expect(isAutonomyDisabled(root)).toBe(true);
   });
 
   it('honors the requested range when asking gh for recent commits', () => {

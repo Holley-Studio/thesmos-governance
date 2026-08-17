@@ -120,10 +120,27 @@ describe('syncState', () => {
 });
 
 describe('formatSyncFailure', () => {
-  it('says the actions really happened before it says the record did not save', () => {
+  it('says the actions really happened before it says the record did not publish', () => {
     const out = formatSyncFailure({ ok: false, detail: 'protected branch hook declined' });
-    expect(out.indexOf('really did happen')).toBeLessThan(out.indexOf('could not save'));
-    expect(out).toMatch(/automatic revert.*cannot see/i);
+    expect(out.indexOf('really did happen')).toBeLessThan(out.indexOf('could not publish'));
+    expect(out).toContain('protected branch hook declined');
+  });
+
+  it('no longer claims auto-revert has gone blind, because it has not', () => {
+    // The old wording said "the automatic revert that runs on GitHub cannot
+    // see these merges", which was true while the ledger was the transport
+    // and is now false: the Action reconstructs its view from GitHub's own
+    // record (thesmos/pr/marks.ts). A warning that is no longer true is worse
+    // than no warning — it teaches the reader to ignore the next one.
+    const out = formatSyncFailure({ ok: false, detail: 'protected branch hook declined' });
+    expect(out).not.toMatch(/cannot see these merges/i);
+    expect(out).toMatch(/does not read this file/i);
+  });
+
+  it('does not go quiet either — the audit trail really did stay local', () => {
+    const out = formatSyncFailure({ ok: false, detail: 'protected branch hook declined' });
+    expect(out).toMatch(/only on this machine/i);
+    expect(out).toContain(LEDGER_PATH);
   });
 
   it('says nothing at all when the state was published', () => {
