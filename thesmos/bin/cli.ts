@@ -544,9 +544,18 @@ PULL REQUESTS  (governed merge engine — plain-language status, no jargon)
     --all                    Merge every ready wave, in order
   pr:watch                 Used by CI: check whether main just went red, and undo the merge that caused it
     --range <n>               How many recent commits on main to check (default: 5)
+    --sha <commit>            Judge this commit (the one CI ran against), not the tip of main
   autonomy                 Show whether Thesmos is allowed to merge pull requests right now
   autonomy on              Allow Thesmos to merge pull requests that meet the rules in place
   autonomy off             Stop Thesmos from merging or changing any pull request
+
+  Two labels make this work, and they are ordinary labels anyone can edit:
+    thesmos-merged      Thesmos merged this — and may automatically revert it if main goes red.
+                        Remove it and that merge can no longer be undone automatically; add it
+                        to a pull request Thesmos did not merge and that work becomes revertable.
+    thesmos-reverted    Thesmos already reverted this one. Removing it can let a later red build
+                        revert the revert, putting the change back on main.
+  Full detail, including what to do when Thesmos asks you to add one by hand: docs/pr-merge-labels.md
 
 CUSTOM AGENTS
   agent:create "<Name>"    Scaffold a new agent in .thesmos/agents/ and register it

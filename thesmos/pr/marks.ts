@@ -47,6 +47,19 @@
  *     produces exactly one merge commit, so its own marked merges always have
  *     one; a `thesmos-merged` pull request without a merge commit would mean
  *     the label was applied by something other than Thesmos.
+ *  4. THE LOOKUP GOES THROUGH GITHUB'S SEARCH INDEX, WHICH IS EVENTUALLY
+ *     CONSISTENT. `--search sort:updated-desc` routes `gh pr list` through
+ *     the search API rather than the plain list endpoint, and a pull request
+ *     merged seconds ago may not be indexed yet. An unindexed merge reads
+ *     here as simply absent — an indeterminate rendering as safe, which is
+ *     this module's own named failure shape arriving through the transport
+ *     rather than the data. It is narrow (the window is seconds, and the
+ *     watcher only runs after a full CI cycle has completed on the commit)
+ *     but it is real, and it is not detectable from the response.
+ *  5. THE LABELS ARE HUMAN-MUTABLE. Anyone with write access can remove
+ *     `thesmos-merged` from a merge, making it unrevertable here, or add it
+ *     to a pull request Thesmos never touched, making someone else's work
+ *     eligible for automatic reverting. See docs/pr-merge-labels.md.
  */
 import type { GhRunner } from './execute.ts';
 import type { LedgerEntry } from './ledger.ts';

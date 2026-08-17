@@ -130,6 +130,8 @@ export function formatGovernanceCoverage(coverage: { seen: number; total: number
  * (thesmos/pr/marks.ts), so an unmarked merge is one that cannot be undone
  * automatically — the single case where the recoverability that justifies
  * unattended merging is genuinely absent. Silent when everything was marked.
+ * What the labels mean, and what editing one by hand costs:
+ * docs/pr-merge-labels.md.
  */
 export function formatUnmarked(unmarked: UnmarkedMerge[]): string {
   if (unmarked.length === 0) return '';

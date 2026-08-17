@@ -50,9 +50,11 @@
  *
  * Every commit it writes carries `[skip ci]`: these commits contain nothing
  * but Thesmos's own state files, so running the full CI matrix on them is
- * waste — and, more importantly, `thesmos-watch.yml` triggers on push to the
- * default branch, so a ledger push would otherwise re-trigger the very
- * watcher that wrote it.
+ * waste — and, more importantly, no CI run means no `workflow_run: completed`
+ * event, which is what `thesmos-watch.yml` now triggers on. A ledger push
+ * would otherwise wake the very watcher that wrote it, on a commit there is
+ * nothing to judge. That is deliberate on both sides; see the comment block
+ * at the top of thesmos-watch.yml before changing it.
  */
 
 import { existsSync } from 'node:fs';
