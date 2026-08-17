@@ -99,10 +99,19 @@ concurrency:
 jobs:
   watch:
     name: Revert on regression
-    # Only the default branch, and only a CI run that actually reached a
-    # verdict. workflow_run fires for CI runs on every branch, forks included.
+    # Only a push to the default branch, and only a CI run that actually
+    # reached a verdict. head_branch alone is not enough: ci.yml also runs on
+    # pull_request, and a contributor whose branch happens to be called "main"
+    # would otherwise send the watcher off to judge an unmerged branch.
+    #
+    # This job's `name:` above is also what its check run is called on the
+    # commit, and mainCheckStatus excludes exactly that name from its own
+    # verdict (WATCH_CHECK_NAME in thesmos/bin/commands/pr.ts) — otherwise a
+    # CI re-run would let this watcher read its own previous failure as a red
+    # main. Renaming the job means renaming that constant; a test enforces it.
     if: >-
       github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.event == 'push'
       && github.event.workflow_run.conclusion != 'cancelled'
       && github.event.workflow_run.conclusion != 'skipped'
     runs-on: ubuntu-latest

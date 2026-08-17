@@ -308,6 +308,26 @@ const INDETERMINATE_CONCLUSIONS = new Set(['cancelled', 'stale']);
 const PENDING_MARKER = 'pending';
 
 /**
+ * The check-run name the watcher's own job publishes, excluded from its own
+ * verdict below.
+ *
+ * A GitHub Actions job appears on the commit as a check run named after the
+ * job, and this one runs on the commit it is judging. `exitCodeForWatch`
+ * deliberately fails the run on any indeterminate state, so a watch run that
+ * could not read its own merges leaves a `failure` check run behind. Re-run
+ * CI on that commit — the ordinary response to a flaky build — and a second
+ * workflow_run event fires: without this exclusion the second run reads the
+ * first run's own failure as "main is red" and reverts a pull request on the
+ * strength of it, even if the re-run went green. Self-reinforcing, and
+ * invisible to any test that does not cross into the workflow file.
+ *
+ * This MUST equal the `name:` of the watch job in
+ * .github/workflows/thesmos-watch.yml. watch-workflow.test.ts asserts that,
+ * because a rename on either side silently restores the loop.
+ */
+export const WATCH_CHECK_NAME = 'Revert on regression';
+
+/**
  * Whether main is currently red, read through the GitHub Checks API
  * (`checks: read`) rather than the legacy commit-status endpoint
  * (`statuses: read`): this repo's CI runs as GitHub Actions jobs, which
@@ -340,7 +360,11 @@ const PENDING_MARKER = 'pending';
 export function mainCheckStatus(gh: GhRunner, sha: string): 'green' | 'red' | 'pending' | 'unknown' {
   const res = gh([
     'api', `repos/{owner}/{repo}/commits/${sha}/check-runs`,
-    '--jq', `.check_runs[] | (.conclusion // "${PENDING_MARKER}")`,
+    // The select is the watcher declining to judge itself — see
+    // WATCH_CHECK_NAME. It is the only thing this filter drops; the
+    // conclusions themselves are still reduced in TypeScript, where a test
+    // can see them, rather than counted away inside jq.
+    '--jq', `.check_runs[] | select(.name != "${WATCH_CHECK_NAME}") | (.conclusion // "${PENDING_MARKER}")`,
   ]);
   if (!res.ok) return 'unknown';
 

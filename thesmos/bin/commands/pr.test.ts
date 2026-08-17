@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { classifyGhResult, cmdPr, detectDefaultBranch, exitCodeForWatch, formatExplain, formatWatchResult, mainCheckStatus, makeGhRunner, parseRangeArg, parseShaArg, parseWaveArg, runPr, type RawGhResult, type WatchResult } from './pr.ts';
+import { classifyGhResult, cmdPr, detectDefaultBranch, exitCodeForWatch, formatExplain, formatWatchResult, mainCheckStatus, makeGhRunner, parseRangeArg, parseShaArg, parseWaveArg, runPr, WATCH_CHECK_NAME, type RawGhResult, type WatchResult } from './pr.ts';
 import type { MergePlan } from '../../pr/plan.ts';
 import { buildGraph } from '../../pr/graph.ts';
 import { isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
@@ -705,6 +705,19 @@ describe('mainCheckStatus', () => {
   it('reports unknown when no check runs were reported for the commit at all', () => {
     const gh: GhRunner = () => ({ ok: true, stdout: '', stderr: '' });
     expect(mainCheckStatus(gh, 'abc123')).toBe('unknown');
+  });
+
+  it('asks GitHub to leave the watcher\'s own check run out of the answer', () => {
+    // The watcher's job is itself a check run on the commit it judges, and
+    // exitCodeForWatch fails the run on any indeterminate state. Re-run CI on
+    // that commit — the ordinary response to a flake — and the second watch
+    // run would read the first one's own failure as a red main and revert a
+    // pull request because of it. The exclusion happens in the query, so this
+    // asserts the query: a mocked response cannot prove a filter that is not
+    // there. watch-workflow.test.ts pins the name to the job's own.
+    let seen: string[] = [];
+    mainCheckStatus((args) => { seen = args; return { ok: true, stdout: 'success\n', stderr: '' }; }, 'abc123');
+    expect(seen[seen.indexOf('--jq') + 1]).toContain(`select(.name != "${WATCH_CHECK_NAME}")`);
   });
 });
 

@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { WATCH_CHECK_NAME } from '../bin/commands/pr.ts';
 
 const read = (rel: string): string =>
   readFileSync(fileURLToPath(new URL(`../../${rel}`, import.meta.url)), 'utf8');
@@ -44,6 +45,28 @@ describe('thesmos-watch.yml — it must run after checks conclude, not when they
   it('judges only the default branch', () => {
     // workflow_run fires for CI runs on every branch, including forks'.
     expect(watchYml).toMatch(/github\.event\.workflow_run\.head_branch == 'main'/);
+  });
+
+  it('judges only CI runs that came from a push', () => {
+    // ci.yml also runs on pull_request and workflow_dispatch. head_branch
+    // alone does not exclude them: a contributor whose pull request branch
+    // happens to be called "main" produces a CI run with head_branch 'main'
+    // and a head_sha that exists in this repository as a pull-request ref, so
+    // the watcher would go and judge someone's unmerged branch.
+    expect(watchYml).toMatch(/github\.event\.workflow_run\.event == 'push'/);
+  });
+
+  it('excludes its own check run from the verdict, under the exact name it publishes', () => {
+    // The watcher's own job is a check run on the commit it is judging, and
+    // exitCodeForWatch deliberately fails the run on any indeterminate state.
+    // Re-running CI on that commit — the standard response to a flake — fires
+    // a second workflow_run event, and the second run would read the first
+    // one's own failure as "main is red" and revert a pull request on the
+    // strength of it. Self-reinforcing, and entirely invisible in tests that
+    // do not cross this boundary.
+    const jobName = /^ {4}name: (.+)$/m.exec(watchYml)?.[1].trim();
+    expect(jobName, 'the watch job must have a name to exclude').toBeTruthy();
+    expect(WATCH_CHECK_NAME).toBe(jobName);
   });
 
   it('stands down on a cancelled or skipped CI run instead of reading it as a red main', () => {
