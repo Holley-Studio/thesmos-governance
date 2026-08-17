@@ -7,6 +7,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { appendEntry } from './ledger.ts';
+import { markPr, MERGED_LABEL } from './marks.ts';
 import type { PlanEntry } from './plan.ts';
 
 export type GhRunner = (args: string[]) => { ok: boolean; stdout: string; stderr: string };
@@ -51,13 +52,20 @@ function lookupMergeCommit(gh: GhRunner, prNumber: number): { mergeCommit?: stri
   }
 }
 
+/** A merge that happened but that auto-revert will not be able to see. */
+export interface UnmarkedMerge {
+  pr: number;
+  detail: string;
+}
+
 export function executeWave(
   root: string,
   wave: PlanEntry[],
   deps: { gh: GhRunner; now: () => Date },
-): { merged: number[]; failed: number[] } {
+): { merged: number[]; failed: number[]; unmarked: UnmarkedMerge[] } {
   const merged: number[] = [];
   const failed: number[] = [];
+  const unmarked: UnmarkedMerge[] = [];
 
   for (const entry of wave) {
     // Checked per-iteration, not once before the loop: the kill switch is billed
@@ -84,19 +92,31 @@ export function executeWave(
       ? lookupMergeCommit(deps.gh, entry.number)
       : {};
 
+    // The mark is how the GitHub Action half learns this merge was ours
+    // (thesmos/pr/marks.ts). Applied only on a successful merge, and its
+    // failure never changes the merge's own verdict — the merge really
+    // happened — but it is recorded and returned, because an unmarked merge
+    // is one auto-revert can never undo.
+    const mark = result.ok ? markPr(deps.gh, entry.number, MERGED_LABEL) : { ok: true };
+    const markIssue = mark.ok ? '' : `could not add the "${MERGED_LABEL}" label: ${mark.detail}`;
+
+    const issues = [shaIssue, markIssue].filter(Boolean).join('; ');
     appendEntry(root, {
       action: 'merge', pr: entry.number, phase: 'outcome',
       class: entry.class,
       ok: result.ok,
       mergeCommit,
       detail: result.ok
-        ? (shaIssue ? `merged, but ${shaIssue}` : undefined)
+        ? (issues ? `merged, but ${issues}` : undefined)
         : result.stderr.slice(0, 200),
     }, deps.now());
 
     if (!result.ok) { failed.push(entry.number); break; }
     merged.push(entry.number);
+    // Not a halt condition: a label failure is not a merge failure, and the
+    // halt-on-first-failure rule governs merges.
+    if (markIssue) unmarked.push({ pr: entry.number, detail: mark.detail ?? markIssue });
   }
 
-  return { merged, failed };
+  return { merged, failed, unmarked };
 }

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { executeWave, isAutonomyDisabled, setAutonomy, type GhRunner } from './execute.ts';
 import { readEntries } from './ledger.ts';
+import { MERGED_LABEL } from './marks.ts';
 
 let root: string;
 const now = () => new Date('2026-08-16T12:00:00Z');
@@ -198,6 +199,7 @@ describe('executeWave — merge commit capture (chooseCulprit needs this to ever
     const gh: GhRunner = (args) => {
       if (args[1] === 'merge') return okGh();
       if (args[1] === 'view') return { ok: true, stdout: '\n', stderr: '' };
+      if (args[1] === 'edit') return okGh();
       throw new Error(`unexpected gh call: ${args.join(' ')}`);
     };
     executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], { gh, now });
@@ -205,5 +207,87 @@ describe('executeWave — merge commit capture (chooseCulprit needs this to ever
     const outcome = readEntries(root).find((e) => e.phase === 'outcome')!;
     expect(outcome.ok).toBe(true);
     expect(outcome.mergeCommit).toBeUndefined();
+  });
+});
+
+// ── the mark that makes a merge visible to auto-revert ──────────────────────
+//
+// The GitHub Action half cannot read the local ledger — the push that would
+// publish it is rejected on any repository with a protected default branch.
+// It reconstructs its view by asking GitHub which merged pull requests carry
+// the Thesmos label instead (thesmos/pr/marks.ts), so a merge this function
+// does not label is a merge auto-revert can never undo.
+
+describe('executeWave — marking merges on GitHub so auto-revert can find them', () => {
+  it('labels each merged pull request with the Thesmos mark', () => {
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => {
+      calls.push(args);
+      if (args[1] === 'view') return { ok: true, stdout: 'deadbeef\n', stderr: '' };
+      return okGh();
+    };
+
+    const result = executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], { gh, now });
+
+    expect(result.merged).toEqual([7]);
+    expect(result.unmarked).toEqual([]);
+    expect(calls).toContainEqual(['pr', 'edit', '7', '--add-label', MERGED_LABEL]);
+  });
+
+  it('never labels a pull request whose merge failed', () => {
+    const gh: GhRunner = (args) => args[1] === 'merge'
+      ? { ok: false, stdout: '', stderr: 'conflict' }
+      : okGh();
+    const calls: string[][] = [];
+    const recording: GhRunner = (args) => { calls.push(args); return gh(args); };
+
+    executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], { gh: recording, now });
+
+    expect(calls.some((c) => c[1] === 'edit')).toBe(false);
+  });
+
+  it('reports a merge it could not label without pretending the merge failed', () => {
+    // The merge really happened — reporting it as failed would be the worse
+    // lie, and would leave the operator believing the change is not on main.
+    // But an unlabelled merge is invisible to auto-revert, so it must be
+    // surfaced rather than swallowed.
+    const gh: GhRunner = (args) => {
+      if (args[1] === 'view') return { ok: true, stdout: 'deadbeef\n', stderr: '' };
+      if (args[1] === 'edit' || args[0] === 'label') {
+        return { ok: false, stdout: '', stderr: 'HTTP 403: Resource not accessible' };
+      }
+      return okGh();
+    };
+
+    const result = executeWave(root, [{ number: 7, wave: 0, class: 'reversible' }], { gh, now });
+
+    expect(result.merged).toEqual([7]);
+    expect(result.failed).toEqual([]);
+    expect(result.unmarked.map((u) => u.pr)).toEqual([7]);
+    expect(result.unmarked[0].detail).toMatch(/403/);
+
+    // The same fact is durable in the ledger, not only in a return value that
+    // a caller might drop on the floor.
+    const outcome = readEntries(root).find((e) => e.phase === 'outcome')!;
+    expect(outcome.ok).toBe(true);
+    expect(outcome.detail).toMatch(/label/i);
+  });
+
+  it('keeps going through the rest of the wave when one label fails', () => {
+    // A label failure is not a merge failure, so it must not trigger the
+    // halt-on-first-failure rule that governs merges.
+    const gh: GhRunner = (args) => {
+      if (args[1] === 'view') return { ok: true, stdout: `sha-${args[2]}\n`, stderr: '' };
+      if (args[1] === 'edit' && args[2] === '7') return { ok: false, stdout: '', stderr: 'nope' };
+      if (args[0] === 'label') return { ok: false, stdout: '', stderr: 'nope' };
+      return okGh();
+    };
+
+    const result = executeWave(root, [
+      { number: 7, wave: 0, class: 'reversible' }, { number: 8, wave: 0, class: 'reversible' },
+    ], { gh, now });
+
+    expect(result.merged).toEqual([7, 8]);
+    expect(result.unmarked.map((u) => u.pr)).toEqual([7]);
   });
 });
