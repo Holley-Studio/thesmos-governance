@@ -3,8 +3,14 @@ import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { syncState, formatSyncFailure, LEDGER_PATH, type Runner } from './sync.ts';
+
+// Repo root, derived from this file's own location rather than process.cwd() —
+// other tests in this suite chdir into temp directories, and inheriting an
+// ambient cwd would make this check order-dependent on whatever ran before it.
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** Records every git invocation and answers from a table of prefixes. */
 function fakeGit(answers: Record<string, { ok: boolean; stdout?: string; stderr?: string }>, calls: string[][]): Runner {
@@ -132,7 +138,13 @@ describe('the ledger is committed, not ignored', () => {
     // Action's fresh checkout never contained it, readEntries returned []
     // every time, and auto-revert could not fire in production at all. No
     // unit test could catch that — only asking git itself.
-    const r = spawnSync('git', ['check-ignore', '-q', LEDGER_PATH], { encoding: 'utf8' });
-    expect(r.status, `${LEDGER_PATH} must not be git-ignored`).not.toBe(0);
+    const r = spawnSync('git', ['check-ignore', '-q', LEDGER_PATH], { encoding: 'utf8', cwd: REPO_ROOT });
+    // git check-ignore exits 1 for "not ignored" (what we want) and 0 for
+    // "ignored" (the bug). It also exits 128 when it cannot even ask — e.g.
+    // outside a git repo — which must not be mistaken for a pass.
+    if (r.status === 128) {
+      throw new Error(`git check-ignore could not run (status 128): ${r.stderr}`);
+    }
+    expect(r.status, `${LEDGER_PATH} must not be git-ignored`).toBe(1);
   });
 });
