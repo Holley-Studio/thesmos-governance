@@ -12,7 +12,17 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DoctorCheck, ThesmosConfig } from './types';
 import { ADAPTER_OUTPUT_PATHS, THESMOS_RULES, isAdapterFresh } from './adapters';
+import { extractGeneratedSection } from './output';
 import { validateConfig } from './config';
+
+/** Generated-section budget (Operation Signal Phase 5). Measured on the
+ *  THESMOS:GENERATED span only — pre-existing user-owned content elsewhere
+ *  in the file is out of Thesmos's control and not part of this budget. */
+const ADAPTER_SIZE_BUDGET_BYTES = 8192;
+
+/** Absolute, host-specific path patterns that must never appear in generated
+ *  content — a path baked in from one machine breaks on every other clone. */
+const HOST_SPECIFIC_PATH_RE = /(?:\/(?:Users|home)\/[^\s`'")]+|[A-Za-z]:\\[^\s`'")]+)/;
 
 // ── Injectable input ──────────────────────────────────────────────────────────
 
@@ -116,6 +126,95 @@ function checkAdapterFiles(input: DoctorInput): DoctorCheck[] {
       message: `${relPath} exists (${target})`,
     };
   });
+}
+
+/**
+ * Check the generated section of each adapter for two portability defects
+ * that a silent rewrite would hide: an oversized generated section (the
+ * Operation Signal Phase 5 regression this doctor check exists to catch),
+ * and host-specific absolute paths baked into generated content. Both are
+ * reported with a repair hint — never auto-fixed, since the file may also
+ * contain user-owned content doctor must not touch.
+ */
+function checkAdapterPortability(input: DoctorInput): DoctorCheck[] {
+  if (!input.readFileSafe) return [];
+  const checks: DoctorCheck[] = [];
+
+  for (const [target, relPath] of Object.entries(ADAPTER_OUTPUT_PATHS)) {
+    if (!input.fileExists(relPath)) continue;
+    const content = input.readFileSafe(relPath);
+    if (content === null) continue;
+    const section = extractGeneratedSection(content, 'rules');
+    if (section === null) continue; // unmanaged — covered by the freshness check above
+
+    const sizeBytes = Buffer.byteLength(section, 'utf8');
+    const withinBudget = sizeBytes <= ADAPTER_SIZE_BUDGET_BYTES;
+    checks.push({
+      name: `adapter:${target}:size`,
+      group: DOCTOR_GROUPS.ADAPTERS,
+      pass: withinBudget,
+      message: withinBudget
+        ? `${relPath} generated section is ${sizeBytes}B (budget ${ADAPTER_SIZE_BUDGET_BYTES}B)`
+        : `${relPath} generated section is ${sizeBytes}B — exceeds the ${ADAPTER_SIZE_BUDGET_BYTES}B thin-adapter budget`,
+      fixHint: withinBudget
+        ? undefined
+        : 'Run thesmos adapters to regenerate the thin body; if still oversized, review .thesmos/config.json for custom catalog content inflating this target',
+    });
+
+    const hostPathMatch = section.match(HOST_SPECIFIC_PATH_RE);
+    checks.push({
+      name: `adapter:${target}:portable`,
+      group: DOCTOR_GROUPS.ADAPTERS,
+      pass: !hostPathMatch,
+      message: hostPathMatch
+        ? `${relPath} generated section embeds a host-specific absolute path (${hostPathMatch[0]}) — will break on other machines/CI`
+        : `${relPath} generated section contains no host-specific absolute paths`,
+      fixHint: hostPathMatch
+        ? 'Run thesmos adapters on a clean checkout; if the path persists, report it — generated content must never embed a machine-specific path'
+        : undefined,
+    });
+  }
+
+  return checks;
+}
+
+/**
+ * Summary check for partial synchronization: when some adapter targets are
+ * fresh and others are stale/missing, that split is the signal worth
+ * surfacing on its own — a repo can pass every individual adapter check yet
+ * still be inconsistent across targets if one was hand-edited or skipped.
+ */
+function checkAdapterSyncStatus(input: DoctorInput): DoctorCheck[] {
+  type SyncState = 'missing' | 'unknown' | 'fresh' | 'stale';
+  const targets = Object.entries(ADAPTER_OUTPUT_PATHS);
+  const states: Array<{ target: string; state: SyncState }> = targets.map(([target, relPath]) => {
+    if (!input.fileExists(relPath)) return { target, state: 'missing' };
+    if (!input.readFileSafe) return { target, state: 'unknown' };
+    const content = input.readFileSafe(relPath);
+    if (content === null) return { target, state: 'unknown' };
+    const { fresh } = isAdapterFresh(content, THESMOS_RULES, input.config);
+    return { target, state: fresh ? 'fresh' : 'stale' };
+  });
+
+  if (states.some((s) => s.state === 'unknown')) return []; // no readFileSafe — can't assess sync
+
+  const stale = states.filter((s) => s.state === 'stale' || s.state === 'missing');
+  const partial = stale.length > 0 && stale.length < states.length;
+
+  return [
+    {
+      name: 'adapter:sync-status',
+      group: DOCTOR_GROUPS.ADAPTERS,
+      pass: stale.length === 0,
+      message:
+        stale.length === 0
+          ? `All ${states.length} adapter targets are in sync`
+          : partial
+            ? `Partial sync: ${states.length - stale.length}/${states.length} targets current — out of date: ${stale.map((s) => s.target).join(', ')}`
+            : `All ${states.length} adapter targets are stale or missing`,
+      fixHint: stale.length === 0 ? undefined : 'Run thesmos adapters to bring every target back in sync',
+    },
+  ];
 }
 
 /** Check that report.json exists and is within the configured freshness window. */
@@ -310,6 +409,8 @@ export function runDoctor(input: DoctorInput): DoctorCheck[] {
     ...checkRequiredFiles(input),
     ...checkPackageScripts(input),
     ...checkAdapterFiles(input),
+    ...checkAdapterPortability(input),
+    ...checkAdapterSyncStatus(input),
     ...checkReportHealth(input),
     ...checkBaselineFreshness(input),
     ...checkConfiguration(input),

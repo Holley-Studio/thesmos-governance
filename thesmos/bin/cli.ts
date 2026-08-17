@@ -26,6 +26,16 @@ import {
   cmdAgentsDoctor,
   cmdAgentsList,
 } from './commands/agents-federation.ts';
+import {
+  cmdAgentShow,
+  cmdAgentValidate,
+  cmdAgentsValidate,
+} from './commands/council.ts';
+import {
+  cmdMissionPlan,
+  cmdMissionShow,
+  cmdMissionValidate,
+} from './commands/mission.ts';
 import { cmdSkillCreate } from './commands/skill-create.ts';
 import { cmdDrift } from './commands/drift.ts';
 import { cmdBaseline } from './commands/baseline.ts';
@@ -164,6 +174,12 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'agent:release': cmdAgentRelease,
   'agents': cmdAgents,
   'agents:list': cmdAgentsList,
+  'agent:show': cmdAgentShow,
+  'agent:validate': cmdAgentValidate,
+  'agents:validate': cmdAgentsValidate,
+  'mission:plan': cmdMissionPlan,
+  'mission:show': cmdMissionShow,
+  'mission:validate': cmdMissionValidate,
   'agents:doctor': cmdAgentsDoctor,
   'agents:conflicts': cmdAgentsConflicts,
   'skill:create': cmdSkillCreate,
@@ -529,9 +545,29 @@ CUSTOM AGENTS
 
 FEDERATED AGENTS
   agents:list [--all] [--json]     List project, user, plugin, and Pantheon agents
+    --primary                      The eight primary roles and their leads
+    --specialists [--role=<role>]  Specialist agents, on demand
   agents:doctor [--json] [--strict]
   agents:conflicts [--json] [--strict]
     Exit 2 with --strict when conflicts/shadows exist (CI)
+
+COUNCIL CONTRACT
+  agent:show <id>          Identity, role, permissions, limits, risk, evidence
+    --json --markdown
+  agent:validate <id>      Validate one compiled contract (exit 2 on errors)
+  agents:validate          Validate every compiled contract
+    --json --role=<role> --migration (read-only migration status)
+
+MISSION GRAPH
+  mission:plan <spec>      Dependency order and execution layers
+    --json
+  mission:show <spec>      Bindings, effective limits, declared policies
+    --json --markdown
+  mission:validate <spec>  Gate a mission spec (exit 2 on errors)
+    --json
+    Read-only. These inspect a mission; they never execute one.
+    Policy counts are declared rules, not decisions — effective
+    authority is resolved per concrete action, not shown here.
 
 CATALOG
   catalog:list             List all agents and skills

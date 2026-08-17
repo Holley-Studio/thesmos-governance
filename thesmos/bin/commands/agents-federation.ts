@@ -16,7 +16,16 @@
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createContext } from '../lib/context.ts';
-import { parseArgs, flag } from '../lib/args.ts';
+import { parseArgs, flag, flagVal } from '../lib/args.ts';
+import { loadCouncilContracts } from '../../council/load.ts';
+import { COUNCIL_PRIMARY_ROLES, isCouncilPrimaryRole, type CouncilPrimaryRole } from '../../council/contract.ts';
+import {
+  buildPrimaryRoleRows,
+  buildSpecialistRows,
+  formatPrimaryRoles,
+  formatSpecialists,
+  serializeRoleListing,
+} from './council.ts';
 import {
   discoverAgents,
   formatAgentsTable,
@@ -49,6 +58,34 @@ export async function cmdAgentsList(argv: string[]): Promise<void> {
   const json = flag(flags, 'json');
   // --all is the default federated view; kept for CLI compatibility
   void flag(flags, 'all');
+
+  // Council views. `--primary` is the eight-role selector a user picks from;
+  // `--specialists` is the rest of the Pantheon, on demand. Neither prints an
+  // agent's instructions — discovery is metadata, by design.
+  const primary = flag(flags, 'primary');
+  const specialists = flag(flags, 'specialists');
+  if (primary || specialists) {
+    const roleFilter = flagVal(flags, 'role');
+    if (roleFilter !== undefined && !isCouncilPrimaryRole(roleFilter)) {
+      process.stderr.write(
+        `\n  Unknown role "${roleFilter}". Roles: ${COUNCIL_PRIMARY_ROLES.join(', ')}\n\n`
+      );
+      process.exit(1);
+    }
+    const { contracts } = loadCouncilContracts({ root });
+    if (primary) {
+      const rows = buildPrimaryRoleRows(contracts);
+      process.stdout.write(
+        json ? `${serializeRoleListing({ roles: rows })}\n` : formatPrimaryRoles(rows)
+      );
+      return;
+    }
+    const rows = buildSpecialistRows(contracts, roleFilter as CouncilPrimaryRole | undefined);
+    process.stdout.write(
+      json ? `${serializeRoleListing({ specialists: rows })}\n` : formatSpecialists(rows)
+    );
+    return;
+  }
 
   const result = discoverAgents({
     root,
