@@ -152,14 +152,25 @@ export function syncState(
  * still definitely happened before it says what failed — a merge that
  * happened must never read as a merge that did not.
  *
- * It no longer claims auto-revert has gone blind, because that is no longer
- * true: the Action reconstructs what Thesmos merged from GitHub's own record
- * (thesmos/pr/marks.ts), not from this file. It does not go quiet either —
- * a failed push still means the audit trail exists only on this machine.
+ * `paths` is what the caller actually tried to publish, and it is required
+ * rather than defaulted because the two cases end in opposite reassurances:
+ *
+ *  - LEDGER ONLY (`pr:merge`). Auto-revert has not gone blind, because the
+ *    Action reconstructs what Thesmos merged from GitHub's own record
+ *    (thesmos/pr/marks.ts), not from this file. Only the audit trail stayed
+ *    local.
+ *  - LEDGER AND SENTINEL (`performRevert`, `autonomy on|off`). Auto-revert
+ *    absolutely does read the sentinel — `isAutonomyDisabled` is the first
+ *    statement of `runWatch`. Telling someone it is "unaffected" here would
+ *    be wrong about the half that matters, and on the failed-mark path this
+ *    is the last line printed.
  */
-export function formatSyncFailure(result: SyncResult): string {
+export function formatSyncFailure(result: SyncResult, paths: string[]): string {
   if (result.ok) return '';
-  return `  Note: everything above really did happen, but I could not publish the record of it to the repository (${result.detail}). ` +
-    'The audit trail in .thesmos/pr-ledger.jsonl is complete here; it just exists only on this machine until that push succeeds. ' +
-    'The automatic revert on GitHub does not read this file, so it is unaffected.\n';
+  const happened = `  Note: everything above really did happen, but I could not publish the record of it to the repository (${result.detail}). ` +
+    `The audit trail in ${LEDGER_PATH} is complete here; it just exists only on this machine until that push succeeds. `;
+  return paths.includes(SENTINEL_PATH)
+    ? `${happened}The automatic revert on GitHub does not read that file — but the autonomy switch (${SENTINEL_PATH}) travels the same way and did not reach the repository either, ` +
+      'so a run there may not see that autonomy was switched off.\n'
+    : `${happened}The automatic revert on GitHub does not read this file, so it is unaffected.\n`;
 }

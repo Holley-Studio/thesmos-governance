@@ -8,15 +8,27 @@ import type { GhRunner } from './execute.ts';
 
 const ok = { ok: true, stdout: '', stderr: '' };
 
-/** The JSON shape `gh pr list --json number,labels,mergedAt,mergeCommit` really prints. */
+/** The JSON shape `gh pr list --json number,labels,mergedAt,mergeCommit,updatedAt` really prints. */
 const listJson = (rows: Array<{
-  number: number; mergedAt: string; oid?: string | null; labels?: string[];
+  number: number; mergedAt: string; oid?: string | null; labels?: string[]; updatedAt?: string | null;
 }>): string => JSON.stringify(rows.map((r) => ({
   number: r.number,
   labels: (r.labels ?? [MERGED_LABEL]).map((name) => ({ name })),
   mergeCommit: r.oid === null ? null : { oid: r.oid ?? `sha-${r.number}` },
   mergedAt: r.mergedAt,
+  ...(r.updatedAt === null ? {} : { updatedAt: r.updatedAt ?? r.mergedAt }),
 })));
+
+/** Exactly one full page of marked merges, all updated at the given moment. */
+const fullPage = (updatedAt: string | null): string => JSON.stringify(
+  Array.from({ length: 100 }, (_, i) => ({
+    number: i + 1,
+    labels: [{ name: MERGED_LABEL }],
+    mergeCommit: { oid: `sha-${i}` },
+    mergedAt: '2026-01-01T00:00:00Z',
+    ...(updatedAt === null ? {} : { updatedAt }),
+  })),
+);
 
 describe('markPr — the mark that makes a Thesmos merge visible to the unattended half', () => {
   it('adds the label to the pull request', () => {
@@ -104,7 +116,7 @@ describe('armedMergesFromGitHub — the Action rebuilds its own view from GitHub
     const calls: string[][] = [];
     const gh: GhRunner = (args) => { calls.push(args); return { ok: true, stdout: '[]', stderr: '' }; };
 
-    armedMergesFromGitHub(gh);
+    armedMergesFromGitHub(gh, undefined);
 
     const [args] = calls;
     expect(args.slice(0, 2)).toEqual(['pr', 'list']);
@@ -124,7 +136,7 @@ describe('armedMergesFromGitHub — the Action rebuilds its own view from GitHub
       stderr: '',
     });
 
-    const result = armedMergesFromGitHub(gh);
+    const result = armedMergesFromGitHub(gh, undefined);
     expect(result.ok).toBe(true);
     expect(result.entries).toEqual([{
       ts: '2026-08-16T10:00:00Z', action: 'merge', pr: 7, phase: 'outcome', ok: true, mergeCommit: 'aaa',
@@ -143,7 +155,7 @@ describe('armedMergesFromGitHub — the Action rebuilds its own view from GitHub
       stderr: '',
     });
 
-    expect(armedMergesFromGitHub(gh).entries.map((e) => e.pr)).toEqual([8]);
+    expect(armedMergesFromGitHub(gh, undefined).entries.map((e) => e.pr)).toEqual([8]);
   });
 
   it('orders oldest first, so chooseCulprit still picks the newest merge in range', () => {
@@ -161,7 +173,7 @@ describe('armedMergesFromGitHub — the Action rebuilds its own view from GitHub
       stderr: '',
     });
 
-    const { entries } = armedMergesFromGitHub(gh);
+    const { entries } = armedMergesFromGitHub(gh, undefined);
     expect(entries.map((e) => e.pr)).toEqual([7, 8, 9]);
     expect(chooseCulprit(entries, ['ccc', 'bbb', 'aaa'])!.pr).toBe(9);
   });
@@ -176,7 +188,7 @@ describe('armedMergesFromGitHub — the Action rebuilds its own view from GitHub
       stderr: '',
     });
 
-    expect(armedMergesFromGitHub(gh).entries.map((e) => e.pr)).toEqual([8]);
+    expect(armedMergesFromGitHub(gh, undefined).entries.map((e) => e.pr)).toEqual([8]);
   });
 
   it('reports the lookup as failed — never as an empty list — when gh cannot answer', () => {
@@ -185,7 +197,7 @@ describe('armedMergesFromGitHub — the Action rebuilds its own view from GitHub
     // second as the first is how a safety net becomes decoration.
     const gh: GhRunner = () => ({ ok: false, stdout: '', stderr: 'HTTP 403' });
 
-    const result = armedMergesFromGitHub(gh);
+    const result = armedMergesFromGitHub(gh, undefined);
     expect(result.ok).toBe(false);
     expect(result.entries).toEqual([]);
     expect(result.detail).toMatch(/403/);
@@ -193,19 +205,19 @@ describe('armedMergesFromGitHub — the Action rebuilds its own view from GitHub
 
   it('reports a failure when gh answers with something that is not a list', () => {
     const gh: GhRunner = () => ({ ok: true, stdout: 'not json at all', stderr: '' });
-    expect(armedMergesFromGitHub(gh).ok).toBe(false);
+    expect(armedMergesFromGitHub(gh, undefined).ok).toBe(false);
   });
 
   it('reports a failure rather than throwing when gh throws', () => {
     const gh: GhRunner = () => { throw new Error('gh: command not found'); };
-    const result = armedMergesFromGitHub(gh);
+    const result = armedMergesFromGitHub(gh, undefined);
     expect(result.ok).toBe(false);
     expect(result.detail).toContain('gh: command not found');
   });
 
   it('reports success with no entries when GitHub genuinely has no marked merges', () => {
     const gh: GhRunner = () => ({ ok: true, stdout: '[]', stderr: '' });
-    expect(armedMergesFromGitHub(gh)).toEqual({ ok: true, entries: [] });
+    expect(armedMergesFromGitHub(gh, undefined)).toEqual({ ok: true, entries: [] });
   });
 
   it('does not claim the list is complete when GitHub filled the whole page', () => {
@@ -213,22 +225,66 @@ describe('armedMergesFromGitHub — the Action rebuilds its own view from GitHub
     // might be missing entries" is not "there is no match" — same
     // indeterminate-reads-as-safe shape as a failed lookup.
     const limit = Number(/--limit\D+(\d+)/.exec(
-      (() => { let seen = ''; armedMergesFromGitHub((a) => { seen = a.join(' '); return { ok: true, stdout: '[]', stderr: '' }; }); return seen; })(),
+      (() => { let seen = ''; armedMergesFromGitHub((a) => { seen = a.join(" "); return { ok: true, stdout: "[]", stderr: "" }; }, undefined); return seen; })(),
     )?.[1]);
     expect(limit, 'the fixture below has to fill exactly one page').toBeGreaterThan(0);
 
     const full = Array.from({ length: limit }, (_, i) => ({ number: i + 1, mergedAt: `2026-08-16T10:00:0${i % 10}Z` }));
     const gh: GhRunner = () => ({ ok: true, stdout: listJson(full), stderr: '' });
 
-    const result = armedMergesFromGitHub(gh);
+    const result = armedMergesFromGitHub(gh, undefined);
     expect(result.ok).toBe(true);
     expect(result.partial).toBe(true);
+  });
+
+  it('does not flag a full page whose every row predates the whole failing range', () => {
+    // Nothing ever removes the thesmos-merged label, so a repository fed by
+    // Dependabot passes 100 marked merges once and never comes back. Reading a
+    // permanently full page as "there may be more in range" turned every
+    // honest stand-down into an alarm on every red-main push, forever — and a
+    // warning that fires on 100% of runs is wallpaper. The page is sorted by
+    // recent activity, so page two can only hold rows touched even earlier: if
+    // the earliest-touched row on page one already predates the oldest commit
+    // in the failing range, nothing on page two can be in that range.
+    const gh: GhRunner = () => ({ ok: true, stdout: fullPage('2026-01-01T00:00:00Z'), stderr: '' });
+
+    const result = armedMergesFromGitHub(gh, '2026-08-16T11:00:00Z');
+    expect(result.ok).toBe(true);
+    expect(result.partial).toBeUndefined();
+  });
+
+  it('still flags a full page whose oldest row was touched inside the failing range', () => {
+    // Page two could hold another merge in range, so "no match here" is a
+    // guess. This is the case the flag exists for.
+    const gh: GhRunner = () => ({ ok: true, stdout: fullPage('2026-08-16T11:30:00Z'), stderr: '' });
+    expect(armedMergesFromGitHub(gh, '2026-08-16T11:00:00Z').partial).toBe(true);
+  });
+
+  it('still flags a full page when a row carries no activity timestamp to bound it with', () => {
+    // An unbounded page cannot be reasoned about, and an unknown must never
+    // resolve to the convenient answer.
+    const gh: GhRunner = () => ({ ok: true, stdout: fullPage(null), stderr: '' });
+    expect(armedMergesFromGitHub(gh, '2026-08-16T11:00:00Z').partial).toBe(true);
+  });
+
+  it('still flags a full page when the failing range has no timestamp to compare against', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: fullPage('2026-01-01T00:00:00Z'), stderr: '' });
+    expect(armedMergesFromGitHub(gh, undefined).partial).toBe(true);
+  });
+
+  it('asks GitHub for the activity timestamp it bounds the page with', () => {
+    // Bounding the page needs updatedAt, and gh only returns fields that were
+    // asked for: a missing field would read as "cannot bound", silently
+    // restoring the permanent alarm this fix removed.
+    let seen: string[] = [];
+    armedMergesFromGitHub((a) => { seen = a; return { ok: true, stdout: '[]', stderr: '' }; }, undefined);
+    expect(seen[seen.indexOf('--json') + 1].split(',')).toContain('updatedAt');
   });
 
   it('does not flag a short page as partial', () => {
     const gh: GhRunner = () => ({
       ok: true, stdout: listJson([{ number: 7, mergedAt: '2026-08-16T10:00:00Z' }]), stderr: '',
     });
-    expect(armedMergesFromGitHub(gh).partial).toBeUndefined();
+    expect(armedMergesFromGitHub(gh, undefined).partial).toBeUndefined();
   });
 });

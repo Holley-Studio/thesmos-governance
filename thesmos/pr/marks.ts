@@ -141,6 +141,36 @@ interface RawMergedPr {
   labels?: unknown;
   mergeCommit?: unknown;
   mergedAt?: unknown;
+  updatedAt?: unknown;
+}
+
+/** Milliseconds, or undefined for anything that is not a usable timestamp. */
+function millis(value: unknown): number | undefined {
+  if (typeof value !== 'string' || !value) return undefined;
+  const t = Date.parse(value);
+  return Number.isFinite(t) ? t : undefined;
+}
+
+/**
+ * The earliest activity timestamp on the page, or undefined if any row lacks
+ * one. The page comes back sorted by activity descending, so every row on
+ * page two was touched no later than this — and a merged pull request's
+ * `updatedAt` is never earlier than its merge (merging updates it, and so
+ * does the label Thesmos adds straight afterwards). That makes this a real
+ * upper bound on when anything on page two could have merged.
+ *
+ * `mergedAt` would NOT work as the bound: the sort is on activity, so a page
+ * two row merged recently but never touched since can sit behind a page one
+ * row merged long ago and commented on yesterday.
+ */
+function pageActivityFloor(rows: RawMergedPr[]): number | undefined {
+  let floor: number | undefined;
+  for (const row of rows) {
+    const t = millis(row?.updatedAt);
+    if (t === undefined) return undefined;  // an unbounded page cannot be reasoned about
+    if (floor === undefined || t < floor) floor = t;
+  }
+  return floor;
 }
 
 /**
@@ -152,15 +182,24 @@ interface RawMergedPr {
  * failing range because a ledger is append-ordered; gh returns newest first,
  * so passing its order through unchanged would silently revert the oldest
  * merge in range instead of the newest.
+ *
+ * `oldestCommitInRange` is when the earliest commit of the failing range
+ * landed, and it decides `partial`. It is a required parameter, not an
+ * option: nothing removes the `thesmos-merged` label, so any repository that
+ * has merged LOOKUP_LIMIT pull requests through Thesmos returns a full page
+ * forever. Treating "full page" as "there may be more in range" on its own
+ * turned every honest stand-down into an alarm on every red-main run — and a
+ * warning that fires on 100% of runs is wallpaper. Pass `undefined` only when
+ * the range genuinely has no timestamp; that resolves to the cautious answer.
  */
-export function armedMergesFromGitHub(gh: GhRunner): ArmedMergesResult {
+export function armedMergesFromGitHub(gh: GhRunner, oldestCommitInRange: string | undefined): ArmedMergesResult {
   const res = run(gh, [
     'pr', 'list',
     '--state', 'merged',
     '--label', MERGED_LABEL,
     '--search', 'sort:updated-desc',
     '--limit', String(LOOKUP_LIMIT),
-    '--json', 'number,labels,mergeCommit,mergedAt',
+    '--json', 'number,labels,mergeCommit,mergedAt,updatedAt',
   ]);
   if (!res.ok) {
     return { ok: false, entries: [], detail: short(res.stderr, 'could not read the list of merged pull requests') };
@@ -202,7 +241,18 @@ export function armedMergesFromGitHub(gh: GhRunner): ArmedMergesResult {
   }
 
   entries.sort((a, b) => (a.ts === b.ts ? a.pr - b.pr : a.ts < b.ts ? -1 : 1));
-  return parsed.length >= LOOKUP_LIMIT
+
+  // A full page only means the list might be incomplete IN A WAY THAT
+  // MATTERS. Page two holds only rows touched no later than the earliest on
+  // page one; if that is already before the whole failing range, nothing on
+  // page two can have merged inside it. Anything unknown — a row with no
+  // activity timestamp, a range with no timestamp — leaves the page
+  // unbounded, and an unbounded page stays partial.
+  const rows = parsed as RawMergedPr[];
+  const floor = rows.length >= LOOKUP_LIMIT ? pageActivityFloor(rows) : undefined;
+  const rangeStart = millis(oldestCommitInRange);
+  const reachesPastRange = floor !== undefined && rangeStart !== undefined && floor < rangeStart;
+  return rows.length >= LOOKUP_LIMIT && !reachesPastRange
     ? { ok: true, entries, partial: true }
     : { ok: true, entries };
 }

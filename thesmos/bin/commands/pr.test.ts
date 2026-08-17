@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { classifyGhResult, cmdPr, detectDefaultBranch, formatExplain, formatWatchResult, mainCheckStatus, makeGhRunner, parseRangeArg, parseWaveArg, runPr, type RawGhResult, type WatchResult } from './pr.ts';
+import { classifyGhResult, cmdPr, detectDefaultBranch, exitCodeForWatch, formatExplain, formatWatchResult, mainCheckStatus, makeGhRunner, parseRangeArg, parseShaArg, parseWaveArg, runPr, type RawGhResult, type WatchResult } from './pr.ts';
 import type { MergePlan } from '../../pr/plan.ts';
 import { buildGraph } from '../../pr/graph.ts';
 import { isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
@@ -611,6 +611,27 @@ describe('parseRangeArg', () => {
   });
 });
 
+describe('parseShaArg', () => {
+  it('reports absent when no --sha flag is given, so a hand-run check still judges the tip', () => {
+    expect(parseShaArg(['watch'])).toEqual({ kind: 'absent' });
+  });
+
+  it('reads the commit after --sha', () => {
+    expect(parseShaArg(['watch', '--sha', 'c097f598abc'])).toEqual({ kind: 'sha', sha: 'c097f598abc' });
+  });
+
+  it('reports a --sha with no value as invalid rather than falling back to the tip', () => {
+    // The fallback is the trap. `--sha ${{ ... }}` expanding to nothing must
+    // not silently become "judge whatever main is now" — that is the exact
+    // bug the flag was added to remove, quietly reinstated.
+    expect(parseShaArg(['watch', '--sha'])).toEqual({ kind: 'invalid', raw: '' });
+  });
+
+  it('reports a value that is not a commit SHA as invalid', () => {
+    expect(parseShaArg(['watch', '--sha', '--range'])).toEqual({ kind: 'invalid', raw: '--range' });
+  });
+});
+
 // mainCheckStatus is driven by realistic Checks API payloads — one
 // conclusion string per check run, exactly what
 // `.check_runs[] | (.conclusion // "pending")` actually prints (verified
@@ -630,7 +651,27 @@ describe('mainCheckStatus', () => {
   });
 
   it('reports red for any concluded-but-not-passing conclusion, not just "failure" literally', () => {
-    const gh: GhRunner = () => ({ ok: true, stdout: 'cancelled\n', stderr: '' });
+    const gh: GhRunner = () => ({ ok: true, stdout: 'timed_out\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('red');
+  });
+
+  it('does not read a cancelled check run as a red main', () => {
+    // ci.yml sets cancel-in-progress, so two pushes landing close together
+    // leave cancelled check runs behind. A cancelled run reached no verdict:
+    // treating it as a failure would open and merge a revert of a pull
+    // request nothing ever judged. Indeterminate, like still-running.
+    const gh: GhRunner = () => ({ ok: true, stdout: 'success\ncancelled\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('pending');
+  });
+
+  it('does not read a stale check run as a red main either', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'stale\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('pending');
+  });
+
+  it('still reports red when a real failure sits alongside a cancelled run', () => {
+    // The softening must not reach far enough to hide an actual failure.
+    const gh: GhRunner = () => ({ ok: true, stdout: 'cancelled\nfailure\n', stderr: '' });
     expect(mainCheckStatus(gh, 'abc123')).toBe('red');
   });
 
@@ -710,6 +751,72 @@ describe('formatWatchResult', () => {
     expect(out).toMatch(/cannot promise not to revert it again/i);
     expect(out).toMatch(/Autonomy is now OFF/);
   });
+
+  it('does not promise an OFF switch it could not publish when the mark also failed', () => {
+    // The live failure: #12 merged, main red, the revert lands, `gh pr edit
+    // --add-label thesmos-reverted` 403s, and the sentinel that turns autonomy
+    // off is written to a runner that is destroyed seconds later — because the
+    // push that would publish it is rejected on a protected default branch.
+    // #12 still carries only thesmos-merged and is still in range, so the next
+    // red build selects it again and reverts the revert, re-landing the
+    // regression. "Autonomy is now OFF" flat is a promise this repo cannot
+    // keep. The revert-failed branch already says this; the success branch did
+    // not.
+    const out = formatWatchResult({
+      status: 'reverted',
+      pr: 12,
+      sync: { ok: false, detail: 'protected branch hook declined' },
+      mark: { ok: false, detail: 'HTTP 403' },
+    });
+    expect(out).toMatch(/could not publish that OFF switch/i);
+    expect(out).toMatch(/protected branch hook declined/);
+    expect(out).toMatch(/select #12 again/i);
+  });
+
+  it('says nothing about an unpublished OFF switch when the mark succeeded', () => {
+    // A published-or-not sentinel is irrelevant when nothing switched autonomy
+    // off, and a warning that fires when it need not is how the real ones stop
+    // being read.
+    const out = formatWatchResult({
+      status: 'reverted', pr: 12, sync: { ok: false, detail: 'protected branch hook declined' }, mark: { ok: true },
+    });
+    expect(out).not.toMatch(/OFF switch/);
+  });
+});
+
+describe('exitCodeForWatch', () => {
+  it('fails a run that reverted but could not mark the culprit — the engine is now off', () => {
+    // The operator's only signal that autonomy switched itself off would
+    // otherwise be log text under a green tick, which nobody reads. A run that
+    // needs a human must not look like one that had nothing to do.
+    expect(exitCodeForWatch({
+      status: 'reverted', pr: 12, sync: { ok: true }, mark: { ok: false, detail: 'HTTP 403' },
+    })).toBe(1);
+  });
+
+  it('passes a clean revert', () => {
+    expect(exitCodeForWatch({ status: 'reverted', pr: 12, sync: { ok: true }, mark: { ok: true } })).toBe(0);
+  });
+
+  it('fails every state where the watcher could not determine what happened', () => {
+    for (const result of [
+      { status: 'revert-failed', pr: 1, sync: { ok: true } },
+      { status: 'unknown' },
+      { status: 'unreadable-history' },
+      { status: 'unreadable-merges' },
+    ] as WatchResult[]) {
+      expect(exitCodeForWatch(result), result.status).toBe(1);
+    }
+  });
+
+  it('passes the ordinary nothing-to-do outcomes', () => {
+    for (const result of [
+      { status: 'autonomy-off' }, { status: 'green' }, { status: 'pending' },
+      { status: 'no-culprit' }, { status: 'no-history' },
+    ] as WatchResult[]) {
+      expect(exitCodeForWatch(result), result.status).toBe(0);
+    }
+  });
 });
 
 function freshWatchRoot(): string {
@@ -720,6 +827,12 @@ function freshWatchRoot(): string {
 
 /** A merge Thesmos has marked on GitHub — the Action's only record of one. */
 interface Marked { pr: number; sha: string }
+
+/** Newest commit first, one minute apart — the shape
+ *  `.[] | [.sha, .commit.committer.date] | @tsv` actually prints. */
+const WATCH_COMMIT_BASE = Date.parse('2026-08-16T11:30:00Z');
+const watchCommitLines = (shas: string[]): string =>
+  shas.map((sha, i) => `${sha}\t${new Date(WATCH_COMMIT_BASE - i * 60_000).toISOString()}`).join('\n') + '\n';
 
 /** The JSON `gh pr list --state merged --label thesmos-merged --json ...` prints. */
 const mergedListJson = (marked: Marked[]): string => JSON.stringify(marked.map((m, i) => ({
@@ -742,7 +855,7 @@ function fakeWatchGh(opts: { shas: string[]; failingShas: Set<string>; marked?: 
       return { ok: true, stdout: `${opts.failingShas.has(sha ?? '') ? 'failure' : 'success'}\n`, stderr: '' };
     }
     if (args[0] === 'api' && args[1]?.includes('/commits?')) {
-      return { ok: true, stdout: opts.shas.join('\n') + '\n', stderr: '' };
+      return { ok: true, stdout: watchCommitLines(opts.shas), stderr: '' };
     }
     if (args[0] === 'pr' && args[1] === 'list') {
       return { ok: true, stdout: mergedListJson(opts.marked ?? []), stderr: '' };
@@ -774,6 +887,52 @@ describe('runPr — pr:watch does nothing when main is green', () => {
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
     // A green main must not even ask which merges were ours.
     expect(calls.some((c) => c[0] === 'pr' && c[1] === 'list')).toBe(false);
+  });
+});
+
+describe('runPr — pr:watch judges the commit it is given, not the tip of main', () => {
+  it('passes --sha all the way through to the check-runs lookup', () => {
+    // The CLI boundary of the trigger fix. thesmos-watch.yml now runs from a
+    // workflow_run event and hands over github.event.workflow_run.head_sha —
+    // the commit CI actually ran against. If runPr drops that flag, the
+    // watcher silently reverts to judging whatever main has become, which is
+    // the failure this whole change exists to remove.
+    const JUDGED = 'c0ffee1';   // what CI ran against — red
+    const TIP = 'dead1ee';      // where main has got to since — green
+    const root = freshWatchRoot();
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => {
+      calls.push(args);
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) {
+        const sha = args[1].split('/commits/')[1]?.split('/check-runs')[0];
+        return { ok: true, stdout: sha === JUDGED ? 'failure\n' : 'success\n', stderr: '' };
+      }
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) {
+        return { ok: true, stdout: watchCommitLines([TIP, JUDGED]), stderr: '' };
+      }
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: '[]', stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    let out = '';
+    runPr(['watch', '--sha', JUDGED], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(calls.find((c) => c[1]?.includes('/check-runs'))?.[1]).toContain(`/commits/${JUDGED}/check-runs`);
+    expect(out).toMatch(/nothing of ours/i);  // reached the red path, so it judged JUDGED
+  });
+
+  it('refuses, loudly and non-zero, when --sha was given but is not a commit', () => {
+    // `--sha ${{ ... }}` expanding to nothing must never quietly degrade into
+    // "judge the tip instead": that is the original bug wearing the fix's
+    // clothes. Doing nothing and saying so is the only honest answer.
+    const root = freshWatchRoot();
+    const gh: GhRunner = (args) => { throw new Error(`gh must not be called: ${JSON.stringify(args)}`); };
+
+    let out = '';
+    const code = runPr(['watch', '--sha'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(code).toBe(1);
+    expect(out).toMatch(/which commit to check/i);
   });
 });
 

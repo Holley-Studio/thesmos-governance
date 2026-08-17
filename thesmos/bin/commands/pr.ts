@@ -264,12 +264,45 @@ export function parseRangeArg(argv: string[]): number {
 }
 
 /**
+ * Which commit `pr:watch` was told to judge. Three states, not two: a
+ * `--sha` that is present but unusable must NOT collapse into "no --sha
+ * given", because that fallback judges the tip of main — the exact bug the
+ * flag exists to remove. thesmos-watch.yml passes
+ * `${{ github.event.workflow_run.head_sha }}`, and an expression that
+ * expands to nothing would otherwise silently reinstate it.
+ */
+export type ShaArg =
+  | { kind: 'absent' }
+  | { kind: 'sha'; sha: string }
+  | { kind: 'invalid'; raw: string };
+
+/** Abbreviated or full; `gh` accepts either, and so does the Checks API. */
+const SHA_PATTERN = /^[0-9a-f]{7,40}$/i;
+
+/** Parses `--sha <commit>` out of a `pr:watch` argv. */
+export function parseShaArg(argv: string[]): ShaArg {
+  const i = argv.indexOf('--sha');
+  if (i === -1) return { kind: 'absent' };
+  const raw = argv[i + 1] ?? '';
+  return SHA_PATTERN.test(raw) ? { kind: 'sha', sha: raw } : { kind: 'invalid', raw };
+}
+
+/**
  * A check run's conclusion is null while it is still queued or in progress
  * — GitHub only sets it once status is "completed". Anything not in this
- * set (an unrecognized or future conclusion string) is treated as failing,
+ * set, and not in INDETERMINATE_CONCLUSIONS below, is treated as failing:
  * the same conservative default the original count-only version used.
  */
 const PASSING_CONCLUSIONS = new Set(['success', 'neutral', 'skipped']);
+/**
+ * Conclusions that are not verdicts. A cancelled check run never finished
+ * judging anything, and ci.yml sets `cancel-in-progress`, so two pushes
+ * landing close together routinely leave cancelled runs behind. Counting
+ * one as a failure would open and merge a revert of a pull request nothing
+ * ever actually judged — a real mutation off the back of a non-result.
+ * They are treated exactly like a still-running check: not evidence yet.
+ */
+const INDETERMINATE_CONCLUSIONS = new Set(['cancelled', 'stale']);
 const PENDING_MARKER = 'pending';
 
 /**
@@ -282,15 +315,15 @@ const PENDING_MARKER = 'pending';
  *
  * Returns four states, not three:
  *   'red'     — at least one check run has already concluded as a failure.
- *   'pending' — nothing has failed yet, but at least one check run is still
- *               queued/in_progress (conclusion is null). This is NOT green:
- *               thesmos-watch.yml fires on the same push event ci.yml does,
- *               and watch is a single `gh api` call against a multi-job,
- *               multi-minute matrix build — it will typically finish while
- *               CI is still running. Reading that as green would mean
- *               auto-revert systematically never fires on the push that
- *               triggered it, which is the one failure mode this whole
- *               mechanism exists to catch.
+ *   'pending' — nothing has failed yet, but at least one check run has not
+ *               produced a verdict: still queued/in_progress (conclusion is
+ *               null), or cancelled/stale. This is NOT green. It matters
+ *               less than it used to — thesmos-watch.yml no longer races
+ *               CI, it runs from CI's own `workflow_run: completed` event —
+ *               but the watcher's own job is itself a check run on the
+ *               commit it is judging, and other workflows may still be in
+ *               flight. Neither can mask a regression: a concluded failure
+ *               returns 'red' below regardless of what else is pending.
  *   'green'   — every check run has concluded, and none failed.
  *   'unknown' — the API call itself failed, or nothing came back at all
  *               (no check runs reported for this commit). Also the state
@@ -298,6 +331,9 @@ const PENDING_MARKER = 'pending';
  *               color it can't verify, because a wrong guess of 'red'
  *               triggers a real revert and a wrong guess of 'green' means
  *               a real regression goes unreverted.
+ *
+ * `sha` is the commit to judge, and the caller decides which one that is —
+ * runWatch passes the SHA CI actually ran against, not the current tip.
  */
 export function mainCheckStatus(gh: GhRunner, sha: string): 'green' | 'red' | 'pending' | 'unknown' {
   const res = gh([
@@ -311,7 +347,7 @@ export function mainCheckStatus(gh: GhRunner, sha: string): 'green' | 'red' | 'p
 
   let anyPending = false;
   for (const c of conclusions) {
-    if (c === PENDING_MARKER) { anyPending = true; continue; }
+    if (c === PENDING_MARKER || INDETERMINATE_CONCLUSIONS.has(c)) { anyPending = true; continue; }
     if (!PASSING_CONCLUSIONS.has(c)) return 'red'; // a real failure outranks any pending check
   }
   return anyPending ? 'pending' : 'green';
@@ -329,13 +365,43 @@ export type WatchResult =
   | { status: 'reverted'; pr: number; sync: SyncResult; mark?: MarkResult }
   | { status: 'revert-failed'; pr: number; sync: SyncResult };
 
+/** One row of the recent-commit listing: the SHA and when it landed. */
+interface CommitRow { sha: string; ts?: string }
+
+/**
+ * Parses `.[] | [.sha, .commit.committer.date] | @tsv` output. A line with
+ * no timestamp still yields a usable SHA — the timestamp only bounds the
+ * marked-merge lookup (thesmos/pr/marks.ts), and a missing one resolves
+ * there to the conservative answer rather than dropping the commit.
+ */
+function parseCommitRows(stdout: string): CommitRow[] {
+  return stdout.split('\n').map((l) => l.trim()).filter(Boolean).map((line) => {
+    const [sha, ts] = line.split('\t');
+    return { sha, ts: ts || undefined };
+  }).filter((r) => Boolean(r.sha));
+}
+
 /**
  * The `pr:watch` logic, pulled out of runPr's dispatch (same shape as
  * runMerge above) so it is directly testable and runPr's dispatch body
- * stays a thin call-and-format. Checks whether main is currently red before
- * looking for a culprit at all: the workflow that calls this fires on every
- * push to main, not just a failing one, so watch must determine that for
- * itself rather than assume the trigger means main broke.
+ * stays a thin call-and-format.
+ *
+ * WHICH COMMIT IT JUDGES. `opts.sha` — supplied by thesmos-watch.yml as
+ * `github.event.workflow_run.head_sha`, the commit CI actually ran against.
+ * NOT the tip of main. By the time CI concludes the tip may already be a
+ * newer commit whose own checks have not started, and judging that one reads
+ * pending (or green) and stands down on a regression CI has already
+ * reported. The commit listing is rooted at the same SHA (`?sha=`), so the
+ * failing range holds that commit and its ancestors — never a commit that
+ * landed after the build being judged, which chooseCulprit would otherwise
+ * prefer as the newest match in range.
+ *
+ * It still determines redness for itself rather than trusting the trigger:
+ * the workflow fires on every completed CI run, not only failing ones, and
+ * a failed run may since have been re-run green.
+ *
+ * With no `opts.sha` it judges the tip, which is what a hand-run
+ * `thesmos pr:watch` on a laptop means.
  *
  * The candidate merges come from GitHub (thesmos/pr/marks.ts), not from the
  * local ledger. This function runs on a fresh `actions/checkout`, and on any
@@ -346,7 +412,7 @@ export type WatchResult =
  */
 export function runWatch(
   root: string,
-  opts: { range: number },
+  opts: { range: number; sha?: string },
   deps: { gh: GhRunner; now: () => Date; git: Runner },
 ): WatchResult {
   // Before anything, including the commit-list lookup: this command performs
@@ -360,13 +426,24 @@ export function runWatch(
   // every subsequent push retried the same failing revert.
   if (isAutonomyDisabled(root)) return { status: 'autonomy-off' };
 
-  const log = deps.gh(['api', `repos/{owner}/{repo}/commits?per_page=${opts.range}`, '--jq', '.[].sha']);
+  // `?sha=` roots the listing at a commit rather than at the branch, so the
+  // judged commit is always range[0] and nothing that landed after the build
+  // can enter the failing range. The committer date comes back with it: it is
+  // the only thing that lets armedMergesFromGitHub decide whether a full page
+  // of marked merges could still be hiding one in this range.
+  const rooted = opts.sha ? `sha=${opts.sha}&` : '';
+  const log = deps.gh([
+    'api', `repos/{owner}/{repo}/commits?${rooted}per_page=${opts.range}`,
+    '--jq', '.[] | [.sha, .commit.committer.date] | @tsv',
+  ]);
   if (!log.ok) return { status: 'unreadable-history' };
 
-  const range = log.stdout.split('\n').filter(Boolean);
-  if (range.length === 0) return { status: 'no-history' };
+  const rows = parseCommitRows(log.stdout);
+  if (rows.length === 0) return { status: 'no-history' };
+  const range = rows.map((r) => r.sha);
+  const oldestInRange = rows[rows.length - 1].ts;
 
-  const status = mainCheckStatus(deps.gh, range[0]);
+  const status = mainCheckStatus(deps.gh, opts.sha ?? range[0]);
   if (status === 'unknown') return { status: 'unknown' };
   // Pending must never fall through to the ledger/revert path: outstanding
   // checks are not evidence of anything yet, and treating them as green
@@ -379,9 +456,16 @@ export function runWatch(
   // reporting them identically is how this safety net went inert the first
   // time: "none of it is ours, stand down" and "I could not find out" must
   // never render as the same outcome.
-  const armed = armedMergesFromGitHub(deps.gh);
+  const armed = armedMergesFromGitHub(deps.gh, oldestInRange);
   if (!armed.ok) return { status: 'unreadable-merges', detail: armed.detail };
 
+  // NOTE: `partial` is consulted only when no culprit was found. When one IS
+  // found it is acted on, even though a newer in-range merge could in
+  // principle be sitting on page two. That rests on the lookup's
+  // `sort:updated-desc`: a merge that just landed is the most recently
+  // updated pull request there is, so anything inside a failing range of a
+  // handful of commits is on page one. If that sort ever changes, this
+  // becomes "revert the second-newest merge", which no test would notice.
   const culprit = chooseCulprit(armed.entries, range);
   // Finding nothing in a list that may be incomplete is not the same as
   // finding nothing. Only a complete list earns "nothing of ours".
@@ -411,13 +495,31 @@ export function formatWatchResult(result: WatchResult): string {
       return `  Could not read which of these commits were mine (${result.detail ?? 'no further detail'}), ` +
         'so I cannot tell whether anything should be reverted; doing nothing.\n';
     case 'no-culprit': return '  Nothing of ours in the failing range.\n';
-    case 'reverted':
+    case 'reverted': {
+      // "Autonomy is now OFF" is only true where the sentinel can be
+      // published. It is written to the runner's own checkout and pushed with
+      // the ledger (thesmos/pr/revert.ts), and a protected default branch
+      // rejects that push — so on such a repository the switch dies with the
+      // runner about five seconds later. The next red build then finds #N
+      // still carrying only thesmos-merged, still in range, selects it again
+      // and reverts the revert: the regression comes back. Saying OFF flatly
+      // in that case promises protection the repository cannot deliver. The
+      // revert-failed branch below has always said this; the success branch
+      // did not.
+      const markFailed = Boolean(result.mark && !result.mark.ok);
+      const offSwitchLost = markFailed && !result.sync.ok;
       return `  ✓ reverted #${result.pr} — main went red after it merged\n`
-        + (result.mark && !result.mark.ok
-          ? `  I could not label #${result.pr} "${REVERTED_LABEL}" (${result.mark.detail}), so I cannot promise not to revert it again. ` +
+        + (markFailed
+          ? `  I could not label #${result.pr} "${REVERTED_LABEL}" (${result.mark?.detail}), so I cannot promise not to revert it again. ` +
             `Autonomy is now OFF. Add the label by hand, then: thesmos autonomy on\n`
           : '')
-        + formatSyncFailure(result.sync);
+        + (offSwitchLost
+          ? `  I could not publish that OFF switch to the repository (${result.sync.detail}), so the automatic checks on GitHub will not see it — ` +
+            `a later push there could select #${result.pr} again and revert the revert, putting the change back on main. ` +
+            `Add the "${REVERTED_LABEL}" label to #${result.pr} by hand now.\n`
+          : '')
+        + formatSyncFailure(result.sync, [LEDGER_PATH, SENTINEL_PATH]);
+    }
     case 'revert-failed':
       return `  ✗ could not revert #${result.pr}. Autonomy is now OFF and needs you.\n`
         + (result.sync.ok
@@ -438,6 +540,12 @@ const FAILED = 1;
  * `autonomy-off` is a state the operator chose,
  * `green`/`pending`/`no-culprit`/`no-history` are ordinary nothing-to-do
  * outcomes, and `reverted` is success — those are all zero.
+ *
+ * A `reverted` run whose mark failed is NOT success: performRevert switches
+ * autonomy off in that case (thesmos/pr/revert.ts), so the engine that was
+ * merging unattended a minute ago is now disarmed, and the only signal of it
+ * would otherwise be log text under a green tick in the Actions tab. Same
+ * doctrine, one door further in.
  */
 export function exitCodeForWatch(result: WatchResult): number {
   switch (result.status) {
@@ -446,6 +554,8 @@ export function exitCodeForWatch(result: WatchResult): number {
     case 'unreadable-history':
     case 'unreadable-merges':
       return FAILED;
+    case 'reverted':
+      return result.mark && !result.mark.ok ? FAILED : OK;
     default:
       return OK;
   }
@@ -538,14 +648,26 @@ export function runPr(argv: string[], deps: PrDeps): number {
     }
     deps.write(formatUnmarked(result.unmarked));
     if (result.coverage) deps.write(formatGovernanceCoverage(result.coverage));
-    if (result.sync) deps.write(formatSyncFailure(result.sync));
+    if (result.sync) deps.write(formatSyncFailure(result.sync, [LEDGER_PATH]));
     // A wave that stopped at a failed merge is a failed run. Reporting it as
     // success is what put a green tick on a run that left the queue stuck.
     return result.failed.length ? FAILED : OK;
   }
 
   if (sub === 'watch') {
-    const result = runWatch(deps.root, { range: parseRangeArg(argv) }, { gh: deps.gh, now: deps.now, git: deps.git });
+    const sha = parseShaArg(argv);
+    // Refuse rather than fall back. Judging the tip when asked to judge a
+    // specific commit is precisely the failure this flag was added to remove,
+    // and doing it quietly would hide it again.
+    if (sha.kind === 'invalid') {
+      deps.write(`  I was told which commit to check ("${sha.raw}"), but that is not a commit. Doing nothing.\n`);
+      return FAILED;
+    }
+    const result = runWatch(
+      deps.root,
+      { range: parseRangeArg(argv), sha: sha.kind === 'sha' ? sha.sha : undefined },
+      { gh: deps.gh, now: deps.now, git: deps.git },
+    );
     deps.write(formatWatchResult(result));
     return exitCodeForWatch(result);
   }

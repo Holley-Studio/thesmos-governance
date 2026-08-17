@@ -35,6 +35,13 @@ function mergedListJson(marked: Marked[]): string {
   })));
 }
 
+/** Newest commit first, one minute apart — the shape `.[] | [.sha,
+ *  .commit.committer.date] | @tsv` actually prints. */
+const COMMIT_BASE = Date.parse('2026-08-16T11:30:00Z');
+export function commitLines(shas: string[]): string {
+  return shas.map((sha, i) => `${sha}\t${new Date(COMMIT_BASE - i * 60_000).toISOString()}`).join('\n') + '\n';
+}
+
 /** Answers the commit-list and check-runs lookups from fixtures — the
  * check-runs response is a realistic one-conclusion-per-line payload
  * (matching `.check_runs[] | (.conclusion // "pending")`), not a
@@ -48,7 +55,7 @@ function fakeWatchGh(opts: { shas: string[]; failingShas: Set<string>; marked?: 
       return { ok: true, stdout: `${opts.failingShas.has(sha ?? '') ? 'failure' : 'success'}\n`, stderr: '' };
     }
     if (args[0] === 'api' && args[1]?.includes('/commits?')) {
-      return { ok: true, stdout: opts.shas.join('\n') + '\n', stderr: '' };
+      return { ok: true, stdout: commitLines(opts.shas), stderr: '' };
     }
     if (args[0] === 'pr' && args[1] === 'list') {
       return { ok: true, stdout: mergedListJson(opts.marked ?? []), stderr: '' };
@@ -261,11 +268,14 @@ describe('runWatch', () => {
       number: i + 1,
       labels: [{ name: MERGED_LABEL }],
       mergeCommit: { oid: `other-sha-${i}` },
-      mergedAt: `2026-08-16T10:00:0${i % 10}Z`,
+      mergedAt: `2026-08-16T11:3${i % 10}:00Z`,
+      // Every row on the page was touched after the oldest commit in range
+      // (11:29Z), so page two genuinely could hold one still in that range.
+      updatedAt: `2026-08-16T11:3${i % 10}:00Z`,
     }));
     const gh: GhRunner = (args) => {
       if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
-      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: commitLines(['aaa', 'bbb']), stderr: '' };
       if (args[0] === 'pr' && args[1] === 'list') {
         expect(Number(args[args.indexOf('--limit') + 1]), 'the fixture must fill exactly one page').toBe(limit);
         return { ok: true, stdout: JSON.stringify(page), stderr: '' };
@@ -297,6 +307,90 @@ describe('runWatch', () => {
     expect(result.status, 'the revert really did happen').toBe('reverted');
     expect(result.status === 'reverted' && result.mark?.ok).toBe(false);
     expect(isAutonomyDisabled(root)).toBe(true);
+  });
+
+  it('judges the commit it was given, not whatever main has become since', () => {
+    // The ninth built-but-never-invoked bug. The watcher now runs from a
+    // workflow_run event once CI has concluded, and by then the tip of main
+    // may already be a newer commit whose own checks have not started. Judging
+    // range[0] would read that newer commit — pending, or green — and stand
+    // down on a regression CI has already reported.
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => {
+      calls.push(args);
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) {
+        const sha = args[1].split('/commits/')[1]?.split('/check-runs')[0];
+        return { ok: true, stdout: sha === 'judged' ? 'failure\n' : 'success\n', stderr: '' };
+      }
+      // Deliberately tip-first and ignoring the sha= parameter: a run that
+      // trusts range[0] sees 'tip', whose checks are green.
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) {
+        return { ok: true, stdout: commitLines(['tip', 'judged']), stderr: '' };
+      }
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: '[]', stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    const result = runWatch(root, { range: 5, sha: 'judged' }, { gh, now, git: okGit });
+
+    // Reaching the merged-pull-request lookup at all proves it read red.
+    expect(result).toEqual({ status: 'no-culprit' });
+    expect(calls.find((c) => c[1]?.includes('/check-runs'))?.[1]).toContain('/commits/judged/check-runs');
+  });
+
+  it('asks GitHub for the commits reachable from the judged SHA, not from the branch tip', () => {
+    // Without sha=, the listing is rooted at the default branch, so a tip that
+    // has moved on puts commits CI never saw into the failing range — and
+    // chooseCulprit takes the newest match in that range.
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => {
+      calls.push(args);
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'success\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: commitLines(['judged']), stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    runWatch(root, { range: 5, sha: 'judged' }, { gh, now, git: okGit });
+
+    expect(calls.find((c) => c[0] === 'api' && c[1]?.includes('/commits?'))?.[1]).toContain('sha=judged');
+  });
+
+  it('falls back to the tip of main when no SHA is supplied, for a hand-run check', () => {
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => {
+      calls.push(args);
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'success\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: commitLines(['tip', 'older']), stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    expect(runWatch(root, { range: 5 }, { gh, now, git: okGit })).toEqual({ status: 'green' });
+    expect(calls.find((c) => c[0] === 'api' && c[1]?.includes('/commits?'))?.[1]).not.toContain('sha=');
+    expect(calls.find((c) => c[1]?.includes('/check-runs'))?.[1]).toContain('/commits/tip/check-runs');
+  });
+
+  it('stands down on a full page of marked merges only when one could still be in range', () => {
+    // A repository that has ever merged 100 pull requests through Thesmos
+    // fills the lookup page forever, and nothing removes the mark. Treating a
+    // full page as unreadable would turn every honest "nothing of ours" into
+    // an alarm on every red-main run — and a warning that fires every time is
+    // wallpaper. A page whose oldest row predates the whole failing range
+    // cannot be hiding one on page two.
+    const page = Array.from({ length: 100 }, (_, i) => ({
+      number: i + 1,
+      labels: [{ name: MERGED_LABEL }],
+      mergeCommit: { oid: `other-sha-${i}` },
+      mergedAt: '2026-06-01T00:00:00Z',
+      updatedAt: '2026-06-01T00:00:00Z',
+    }));
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: commitLines(['aaa', 'bbb']), stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: JSON.stringify(page), stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    expect(runWatch(root, { range: 5 }, { gh, now, git: okGit })).toEqual({ status: 'no-culprit' });
   });
 
   it('honors the requested range when asking gh for recent commits', () => {

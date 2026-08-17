@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { syncState, formatSyncFailure, LEDGER_PATH, type Runner } from './sync.ts';
+import { syncState, formatSyncFailure, LEDGER_PATH, SENTINEL_PATH, type Runner } from './sync.ts';
 
 // Repo root, derived from this file's own location rather than process.cwd() —
 // other tests in this suite chdir into temp directories, and inheriting an
@@ -121,7 +121,7 @@ describe('syncState', () => {
 
 describe('formatSyncFailure', () => {
   it('says the actions really happened before it says the record did not publish', () => {
-    const out = formatSyncFailure({ ok: false, detail: 'protected branch hook declined' });
+    const out = formatSyncFailure({ ok: false, detail: 'protected branch hook declined' }, [LEDGER_PATH]);
     expect(out.indexOf('really did happen')).toBeLessThan(out.indexOf('could not publish'));
     expect(out).toContain('protected branch hook declined');
   });
@@ -132,19 +132,33 @@ describe('formatSyncFailure', () => {
     // and is now false: the Action reconstructs its view from GitHub's own
     // record (thesmos/pr/marks.ts). A warning that is no longer true is worse
     // than no warning — it teaches the reader to ignore the next one.
-    const out = formatSyncFailure({ ok: false, detail: 'protected branch hook declined' });
+    const out = formatSyncFailure({ ok: false, detail: 'protected branch hook declined' }, [LEDGER_PATH]);
     expect(out).not.toMatch(/cannot see these merges/i);
     expect(out).toMatch(/does not read this file/i);
   });
 
   it('does not go quiet either — the audit trail really did stay local', () => {
-    const out = formatSyncFailure({ ok: false, detail: 'protected branch hook declined' });
+    const out = formatSyncFailure({ ok: false, detail: 'protected branch hook declined' }, [LEDGER_PATH]);
     expect(out).toMatch(/only on this machine/i);
     expect(out).toContain(LEDGER_PATH);
   });
 
   it('says nothing at all when the state was published', () => {
-    expect(formatSyncFailure({ ok: true })).toBe('');
+    expect(formatSyncFailure({ ok: true }, [LEDGER_PATH])).toBe('');
+  });
+
+  it('drops the reassurance when the autonomy sentinel was part of what failed to publish', () => {
+    // performRevert publishes the ledger AND the sentinel together, and
+    // auto-revert really does read the sentinel — isAutonomyDisabled is the
+    // first statement of runWatch. Saying "the automatic revert does not read
+    // this file, so it is unaffected" after a revert is wrong about the half
+    // that matters, and on the failed-mark path it is the last line printed.
+    const out = formatSyncFailure(
+      { ok: false, detail: 'protected branch hook declined' }, [LEDGER_PATH, SENTINEL_PATH],
+    );
+    expect(out).not.toMatch(/so it is unaffected/i);
+    expect(out).toContain(SENTINEL_PATH);
+    expect(out).toMatch(/autonomy/i);
   });
 });
 
