@@ -27,7 +27,13 @@ import { loadConfig, CONFIG_DEFAULTS, ConfigLoadError } from './config.js';
 import { classifySeverity, SEVERITY_ORDER } from './severity.js';
 import { extractSuppressions, applySuppressions } from './suppress.js';
 import { extractInstallPackages, quickPhantomCheck } from './import-scan.js';
-import { checkScope, ScopeConfigError, type ScopeCheckInput, type ScopeViolation } from './scope.js';
+import {
+  checkScope,
+  SCOPE_DECISION_CODES,
+  ScopeConfigError,
+  type ScopeCheckInput,
+  type ScopeViolation,
+} from './scope.js';
 import { runPostToolBudgetCheck, TOKEN_BUDGET_DEFAULTS } from './token-budget.js';
 import {
   buildGuardInvocation,
@@ -563,6 +569,46 @@ function emitAskDecision(reason: string): void {
 }
 
 /**
+ * What to do with a scope decision that is not an outright block.
+ *
+ * `ask`      — emit permissionDecision:"ask"; a human decides.
+ * `delegate` — emit no decision at all, letting Claude Code's own permission
+ *              evaluation proceed.
+ *
+ * The distinction this exists to draw:
+ *
+ *   REQUIRES_CONFIRMATION      the owner declared a human checkpoint
+ *   AMBIGUOUS_COMMAND_SYNTAX   Thesmos's parser could not classify the command
+ *
+ * Both previously produced an identical `ask`, which is why Auto mode was
+ * ineffective here: a PreToolUse hook returning "ask" cannot be overridden by
+ * Auto's classifier, so every `node -e`, `python -c` or command substitution
+ * became a manual dialog even for a session the user had explicitly set to run
+ * hands-off.
+ *
+ * An owner checkpoint is a *decision*; parser ambiguity is an *absence* of one.
+ * Only the second is safe to hand to a contextual classifier — and only when
+ * the session actually is Auto. Delegating is deliberately not the same as
+ * allowing: returning `allow` would bypass Claude's evaluation entirely, which
+ * would be a real loosening rather than a handoff.
+ */
+export type GovernanceDisposition = 'ask' | 'delegate';
+
+export function dispositionForConfirmation(
+  decisionCode: string | undefined,
+  permissionMode: string | undefined,
+): GovernanceDisposition {
+  // Only genuine Auto sessions delegate. `default`, `acceptEdits`, `plan`, an
+  // unknown future mode, and a legacy payload with no mode at all all keep the
+  // previous behaviour — an omitted field must never be read as consent.
+  if (permissionMode !== 'auto') return 'ask';
+  // Anything other than pure parser uncertainty stays a human decision. In
+  // particular an owner-declared checkpoint is never delegated.
+  if (decisionCode !== SCOPE_DECISION_CODES.AMBIGUOUS_COMMAND_SYNTAX) return 'ask';
+  return 'delegate';
+}
+
+/**
  * Run by Claude Code as a PreToolUse hook.
  * Reads tool input from stdin, scans file content for BLOCKER violations.
  * Exits 2 (block) if any found; exits 0 (allow) otherwise.
@@ -606,7 +652,15 @@ export async function runPreToolCheck(root: string): Promise<void> {
     // Empty / TTY stdin: no tool payload — allow (not an infrastructure failure)
     if (!raw.trim()) process.exit(0);
 
-    let input: { tool_name?: string; tool_input?: Record<string, unknown> };
+    let input: {
+      tool_name?: string;
+      tool_input?: Record<string, unknown>;
+      /**
+       * The session's active permission mode, supplied by Claude Code.
+       * Absent on older payloads — treated as "not Auto", never as consent.
+       */
+      permission_mode?: string;
+    };
     try {
       input = JSON.parse(raw) as typeof input;
     } catch {
@@ -619,6 +673,7 @@ export async function runPreToolCheck(root: string): Promise<void> {
 
     const toolName = input.tool_name;
     const toolInput = input.tool_input ?? {};
+    const permissionMode = input.permission_mode;
 
     // ── Bash hook: scope check + phantom package detection ──────────────────────
     if (toolName === 'Bash') {
@@ -629,6 +684,12 @@ export async function runPreToolCheck(root: string): Promise<void> {
       const scopeViolation = safeCheckScope({ toolName: 'Bash', command, root }, failClosed);
       if (scopeViolation) {
         if (scopeViolation.type === 'requires_confirmation') {
+          // Parser uncertainty in an Auto session is handed to Claude's
+          // classifier by returning no decision at all. An owner-declared
+          // checkpoint still asks, in every mode.
+          if (dispositionForConfirmation(scopeViolation.code, permissionMode) === 'delegate') {
+            process.exit(0);
+          }
           emitAskDecision(`${scopeViolation.message} ${scopeViolation.suggestion}`);
           return;
         }
@@ -670,6 +731,9 @@ export async function runPreToolCheck(root: string): Promise<void> {
     const writeScopeViolation = safeCheckScope({ toolName, filePath, root }, failClosed);
     if (writeScopeViolation) {
       if (writeScopeViolation.type === 'requires_confirmation') {
+        if (dispositionForConfirmation(writeScopeViolation.code, permissionMode) === 'delegate') {
+          process.exit(0);
+        }
         emitAskDecision(`${writeScopeViolation.message} ${writeScopeViolation.suggestion}`);
         return;
       }
