@@ -7,3 +7,9 @@ tsconfig.json
 **/*.map
 .eslintrc*
 .prettierrc*
+vitest.config.ts
+**/*.vsix
+# Developer-local governance state. `.thesmos/savings.jsonl` is a per-machine
+# cost ledger (timestamps, models, USD) — it was shipping inside the VSIX.
+.thesmos/**
+.vscode/**

@@ -138,6 +138,21 @@ html, body {
   #budget-bar-wrap.pulsing #budget-bar { animation: none; }
 }
 
+/* Screen-reader-only live region. Off-screen rather than display:none, which
+   would stop assistive technology announcing it at all. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ── Message log ── */
 #log {
   flex: 1;

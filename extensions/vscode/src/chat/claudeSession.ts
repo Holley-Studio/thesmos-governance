@@ -55,6 +55,14 @@ export type SessionEvent =
     }
   | { kind: 'compacting'; trigger: string; preTokens?: number }
   | { kind: 'usage'; contextTokens: number }
+  /**
+   * Normalized subscription-plan window data from the provider's `rate_limit_event`.
+   * Identifying fields (uuid, session_id) and billing-detail strings are stripped
+   * before the event reaches the controller — they are never stored or propagated.
+   * The `windowPayload` object is safe to pass directly to
+   * `SubscriptionUsageProvider.ingestStreamEvent()`.
+   */
+  | { kind: 'rateLimitInfo'; windowPayload: Record<string, unknown> }
   | { kind: 'stderr'; text: string }
   | { kind: 'exit'; code: number | null };
 
@@ -319,6 +327,13 @@ export class ClaudeSession {
             typeof usage?.cache_creation_input_tokens === 'number' ? usage.cache_creation_input_tokens : undefined,
           isError: event.is_error === true,
         });
+        break;
+      }
+
+      case 'rate_limit_event': {
+        // Strip identifying fields before emitting; the provider normalizes the rest.
+        const { uuid: _u, session_id: _s, ...stripped } = event;
+        this.onEvent({ kind: 'rateLimitInfo', windowPayload: stripped });
         break;
       }
 
