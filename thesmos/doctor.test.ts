@@ -737,3 +737,60 @@ describe('runDoctor — baseline freshness', () => {
     expect(check?.pass).toBe(false);
   });
 });
+
+// ── Provider endpoint checks ─────────────────────────────────────────────────
+
+describe('Ollama endpoint configuration check', () => {
+  function withOllama(baseUrl: string | undefined): ReturnType<typeof runDoctor> {
+    const config: ThesmosConfig = {
+      ...CONFIG_DEFAULTS,
+      providers: baseUrl === undefined ? {} : { ollama: { baseUrl } },
+    };
+    return runDoctor(makeFullInput({ config }));
+  }
+
+  const find = (checks: ReturnType<typeof runDoctor>) =>
+    checks.find((c) => c.name === 'config:ollama-endpoint');
+
+  it('emits no check when no endpoint is configured', () => {
+    // An optional provider nobody configured must not add noise to doctor.
+    expect(find(withOllama(undefined))).toBeUndefined();
+  });
+
+  it('passes a loopback endpoint and states there is no egress', () => {
+    const check = find(withOllama('http://127.0.0.1:11434'));
+    expect(check?.pass).toBe(true);
+    expect(check?.message).toMatch(/loopback/i);
+  });
+
+  it('passes a non-loopback endpoint but warns that prompts leave the machine', () => {
+    // Still a pass: configuring a remote endpoint is legitimate. The point is
+    // that the user is told, and that the web grant is named.
+    const check = find(withOllama('https://ollama.example.com'));
+    expect(check?.pass).toBe(true);
+    expect(check?.message).toMatch(/remote/);
+    expect(check?.message).toMatch(/leave this machine/i);
+    expect(check?.fixHint).toMatch(/web channel/i);
+  });
+
+  it('flags a LAN endpoint as non-local', () => {
+    const check = find(withOllama('http://192.168.1.20:11434'));
+    expect(check?.message).toMatch(/lan/);
+  });
+
+  it('fails an invalid endpoint', () => {
+    const check = find(withOllama('not-a-url'));
+    expect(check?.pass).toBe(false);
+    expect(check?.fixHint).toMatch(/http/);
+  });
+
+  it('fails a non-http protocol', () => {
+    expect(find(withOllama('file:///etc/passwd'))?.pass).toBe(false);
+  });
+
+  it('does not make the repo unhealthy when Ollama is simply not configured', () => {
+    // The core promise: an optional provider never fails the global gate.
+    const checks = withOllama(undefined);
+    expect(checks.every((c) => c.pass)).toBe(true);
+  });
+});

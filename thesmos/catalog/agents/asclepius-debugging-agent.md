@@ -23,6 +23,11 @@ skills:
   - logging-audit
   - observability-review
 enabled: true
+agent_kind: specialist
+availability: held_back
+marketed: false
+routable: false
+exportable: false
 governance:
   rules:
     - ERR_001

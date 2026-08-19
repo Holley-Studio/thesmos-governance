@@ -1,48 +1,8 @@
 {
   "version": "1",
   "createdAt": "2026-06-26T18:30:14.987Z",
-  "updatedAt": "2026-07-01T21:23:37.784Z",
+  "updatedAt": "2026-08-07T06:33:02.405Z",
   "entries": [
-    {
-      "fingerprint": "3ec73a907a23b540",
-      "ruleCategory": "lic_unknown_license",
-      "severity": "HIGH",
-      "file": "package.json",
-      "message": "\"@thesmos-governance/pr-review\" has no license — usage rights are unclear.",
-      "recordedAt": "2026-06-26T18:30:14.987Z"
-    },
-    {
-      "fingerprint": "752c8e3690b88541",
-      "ruleCategory": "lic_unknown_license",
-      "severity": "HIGH",
-      "file": "package.json",
-      "message": "\"actions/pr-review\" has no license — usage rights are unclear.",
-      "recordedAt": "2026-06-26T18:30:14.987Z"
-    },
-    {
-      "fingerprint": "64841f03bc7ff6aa",
-      "ruleCategory": "lic_unknown_license",
-      "severity": "HIGH",
-      "file": "package.json",
-      "message": "\"thesmos-governance-vscode\" has no license — usage rights are unclear.",
-      "recordedAt": "2026-06-26T18:30:14.987Z"
-    },
-    {
-      "fingerprint": "1bbcfe33a5339751",
-      "ruleCategory": "lic_unknown_license",
-      "severity": "HIGH",
-      "file": "package.json",
-      "message": "\"thesmos-governance\" has no license — usage rights are unclear.",
-      "recordedAt": "2026-06-26T18:30:14.987Z"
-    },
-    {
-      "fingerprint": "29220b249c47ba17",
-      "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "extensions/vscode/src/commands.ts",
-      "message": "File has 805 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
-    },
     {
       "fingerprint": "d667c9f785e2a6dd",
       "ruleCategory": "dep_no_integrity",
@@ -52,348 +12,412 @@
       "recordedAt": "2026-06-26T18:30:14.987Z"
     },
     {
-      "fingerprint": "6344d9d2f4e12ca5",
+      "fingerprint": "b331cdc43cc23d3a",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/bin/commands/build.ts",
-      "message": "File has 990 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "extensions\\vscode\\src\\chat\\chatViewProvider.ts",
+      "message": "File has 1598 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "50c572e4a00b2858",
+      "fingerprint": "d3758fd8d3fe1788",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/bin/commands/pantheon.ts",
-      "message": "File has 816 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "extensions\\vscode\\src\\chat\\webview\\chat.ts",
+      "message": "File has 1180 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "c03cdb28a954db4e",
+      "fingerprint": "b2182e3b10c222a7",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/drift.test.ts",
-      "message": "File has 933 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "extensions\\vscode\\src\\commands.ts",
+      "message": "File has 857 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "5f954a69f9cb0e3f",
+      "fingerprint": "9bde685d178b5606",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/fix.test.ts",
+      "severity": "TECH_DEBT",
+      "file": "extensions\\vscode\\src\\extension.ts",
+      "message": "File has 922 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
+    },
+    {
+      "fingerprint": "0f5448a3b9789982",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\agent-lifecycle.test.ts",
+      "message": "File has 862 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
+    },
+    {
+      "fingerprint": "d889bced8c8319c5",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\bin\\commands\\build.ts",
+      "message": "File has 989 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
+    },
+    {
+      "fingerprint": "235b6c9652baa843",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\bin\\commands\\compliance.ts",
+      "message": "File has 807 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
+    },
+    {
+      "fingerprint": "e7c0c5027ca418f1",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\bin\\commands\\pantheon.ts",
+      "message": "File has 1444 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
+    },
+    {
+      "fingerprint": "c078d01a158fe285",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\drift.test.ts",
+      "message": "File has 963 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
+    },
+    {
+      "fingerprint": "71f96360fd675848",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\fix.test.ts",
       "message": "File has 1187 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "6992d0a4674dfd99",
+      "fingerprint": "3247451f4db4ccaa",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/fix.ts",
-      "message": "File has 1440 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\fix.ts",
+      "message": "File has 1425 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "7654a63e267632f0",
+      "fingerprint": "d76e3b05893038b8",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/init.ts",
-      "message": "File has 906 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\init.ts",
+      "message": "File has 919 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "8078eca6323959fe",
+      "fingerprint": "c7e64144b04f71c7",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/agents.ts",
-      "message": "File has 1156 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\mcp-server.ts",
+      "message": "File has 830 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "499399757b4ba446",
+      "fingerprint": "b56d99e4f38a35d7",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/ai.ts",
-      "message": "File has 1672 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\agents.ts",
+      "message": "File has 1450 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "f20b7af21f8b5cf5",
+      "fingerprint": "d62c46a77e99f2a2",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/csharp.test.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\ai.ts",
+      "message": "File has 1675 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
+    },
+    {
+      "fingerprint": "8a356b9d678d9940",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\csharp.test.ts",
       "message": "File has 805 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "39de8cf4e3c86a05",
+      "fingerprint": "ebb55724cd8eea91",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/csharp.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\csharp.ts",
       "message": "File has 947 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "4ad9aa66c047e452",
+      "fingerprint": "2805c4b7b09df6ff",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/database.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\database.ts",
       "message": "File has 1350 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "4b2acd1e5d3e0be9",
+      "fingerprint": "0e58b8546aa22b7b",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/debt.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\debt.ts",
       "message": "File has 1153 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "d699c62eefd50f08",
+      "fingerprint": "b3feb742f716398f",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/design.test.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\design.test.ts",
       "message": "File has 961 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "d74c2ed492ef8bed",
+      "fingerprint": "5d9c11fa12f83aca",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/design.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\design.ts",
       "message": "File has 855 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "625416af5f52e53c",
+      "fingerprint": "5b6d32d440d497ff",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/django.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\django.ts",
       "message": "File has 828 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "931428ccbd965f87",
+      "fingerprint": "7ad72c873adcc5e6",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/errors.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\errors.ts",
       "message": "File has 916 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "7066487f7415dac1",
+      "fingerprint": "7538b06372ee7ad2",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/gdpr.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\gdpr.ts",
       "message": "File has 811 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "3bdc545400217b5b",
+      "fingerprint": "c967c88e92786d4d",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/go.test.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\go.test.ts",
       "message": "File has 938 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "7102992a69450a5d",
+      "fingerprint": "d3b0b912139a2d41",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/go.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\go.ts",
       "message": "File has 871 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "1780eb4f7c1f1506",
+      "fingerprint": "0865dddb78177769",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/graphql.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\graphql.ts",
       "message": "File has 943 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "aca3a08ea04e8b86",
+      "fingerprint": "3232c443a99c440c",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/java.test.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\java.test.ts",
       "message": "File has 1126 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "dbfcf15f4fdf5fff",
+      "fingerprint": "92e8d85c400f01c2",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/java.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\java.ts",
       "message": "File has 842 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "c02de764e907f956",
+      "fingerprint": "4f2ed131a920fa74",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/mcp.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\mcp.ts",
       "message": "File has 939 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "6b7f541ff3b65676",
+      "fingerprint": "f3e91c531372ca3e",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/nextjs.ts",
-      "message": "File has 1606 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\nextjs.ts",
+      "message": "File has 1610 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "74d5e16e322e603b",
+      "fingerprint": "0bb467b52fefd69b",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/node.ts",
-      "message": "File has 1101 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\node.ts",
+      "message": "File has 1108 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "a7065d0aad1e565b",
+      "fingerprint": "4652650da4962c9e",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/performance.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\performance.ts",
       "message": "File has 1089 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "31f65bbb50e9d4f5",
+      "fingerprint": "086cbcce79030be5",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/php.test.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\php.test.ts",
       "message": "File has 810 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "0b15a24f8039f33a",
+      "fingerprint": "3b6cccfa92c5409b",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/php.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\php.ts",
       "message": "File has 828 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "1ad1e4f49714d069",
+      "fingerprint": "b1a10ad24a9661ed",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/prisma.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\prisma.ts",
       "message": "File has 1086 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "3817c8c77ce1f210",
+      "fingerprint": "c3d83fa306b86372",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/python.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\python.ts",
       "message": "File has 1737 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "d77b7006e783d25d",
+      "fingerprint": "af360fc1d2362024",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/react.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\react.ts",
       "message": "File has 1122 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "2c1fce3941c992f3",
+      "fingerprint": "a7cda420d585396f",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/ruby.test.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\ruby.test.ts",
       "message": "File has 951 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "cac6f1d339e7113e",
+      "fingerprint": "ee321d18f2d43a71",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/ruby.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\ruby.ts",
       "message": "File has 852 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "658a28365203d8f9",
+      "fingerprint": "a991e793fb34a280",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/rust.test.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\rust.test.ts",
       "message": "File has 818 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "8caff19885bc5e33",
+      "fingerprint": "acd00dd60ca8d8a5",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/rust.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\rust.ts",
       "message": "File has 856 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "a942b4d49f5ac76e",
+      "fingerprint": "50e039cfbcc69600",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/security.ts",
-      "message": "File has 1698 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\security.ts",
+      "message": "File has 1705 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "e18d1e1cded34cc9",
+      "fingerprint": "4aead8058524da28",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/slopsquatting.ts",
-      "message": "File has 998 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\slopsquatting.ts",
+      "message": "File has 1155 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "1ddbeadee8cbc424",
+      "fingerprint": "b5830e1e300a1b68",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/terraform.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\terraform.ts",
       "message": "File has 1002 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "9026f86c54592007",
+      "fingerprint": "892fe84f51f43390",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/trpc.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\trpc.ts",
       "message": "File has 870 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "2f272ff289e27090",
+      "fingerprint": "98721f7f91bae87f",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/typescript.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\typescript.ts",
       "message": "File has 1220 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "ffc0f086efac366e",
+      "fingerprint": "2259f8036d1a0d77",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/vibe-coding.ts",
-      "message": "File has 1403 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\vibe-coding.ts",
+      "message": "File has 1418 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "b47d7efab1c6f550",
+      "fingerprint": "cfec8401be74d3ac",
       "ruleCategory": "large_file",
-      "severity": "MEDIUM",
-      "file": "thesmos/rules/zod.ts",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\rules\\zod.ts",
       "message": "File has 1078 lines (threshold: 800).",
-      "recordedAt": "2026-07-01T21:23:37.784Z"
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     },
     {
-      "fingerprint": "1f38e66952a86c1c",
-      "ruleCategory": "lic_missing_attribution",
-      "severity": "LOW",
-      "file": "THIRD_PARTY_LICENSES.md",
-      "message": "592 MIT/BSD dependencies require attribution but no THIRD_PARTY_LICENSES file exists.",
-      "recordedAt": "2026-06-26T18:30:14.987Z"
+      "fingerprint": "546396218d1fc8c4",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\scripts\\export-agents.ts",
+      "message": "File has 1139 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
+    },
+    {
+      "fingerprint": "9f345aa46ec2646e",
+      "ruleCategory": "large_file",
+      "severity": "TECH_DEBT",
+      "file": "thesmos\\shell-command.ts",
+      "message": "File has 964 lines (threshold: 800).",
+      "recordedAt": "2026-08-07T06:33:02.405Z"
     }
   ]
 }

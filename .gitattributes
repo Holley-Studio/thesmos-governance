@@ -3,3 +3,8 @@
 
 # Windows cmd wrappers keep CRLF for cmd.exe compatibility.
 *.cmd text eol=crlf
+
+# Catalog and agent definitions are parsed as structured markdown (frontmatter
+# delimiters, fenced blocks). Git for Windows defaults to core.autocrlf=true,
+# which would check these out as CRLF and break that parsing. Pin them to LF.
+*.md text eol=lf

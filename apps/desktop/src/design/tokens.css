@@ -1,0 +1,189 @@
+/* Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved. */
+/*
+ * Thesmos Desktop — design tokens.
+ *
+ * The brief: do not theme a SaaS app with Greek decoration; design an operating
+ * system whose visual language evolved from classical architecture. In practice
+ * that means the tokens describe *materials and light*, not "primary/secondary".
+ * A component asks for `--stone-raised` or `--bronze-authority`, so surfaces
+ * stay coherent across two art-directed themes instead of drifting into
+ * arbitrary greys.
+ *
+ * Two themes, both authored — Nocturne is not an inversion of Olympus. Their
+ * hues, contrasts and light directions differ because a long night session and
+ * a daylight session are different rooms.
+ *
+ * Every state token has a non-colour partner (weight, icon, label) because
+ * state must never be encoded in colour alone.
+ */
+
+:root {
+  /* ── Type ─────────────────────────────────────────────────────────────── */
+  /* Geist for everything operational. The display slot deliberately falls back
+   * to the same stack: a Roman-inscriptional face is the intended voice for
+   * ceremonial text, but bundling one carries licensing questions this alpha
+   * has not resolved. The token exists so that decision lands in one place. */
+  --font-ui: 'Geist', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: var(--font-ui);
+  --font-mono: 'Geist Mono', ui-monospace, 'Cascadia Code', 'SF Mono', monospace;
+
+  /* Inscriptional headings: wide tracking, capitals, restrained weight. The
+   * monumentality comes from proportion and spacing, not from a novelty face. */
+  --tracking-inscription: 0.18em;
+  --tracking-label: 0.08em;
+  --tracking-body: 0;
+
+  --text-hero: clamp(2.25rem, 4vw, 3.5rem);
+  --text-title: 1.5rem;
+  --text-section: 0.75rem;   /* inscribed section labels, uppercase */
+  --text-body: 0.9375rem;
+  --text-meta: 0.8125rem;
+  --text-micro: 0.6875rem;
+
+  /* ── Space — an architectural scale, not a 4px ramp ───────────────────── */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-6: 1.5rem;
+  --s-8: 2rem;
+  --s-12: 3rem;
+  --s-16: 4rem;
+  --s-24: 6rem;
+
+  /* Sparing radius. Planes and dividers carry structure; rounding is for
+   * genuinely interactive affordances only. */
+  --radius-none: 0;
+  --radius-sm: 3px;
+  --radius-md: 6px;
+
+  /* ── Motion — light entering a space ──────────────────────────────────── */
+  --ease-reveal: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-settle: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-quick: 140ms;
+  --dur-reveal: 320ms;
+  --dur-monument: 640ms;
+
+  /* ── Olympus (light) — daylight on marble ─────────────────────────────── */
+  --ivory: #f7f4ee;
+  --marble: #fffdfa;
+  --marble-vein: #e8e2d8;
+  --graphite: #1c1b19;
+  --graphite-soft: #4a4744;
+  --graphite-mute: #7d7872;
+  --bronze: #8a6a3b;
+  --bronze-deep: #5f4826;
+  --gold-leaf: #b08d4f;
+  --celestial: #5b7ea8;
+  --celestial-soft: #dae4ef;
+  --ember: #a4552c;
+
+  color-scheme: light;
+
+  --ground: var(--ivory);
+  --stone: var(--marble);
+  --stone-raised: #ffffff;
+  --stone-sunken: #f1ede6;
+  --edge: var(--marble-vein);
+  --edge-strong: #d6cec0;
+
+  --ink: var(--graphite);
+  --ink-soft: var(--graphite-soft);
+  --ink-mute: var(--graphite-mute);
+  --ink-inverse: var(--marble);
+
+  --authority: var(--bronze);
+  --authority-strong: var(--bronze-deep);
+  --accent: var(--celestial);
+  --accent-wash: var(--celestial-soft);
+  --inscription: var(--gold-leaf);
+
+  /* Light falls from above onto a physical surface. */
+  --shadow-plane: 0 1px 2px rgba(28, 27, 25, 0.05), 0 8px 24px rgba(28, 27, 25, 0.06);
+  --shadow-monument: 0 2px 4px rgba(28, 27, 25, 0.07), 0 24px 64px rgba(28, 27, 25, 0.1);
+  --focus-ring: 0 0 0 2px var(--ground), 0 0 0 4px var(--accent);
+}
+
+/*
+ * Nocturne — obsidian and cold ivory.
+ *
+ * Authored, not inverted: the accent cools, bronze warms to carry authority
+ * against dark stone, and surfaces separate by luminance rather than by shadow,
+ * because drop shadows read as smudges on dark ground.
+ */
+:root[data-theme='nocturne'] {
+  color-scheme: dark;
+
+  --ground: #0e0f11;
+  --stone: #16181b;
+  --stone-raised: #1d2024;
+  --stone-sunken: #101214;
+  --edge: #262a2f;
+  --edge-strong: #343a41;
+
+  --ink: #ece7de;
+  --ink-soft: #b3ada3;
+  --ink-mute: #7c7770;
+  --ink-inverse: #0e0f11;
+
+  --authority: #b08a54;
+  --authority-strong: #cfa669;
+  --accent: #7fa3cc;
+  --accent-wash: #1b2430;
+  --inscription: #c9a86a;
+  --ember: #c96f42;
+
+  --shadow-plane: 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-monument: 0 1px 0 rgba(255, 255, 255, 0.04), 0 32px 72px rgba(0, 0, 0, 0.6);
+  --focus-ring: 0 0 0 2px var(--ground), 0 0 0 4px var(--accent);
+}
+
+/*
+ * Divine state — the Pantheon's lifecycle.
+ *
+ * Centralized so no component invents its own status colour. Each state pairs a
+ * colour with a distinct weight/opacity so it survives greyscale and colour
+ * blindness; components must also render the state's label.
+ */
+:root {
+  --state-dormant: var(--ink-mute);
+  --state-dormant-surface: var(--stone-sunken);
+  --state-dormant-weight: 400;
+
+  --state-summoned: var(--accent);
+  --state-summoned-surface: var(--accent-wash);
+  --state-summoned-weight: 500;
+
+  --state-active: var(--accent);
+  --state-active-surface: var(--accent-wash);
+  --state-active-weight: 600;
+
+  --state-waiting: var(--authority);
+  --state-waiting-surface: transparent;
+  --state-waiting-weight: 400;
+
+  /* Refusal is lawful, not alarming. Red is reserved for genuine danger. */
+  --state-blocked: var(--ember);
+  --state-blocked-surface: transparent;
+  --state-blocked-weight: 600;
+
+  --state-complete: var(--inscription);
+  --state-complete-surface: transparent;
+  --state-complete-weight: 600;
+}
+
+/* Motion is an enhancement. Structure must hold without it. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-quick: 0ms;
+    --dur-reveal: 0ms;
+    --dur-monument: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
