@@ -28,7 +28,11 @@ const MISSION_DIR = import.meta.dirname;
  * suite exists to prevent — and nothing failed, because the guard was not
  * looking at that directory. A hygiene check is only worth what it covers.
  */
-const WATCHED_DIRS = [MISSION_DIR, join(MISSION_DIR, '..', 'bin', 'commands')];
+const WATCHED_DIRS = [
+  MISSION_DIR,
+  join(MISSION_DIR, '..', 'bin', 'commands'),
+  join(MISSION_DIR, '..', 'records'),
+];
 
 const sourceFiles = WATCHED_DIRS.flatMap((dir) =>
   readdirSync(dir)
@@ -53,6 +57,8 @@ describe('mission sources stay text', () => {
       'mission/graph.ts',
       'bin/commands/mission.ts',
       'bin/commands/mission.test.ts',
+      'records/journal.ts',
+      'records/types.ts',
     ];
     for (const suffix of required) {
       expect(
