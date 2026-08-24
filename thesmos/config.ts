@@ -258,7 +258,13 @@ export function loadConfig(
       if (silenced > 0) {
         process.stderr.write(
           `[thesmos] ℹ️  ${silenced} rules now enforce as BLOCKER that were previously ` +
-          `silent under your config — see CHANGELOG.md for details.\n`,
+          `silent under your config.\n` +
+          `           These findings were already being reported — only their severity ` +
+          `and the CI gate changed, so validate may now fail on pre-existing code.\n` +
+          `           To accept the current findings as known debt and gate only on NEW ` +
+          `violations:\n` +
+          `               thesmos baseline:create\n` +
+          `           Details: CHANGELOG.md\n`,
         );
         try {
           writeFileSync(ackPath, new Date().toISOString() + '\n', 'utf8');

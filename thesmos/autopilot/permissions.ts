@@ -74,12 +74,29 @@ export function writePermissionProfile(root: string, sessionId: string): Permiss
   const existingSettings = readSettingsJson(settingsPath) ?? {};
   const governanceHooks = extractGovernanceHooks(existingSettings);
 
+  // The user's permission MODE is carried forward, unlike their allow/deny
+  // lists. Autopilot deliberately narrows *what* may run, and the backup
+  // restores the original lists afterwards — but `defaultMode` decides *how
+  // Claude asks*, not what is permitted. Dropping it silently downgraded a
+  // session the user had set to `auto` back to `default`, which reintroduced
+  // exactly the approval prompts autopilot exists to avoid. Preserving it
+  // widens nothing: every command still passes the narrowed allow list and
+  // the governance hooks below.
+  const existingPermissions = existingSettings['permissions'] as
+    | { defaultMode?: unknown }
+    | undefined;
+  const preservedMode =
+    typeof existingPermissions?.defaultMode === 'string'
+      ? { defaultMode: existingPermissions.defaultMode }
+      : {};
+
   // Write autopilot permission profile — preserving any installed governance hooks
   let profile: Record<string, unknown> = {
     _autopilot_session: sessionId,
     _autopilot_restore: true,
     _autopilot_backup: actualBackupPath,
     permissions: {
+      ...preservedMode,
       allow: PERMISSION_ALLOW,
       deny: [] as string[],
     },
