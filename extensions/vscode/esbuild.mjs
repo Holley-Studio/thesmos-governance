@@ -7,8 +7,34 @@
 
 import * as esbuild from 'esbuild';
 import { argv } from 'process';
+import { execFileSync } from 'child_process';
 
 const watching = argv.includes('--watch');
+
+// Honest build fingerprint: the short commit SHA, plus a `-dirty` suffix when
+// the working tree has uncommitted changes at build time. Without the suffix a
+// bundle built from a dirty tree would carry a SHA that does NOT identify its
+// contents — the exact "which code is actually running?" trap this project hit.
+let buildSha = 'dev';
+try {
+  buildSha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
+  // `-dirty` when SOURCE differs from HEAD. The build output (dist/) is excluded
+  // — it is regenerated every build, so counting it would mark every committed
+  // bundle dirty. Any other uncommitted file means the bundle does not match a
+  // commit, which the fingerprint must admit.
+  const porcelain = execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' });
+  const dirtySource = porcelain
+    .split('\n')
+    .map((l) => l.slice(3).trim())
+    .filter((p) => p && !p.includes('extensions/vscode/dist/') && !p.startsWith('dist/'));
+  if (dirtySource.length > 0) buildSha += '-dirty';
+} catch {}
+
+/** Injected at build time into both bundles — lets diagnostics prove which commit is running. */
+const buildDefines = {
+  __BUILD_SHA__: JSON.stringify(buildSha),
+  __PROTOCOL_VERSION__: JSON.stringify(2),
+};
 
 /** @type {import('esbuild').BuildOptions} */
 const options = {
@@ -22,6 +48,7 @@ const options = {
   sourcemap: true,
   minify: !watching,
   logLevel: 'info',
+  define: buildDefines,
 };
 
 /** Pantheon Chat webview bundle — browser context, no vscode module. */
@@ -36,6 +63,7 @@ const webviewOptions = {
   sourcemap: true,
   minify: !watching,
   logLevel: 'info',
+  define: buildDefines,
 };
 
 /**
