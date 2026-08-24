@@ -1,6 +1,6 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * PantheonChatController — hosts the Pantheon Chat webview (sidebar view and
+ * PantheonChatController — hosts the Thesmos Chat webview (sidebar view and
  * optional editor tab), owns the ClaudeSession subprocess, and shapes raw
  * stream events into the UI item protocol consumed by webview/chat.ts.
  *
@@ -87,12 +87,12 @@ const CONTEXT_WINDOW_TOKENS = 200_000;
 const AGENT_TOOL_NAMES = new Set(['Agent', 'Task']);
 
 /**
- * Appended to the CLI's system prompt so headless Pantheon Chat sessions feel
+ * Appended to the CLI's system prompt so headless Thesmos Chat sessions feel
  * like the council chamber: every reply opens with the lean routing line and
  * matching gods actually get dispatched instead of silently answered inline.
  */
 const PANTHEON_SYSTEM_PROMPT =
-  'You are rendering inside Pantheon Chat, the Thesmos council chamber. ' +
+  'You are rendering inside Thesmos Chat, the Thesmos council chamber. ' +
   "Open EVERY response with exactly one lean routing line: '⚡ ZEUS · <emoji> <God> — <domain>' " +
   "when the task matches a Pantheon domain, or '⚡ ZEUS · direct response' otherwise — then answer " +
   "in that god's voice, economically. When a task clearly matches a Pantheon specialist's domain, " +
@@ -483,7 +483,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     const column = location === 'active' ? vscode.ViewColumn.Active : vscode.ViewColumn.Beside;
     const panel = vscode.window.createWebviewPanel(
       'thesmos.pantheonChatTab',
-      '⚡ Pantheon Chat',
+      '⚡ Thesmos Chat',
       column,
       { enableScripts: true, retainContextWhenHidden: true },
     );
@@ -644,7 +644,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   <meta http-equiv="Content-Security-Policy" content="${csp}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="${styleUri.toString()}">
-  <title>Pantheon Chat</title>
+  <title>Thesmos Chat</title>
 </head>
 <body>
   <div id="app">
@@ -925,7 +925,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     const diff = await this.checkpoints.diffSince(checkpointId);
 
     if (!diff.trim()) {
-      void vscode.window.showInformationMessage('Pantheon Chat: the workspace already matches this checkpoint.');
+      void vscode.window.showInformationMessage('Thesmos Chat: the workspace already matches this checkpoint.');
       return;
     }
 
@@ -971,7 +971,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       } else {
         this.pushItem({ kind: 'turnFooter', text: '— ⟲ Kronos restored the workspace to this point —' });
       }
-      void vscode.window.showInformationMessage('Pantheon Chat: workspace restored.');
+      void vscode.window.showInformationMessage('Thesmos Chat: workspace restored.');
     } catch (err) {
       this.pushItem({
         kind: 'error',
@@ -1088,7 +1088,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   /** 📤 Export the conversation as a shareable Council Record (markdown). */
   private async exportCouncilRecord(): Promise<void> {
     if (this.history.length === 0) {
-      void vscode.window.showInformationMessage('Pantheon Chat: nothing to export yet.');
+      void vscode.window.showInformationMessage('Thesmos Chat: nothing to export yet.');
       return;
     }
     const lines: string[] = [];
@@ -1166,7 +1166,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           break;
       }
     }
-    lines.push('---', '', '_Recorded by Thesmos Pantheon Chat._', '');
+    lines.push('---', '', '_Recorded by Thesmos Thesmos Chat._', '');
 
     const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const target = await vscode.window.showSaveDialog({
@@ -1184,7 +1184,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private async openChronicles(): Promise<void> {
     const sessions = listSessions(this.workspaceRoot).filter((s) => s.sessionId !== this.lastSessionId);
     if (sessions.length === 0) {
-      void vscode.window.showInformationMessage('Pantheon Chat: no past chronicles found for this workspace.');
+      void vscode.window.showInformationMessage('Thesmos Chat: no past chronicles found for this workspace.');
       return;
     }
     const picked = await vscode.window.showQuickPick(
@@ -1518,7 +1518,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
           this.promptQueue.length === 0 &&
           vscode.workspace.getConfiguration('thesmos').get<boolean>('chat.notifyOnTurnEnd', true)
         ) {
-          vscode.window.setStatusBarMessage('⚡ The gods have spoken — Pantheon Chat is ready', 8000);
+          vscode.window.setStatusBarMessage('⚡ The gods have spoken — Thesmos Chat is ready', 8000);
         }
         this.drainQueue();
         break;

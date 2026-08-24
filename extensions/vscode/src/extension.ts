@@ -346,7 +346,7 @@ class ThesmosExtension implements vscode.Disposable {
     });
     this.disposables.push(activityTreeView);
 
-    // Register Pantheon Chat webview + commands
+    // Register Thesmos Chat webview + commands
     this.disposables.push(
       vscode.window.registerWebviewViewProvider(PantheonChatController.viewId, this.pantheonChat, {
         webviewOptions: { retainContextWhenHidden: true },
@@ -373,7 +373,7 @@ class ThesmosExtension implements vscode.Disposable {
         const choice = await vscode.window.showInformationMessage(
           'Install Starter Agents — this writes the 6 free Pantheon agents (Zeus, Athena, Argus, Apollo, Hephaestus, Hebe) to .thesmos/agents/ ' +
           'and regenerates .claude/agents/ so they are available as Claude Code subagents. ' +
-          'The Full Pantheon (67 gods, $24 one-time) is available via "Unlock Full Pantheon".',
+          'The Full Thesmos Pantheon (67 gods, $24 one-time) is available via "Unlock Full Thesmos Pantheon".',
           { modal: true },
           'Install Starter Agents',
           'Cancel',

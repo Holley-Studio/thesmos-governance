@@ -245,6 +245,12 @@ jobs:
       - name: Model registry audit
         run: npx tsx thesmos/bin/cli.ts doctor --only=models
 
+      # Naming truth. Deterministic: the same tree always produces the same
+      # findings. A clean run means internal consistency with the PROVISIONAL
+      # naming decision in brand-registry.json — it is not a trademark clearance.
+      - name: Naming lint (brand registry)
+        run: npx tsx thesmos/bin/cli.ts brand:lint
+
       - name: Governance gate
         run: npx tsx thesmos/bin/cli.ts validate
 

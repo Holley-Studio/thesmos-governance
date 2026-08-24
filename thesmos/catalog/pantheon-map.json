@@ -99,11 +99,17 @@
       "domain": "Business Development & Partnerships",
       "progressVerb": "brokering the alliance"
     },
-    "nike": {
+    "leadgen": {
       "emoji": "🎯",
-      "name": "Nike",
+      "name": "Lead Generation",
       "domain": "Lead Generation & Pipeline",
       "progressVerb": "hunting the prospects"
+    },
+    "social": {
+      "emoji": "📣",
+      "name": "Social Media",
+      "domain": "Social Media & Community Growth",
+      "progressVerb": "building the audience"
     },
     "pheme": {
       "emoji": "📢",
@@ -356,6 +362,12 @@
       "name": "Ergon",
       "domain": "Design-to-Code Direction",
       "progressVerb": "translating to code"
+    },
+    "eunomia": {
+      "emoji": "🏛️",
+      "name": "Eunomia",
+      "domain": "Repository Stewardship & Codebase Order",
+      "progressVerb": "auditing the repository"
     }
   },
   "utilityAgents": [

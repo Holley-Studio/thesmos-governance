@@ -1,0 +1,227 @@
+{
+  "$schema": "./brand-registry.schema.json",
+  "version": "1.0.0",
+  "$comment": "Canonical brand, naming and third-party registry. Provisional internal source of truth for Phase 0. NOT legal advice and NOT a trademark clearance. Every mark here is unregistered and unadjudicated unless a decision record says otherwise.",
+  "generatedNote": "Hand-authored. Consumed by thesmos/brand.ts and enforced by `thesmos brand:lint`.",
+
+  "legal": {
+    "owner": "Holley Studio LLC",
+    "ownerRequired": true,
+    "$comment": "No surface may imply Thesmos is a separate legal company. Thesmos is a product line of Holley Studio LLC.",
+    "prohibitedOwnerImplications": [
+      "Thesmos Inc",
+      "Thesmos Inc.",
+      "Thesmos LLC",
+      "Thesmos Ltd",
+      "Thesmos Limited",
+      "Thesmos Corporation",
+      "Thesmos, Inc"
+    ],
+    "trademarkSymbolsAllowed": false,
+    "trademarkSymbolNote": "Do not add ™ or ® during Phase 0. Symbol use presupposes a clearance decision that has not been made."
+  },
+
+  "masterBrand": {
+    "name": "Thesmos",
+    "status": "provisional_pending_legal_clearance",
+    "clearanceRisk": "high",
+    "riskBasis": "An active developer-tool ecosystem uses 'ThesmOS', thesmos.sh and go.thesmos.sh, including MCP and AI coding-agent tooling. Overlapping goods/services in the same channel.",
+    "references": [
+      "https://github.com/thesm-os",
+      "https://www.uspto.gov/trademarks/search/comprehensive-clearance-search-similar-trademarks",
+      "https://www.uspto.gov/trademarks/search/likelihood-confusion"
+    ],
+    "meaning": "Greek term associated with rule, law, ordinance or established institution.",
+    "prohibitedNarratives": [
+      "stole fire",
+      "stole fire from the gods",
+      "titan who stole fire",
+      "god of fire",
+      "the god Thesmos",
+      "deity Thesmos"
+    ],
+    "narrativeNote": "Thesmos is a concept (law/order), NOT a deity and NOT the fire-stealing titan (that is Prometheus). Do not portray Thesmos as a historical god."
+  },
+
+  "productFamilies": [
+    {
+      "id": "thesmos-governance",
+      "canonicalName": "Thesmos Governance",
+      "kind": "product_mark",
+      "status": "active",
+      "description": "Deterministic governance engine: rules, scanning, validation, reporting."
+    },
+    {
+      "id": "thesmos-chat",
+      "canonicalName": "Thesmos Chat",
+      "kind": "product_mark",
+      "status": "active",
+      "legacyAliases": ["Pantheon Chat"],
+      "description": "Conversational surface for working with Thesmos Agents."
+    },
+    {
+      "id": "thesmos-builder",
+      "canonicalName": "Thesmos Builder",
+      "kind": "product_mark",
+      "status": "active",
+      "legacyAliases": ["Zeus Forge", "Forge"],
+      "uiCopyAllowance": "UI copy may say 'Create with Zeus.' Zeus is the orchestration personality inside Thesmos, not a standalone product.",
+      "description": "Agent and skill authoring surface."
+    }
+  ],
+
+  "tiers": [
+    {
+      "id": "thesmos-free",
+      "canonicalName": "Thesmos Free",
+      "status": "available",
+      "priceStatus": "free",
+      "description": "Complete core governance engine and rules, local scanning, a limited starter-agent set derived from the catalog, and Thesmos Builder Lite where implemented. Genuinely useful, not a crippled demo."
+    },
+    {
+      "id": "thesmos-pro",
+      "canonicalName": "Thesmos Pro",
+      "status": "available",
+      "priceStatus": "unverified",
+      "priceNote": "Authoritative commercial source is external (Gumroad). Not verifiable inside this repository. Generated marketing must not publish a number while priceStatus is 'unverified'.",
+      "legacyAliases": ["Pantheon Pro"],
+      "description": "Complete Thesmos Pantheon catalog, complete eligible skill catalog, advanced Thesmos Builder, Zeus orchestration, multi-platform agent exports."
+    },
+    {
+      "id": "thesmos-business",
+      "canonicalName": "Thesmos Business",
+      "status": "future_not_available",
+      "priceStatus": "not_applicable",
+      "marketingAllowed": false,
+      "description": "Reserved for future organizational controls, team governance, shared policy, audit administration and support.",
+      "note": "Must NOT be marketed as available until the capabilities exist."
+    }
+  ],
+
+  "agentCollective": {
+    "formalName": "The Thesmos Pantheon",
+    "shortNarrativeLabel": "Pantheon",
+    "firstUseRule": "Public references must use 'Thesmos Pantheon' on first use in a document or page. 'Pantheon' alone is permitted afterwards as a narrative short form.",
+    "prohibitedUses": [
+      "standalone commercial tier",
+      "company name",
+      "primary product name"
+    ],
+    "canonicalProductCategory": "Thesmos Agents",
+    "narrativeCategory": "God Agents",
+    "narrativeCategoryRule": "'God Agents' may remain mythology-flavored narrative language but must not be the only category customers see. 'Thesmos Agents' is the canonical category."
+  },
+
+  "publicDisplayRules": [
+    {
+      "id": "no-pantheon-pro",
+      "severity": "error",
+      "pattern": "Pantheon Pro",
+      "message": "'Pantheon Pro' is not a product. Use 'Thesmos Pro'.",
+      "appliesTo": "public",
+      "replacement": "Thesmos Pro"
+    },
+    {
+      "id": "no-pantheon-chat-primary",
+      "severity": "error",
+      "pattern": "Pantheon Chat",
+      "message": "'Pantheon Chat' must not be the primary product name. Use 'Thesmos Chat'.",
+      "appliesTo": "public",
+      "replacement": "Thesmos Chat"
+    },
+    {
+      "id": "no-zeus-forge",
+      "severity": "error",
+      "pattern": "Zeus Forge",
+      "message": "'Zeus Forge' is superseded. Use 'Thesmos Builder' (UI copy may say 'Create with Zeus').",
+      "appliesTo": "public",
+      "replacement": "Thesmos Builder"
+    },
+    {
+      "id": "no-full-pantheon",
+      "severity": "error",
+      "pattern": "Full Pantheon",
+      "message": "Use 'Full Thesmos Pantheon' or 'complete Thesmos agent catalog'.",
+      "appliesTo": "public",
+      "replacement": "Full Thesmos Pantheon"
+    },
+    {
+      "id": "no-nike-agent",
+      "severity": "error",
+      "pattern": "Nike",
+      "message": "'Nike' is a famous commercial trademark and must not appear as a current public product or agent name. Canonical: 'Thesmos Lead Generation Agent' (id lead-generation-agent).",
+      "appliesTo": "public",
+      "replacement": "Thesmos Lead Generation Agent"
+    },
+    {
+      "id": "no-thesmos-as-company",
+      "severity": "error",
+      "pattern": "Thesmos (Inc\\.?|LLC|Ltd|Limited|Corporation)",
+      "isRegex": true,
+      "message": "Thesmos is a product line of Holley Studio LLC, not a separate legal entity.",
+      "appliesTo": "public",
+      "replacement": "Holley Studio LLC"
+    },
+    {
+      "id": "no-stolen-fire-narrative",
+      "severity": "error",
+      "pattern": "stole fire",
+      "message": "Thesmos is a term for law/order, not the fire-stealing titan (Prometheus). Remove this narrative.",
+      "appliesTo": "public",
+      "replacement": null
+    },
+    {
+      "id": "no-trademark-symbols",
+      "severity": "error",
+      "pattern": "Thesmos ?[™®]",
+      "isRegex": true,
+      "message": "Do not use ™ or ® during Phase 0 — clearance has not been decided.",
+      "appliesTo": "public",
+      "replacement": "Thesmos"
+    }
+  ],
+
+  "nameClassifications": [
+    { "name": "Thesmos", "classification": "master_mark", "status": "provisional_pending_legal_clearance", "action": "attorney_clearance_required" },
+    { "name": "Thesmos Governance", "classification": "product_mark", "status": "active", "action": "none" },
+    { "name": "Thesmos Chat", "classification": "product_mark", "status": "active", "action": "none" },
+    { "name": "Thesmos Builder", "classification": "product_mark", "status": "active", "action": "none" },
+    { "name": "Pantheon", "classification": "third_party_review_required", "status": "restricted", "action": "attorney_clearance_required", "basis": "Active WebOps, workflow and governance software company at pantheon.io operating in an overlapping software category.", "reference": "https://pantheon.io", "allowedUses": ["CLI command namespace (thesmos pantheon:*)", "compatibility identifiers", "narrative short form after 'Thesmos Pantheon' first use"], "prohibitedUses": ["commercial tier name", "primary product name", "company name"] },
+    { "name": "Nike", "classification": "third_party_review_required", "status": "prohibited_public", "action": "renamed_in_phase_0", "basis": "Famous commercial trademark.", "replacedBy": "Thesmos Lead Generation Agent" },
+    { "name": "Zeus", "classification": "narrative_persona", "status": "active", "action": "none", "note": "Orchestration personality inside Thesmos. Not a standalone product." },
+    { "name": "Forge", "classification": "feature_name", "status": "deprecated", "action": "superseded_by_thesmos_builder" },
+    { "name": "Atlas", "classification": "third_party_review_required", "status": "out_of_scope", "action": "record_only", "note": "Separate Holley Studio product. Do not rename in this repository." },
+    { "name": "Iris", "classification": "third_party_review_required", "status": "out_of_scope", "action": "record_only", "note": "Separate Holley Studio product. Do not rename in this repository." },
+    { "name": "Apollo", "classification": "narrative_persona", "status": "active", "action": "none" },
+    { "name": "Athena", "classification": "narrative_persona", "status": "active", "action": "none" },
+    { "name": "Argus", "classification": "narrative_persona", "status": "active", "action": "none" },
+    { "name": "Hermes", "classification": "narrative_persona", "status": "active", "action": "none" },
+    { "name": "Eunomia", "classification": "narrative_persona", "status": "active", "action": "none", "note": "Greek personification of good order — thematically aligned with the master brand's meaning." }
+  ],
+
+  "thirdParties": [
+    { "name": "Claude", "owner": "Anthropic PBC", "relationship": "compatible_with", "logoUseAuthorized": false },
+    { "name": "Anthropic", "owner": "Anthropic PBC", "relationship": "compatible_with", "logoUseAuthorized": false },
+    { "name": "OpenAI", "owner": "OpenAI, L.L.C.", "relationship": "compatible_with", "logoUseAuthorized": false },
+    { "name": "ChatGPT", "owner": "OpenAI, L.L.C.", "relationship": "exports_for", "logoUseAuthorized": false },
+    { "name": "Codex", "owner": "OpenAI, L.L.C.", "relationship": "exports_for", "logoUseAuthorized": false },
+    { "name": "Gemini", "owner": "Google LLC", "relationship": "exports_for", "logoUseAuthorized": false },
+    { "name": "Cursor", "owner": "Anysphere Inc.", "relationship": "exports_for", "logoUseAuthorized": false },
+    { "name": "GitHub Copilot", "owner": "GitHub, Inc. / Microsoft Corporation", "relationship": "exports_for", "logoUseAuthorized": false },
+    { "name": "GitHub", "owner": "GitHub, Inc. / Microsoft Corporation", "relationship": "connects_to_when_configured", "logoUseAuthorized": false },
+    { "name": "Supabase", "owner": "Supabase Inc.", "relationship": "connects_to_when_configured", "logoUseAuthorized": false },
+    { "name": "Figma", "owner": "Figma, Inc.", "relationship": "connects_to_when_configured", "logoUseAuthorized": false },
+    { "name": "Vercel", "owner": "Vercel Inc.", "relationship": "connects_to_when_configured", "logoUseAuthorized": false },
+    { "name": "Stripe", "owner": "Stripe, Inc.", "relationship": "connects_to_when_configured", "logoUseAuthorized": false },
+    { "name": "Blender", "owner": "Blender Foundation", "relationship": "compatible_with", "logoUseAuthorized": false },
+    { "name": "KeyShot", "owner": "Luxion ApS", "relationship": "compatible_with", "logoUseAuthorized": false },
+    { "name": "Gumroad", "owner": "Gumroad, Inc.", "relationship": "connects_to_when_configured", "logoUseAuthorized": false }
+  ],
+
+  "thirdPartyLanguage": {
+    "allowedVerbs": ["Compatible with", "Exports for", "Connects to when configured"],
+    "prohibitedVerbs": ["Powered by", "Official", "Endorsed by", "Partner of", "Certified by", "In partnership with", "Built with the support of"],
+    "nonAffiliationStatement": "Thesmos is a product of Holley Studio LLC. Claude and Anthropic are trademarks of Anthropic PBC; OpenAI, ChatGPT and Codex are trademarks of OpenAI, L.L.C.; Gemini is a trademark of Google LLC; Cursor is a trademark of Anysphere Inc.; GitHub and GitHub Copilot are trademarks of GitHub, Inc./Microsoft Corporation; other names are the trademarks of their respective owners. Holley Studio LLC is not affiliated with, endorsed by, or sponsored by any of these companies. References to third-party products describe interoperability only.",
+    "logoPolicy": "Do not use third-party logos unless existing usage has documented authorization or applicable brand-guideline support. No such authorization is recorded in this repository."
+  }
+}

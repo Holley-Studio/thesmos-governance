@@ -37,6 +37,6 @@ export function formatOracleVerdict(input: OracleInput): string {
   lines.push('');
   lines.push('  Next: thesmos review        — full findings');
   lines.push('        thesmos savings       — Credit Guardian report');
-  lines.push('        VS Code extension     — summon the council (Pantheon Chat)');
+  lines.push('        VS Code extension     — summon the council (Thesmos Chat)');
   return lines.join('\n');
 }

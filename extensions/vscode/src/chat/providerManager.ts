@@ -1,6 +1,6 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * ProviderManager — lets Pantheon Chat route at other LLM providers/CLIs.
+ * ProviderManager — lets Thesmos Chat route at other LLM providers/CLIs.
  *
  * Four tiers of support:
  *   1. Anthropic (default) — the user's own Claude Code login; no config.
@@ -148,7 +148,7 @@ export class ProviderManager {
   async pick(): Promise<boolean> {
     const picked = await vscode.window.showQuickPick(
       PROVIDER_PRESETS.map((p) => ({ label: p.label, description: p.detail, id: p.id })),
-      { title: 'Pantheon Chat — LLM Provider', placeHolder: 'Which power source feeds the gods?' },
+      { title: 'Thesmos Chat — LLM Provider', placeHolder: 'Which power source feeds the gods?' },
     );
     if (!picked) return false;
     const preset = PROVIDER_PRESETS.find((p) => p.id === picked.id)!;
@@ -182,7 +182,7 @@ export class ProviderManager {
       terminal.show();
       terminal.sendText('codex login');
       void vscode.window.showInformationMessage(
-        'Complete the Codex login in the terminal, then send a message in Pantheon Chat.',
+        'Complete the Codex login in the terminal, then send a message in Thesmos Chat.',
       );
     }
 
@@ -214,12 +214,12 @@ export class ProviderManager {
       }
     }
     if (linked.length === 0) {
-      void vscode.window.showInformationMessage('Pantheon Chat: no linked provider keys.');
+      void vscode.window.showInformationMessage('Thesmos Chat: no linked provider keys.');
       return;
     }
     const picked = await vscode.window.showQuickPick(linked, { title: 'Unlink provider API key' });
     if (!picked) return;
     await this.context.secrets.delete(secretKey(picked.id));
-    void vscode.window.showInformationMessage(`Pantheon Chat: unlinked ${picked.label}.`);
+    void vscode.window.showInformationMessage(`Thesmos Chat: unlinked ${picked.label}.`);
   }
 }

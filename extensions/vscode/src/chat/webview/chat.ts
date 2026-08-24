@@ -1,6 +1,6 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
- * Pantheon Chat webview script. Runs in the browser context of the webview.
+ * Thesmos Chat webview script. Runs in the browser context of the webview.
  *
  * Security note (AI_028): all model/tool text is HTML-escaped before the
  * markdown-lite transform, which only ever injects a fixed set of safe tags.

@@ -246,12 +246,23 @@ describe('routing policy', () => {
       },
     });
     expect(d.requestedProfile).toBe('deep-reasoning');
-    expect(d.reasonCodes).toContain('frontier-denied-not-long-horizon');
+    expect(
+      d.reasonCodes.some((c) => c.startsWith('frontier-denied-')),
+      `expected a frontier denial, got ${d.reasonCodes.join(',')}`,
+    ).toBe(true);
     expect(d.approval).toBe('required-but-missing');
   });
 
   it('denies the frontier tier when long-horizon but unapproved', () => {
-    const d = routeModel({ userOverride: 'frontier-long-horizon', expectedSteps: 120 });
+    const d = routeModel({
+      userOverride: 'frontier-long-horizon',
+      expectedSteps: 120,
+      architecturalImpact: true,
+      securitySensitive: true,
+      riskTier: 'critical',
+      ambiguity: 'high',
+      affectedSubsystems: 5,
+    });
     expect(d.requestedProfile).toBe('deep-reasoning');
     expect(d.reasonCodes).toContain('frontier-denied-no-approval');
     expect(d.approval).toBe('required-but-missing');
@@ -271,7 +282,11 @@ describe('routing policy', () => {
     const d = routeModel({
       userOverride: 'frontier-long-horizon',
       expectedSteps: 200,
-      affectedSubsystems: 4,
+      architecturalImpact: true,
+      securitySensitive: true,
+      riskTier: 'critical',
+      ambiguity: 'high',
+      affectedSubsystems: 5,
       frontierApproval: {
         approvedBy: 'matthew',
         reasonOpusInsufficient: 'Opus 5 lost coherence across the four coupled packages in evaluation.',

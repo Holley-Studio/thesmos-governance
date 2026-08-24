@@ -24,6 +24,11 @@ skills:
   - repo-health-audit
   - staged-change-review
 enabled: true
+agent_kind: specialist
+availability: pro
+marketed: true
+routable: true
+exportable: true
 governance:
   rules:
     - SEC_013

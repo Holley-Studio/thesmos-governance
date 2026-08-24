@@ -40,7 +40,7 @@ npx thesmos pantheon:invoke hera-operations --prompt "your task here"
 ## Works With
 
 - **Zeus** (`zeus-executive-agent`) — [view agent](zeus-executive-agent.md)
-- **Nike** (`nike-leadgen-agent`) — [view agent](nike-leadgen-agent.md)
+- **Lead Generation** (`lead-generation-agent`) — [view agent](lead-generation-agent.md)
 - **Mnemosyne** (`mnemosyne-knowledge-agent`) — [view agent](mnemosyne-knowledge-agent.md)
 
 ## Governance

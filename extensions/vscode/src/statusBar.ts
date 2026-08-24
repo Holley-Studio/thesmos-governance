@@ -7,10 +7,10 @@
  *   1. PRIMARY ITEM (left, priority 100) — adaptive Thesmos/Pantheon launcher.
  *      Shows governance health when idle; working state while the gods labour;
  *      approvals/blockers when action is needed; live routing chain while agents run.
- *      Doubles as the Pantheon Chat launcher.
+ *      Doubles as the Thesmos Chat launcher.
  *
  *   2. USAGE ITEM (left, priority 99) — subscription plan usage from the live
- *      session stream. Shown only when the Pantheon Chat process has returned
+ *      session stream. Shown only when the Thesmos Chat process has returned
  *      at least one rate_limit_event. Hidden otherwise (not unavailability noise).
  *
  * Everything that was previously separate items (tokenItem, pantheonItem,
@@ -64,7 +64,7 @@ export class StatusBarManager implements vscode.Disposable {
       100,
     );
     this.item.command = 'thesmos.pantheon.chat.openInTab';
-    this.item.tooltip = 'Thesmos Governance — open Pantheon Chat';
+    this.item.tooltip = 'Thesmos Governance — open Thesmos Chat';
     this.showInactive();
     this.item.show();
 
@@ -138,7 +138,7 @@ export class StatusBarManager implements vscode.Disposable {
       `Grade: **${grade}**   Score: **${score}/100**\n\n` +
       `${issueText}${baselineLine}\n\n` +
       this.tooltipExtras() +
-      `_Click to open Pantheon Chat_`,
+      `_Click to open Thesmos Chat_`,
     );
     this.item.tooltip = tip;
     this.item.command = 'thesmos.pantheon.chat.openInTab';
@@ -192,7 +192,7 @@ export class StatusBarManager implements vscode.Disposable {
 
   showInactive(): void {
     this.item.text = '$(sparkle) Pantheon';
-    this.item.tooltip = this.buildTooltip('Thesmos Governance — open Pantheon Chat');
+    this.item.tooltip = this.buildTooltip('Thesmos Governance — open Thesmos Chat');
     this.item.command = 'thesmos.pantheon.chat.openInTab';
     this.item.backgroundColor = undefined;
     this.snapshotIdle();
@@ -343,7 +343,7 @@ export class StatusBarManager implements vscode.Disposable {
   }
 
   private currentMainDescription(): string {
-    const base = '**$(sparkle) Thesmos Governance**\n\nOpen Pantheon Chat';
+    const base = '**$(sparkle) Thesmos Governance**\n\nOpen Thesmos Chat';
     return base;
   }
 

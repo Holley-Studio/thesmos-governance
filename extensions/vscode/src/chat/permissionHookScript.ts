@@ -2,7 +2,7 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Standalone PreToolUse hook, invoked by the `claude` CLI subprocess that
- * Pantheon Chat spawns. Reads the proposed tool call off stdin, asks the
+ * Thesmos Chat spawns. Reads the proposed tool call off stdin, asks the
  * extension host (via a local socket) for a human decision, and prints the
  * hook's JSON verdict to stdout. Every failure path denies — the safe
  * direction when we can't reach the UI to ask.
@@ -41,7 +41,7 @@ async function readStdin(): Promise<string> {
 
 async function main(): Promise<void> {
   const socketPath = process.env.THESMOS_PERM_SOCKET;
-  if (!socketPath) emitDecision('deny', 'Pantheon Chat permission socket not configured.');
+  if (!socketPath) emitDecision('deny', 'Thesmos Chat permission socket not configured.');
 
   let input: HookInput;
   try {
@@ -81,14 +81,14 @@ async function main(): Promise<void> {
       socket.on('error', reject);
       socket.setTimeout(175_000, () => {
         socket.destroy();
-        reject(new Error('Pantheon Chat did not respond in time.'));
+        reject(new Error('Thesmos Chat did not respond in time.'));
       });
     });
 
     if (decision.decision === 'allow') emitDecision('allow', decision.reason);
-    emitDecision('deny', decision.reason ?? 'Denied in Pantheon Chat.');
+    emitDecision('deny', decision.reason ?? 'Denied in Thesmos Chat.');
   } catch (err) {
-    emitDecision('deny', `Could not reach Pantheon Chat: ${err instanceof Error ? err.message : String(err)}`);
+    emitDecision('deny', `Could not reach Thesmos Chat: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 

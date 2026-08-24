@@ -1,6 +1,8 @@
 # The Thesmos Pantheon
 
-**21 governed AI business agents. Every function. Every platform.**
+**Governed AI business agents. Every function. Every platform.**
+
+> Agent counts are computed from the catalog — see `thesmos catalog:list`. This document does not hard-code a total.
 
 Named after Greek gods. Built on Thesmos governance. Downloadable for Claude, ChatGPT, Gemini, Cursor, and GitHub Copilot — with no install required.
 
@@ -13,7 +15,7 @@ Named after Greek gods. Built on Thesmos governance. Downloadable for Claude, Ch
 | [`zeus-executive-agent`](exports/claude-code/zeus-executive-agent.md) | Zeus | Executive orchestration |
 | [`athena-strategy-agent`](exports/claude-code/athena-strategy-agent.md) | Athena | Business strategy & GTM |
 | [`hermes-marketing-agent`](exports/claude-code/hermes-marketing-agent.md) | Hermes | Marketing strategy |
-| [`nike-leadgen-agent`](exports/claude-code/nike-leadgen-agent.md) | Nike | Lead generation & pipeline |
+| [`lead-generation-agent`](exports/claude-code/lead-generation-agent.md) | Lead Generation | Lead generation & pipeline |
 | [`ares-sales-agent`](exports/claude-code/ares-sales-agent.md) | Ares | Sales & closing |
 | [`apollo-content-agent`](exports/claude-code/apollo-content-agent.md) | Apollo | Content & copywriting |
 | [`aphrodite-creative-agent`](exports/claude-code/aphrodite-creative-agent.md) | Aphrodite | Creative direction & brand |
@@ -36,7 +38,7 @@ Named after Greek gods. Built on Thesmos governance. Downloadable for Claude, Ch
 
 ## Quick Start
 
-### Install all 21 agents (developers)
+### Install all 68 Thesmos Agents (developers)
 
 ```bash
 npm install -g thesmos-governance
@@ -94,7 +96,7 @@ Zeus routes to Pantheon specialists and may invoke external project, user, or pl
 - Single source of truth → 7 platform exports from one file
 - Zeus orchestration routes complex multi-domain tasks automatically
 - Versioned and upgradeable via `thesmos pantheon:upgrade`
-- Every output can be governance-certified via `thesmos certificate:generate`
+- Every output can be governance-verified by Thesmos via `thesmos certificate:generate`
 
 ---
 
@@ -144,7 +146,7 @@ thesmos pantheon:memory show --agent hermes
 ## Platform Commands
 
 ```bash
-thesmos pantheon:list                          # Show all 21 agents
+thesmos pantheon:list                          # Show all 68 Thesmos Agents
 thesmos pantheon:status                        # Show which agents are installed
 thesmos pantheon:export --target=all           # Generate exports for all 7 platforms
 thesmos pantheon:export --target=claude-code   # Generate .claude/agents/ files only

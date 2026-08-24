@@ -57,7 +57,7 @@
       "mcp",
       "--stdio"
     ],
-    "description": "Thesmos Governance MCP Server — repo governance tools for Claude, Cursor, Windsurf, and Codex"
+    "description": "Thesmos Governance MCP Server \u2014 repo governance tools for Claude, Cursor, Windsurf, and Codex"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -185,7 +185,8 @@
     "gumroad:sync": "tsx scripts/gumroad-sync.ts",
     "gumroad:publish": "npm run agents:pack && npm run gumroad:sync",
     "agents:install:local": "tsx scripts/install-agents-local.ts",
-    "agents:starters": "tsx scripts/extract-starters.ts"
+    "agents:starters": "tsx scripts/extract-starters.ts",
+    "thesmos:brand:lint": "tsx bin/cli.ts brand:lint"
   },
   "optionalDependencies": {
     "lightningcss-linux-x64-gnu": "1.33.0",

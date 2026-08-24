@@ -93,7 +93,7 @@ export class PermissionBridge {
     const timer = setTimeout(() => {
       this.respond(req.requestId, {
         decision: 'deny',
-        reason: 'No response in Pantheon Chat — denied automatically.',
+        reason: 'No response in Thesmos Chat — denied automatically.',
       });
     }, REQUEST_TIMEOUT_MS);
     this.pending.set(req.requestId, { socket, timer });
@@ -115,7 +115,7 @@ export class PermissionBridge {
 
   dispose(): void {
     for (const [requestId] of this.pending) {
-      this.respond(requestId, { decision: 'deny', reason: 'Pantheon Chat session ended.' });
+      this.respond(requestId, { decision: 'deny', reason: 'Thesmos Chat session ended.' });
     }
     this.server?.close();
     this.server = undefined;

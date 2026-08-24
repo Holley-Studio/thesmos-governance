@@ -39,7 +39,7 @@ npx thesmos pantheon:invoke calliope-email --prompt "your task here"
 
 - **Hermes** (`hermes-marketing-agent`) — [view agent](pantheon/hermes-marketing-agent.md)
 - **Apollo** (`apollo-content-agent`) — [view agent](pantheon/apollo-content-agent.md)
-- **Nike** (`nike-leadgen-agent`) — [view agent](pantheon/nike-leadgen-agent.md)
+- **Lead Generation** (`lead-generation-agent`) — [view agent](pantheon/lead-generation-agent.md)
 
 ## Governance
 

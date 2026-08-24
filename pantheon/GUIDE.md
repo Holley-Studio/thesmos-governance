@@ -1,6 +1,6 @@
 # The Thesmos Pantheon — Complete Guide
 
-**21 governed AI business agents. Every platform. Zero install required.**
+**68 Thesmos Agents. Every platform. Zero install required.**
 
 ---
 
@@ -17,14 +17,14 @@ Unlike generic AI prompts, Pantheon agents are:
 
 ---
 
-## The Team — 21 Agents at a Glance
+## The Team — 68 Thesmos Agents at a Glance
 
 | Agent | God | Role | Methodology |
 |---|---|---|---|
 | `zeus-executive-agent` | **Zeus** | Executive orchestration | RACI + Eisenhower Matrix |
 | `athena-strategy-agent` | **Athena** | Business strategy & GTM | Porter's Five Forces + OKR |
 | `hermes-marketing-agent` | **Hermes** | Marketing strategy | Jobs-to-be-Done + Ehrenberg-Bass |
-| `nike-leadgen-agent` | **Nike** | Lead generation & pipeline | MEDDPICC + ICP Scoring |
+| `lead-generation-agent` | **Lead Generation** | Lead generation & pipeline | MEDDPICC + ICP Scoring |
 | `ares-sales-agent` | **Ares** | Sales & closing | Challenger Sale + SPIN Selling |
 | `apollo-content-agent` | **Apollo** | Content & copywriting | AIDA + StoryBrand |
 | `aphrodite-creative-agent` | **Aphrodite** | Creative direction & brand | Brand Archetypes + Emotional Design |
@@ -597,7 +597,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to propose a new Greek-god-named 
 ## FAQ
 
 **Q: Do I need to pay for Thesmos to use the agents?**
-A: The agent `.md` files are free and open source. Download them directly from the GitHub repo — no npm install required.
+A: The agent `.md` files are free and source-available. Download them directly from the GitHub repo — no npm install required.
 
 **Q: Can I use multiple agents in the same session?**
 A: Yes. In Claude Code, you can switch agents per message or run `thesmos pantheon:orchestrate` to have Zeus coordinate multiple agents on a single task.

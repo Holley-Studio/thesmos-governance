@@ -1,7 +1,7 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 /**
  * Model Registry — the single provider-neutral source of truth for every model
- * Thesmos, Pantheon Chat, Council execution, and the exporters may resolve.
+ * Thesmos, Thesmos Chat, Council execution, and the exporters may resolve.
  *
  * Before this module existed the same facts were restated in at least six
  * places: `advise.ts` constants, the `token-budget.ts` price table, the
