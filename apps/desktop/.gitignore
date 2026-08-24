@@ -1,0 +1,16 @@
+# Build outputs
+dist/
+src-tauri/target/
+src-tauri/gen/
+
+# Sidecar build products — a 93MB sealed Node binary is a build artifact, not
+# source. Regenerate with `npm run sidecar:build`.
+.sidecar-build/
+src-tauri/resources/thesmos-runtime
+src-tauri/resources/thesmos-runtime.exe
+src-tauri/resources/runtime.cjs
+
+# Mobile icon sets — this is a desktop app. Regenerate with `tauri icon` if
+# mobile targets are ever added.
+src-tauri/icons/android/
+src-tauri/icons/ios/
