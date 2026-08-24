@@ -311,6 +311,13 @@ export class ClaudeSession {
         break;
       }
 
+      case 'rate_limit_event': {
+        // Strip identifying fields before emitting; the provider normalizes the rest.
+        const { uuid: _u, session_id: _s, ...stripped } = event;
+        this.onEvent({ kind: 'rateLimitInfo', windowPayload: stripped });
+        break;
+      }
+
       default:
         break; // Unknown event type — format is internal, skip quietly.
     }

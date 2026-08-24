@@ -2,6 +2,29 @@
 
 All notable changes to the Thesmos Governance VS Code extension are documented here.
 
+## [5.2.1] - 2026-07-30
+
+### Fixed
+
+- **Duplicate direct-response cards** — a `⚡ ZEUS · direct response` reply could render twice: a partially streamed card, then the full body appended again beneath it. Two defects were closed:
+  - The old `deltaDone → removeLive → append` stream protocol was replaced by a single-finalization protocol (`finalizeStream` + `StreamFinalizer`): one stream settles exactly once, with an explicit keep/replace/discard disposition, so a routed replacement can never degrade into a second appended card.
+  - **Turn-level idempotency** — one logical turn can emit more than one text stream (multiple text blocks in one assistant message, a tool card interleaved mid-response, a provider retry). A new turn-identity layer (`TurnCardTracker` + per-turn history slot `turnAssistantHistoryIdx`) guarantees one history record and one visible response card per turn; a later authoritative final supersedes the earlier partial card instead of stacking beneath it.
+- The Zeus routing header is stripped exactly once from direct responses; council contributions keep their own cards while Zeus's synthesis appears once.
+- Extension update command now targets the correct canonical extension ID (was pointing at a nonexistent `holley-studios.…` ID).
+
+### Added
+
+- **Copy Pantheon Diagnostics** (`thesmos.pantheon.copyDiagnostics`) — copies a redacted runtime payload (extension ID, semantic version, build SHA, protocol versions, provider, requested/resolved model, webview count, history length) for bug reports. No absolute paths, secrets, prompts, session IDs, or ledger contents.
+- **Protocol fingerprinting** — host and webview bundles both embed `__PROTOCOL_VERSION__` (currently `2`) and a build SHA at compile time. On webview startup a handshake compares versions; a stale bundle produces a visible, actionable error instead of silent misbehavior. The build SHA gains a `-dirty` suffix when built from a tree whose source differs from HEAD, so a bundle can never claim a commit it doesn't match.
+- **Migrate Credit Guardian Ledger to Private Storage** (`thesmos.pantheon.migrateSavings`) — moves the legacy `.thesmos/savings.jsonl` runtime ledger into VS Code's private workspace storage, preview + confirmation gated, no silent deletion.
+
+### Changed
+
+- **Savings/usage ledger location** — new Credit Guardian writes go to VS Code private workspace storage (`ExtensionContext.storageUri`), not the repository. Chat turns no longer dirty your git working tree; the legacy in-repo file remains readable until you migrate it.
+- **Four-view premium panel** (Pantheon Chat, Findings, Library, Activity — consolidated from five) and **two status-bar items** (consolidated from five).
+- **Truthful subscription usage** — five-hour and weekly usage states render only what the provider actually supplies. Percentages are shown as unavailable when the stream does not include them (it does not include `used_percentage`); stale data is visibly marked stale instead of masquerading as current.
+- Canonical extension identity is **`holleystudio.thesmos-governance-vscode`** (publisher `holleystudio`). References to the never-published `holley-studios.…` form were corrected across README, docs, and workspace recommendations.
+
 ## [1.8.0] - 2026-07-02
 
 ### Added
@@ -72,7 +95,7 @@ All notable changes to the Thesmos Governance VS Code extension are documented h
 
 ### Changed
 - Renamed from `thesmos-governance` to `thesmos-governance` (package and publisher namespace)
-- Extension ID is now `holley-studios.thesmos-governance-vscode`
+- Extension ID is now `holleystudio.thesmos-governance-vscode` *(this entry originally stated `holley-studios.…`, an identity that was never published — corrected in 5.2.1)*
 - Activity Bar icon updated to Θ (Thesmos brand)
 
 ## [1.2.0] - 2026-06-18
