@@ -21,7 +21,8 @@ export type RuntimeMethod =
   | 'providers.list'
   | 'memory.search'
   | 'memory.stats'
-  | 'project.open';
+  | 'project.open'
+  | 'pantheon.list';
 
 export interface RuntimeHealth {
   status: 'ready' | 'degraded';
@@ -95,6 +96,16 @@ async function call<T>(method: RuntimeMethod, params?: Record<string, unknown>):
   return raw.result as T;
 }
 
+export interface PantheonAgentSummary {
+  id: string;
+  god: string;
+  name: string;
+  role: string;
+  emoji: string;
+  tags: string[];
+  version: string;
+}
+
 export const runtime = {
   health: () => call<RuntimeHealth>('runtime.health'),
   providers: () => call<ProviderSummary[]>('providers.list'),
@@ -104,6 +115,20 @@ export const runtime = {
       query,
       limit,
     }),
+  pantheon: () =>
+    call<{
+      agents: PantheonAgentSummary[];
+      routableCount: number;
+      holdbackFilterApplied: boolean;
+      populations?: {
+        availableAgentCount: number;
+        heldBackAgentCount: number;
+        internalReviewerCount: number;
+        catalogAgentCount: number;
+        freeAgentCount: number;
+        proAgentCount: number;
+      };
+    }>('pantheon.list'),
   openProject: (root: string) =>
     call<{ projectRoot: string; memory: RuntimeHealth['memory'] }>('project.open', { root }),
 };

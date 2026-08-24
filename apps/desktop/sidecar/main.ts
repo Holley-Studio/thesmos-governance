@@ -16,6 +16,7 @@ import { OllamaProvider } from '../../../thesmos/runtime/providers/ollama/provid
 import { ProviderRegistry } from '../../../thesmos/runtime/registry.js';
 import { MnemosyneService } from '../../../thesmos/memory/service.js';
 import { MemoryStore } from '../../../thesmos/memory/store.js';
+import { listRoutableAgents } from '../../../thesmos/bin/commands/pantheon.js';
 import type {
   RuntimeHealth,
   RuntimeMethod,
@@ -136,6 +137,39 @@ const handlers: Record<RuntimeMethod, (params: Record<string, unknown>) => Promi
       superseded: records.filter((r) => r.status === 'superseded').length,
       byType,
       vectors: store.vectors().length,
+    };
+  },
+
+  /**
+   * The canonical routable agent population.
+   *
+   * Read from the catalog at call time — the desktop keeps no agent list of its
+   * own. A hardcoded copy in the UI would drift the moment an agent is added or
+   * held back, which is precisely how agents previously went undiscoverable.
+   *
+   * Held-back agents are already excluded by `listRoutableAgents`; the desktop
+   * never sees them.
+   */
+  'pantheon.list': async () => {
+    const { agents, holdbackFilterApplied, populations } = listRoutableAgents();
+    return {
+      agents: agents.map((a) => ({
+        id: a.id,
+        god: a.god,
+        name: a.name,
+        role: a.role,
+        emoji: a.emoji,
+        tags: a.tags,
+        version: a.version,
+      })),
+      // Reported, never hardcoded, and never asserted as a marketing figure.
+      routableCount: agents.length,
+      // False means the holdback ledger was unreadable, so this list may include
+      // an agent that should be unavailable. Surfaced rather than swallowed.
+      holdbackFilterApplied,
+      // Canonical populations owned by core catalog services — the desktop
+      // never derives or hardcodes these.
+      populations,
     };
   },
 

@@ -28,7 +28,8 @@ export type RuntimeMethod =
   | 'providers.list'
   | 'memory.search'
   | 'memory.stats'
-  | 'project.open';
+  | 'project.open'
+  | 'pantheon.list';
 
 export interface RuntimeRequest {
   id: string;
