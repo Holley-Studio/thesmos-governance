@@ -3,6 +3,19 @@ import type { ThesmosRule, DetectInput, Finding } from '../types';
 import { classifySeverity } from '../severity';
 import { SOURCE_EXT, TS_EXT, isTestPath, isCommentLine, matchLines } from './helpers';
 
+/**
+ * A module-level `let`/`var` initialised empty — the shape that gets filled in
+ * per request and therefore leaks between them. The optional `: Type` group is
+ * load-bearing: without it the rule could not match its own documented
+ * `badExample`, `let currentUser: User | null = null`.
+ *
+ * Deliberately narrow. Only an *empty* initialiser qualifies; a declaration
+ * assigned a real value at module load is ordinary module state, not a
+ * per-request slot.
+ */
+const MODULE_LEVEL_EMPTY_DECL =
+  /^(?:let|var)\s+\w+\s*(?::[^=]+)?=\s*(?:null|undefined|''|""|``|0|false|\[\]|\{\})\s*(?:;|\/\/|\/\*|$)/;
+
 function isStateFile(content: string): boolean {
   return /zustand|createStore|useStore|redux|createSlice|useSelector|useDispatch|createContext|useContext/.test(content);
 }
@@ -431,12 +444,14 @@ export const STATE_RULES: ThesmosRule[] = [
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
         if (!SOURCE_EXT.test(path)) continue;
-        if (content.includes("'use client'") || content.includes('"use client"')) return findings;
-        if (!path.includes('app/') && !path.includes('server') && !path.includes('actions')) return findings;
+        // `continue`, never `return` — a client component or an out-of-scope
+        // file skips itself, it does not abort the rest of the diff.
+        if (content.includes("'use client'") || content.includes('"use client"')) continue;
+        if (!path.includes('app/') && !path.includes('server') && !path.includes('actions')) continue;
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]!;
-          if (/^(?:let|var)\s+\w+\s*(?::\s*\w+[^=]*)?\s*=/.test(line) && !/^(?:let|var)\s+\w+\s*=\s*(?:null|undefined|''|""|0|false|\[\]|\{\})/.test(line) === false) {
+          if (MODULE_LEVEL_EMPTY_DECL.test(line)) {
             if (/(?:user|session|auth|token|request)/i.test(line)) {
               findings.push({ severity, category: 'global_state_server_component', file: path, line: i + 1, message: 'Mutable module-level variable in server code — shared across all HTTP requests.', suggestion: "Use Next.js request-scoped stores: cookies(), headers(), or AsyncLocalStorage." });
             }

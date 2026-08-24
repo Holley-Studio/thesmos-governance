@@ -147,6 +147,14 @@ export type RuntimeEvent =
     }
   | { kind: 'compacting'; trigger: string; preTokens?: number }
   | { kind: 'usage'; contextTokens: number }
+  /**
+   * Normalized subscription-plan window data from the provider's
+   * `rate_limit_event`. Identifying fields (uuid, session_id) and billing-detail
+   * strings are stripped before the event reaches a consumer — they are never
+   * stored or propagated. The `windowPayload` object is safe to pass directly to
+   * `SubscriptionUsageProvider.ingestStreamEvent()`.
+   */
+  | { kind: 'rateLimitInfo'; windowPayload: Record<string, unknown> }
   | { kind: 'stderr'; text: string }
   | { kind: 'exit'; code: number | null };
 
