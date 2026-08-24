@@ -1,0 +1,296 @@
+name: Release VS Code Extension
+
+# Extension-only release pipeline, decoupled from the npm core release.
+#
+# Trigger with an extension-specific tag (vscode-v5.2.1) or workflow_dispatch
+# with an explicit version. The generic v*.*.* npm release no longer publishes
+# the extension (see release.yml) — that path force-bumped the extension version
+# from the npm tag, rebuilt separately per registry, and used continue-on-error
+# on both publishes, so a failed Marketplace publish looked like a successful
+# release.
+#
+# Contract of this workflow:
+#   - ONE VSIX is built, inspected and checksummed; that exact artifact is
+#     published to both registries and attached to the GitHub Release. Never
+#     rebuilt per registry.
+#   - extensions/vscode/package.json must already equal the requested version;
+#     the workflow verifies, it never mutates.
+#   - Required publishes have no silent failure path. Both publish steps always
+#     run (so a partial release is reported explicitly), then a hard gate fails
+#     the job if either failed. The GitHub Release is only created after both
+#     registries verified the version live.
+#
+# Injection hygiene: every expression that reaches a `run:` block goes through
+# `env:` (never inline interpolation), per GitHub's workflow-injection guidance.
+
+on:
+  push:
+    tags:
+      - "vscode-v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (must equal extensions/vscode/package.json, e.g. 5.2.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXTENSION_ID: holleystudio.thesmos-governance-vscode
+
+jobs:
+  verify-and-package:
+    name: Verify, build once, package once
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      vsix: ${{ steps.package.outputs.vsix }}
+      sha256: ${{ steps.package.outputs.sha256 }}
+
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Resolve requested version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION="${GITHUB_REF_NAME#vscode-v}"
+          fi
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::requested version is not valid semver (X.Y.Z)"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Confirm package.json matches the requested version
+        working-directory: extensions/vscode
+        env:
+          REQUESTED: ${{ steps.version.outputs.version }}
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          PKG_PUBLISHER=$(node -p "require('./package.json').publisher")
+          PKG_NAME=$(node -p "require('./package.json').name")
+          echo "package.json: $PKG_PUBLISHER.$PKG_NAME@$PKG_VERSION"
+          if [ "$PKG_VERSION" != "$REQUESTED" ]; then
+            echo "::error::package.json version ($PKG_VERSION) != requested release ($REQUESTED). Bump it in a reviewed PR first — this workflow never mutates versions."
+            exit 1
+          fi
+          if [ "$PKG_PUBLISHER.$PKG_NAME" != "$EXTENSION_ID" ]; then
+            echo "::error::package identity $PKG_PUBLISHER.$PKG_NAME != canonical $EXTENSION_ID"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (extension)
+        working-directory: extensions/vscode
+        run: npm run typecheck
+
+      - name: Test (extension)
+        working-directory: extensions/vscode
+        run: npm test
+
+      - name: Build (extension, clean tree)
+        working-directory: extensions/vscode
+        run: npm run build
+
+      - name: Verify build fingerprint
+        working-directory: extensions/vscode
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "expecting embedded build SHA: $SHORT_SHA"
+          if ! grep -q "\"$SHORT_SHA\"" dist/extension.js; then
+            echo "::error::dist/extension.js does not embed build SHA $SHORT_SHA"
+            exit 1
+          fi
+          if grep -q '\-dirty"' dist/extension.js; then
+            echo "::error::build SHA is -dirty inside CI — the checkout should be clean"
+            exit 1
+          fi
+          # Neither bundle may contain the retired stream protocol.
+          if grep -q 'deltaDone' dist/extension.js dist/webview/chat.js; then
+            echo "::error::retired deltaDone protocol found in built bundles"
+            exit 1
+          fi
+
+      - name: Package one VSIX
+        id: package
+        working-directory: extensions/vscode
+        run: |
+          npx vsce package --no-dependencies
+          COUNT=$(ls -1 *.vsix | wc -l | tr -d ' ')
+          if [ "$COUNT" != "1" ]; then
+            echo "::error::expected exactly one VSIX, found $COUNT"
+            exit 1
+          fi
+          VSIX=$(ls *.vsix)
+          SHA256=$(sha256sum "$VSIX" | awk '{print $1}')
+          echo "vsix=$VSIX" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "packaged $VSIX ($SHA256)"
+
+      - name: Inspect VSIX contents (privacy / hygiene gate)
+        working-directory: extensions/vscode
+        env:
+          VSIX: ${{ steps.package.outputs.vsix }}
+        run: |
+          unzip -l "$VSIX"
+          LISTING=$(unzip -l "$VSIX" | awk '{print $4}')
+          fail() { echo "::error::VSIX inspection failed: $1"; exit 1; }
+          echo "$LISTING" | grep -iE '\.thesmos/' && fail "governance/runtime .thesmos content shipped" || true
+          echo "$LISTING" | grep -iE 'savings.*\.jsonl' && fail "savings ledger shipped" || true
+          echo "$LISTING" | grep -E '\.map$' && fail "source maps are intentionally excluded but shipped" || true
+          echo "$LISTING" | grep -iE '\.env|credential|secret|\.pem$|\.key$' && fail "credential-shaped file shipped" || true
+          echo "$LISTING" | grep -E '\.(test|spec)\.(ts|js)$|__tests__/' && fail "test files shipped" || true
+          echo "$LISTING" | grep -iE '\.history/|\.vscode/' && fail "local editor state shipped" || true
+          unzip -p "$VSIX" extension/dist/extension.js | grep -qE '/Users/[a-zA-Z]|/home/[a-z]' \
+            && fail "absolute machine path embedded in bundle" || true
+          echo "VSIX inspection passed"
+
+      - name: Upload the single release artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vsix-release
+          path: extensions/vscode/${{ steps.package.outputs.vsix }}
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish the exact verified VSIX
+    needs: verify-and-package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (for release notes only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.x
+
+      - name: Download the exact verified VSIX
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: vsix-release
+
+      - name: Verify artifact checksum before publishing
+        env:
+          VSIX: ${{ needs.verify-and-package.outputs.vsix }}
+          EXPECTED: ${{ needs.verify-and-package.outputs.sha256 }}
+        run: |
+          ACTUAL=$(sha256sum "$VSIX" | awk '{print $1}')
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::artifact checksum drifted between jobs ($ACTUAL != $EXPECTED)"
+            exit 1
+          fi
+
+      - name: Require publishing credentials up front
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          MISSING=""
+          [ -z "$VSCE_PAT" ] && MISSING="$MISSING VSCE_PAT"
+          [ -z "$OVSX_PAT" ] && MISSING="$MISSING OVSX_PAT"
+          if [ -n "$MISSING" ]; then
+            echo "::error::missing repository secret(s):$MISSING — add under Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+
+      # Both publish steps always run so a partial release is reported
+      # accurately; the mandatory gate below fails the job if either failed.
+      # continue-on-error only defers the failure to the gate — it cannot mask
+      # it, because the gate exits non-zero on any non-success outcome.
+      - name: Publish to Visual Studio Marketplace
+        id: vsce
+        continue-on-error: true
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          VSIX: ${{ needs.verify-and-package.outputs.vsix }}
+        run: npx vsce publish --packagePath "$VSIX"
+
+      - name: Publish to Open VSX
+        id: ovsx
+        continue-on-error: true
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+          VSIX: ${{ needs.verify-and-package.outputs.vsix }}
+        run: npx ovsx publish "$VSIX"
+
+      - name: Required-publication gate (fails on any registry failure)
+        env:
+          VSCE_OUTCOME: ${{ steps.vsce.outcome }}
+          OVSX_OUTCOME: ${{ steps.ovsx.outcome }}
+        run: |
+          echo "Marketplace: $VSCE_OUTCOME · Open VSX: $OVSX_OUTCOME"
+          if [ "$VSCE_OUTCOME" != "success" ] && [ "$OVSX_OUTCOME" != "success" ]; then
+            echo "::error::RELEASE FAILED — neither registry accepted the publish"
+            exit 1
+          fi
+          if [ "$VSCE_OUTCOME" != "success" ]; then
+            echo "::error::PARTIAL RELEASE — Open VSX succeeded but Visual Studio Marketplace FAILED. Do not announce this version as live."
+            exit 1
+          fi
+          if [ "$OVSX_OUTCOME" != "success" ]; then
+            echo "::error::PARTIAL RELEASE — Visual Studio Marketplace succeeded but Open VSX FAILED. Do not announce this version as live."
+            exit 1
+          fi
+
+      - name: Verify version live on both registries (bounded retries)
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          VERSION: ${{ needs.verify-and-package.outputs.version }}
+        run: |
+          MARKET_OK=0; OVSX_OK=0
+          for i in $(seq 1 10); do
+            if [ "$MARKET_OK" = 0 ]; then
+              LIVE=$(npx vsce show "$EXTENSION_ID" --json 2>/dev/null | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).versions[0].version)}catch{console.log('')}})")
+              [ "$LIVE" = "$VERSION" ] && MARKET_OK=1 && echo "Marketplace live: $VERSION"
+            fi
+            if [ "$OVSX_OK" = 0 ]; then
+              LIVE=$(curl -sf "https://open-vsx.org/api/holleystudio/thesmos-governance-vscode/$VERSION" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).version)}catch{console.log('')}})")
+              [ "$LIVE" = "$VERSION" ] && OVSX_OK=1 && echo "Open VSX live: $VERSION"
+            fi
+            [ "$MARKET_OK" = 1 ] && [ "$OVSX_OK" = 1 ] && break
+            echo "attempt $i/10 — waiting 30s for registry propagation…"
+            sleep 30
+          done
+          if [ "$MARKET_OK" != 1 ] || [ "$OVSX_OK" != 1 ]; then
+            echo "::error::registry verification failed (Marketplace ok=$MARKET_OK, Open VSX ok=$OVSX_OK) — the publish may not have propagated; do not announce as live"
+            exit 1
+          fi
+
+      - name: Create GitHub Release with the exact artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.verify-and-package.outputs.version }}
+          VSIX: ${{ needs.verify-and-package.outputs.vsix }}
+          SHA256: ${{ needs.verify-and-package.outputs.sha256 }}
+        run: |
+          TAG="vscode-v$VERSION"
+          echo "$SHA256  $VSIX" > "$VSIX.sha256"
+          NOTES=$(awk "/^## \[$VERSION\]/{flag=1;next}/^## \[/{flag=0}flag" extensions/vscode/CHANGELOG.md)
+          if [ -z "$NOTES" ]; then NOTES="Thesmos Governance VS Code extension $VERSION."; fi
+          gh release create "$TAG" \
+            --title "VS Code Extension $VERSION" \
+            --notes "$NOTES" \
+            "$VSIX" \
+            "$VSIX.sha256"

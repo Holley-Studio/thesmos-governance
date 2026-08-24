@@ -14,16 +14,28 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ClaudeSession, type SessionEvent, type PermissionMode } from './claudeSession.js';
+import { SubscriptionUsageProvider } from '../usage/subscriptionUsage.js';
+import type { SubscriptionUsageSnapshot } from '../usage/subscriptionUsage.js';
 import { CodexSession } from './codexSession.js';
 import { CheckpointManager } from './checkpointManager.js';
 import { GodMapper, type GodEntry } from './godMapper.js';
 import { PermissionBridge, type PermissionRequest } from './permissionBridge.js';
 import { ProviderManager } from './providerManager.js';
 import { listSessions, loadTranscript } from './sessionHistory.js';
-import { appendSavings, estimateTierSaving, monthSavingsUsd } from './savingsLedger.js';
+import { appendSavings, estimateTierSaving, monthSavingsUsd, privateLedgerPath } from './savingsLedger.js';
 import { runReview, ThesmosNotFoundError } from '../runner.js';
 import type { Finding } from '../types.js';
 import { runAdvise, shouldGate, budgetState, type DispatchAdvice } from './dispatchAdvisor.js';
+import { classifyAssistantText } from './assistantRouting.js';
+import type { StreamDisposition, StreamId } from './streamProtocol.js';
+
+/**
+ * Webview↔host protocol version. Bump when any message shape changes.
+ * Both bundles receive the same value via esbuild `define`; a mismatch
+ * means a stale webview (old VSIX) is attached to a newer host — the host
+ * shows an actionable error rather than silently misbehaving.
+ */
+const PROTOCOL_VERSION: number = typeof __PROTOCOL_VERSION__ !== 'undefined' ? __PROTOCOL_VERSION__ : 1;
 
 interface GodUiInfo extends GodEntry {}
 
@@ -73,9 +85,6 @@ const DIFF_PREVIEW_CHARS = 2000;
 const CONTEXT_WINDOW_TOKENS = 200_000;
 
 const AGENT_TOOL_NAMES = new Set(['Agent', 'Task']);
-const ZEUS_BANNER = /^⚡\s*ZEUS/u;
-/** Lean-tier routing line: "⚡ ZEUS · 👁 Argus — Security & Threat Modeling". */
-const ZEUS_LEAN_LINE = /^⚡\s*ZEUS\s*·\s*(.+)$/u;
 
 /**
  * Appended to the CLI's system prompt so headless Pantheon Chat sessions feel
@@ -208,6 +217,25 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private currentTodoId: string | undefined;
   private readonly promptQueue: Array<{ text: string; attachments: string[] }> = [];
   private turnRunning = false;
+  /**
+   * Identity of the assistant text stream currently rendering live, or
+   * undefined when nothing is streaming. Minted on the first delta of a run and
+   * cleared by exactly one terminal message — see `streamProtocol.ts`.
+   */
+  private currentStreamId: StreamId | undefined;
+  private streamSeq = 0;
+  /**
+   * Stable identity for the logical turn currently executing. Minted in
+   * `dispatchPrompt` and cleared in `turnDone` / `newSession`.
+   */
+  private currentTurnId: string | undefined;
+  private turnIdSeq = 0;
+  /**
+   * History index of the assistant-response slot for the current turn.
+   * Defined once `settleStream` has pushed an item; subsequent assistant
+   * finals for the same turn update in place rather than appending a second.
+   */
+  private turnAssistantHistoryIdx: number | undefined;
   /** Prompt held while its Dispatch Order card awaits approval. */
   private pendingDispatch:
     | { orderId: string; text: string; attachments: string[]; advice: DispatchAdvice }
@@ -228,6 +256,9 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   private contextTokens = 0;
   private readonly providers: ProviderManager;
   private modelId = '';
+  /** Collects subscription-plan usage from the live session stream. One instance
+   * survives process restarts — reset() on explicit new session only. */
+  private readonly usageProvider = new SubscriptionUsageProvider({ provider: 'claude' });
 
   // Credit Guardian — estimated savings vs flagship baseline (see savingsLedger.ts).
   private savedUsdSession = 0;
@@ -493,7 +524,22 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         orderId?: string;
       }) => {
         switch (msg.type) {
-          case 'ready':
+          case 'ready': {
+            // Handshake: verify the webview's protocol version matches ours.
+            // A mismatch means an old webview bundle is attached to a newer host
+            // (stale VSIX or cached bundle) — show a visible, actionable error
+            // rather than silently producing undefined behaviour.
+            const webviewVersion = (msg as { type: string; protocolVersion?: number }).protocolVersion;
+            if (webviewVersion !== undefined && webviewVersion !== PROTOCOL_VERSION) {
+              this.post(webview, {
+                type: 'item',
+                item: {
+                  kind: 'error',
+                  text: `⚠️ Pantheon Chat: protocol mismatch — webview v${webviewVersion} ≠ host v${PROTOCOL_VERSION}. ` +
+                    'Reload VS Code (Developer: Reload Window) to pick up the latest extension bundle.',
+                },
+              });
+            }
             this.post(webview, { type: 'history', items: this.history });
             this.broadcastProviderInfo();
             this.post(webview, {
@@ -505,6 +551,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
               totalCostUsd: this.totalCostUsd,
             });
             break;
+          }
           case 'send':
             if (typeof msg.text === 'string') {
               void this.sendPrompt(msg.text, Array.isArray(msg.attachments) ? msg.attachments : []);
@@ -604,7 +651,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     <div id="header">
       <span class="title">⚡ PANTHEON</span>
       <span class="session-meta" id="session-meta"></span>
-      <span id="savings" title="Credit Guardian — estimated savings vs flagship baseline. Ledger: .thesmos/savings.jsonl"></span>
+      <span id="savings" title="Credit Guardian — estimated savings vs flagship baseline. Run 'Thesmos: Migrate Credit Guardian Ledger to Private Storage' to move legacy data out of the repo."></span>
       <select id="model-select" title="Model for this session"></select>
       <button id="provider-btn" title="LLM provider — link Anthropic, GLM, Kimi, DeepSeek, or a custom proxy (GPT/Gemini)">⚡</button>
       <button id="chronicles" title="Chronicles — reopen a past session">📜</button>
@@ -618,6 +665,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       <span id="budget-ceiling"></span>
     </div>
     <div id="log"></div>
+    <div id="a11y-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
     <div id="empty">
       <div class="glyph">🏛️</div>
       <div class="headline">THE COUNCIL AWAITS</div>
@@ -762,6 +810,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.turnRunning = true;
     this.turnStartCostUsd = this.totalCostUsd;
     this.turnChangedFiles.clear();
+    this.currentTurnId = `t${++this.turnIdSeq}`;
+    this.turnAssistantHistoryIdx = undefined;
 
     const checkpointId = await this.checkpoints.snapshot(text.slice(0, 72));
     if (checkpointId === undefined && !this.checkpointsUnavailableNoted) {
@@ -1016,6 +1066,9 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
   stop(): void {
     if (this.pendingDispatch) this.resolveDispatch(this.pendingDispatch.orderId, 'dismissed');
     this.lastApprovedAdvice = undefined;
+    // Cancellation keeps whatever already streamed — the user saw it, and it is
+    // the truthful record of how far the turn got. It is settled exactly once.
+    this.closeStream({ kind: 'keep' });
     this.session?.stop();
     this.turnRunning = false;
     this.setActivity(null);
@@ -1148,6 +1201,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.session?.dispose();
     this.session = undefined;
     this.turnRunning = false;
+    this.currentStreamId = undefined; // the log is being replaced — no node survives
     this.promptQueue.length = 0;
     this.lastSessionId = picked.sessionId;
     this.totalCostUsd = 0;
@@ -1187,9 +1241,18 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     this.currentTodoId = undefined;
     this.permissionBridge?.dispose();
     this.permissionBridge = undefined;
+    this.usageProvider.reset();
+    this.currentStreamId = undefined; // the log is being cleared — no node survives
+    this.currentTurnId = undefined;
+    this.turnAssistantHistoryIdx = undefined;
     void this.context.workspaceState.update(STATE_KEY, undefined);
     this.broadcast({ type: 'reset' });
     this.broadcast({ type: 'status', running: false, permissionMode: this.permissionMode });
+  }
+
+  /** Current subscription-plan usage snapshot from the live session stream. */
+  get subscriptionUsage(): SubscriptionUsageSnapshot {
+    return this.usageProvider.snapshot(new Date());
   }
 
   // ── Stream event shaping ────────────────────────────────────────────────
@@ -1214,7 +1277,8 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       case 'textDelta':
         this.setActivity(null); // the streaming bubble itself shows progress
         this.setPhase('✍️ Writing…'); // strip stays lit even while the bubble streams
-        this.broadcast({ type: 'delta', text: event.text });
+        this.currentStreamId ??= `s${++this.streamSeq}`;
+        this.broadcast({ type: 'delta', streamId: this.currentStreamId, text: event.text });
         break;
 
       case 'thinkingDelta':
@@ -1232,31 +1296,21 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
         this.updateUsage(event.contextTokens);
         break;
 
-      case 'assistantText': {
-        this.broadcast({ type: 'deltaDone' });
-        const trimmed = event.text.trimStart();
-        const firstLine = trimmed.split('\n')[0]?.trim() ?? '';
-        const leanMatch = ZEUS_LEAN_LINE.exec(firstLine);
+      case 'rateLimitInfo':
+        this.usageProvider.ingestStreamEvent(event.windowPayload, new Date());
+        break;
 
-        if (leanMatch && trimmed.split('\n').length > 1) {
-          // Lean routing line — strip it and attribute the bubble to the god.
-          const body = trimmed.split('\n').slice(1).join('\n').trim();
-          const route = leanMatch[1].trim();
-          let god: { emoji: string; name: string; color: string } | undefined;
-          if (!/direct response/i.test(route)) {
-            const resolved = this.godMapper.resolve(route);
-            if (resolved.name !== 'Oracle') {
-              god = { emoji: resolved.emoji, name: resolved.name, color: resolved.color };
-            }
-          }
-          // The raw text (header included) already streamed — replace it.
-          this.broadcast({ type: 'removeLive' });
-          this.pushItem({ kind: 'assistant', text: body, god });
-        } else if (ZEUS_BANNER.test(trimmed)) {
-          this.pushItem({ kind: 'zeus', text: event.text });
-        } else {
-          this.pushItem({ kind: 'assistant', text: event.text }, /* alreadyStreamed */ true);
-        }
+      case 'assistantText': {
+        const { item, streamedTextIsFinal } = classifyAssistantText(event.text, (route) => {
+          const resolved = this.godMapper.resolve(route);
+          return resolved.name === 'Oracle'
+            ? undefined
+            : { emoji: resolved.emoji, name: resolved.name, color: resolved.color };
+        });
+        // One logical response → one history entry → one terminal message. The
+        // streamed node is kept when it already shows exactly this card, and
+        // atomically replaced when routing changed the content.
+        this.settleStream(item, streamedTextIsFinal ? { kind: 'keep' } : { kind: 'replace', item });
         break;
       }
 
@@ -1353,8 +1407,13 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       }
 
       case 'turnDone': {
-        this.broadcast({ type: 'deltaDone' });
+        // A turn can end with text still streaming — cancellation, or a stop
+        // mid-sentence. The partial text stands as written; it is never joined
+        // by a duplicate card.
+        this.closeStream({ kind: 'keep' });
         this.turnRunning = false;
+        this.currentTurnId = undefined;
+        this.turnAssistantHistoryIdx = undefined;
         if (event.costUsd !== undefined) {
           // Credit Guardian: cumulative-cost delta = this turn's cost. A turn
           // that genuinely ran on a cheaper tier records an estimated saving
@@ -1366,7 +1425,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
             this.savedUsdSession += saved;
             this.savingsCacheAt = undefined; // month figure changed — invalidate
             try {
-              appendSavings(this.workspaceRoot, {
+              appendSavings(privateLedgerPath(this.privateStorageRoot()), {
                 ts: new Date().toISOString(),
                 type: 'model_tier',
                 detail: `chat turn on ${modelName}`,
@@ -1399,7 +1458,7 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
                 `New prompts are blocked until you raise tokenBudget.sessionMaxCostUSD or start a new session.`,
             });
             try {
-              appendSavings(this.workspaceRoot, {
+              appendSavings(privateLedgerPath(this.privateStorageRoot()), {
                 ts: new Date().toISOString(),
                 type: 'budget_stop',
                 detail: `session stopped at ~$${this.totalCostUsd.toFixed(2)} (ceiling ~$${budget!.toFixed(2)})`,
@@ -1474,6 +1533,9 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
 
       case 'exit':
         this.lastApprovedAdvice = undefined;
+        // The process can die without a turnDone. Settle here too, or the next
+        // turn's deltas would stream into the previous turn's bubble.
+        this.closeStream({ kind: 'keep' });
         this.turnRunning = false;
         this.setActivity(null);
         this.setPhase(null);
@@ -1548,11 +1610,66 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
       : path;
   }
 
-  /** Record an item in history and broadcast it, unless it was already streamed live. */
-  private pushItem(item: UiItem, alreadyStreamed = false): void {
+  /**
+   * Record an item in history and broadcast it.
+   *
+   * Any card that is not a stream's own terminal disposition ends the open
+   * stream first (keeping what streamed), so an interleaved tool/god/error card
+   * can never adopt the live node's identity and later deltas start a fresh
+   * bubble below it. Stream terminals go through `settleStream` instead.
+   */
+  private pushItem(item: UiItem): void {
+    this.closeStream({ kind: 'keep' });
     this.history.push(item);
-    if (!alreadyStreamed) this.broadcast({ type: 'item', item });
+    this.broadcast({ type: 'item', item });
     this.schedulePersist();
+  }
+
+  /**
+   * End the current assistant stream with `item` as its one visible card, and
+   * record that item as its one history entry.
+   *
+   * When nothing streamed (no deltas arrived — a non-streaming provider, or a
+   * webview that attached mid-turn) there is no live node to keep, so the item
+   * is appended instead. Either way: exactly one card, exactly one entry.
+   */
+  private settleStream(item: UiItem, disposition: StreamDisposition<UiItem>): void {
+    const streamId = this.currentStreamId;
+    this.currentStreamId = undefined;
+
+    const turnId = this.currentTurnId ?? null;
+    if (this.turnAssistantHistoryIdx !== undefined) {
+      // A second (or later) assistant final for this turn: update history in
+      // place, and stamp the terminal with this turn's id so the webview's
+      // TurnCardTracker removes the earlier (superseded) card — one turn, one
+      // visible card even when the turn emitted more than one stream.
+      this.history[this.turnAssistantHistoryIdx] = item;
+      this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition, turnId });
+    } else {
+      this.turnAssistantHistoryIdx = this.history.length;
+      this.history.push(item);
+      if (streamId === undefined && disposition.kind === 'keep') {
+        // 'keep' presumes a live node that never existed — render the item.
+        this.broadcast({ type: 'item', item });
+      } else {
+        this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition, turnId });
+      }
+    }
+    this.schedulePersist();
+  }
+
+  /**
+   * End the current stream without a history entry — used at turn boundaries
+   * and before any interleaved card. A no-op when nothing is streaming, except
+   * that the webview still runs its end-of-turn cleanup.
+   */
+  private closeStream(disposition: StreamDisposition<UiItem>): void {
+    const streamId = this.currentStreamId;
+    this.currentStreamId = undefined;
+    // Stamp with the live turn id (still set here — turnDone clears it only after
+    // calling closeStream) so a partial card settled at a turn boundary can be
+    // superseded by a later authoritative final for the same turn.
+    this.broadcast({ type: 'finalizeStream', streamId: streamId ?? null, disposition, turnId: this.currentTurnId ?? null });
   }
 
   private broadcast(message: unknown): void {
@@ -1569,12 +1686,21 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
     for (const webview of this.webviews) this.post(webview, message);
   }
 
+  /**
+   * VS Code private storage root for this workspace. Writes here never dirty the
+   * project's git working tree. Falls back to globalStorageUri when storageUri is
+   * unavailable (VS Code < 1.56 or extension development host edge cases).
+   */
+  private privateStorageRoot(): string {
+    return (this.context.storageUri ?? this.context.globalStorageUri).fsPath;
+  }
+
   /** Month savings, cached for 30s — the file is tiny but re-reading per status would be waste. */
   private monthSavings(): number {
     const now = Date.now();
     if (this.savingsCacheAt === undefined || now - this.savingsCacheAt > 30_000) {
       try {
-        this.savingsCacheVal = monthSavingsUsd(this.workspaceRoot, new Date());
+        this.savingsCacheVal = monthSavingsUsd(this.privateStorageRoot(), this.workspaceRoot, new Date());
       } catch {
         this.savingsCacheVal = 0;
       }
@@ -1585,6 +1711,25 @@ export class PantheonChatController implements vscode.WebviewViewProvider, vscod
 
   private post(webview: vscode.Webview, message: unknown): void {
     void webview.postMessage(message);
+  }
+
+  /**
+   * Returns a redacted diagnostics payload for the Copy Diagnostics command.
+   * No absolute paths, secrets, prompts, session IDs or ledger contents.
+   */
+  diagnosticsPayload(extensionId: string, extensionVersion: string): Record<string, unknown> {
+    return {
+      extensionId,
+      extensionVersion,
+      buildSha: typeof __BUILD_SHA__ !== 'undefined' ? __BUILD_SHA__ : 'unknown',
+      protocolVersion: PROTOCOL_VERSION,
+      provider: this.providers.active.label,
+      requestedModel: this.modelId || '(default)',
+      resolvedModel: this.model ?? '(none)',
+      webviewCount: this.webviews.size,
+      historyLength: this.history.length,
+      turnRunning: this.turnRunning,
+    };
   }
 
   dispose(): void {
