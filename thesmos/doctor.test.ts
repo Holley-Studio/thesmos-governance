@@ -4,6 +4,7 @@ import { CONFIG_DEFAULTS } from './config';
 import { ADAPTER_OUTPUT_PATHS, THESMOS_RULES, buildAdapterContent } from './adapters';
 import {
   runDoctor,
+  checkModelRegistry,
   formatDoctorConsole,
   formatDoctorMarkdown,
   formatDoctorJson,
@@ -735,5 +736,64 @@ describe('runDoctor — baseline freshness', () => {
     });
     const check = runDoctor(input).find((c) => c.name === 'baseline:fresh');
     expect(check?.pass).toBe(false);
+  });
+});
+
+// ── Model registry group (Operation Eunomia) ────────────────────────────────
+
+describe('checkModelRegistry', () => {
+  const audit = (overrides: Record<string, unknown> = {}) => ({
+    findings: [],
+    registryVersion: '1.0.0',
+    registryHash: 'abcd1234',
+    counts: { BLOCKER: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
+    agentsScanned: 129,
+    agentsWithModel: 69,
+    ...overrides,
+  });
+
+  it('emits nothing when no audit was supplied', () => {
+    // A caller that cannot scan the catalog gets no model group, rather than a
+    // false all-clear.
+    expect(checkModelRegistry(makeFullInput())).toEqual([]);
+  });
+
+  it('reports a clean registry with exact coverage counts', () => {
+    const checks = checkModelRegistry(
+      makeFullInput({ modelAudit: audit() as never }),
+    );
+    expect(checks.every((c) => c.pass)).toBe(true);
+    // Both numbers must appear: reporting only the larger would imply coverage
+    // the audit does not have.
+    expect(checks[0]!.message).toContain('129');
+    expect(checks[0]!.message).toContain('69');
+  });
+
+  it('fails the group when the audit reports a finding', () => {
+    const checks = checkModelRegistry(
+      makeFullInput({
+        modelAudit: audit({
+          findings: [{
+            code: 'MODEL_AGENT_PINNED_FRONTIER',
+            severity: 'BLOCKER',
+            file: 'thesmos/catalog/agents/x.md',
+            message: 'Agent "x" statically defaults to the frontier model.',
+            fix: 'Set platforms.claude_model to the balanced default.',
+          }],
+          counts: { BLOCKER: 1, HIGH: 0, MEDIUM: 0, LOW: 0 },
+        }) as never,
+      }),
+    );
+    const failed = checks.filter((c) => !c.pass);
+    expect(failed).toHaveLength(1);
+    expect(failed[0]!.message).toContain('MODEL_AGENT_PINNED_FRONTIER');
+    expect(failed[0]!.fixHint).toBeTruthy();
+  });
+
+  it('assigns every model check to the Model registry group', () => {
+    // The CI gate scopes by group name; a mislabelled check would silently
+    // drop out of the merge gate.
+    const checks = checkModelRegistry(makeFullInput({ modelAudit: audit() as never }));
+    expect(checks.every((c) => c.group === DOCTOR_GROUPS.MODELS)).toBe(true);
   });
 });

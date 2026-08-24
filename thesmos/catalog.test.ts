@@ -349,14 +349,15 @@ describe('loadBuiltInCatalog', () => {
     const { agents } = loadBuiltInCatalog();
     // 60 reviewers + pantheon/figma/root God Agents — must stay ≥ reviewers alone.
     expect(agents.length).toBeGreaterThanOrEqual(60);
-    expect(agents).toHaveLength(128);
+    expect(agents).toHaveLength(129);
     expect(agents.some((a) => a.frontmatter.id === 'apollo-content-agent')).toBe(true);
+    expect(agents.some((a) => a.frontmatter.id === 'eunomia-repository-steward-agent')).toBe(true);
     expect(agents.some((a) => a.frontmatter.id === 'security-reviewer')).toBe(true);
   });
 
-  it('loads exactly 63 built-in skills', () => {
+  it('loads exactly 66 built-in skills', () => {
     const { skills } = loadBuiltInCatalog();
-    expect(skills).toHaveLength(63);
+    expect(skills).toHaveLength(66);
   });
 
   it('all built-in agents have valid frontmatter', () => {

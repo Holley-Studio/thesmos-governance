@@ -1,0 +1,172 @@
+name: Repository Stewardship (weekly, read-only)
+
+# Eunomia's scheduled sweep.
+#
+# READ-ONLY BY CONSTRUCTION. This workflow never commits, never deletes a
+# branch or file, never merges, never publishes, and never opens a PR. It
+# produces evidence and maintains exactly one deduplicated maintenance issue.
+#
+# The deterministic, merge-gating checks live in ci.yml's `stewardship` job.
+# This workflow is the advisory layer: it RECOMMENDS maintenance work. It is
+# deliberately not a required status check, because an audit that can block a
+# merge on a judgement call becomes an unreviewable gate.
+
+on:
+  schedule:
+    # Mondays 07:00 UTC — before the working week, after weekend merges settle.
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+# Least privilege: read the repo, write exactly one issue. No contents: write,
+# no pull-requests: write, no packages, no id-token.
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: repository-stewardship
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  REPORT_DIR: .stewardship-report
+
+jobs:
+  audit:
+    name: Read-only stewardship audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          # Full history so branch-age reporting is meaningful.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare report directory
+        run: mkdir -p "$REPORT_DIR"
+
+      # ── Evidence collection. Every step tolerates failure and records the
+      # exit code, because a failing check is the finding — not a reason to
+      # abandon the sweep.
+
+      - name: Model registry + doctor
+        run: |
+          set +e
+          npx tsx thesmos/bin/cli.ts doctor > "$REPORT_DIR/doctor.txt" 2>&1
+          echo "$?" > "$REPORT_DIR/doctor.exit"
+          set -e
+
+      - name: Health score
+        run: |
+          set +e
+          npx tsx thesmos/bin/cli.ts health > "$REPORT_DIR/health.txt" 2>&1
+          echo "$?" > "$REPORT_DIR/health.exit"
+          set -e
+
+      - name: Governance validate
+        run: |
+          set +e
+          npx tsx thesmos/bin/cli.ts validate > "$REPORT_DIR/validate.txt" 2>&1
+          echo "$?" > "$REPORT_DIR/validate.exit"
+          set -e
+
+      - name: Catalog validate
+        run: |
+          set +e
+          npm run thesmos:catalog:validate --workspace=thesmos > "$REPORT_DIR/catalog.txt" 2>&1
+          echo "$?" > "$REPORT_DIR/catalog.exit"
+          set -e
+
+      - name: Generated artifact freshness
+        run: |
+          set +e
+          npm run agents:export --workspace=thesmos > "$REPORT_DIR/export.txt" 2>&1
+          git diff --stat > "$REPORT_DIR/export-drift.txt" 2>&1
+          if [ -s "$REPORT_DIR/export-drift.txt" ]; then echo "1" > "$REPORT_DIR/export.exit"; else echo "0" > "$REPORT_DIR/export.exit"; fi
+          # Restore the tree — this workflow must never leave changes behind.
+          git checkout -- . 2>/dev/null || true
+          set -e
+
+      - name: Dependency security
+        run: |
+          set +e
+          npm audit --omit=dev --json > "$REPORT_DIR/npm-audit.json" 2>&1
+          echo "$?" > "$REPORT_DIR/npm-audit.exit"
+          set -e
+
+      - name: Dead-code report (advisory, report-only)
+        run: |
+          set +e
+          if npx --no-install knip --version >/dev/null 2>&1; then
+            npx knip --reporter json > "$REPORT_DIR/knip.json" 2>&1
+            echo "$?" > "$REPORT_DIR/knip.exit"
+          else
+            # Do NOT substitute a grep-based approximation and present it as
+            # equivalent. An absent tool is a prerequisite finding.
+            echo '{"note":"knip is not installed in this repository; dead-code analysis was not run"}' > "$REPORT_DIR/knip.json"
+            echo "skipped" > "$REPORT_DIR/knip.exit"
+          fi
+          set -e
+
+      - name: Documented-count truth check
+        run: |
+          set +e
+          {
+            echo "generated_model_map_entries=$(grep -c '\": \"claude' thesmos/generated/pantheon-models.ts || echo 0)"
+            echo "catalog_agents_with_model=$(grep -rho '^  claude_model: .*' thesmos/catalog/agents/ | wc -l | tr -d ' ')"
+            echo "catalog_agent_ids=$(grep -rh '^id: ' thesmos/catalog/agents/ | sort -u | wc -l | tr -d ' ')"
+            echo "catalog_skills=$(ls -1 thesmos/catalog/skills/*.md | wc -l | tr -d ' ')"
+            echo "--- documented claims ---"
+            grep -rn "Active agents:\|Available agents (\|[0-9]\+ agents" AGENTS.md CLAUDE.md README.md thesmos/README.md 2>/dev/null || true
+          } > "$REPORT_DIR/counts.txt" 2>&1
+          set -e
+
+      - name: Build JSON + Markdown evidence
+        run: |
+          node scripts/stewardship-report.mjs "$REPORT_DIR" > "$REPORT_DIR/summary.md"
+          test -s "$REPORT_DIR/summary.json"
+
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: stewardship-report
+          path: ${{ env.REPORT_DIR }}
+          retention-days: 90
+
+      # ── One deduplicated maintenance issue. Body is passed via --body-file
+      # from a generated file, never interpolated into the shell, so no
+      # workflow-injection surface exists.
+      - name: Update the single stewardship issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_TITLE: "Repository stewardship — weekly audit"
+        run: |
+          set -e
+          existing=$(gh issue list --state open --search "$ISSUE_TITLE in:title" --json number,title \
+            --jq "[.[] | select(.title == env.ISSUE_TITLE)] | .[0].number // empty")
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file "$REPORT_DIR/summary.md"
+            echo "Commented on existing issue #$existing"
+          else
+            gh issue create --title "$ISSUE_TITLE" --body-file "$REPORT_DIR/summary.md" --label "maintenance" \
+              || gh issue create --title "$ISSUE_TITLE" --body-file "$REPORT_DIR/summary.md"
+          fi
+
+      - name: Assert the workflow left no changes behind
+        run: |
+          if [ -n "$(git status --porcelain=v1 | grep -v '^?? .stewardship-report' || true)" ]; then
+            echo "::error::Stewardship workflow modified tracked files. It must be read-only."
+            git status --porcelain=v1
+            exit 1
+          fi
+          echo "Read-only invariant holds."
