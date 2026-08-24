@@ -541,7 +541,11 @@ export const SECURITY_RULES: ThesmosRule[] = [
       const PWD_URL_RE = /https?:\/\/[^:@\s]+:[^@\s]+@|\?(?:api_key|password|secret|token|key)=/i;
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
-        if (!SOURCE_EXT.test(path)) continue;
+        // SEC_018 detects credentials embedded in URLs. Test files legitimately
+        // contain such URLs as fixtures for the assertions that reject them —
+        // flagging those reports a leak where the code is proving there is none.
+        // Matches the test-path exemption every other rule in this file uses.
+        if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]!;
