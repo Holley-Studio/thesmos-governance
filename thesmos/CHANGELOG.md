@@ -1,10 +1,53 @@
 # Changelog
 
-## 5.1.1
+## 5.2.0
+
+### Minor Changes
+
+- **Governed mission runtime.** A mission graph runtime with a governed agent
+  contract, plus `mission-control` for inspecting missions from the CLI. Agents
+  now execute against a declared contract rather than ad-hoc dispatch.
+- **Recoverable confirmations.** Command analysis is unified and adapters are
+  thin, so a confirmation that is declined no longer discards the surrounding
+  work.
+- **Pantheon Chat experience (VS Code).** Truthful usage reporting, five views
+  reduced to four, and five status-bar items reduced to two. The chat launcher
+  is now the primary status item rather than the lowest-priority one, so it is
+  no longer the first thing dropped when the status bar runs out of room.
+- **Decoupled VS Code release pipeline.** The extension releases independently
+  of the core package, and reports what it actually published.
 
 ### Patch Changes
 
-- Fix scanner abort and typed-declaration detection gap (STATE_012): scanner no longer exits early on abort signals and correctly identifies typed variable declarations that were previously missed.
+- **Auto mode is no longer defeated by analyzer uncertainty.** A `PreToolUse`
+  hook returning `"ask"` cannot be overridden by Claude's classifier, and
+  Thesmos returned `"ask"` both for owner-declared checkpoints and for commands
+  its parser simply could not classify. The second case now delegates — emitting
+  no decision at all, so Claude's own evaluation proceeds. Every `node -e`,
+  `python -c` and command substitution previously forced a manual prompt in
+  sessions explicitly set to run hands-off. Autopilot separately dropped
+  `permissions.defaultMode` when narrowing a profile, silently downgrading an
+  `auto` session back to `default`; the mode is now preserved.
+- **SEC_018 no longer flags credential fixtures in test files.** The rule fires
+  on credential-bearing URLs, including the fixtures security tests use to
+  assert such URLs are rejected — failing the very test written to prove the
+  protection works. Because SEC_018 gates at BLOCKER, this could freeze a PR and
+  everything stacked on it. It now honours the same test-path exemption the
+  neighbouring rules in that file already used.
+- **Severity-promotion upgrade guidance.** The first-run notice explained that
+  rules had been promoted to BLOCKER but not what to do about it. It now states
+  that the findings are not new, that only the gate changed, and gives the
+  command that absorbs them (`thesmos baseline:create`).
+- **TypeScript 7 build compatibility.** `moduleResolution: "node10"` was removed
+  in TS7 and the `ignoreDeprecations` escape hatch no longer applies. The VS Code
+  extension moves to `Node16`; the esbuild-bundled PR-review action moves to
+  `Preserve`/`Bundler`, which is what its actual build pipeline requires.
+- **STATE_012 scanner abort and typed-declaration gap.** The scanner no longer
+  exits early on abort signals, and correctly identifies typed variable
+  declarations it previously missed.
+- **Dockerfile layer caching**, with `NODE_VERSION` as a build argument.
+- Dependency updates: `@changesets/cli`, `ovsx`, `lightningcss` (gnu and musl),
+  and `github/codeql-action/upload-sarif`.
 
 ## Unreleased
 
