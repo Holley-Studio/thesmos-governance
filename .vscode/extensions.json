@@ -9,6 +9,6 @@
     "vitest.explorer"
   ],
   "unwantedRecommendations": [
-    "holley-studios.thesmos-governance-vscode"
+    "holleystudio.thesmos-governance-vscode"
   ]
 }
