@@ -28,12 +28,12 @@ import { DiagnosticsManager } from './diagnostics.js';
 import { StatusBarManager } from './statusBar.js';
 import { WorkingStateManager } from './workingState.js';
 import { GodMapper } from './chat/godMapper.js';
-import { appendSavings, monthSavingsUsd } from './chat/savingsLedger.js';
+import { appendSavings, monthSavingsUsd, privateLedgerPath, migrateLegacyLedger, legacyLedgerPath } from './chat/savingsLedger.js';
 import { FindingsTreeProvider } from './treeView.js';
 import { AutopilotWatcher } from './autopilotWatcher.js';
-import { AutopilotTreeProvider } from './autopilotView.js';
-import { AgentsTreeProvider, invokeAgentCommand } from './agentsPanel.js';
-import { AgentActivityWatcher, AgentActivityTreeProvider, buildRoutingChain } from './agentActivityPanel.js';
+import { LibraryTreeProvider, invokeAgentCommand } from './libraryView.js';
+import { ActivityTreeProvider } from './activityView.js';
+import { AgentActivityWatcher, buildRoutingChain } from './agentActivityPanel.js';
 import { AutoModeGovernor } from './autoModeGovernor.js';
 import { PantheonChatController } from './chat/chatViewProvider.js';
 import { ThesmosCodeLensProvider } from './codeLens.js';
@@ -82,10 +82,9 @@ class ThesmosExtension implements vscode.Disposable {
   private readonly statusBar: StatusBarManager;
   private readonly treeProvider: FindingsTreeProvider;
   private readonly autopilotWatcher: AutopilotWatcher;
-  private readonly autopilotView: AutopilotTreeProvider;
-  private readonly agentsView: AgentsTreeProvider;
+  private readonly libraryView: LibraryTreeProvider;
+  private readonly activityView: ActivityTreeProvider;
   private readonly agentActivityWatcher: AgentActivityWatcher;
-  private readonly agentActivityView: AgentActivityTreeProvider;
   private routingChainActive = false;
   private readonly autoModeGovernor: AutoModeGovernor;
   private readonly pantheonChat: PantheonChatController;
@@ -117,10 +116,9 @@ class ThesmosExtension implements vscode.Disposable {
     this.disposables.push({ dispose: () => this.working.dispose() });
     this.treeProvider = new FindingsTreeProvider();
     this.autopilotWatcher = new AutopilotWatcher(workspaceRoot);
-    this.autopilotView = new AutopilotTreeProvider(workspaceRoot, this.autopilotWatcher);
-    this.agentsView = new AgentsTreeProvider(workspaceRoot);
     this.agentActivityWatcher = new AgentActivityWatcher(workspaceRoot);
-    this.agentActivityView = new AgentActivityTreeProvider(this.agentActivityWatcher);
+    this.libraryView = new LibraryTreeProvider(workspaceRoot);
+    this.activityView = new ActivityTreeProvider(this.autopilotWatcher, this.agentActivityWatcher, workspaceRoot);
     this.autoModeGovernor = new AutoModeGovernor(workspaceRoot);
     this.pantheonChat = new PantheonChatController(context, workspaceRoot);
     this.codeLensProvider = new ThesmosCodeLensProvider();
@@ -131,10 +129,9 @@ class ThesmosExtension implements vscode.Disposable {
       this.statusBar,
       this.treeProvider,
       this.autopilotWatcher,
-      this.autopilotView,
-      this.agentsView,
+      this.libraryView,
+      this.activityView,
       this.agentActivityWatcher,
-      this.agentActivityView,
       this.autoModeGovernor,
       this.pantheonChat,
       this.codeLensProvider,
@@ -199,6 +196,10 @@ class ThesmosExtension implements vscode.Disposable {
     this.disposables.push(pantheonWatcher);
   }
 
+  private privateStorageRoot(): string {
+    return (this.context.storageUri ?? this.context.globalStorageUri).fsPath;
+  }
+
   /**
    * Show the highest-priority Pantheon badge:
    *  1. ⚠ 1M ctx — a [1m] model variant is active and allow1M is false
@@ -230,7 +231,7 @@ class ThesmosExtension implements vscode.Disposable {
           if (!this.loggedContext1M.has(rel)) {
             this.loggedContext1M.add(rel);
             try {
-              appendSavings(this.workspaceRoot, {
+              appendSavings(privateLedgerPath(this.privateStorageRoot()), {
                 ts: new Date().toISOString(),
                 type: 'context_1m_block',
                 detail: `1M context flagged in ${rel} (AGNT_037, allow1M not set)`,
@@ -285,6 +286,34 @@ class ThesmosExtension implements vscode.Disposable {
     }
   }
 
+  /** Pantheon Command Center — keyboard-accessible palette for the most common actions. */
+  private async openCommandCenter(): Promise<void> {
+    const picked = await vscode.window.showQuickPick(
+      [
+        { label: '$(comment-discussion) New Chat', description: 'Open Pantheon Chat', id: 'newChat' },
+        { label: '$(refresh) New Session', description: 'Reset conversation, keep the window', id: 'newSession' },
+        { label: '$(sparkle) Run a Skill', description: 'Browse and invoke a Thesmos skill', id: 'runSkill' },
+        { label: '$(eye) Review Changes', description: 'Run thesmos review on this workspace', id: 'review' },
+        { label: '$(shield) Open Findings', description: 'Focus the Findings panel', id: 'findings' },
+        { label: '$(search) Scan Repository', description: 'Run thesmos scan', id: 'scan' },
+        { label: '$(zap) Routing Mode', description: 'Change how Zeus dispatches the Pantheon', id: 'routing' },
+        { label: '$(settings-gear) Open Config', description: 'Open .thesmos/config.json', id: 'config' },
+      ],
+      { title: '⚡ Pantheon Command Center', placeHolder: 'What would you like to do?' },
+    );
+    if (!picked) return;
+    switch (picked.id) {
+      case 'newChat':   void vscode.commands.executeCommand('thesmos.pantheon.chat.openInTab'); break;
+      case 'newSession': this.pantheonChat.newSession(); break;
+      case 'runSkill':  void vscode.commands.executeCommand('thesmos.scan'); break; // placeholder until Skills v2
+      case 'review':    void vscode.commands.executeCommand('thesmos.refreshFindings'); break;
+      case 'findings':  void vscode.commands.executeCommand('thesmos.findingsView.focus'); break;
+      case 'scan':      void vscode.commands.executeCommand('thesmos.scan'); break;
+      case 'routing':   void this.pickRoutingMode(); break;
+      case 'config':    void vscode.commands.executeCommand('thesmos.openConfig'); break;
+    }
+  }
+
   async activate(): Promise<void> {
     const cfg = readConfig();
     if (!cfg.enable) return;
@@ -303,26 +332,19 @@ class ThesmosExtension implements vscode.Disposable {
         : undefined;
     };
 
-    // Register autopilot tree view
-    const autopilotTreeView = vscode.window.createTreeView('thesmos.autopilotView', {
-      treeDataProvider: this.autopilotView,
-      showCollapseAll: false,
-    });
-    this.disposables.push(autopilotTreeView);
-
-    // Register agents tree view
-    const agentsTreeView = vscode.window.createTreeView('thesmos.agentsView', {
-      treeDataProvider: this.agentsView,
+    // Register Library view (Agents + Skills)
+    const libraryTreeView = vscode.window.createTreeView('thesmos.libraryView', {
+      treeDataProvider: this.libraryView,
       showCollapseAll: true,
     });
-    this.disposables.push(agentsTreeView);
+    this.disposables.push(libraryTreeView);
 
-    // Register agent activity timeline view
-    const agentActivityTreeView = vscode.window.createTreeView('thesmos.agentActivity', {
-      treeDataProvider: this.agentActivityView,
+    // Register Activity view (Autopilot + Agent Activity)
+    const activityTreeView = vscode.window.createTreeView('thesmos.activityView', {
+      treeDataProvider: this.activityView,
       showCollapseAll: false,
     });
-    this.disposables.push(agentActivityTreeView);
+    this.disposables.push(activityTreeView);
 
     // Register Thesmos Chat webview + commands
     this.disposables.push(
@@ -410,7 +432,7 @@ class ThesmosExtension implements vscode.Disposable {
         });
         if (!task) return;
 
-        this.agentsView.setActive(agent.id, true);
+        this.libraryView.setActive(agent.id, true);
         const statusMsg = vscode.window.setStatusBarMessage(`$(sync~spin) ${agent.name} is working…`);
 
         const snippet = `Agent({ subagent_type: "${agent.id}", prompt: "${task.replace(/"/g, '\\"')}" })`;
@@ -419,7 +441,7 @@ class ThesmosExtension implements vscode.Disposable {
         terminal.sendText(`claude -p '${snippet}'`);
 
         const cleanup = (): void => {
-          this.agentsView.setActive(agent.id, false);
+          this.libraryView.setActive(agent.id, false);
           statusMsg.dispose();
         };
         const timer = setTimeout(cleanup, 60_000);
@@ -442,6 +464,59 @@ class ThesmosExtension implements vscode.Disposable {
       vscode.commands.registerCommand('thesmos.pantheon.routingMode', () =>
         this.pickRoutingMode(),
       ),
+    );
+
+    // Command Center Quick Pick — the main keyboard shortcut (Cmd/Ctrl+Shift+G)
+    // already opens Pantheon Chat; this opens a secondary quick-access palette.
+    this.disposables.push(
+      vscode.commands.registerCommand('thesmos.commandCenter', () =>
+        this.openCommandCenter(),
+      ),
+    );
+
+    // Diagnostics — copy redacted runtime info to clipboard so users can paste
+    // into a bug report without exposing workspace paths or session contents.
+    this.disposables.push(
+      vscode.commands.registerCommand('thesmos.pantheon.copyDiagnostics', async () => {
+        const ext = vscode.extensions.getExtension('holleystudio.thesmos-governance-vscode');
+        const payload = this.pantheonChat.diagnosticsPayload(
+          ext?.id ?? 'holleystudio.thesmos-governance-vscode',
+          String(ext?.packageJSON?.version ?? 'unknown'),
+        );
+        const text = JSON.stringify(payload, null, 2);
+        await vscode.env.clipboard.writeText(text);
+        void vscode.window.showInformationMessage('Pantheon diagnostics copied to clipboard.');
+      }),
+    );
+
+    // Migrate legacy .thesmos/savings.jsonl → VS Code private storage
+    this.disposables.push(
+      vscode.commands.registerCommand('thesmos.pantheon.migrateSavings', async () => {
+        const legacyPath = legacyLedgerPath(this.workspaceRoot);
+        if (!existsSync(legacyPath)) {
+          void vscode.window.showInformationMessage(
+            'Pantheon Credit Guardian: nothing to migrate — no legacy ledger found at .thesmos/savings.jsonl.',
+          );
+          return;
+        }
+        const privateRoot = this.privateStorageRoot();
+        const ok = await vscode.window.showInformationMessage(
+          `Migrate Credit Guardian ledger out of the repo?\n\nFrom: ${legacyPath}\nTo: ${privateLedgerPath(privateRoot)}\n\nThis moves the file so git no longer sees it as a dirty tracked file after each chat turn. Your historical savings data is preserved.`,
+          { modal: true },
+          'Migrate',
+        );
+        if (ok !== 'Migrate') return;
+        try {
+          migrateLegacyLedger(privateRoot, this.workspaceRoot);
+          void vscode.window.showInformationMessage(
+            '✅ Pantheon Credit Guardian: ledger moved to private storage. The repo is clean.',
+          );
+        } catch (err) {
+          void vscode.window.showErrorMessage(
+            `Migration failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }),
     );
 
     // Set context flag so tree view & menus are visible
@@ -701,13 +776,17 @@ class ThesmosExtension implements vscode.Disposable {
       if (report) {
         let monthSaved = 0;
         try {
-          monthSaved = monthSavingsUsd(this.workspaceRoot, new Date());
+          monthSaved = monthSavingsUsd(this.privateStorageRoot(), this.workspaceRoot, new Date());
         } catch {
           // Savings line is decoration — never break the token meter.
         }
         this.statusBar.showTokenCost(report.sessionCostUSD, report.todayCostUSD, monthSaved);
       }
     });
+
+    // Subscription plan usage — free from the existing Pantheon session stream.
+    const usageSnap = this.pantheonChat.subscriptionUsage;
+    this.statusBar.showUsage(usageSnap);
   }
 
   private handleAnalysisError(err: unknown): void {
@@ -799,7 +878,7 @@ async function checkExtensionUpdate(context: vscode.ExtensionContext): Promise<v
     if (choice === 'Update Extension') {
       await vscode.commands.executeCommand(
         'workbench.extensions.action.installExtension',
-        'holley-studios.thesmos-governance',
+        'holleystudio.thesmos-governance-vscode',
       );
     }
   } catch {

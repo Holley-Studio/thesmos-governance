@@ -87,7 +87,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 
 ### VS Code (via extension)
 
-Install the [Thesmos Governance VS Code extension](https://marketplace.visualstudio.com/items?itemName=holley-studios.thesmos-governance-vscode) — it handles MCP wiring automatically.
+Install the [Thesmos Governance VS Code extension](https://marketplace.visualstudio.com/items?itemName=holleystudio.thesmos-governance-vscode) — it handles MCP wiring automatically.
 
 ## Using a Local Install (Faster Startup)
 

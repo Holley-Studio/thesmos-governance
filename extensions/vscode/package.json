@@ -2,7 +2,7 @@
   "name": "thesmos-governance-vscode",
   "displayName": "Thesmos Governance",
   "description": "Real-time AI repo governance — inline findings, health scores, and adapter sync for Claude, Gemini, Cursor, Copilot, and Codex.",
-  "version": "5.1.0",
+  "version": "5.2.1",
   "private": true,
   "publisher": "holleystudio",
   "author": {
@@ -309,6 +309,22 @@
         "title": "Thesmos Chat: Unlink Provider API Key",
         "category": "Thesmos Agents",
         "icon": "$(key)"
+      },
+      {
+        "command": "thesmos.commandCenter",
+        "title": "Open Command Center",
+        "category": "Thesmos",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "thesmos.pantheon.copyDiagnostics",
+        "title": "Copy Pantheon Diagnostics",
+        "category": "Thesmos"
+      },
+      {
+        "command": "thesmos.pantheon.migrateSavings",
+        "title": "Migrate Credit Guardian Ledger to Private Storage",
+        "category": "Thesmos"
       }
     ],
     "keybindings": [
@@ -333,7 +349,7 @@
           "id": "thesmos.pantheonChat",
           "name": "Thesmos Chat",
           "type": "webview",
-          "icon": "$(zap)"
+          "icon": "$(sparkle)"
         },
         {
           "id": "thesmos.findingsView",
@@ -341,19 +357,14 @@
           "icon": "$(shield)"
         },
         {
-          "id": "thesmos.autopilotView",
-          "name": "Autopilot",
-          "icon": "$(rocket)"
+          "id": "thesmos.libraryView",
+          "name": "Library",
+          "icon": "$(extensions)"
         },
         {
-          "id": "thesmos.agentsView",
-          "name": "Agents",
-          "icon": "$(person-add)"
-        },
-        {
-          "id": "thesmos.agentActivity",
-          "name": "Agent Activity",
-          "icon": "$(comment-discussion)"
+          "id": "thesmos.activityView",
+          "name": "Activity",
+          "icon": "$(history)"
         }
       ]
     },
@@ -386,7 +397,12 @@
         },
         {
           "command": "thesmos.installAgents",
-          "when": "view == thesmos.agentsView && thesmos.active",
+          "when": "view == thesmos.libraryView && thesmos.active",
+          "group": "navigation"
+        },
+        {
+          "command": "thesmos.refreshFindings",
+          "when": "view == thesmos.findingsView",
           "group": "navigation"
         },
         {
@@ -400,33 +416,13 @@
           "group": "navigation"
         },
         {
-          "command": "thesmos.refreshFindings",
-          "when": "view == thesmos.findingsView",
-          "group": "navigation"
-        },
-        {
-          "command": "thesmos.health",
-          "when": "view == thesmos.findingsView",
-          "group": "navigation"
-        },
-        {
-          "command": "thesmos.debtScan",
-          "when": "view == thesmos.findingsView",
-          "group": "navigation"
-        },
-        {
-          "command": "thesmos.importScan",
-          "when": "view == thesmos.findingsView",
-          "group": "navigation"
-        },
-        {
           "command": "thesmos.autopilot.generate",
-          "when": "view == thesmos.autopilotView",
+          "when": "view == thesmos.activityView",
           "group": "navigation"
         },
         {
           "command": "thesmos.autopilot.cancel",
-          "when": "view == thesmos.autopilotView && thesmos.autopilotActive",
+          "when": "view == thesmos.activityView && thesmos.autopilotActive",
           "group": "navigation"
         }
       ],
@@ -448,27 +444,27 @@
         },
         {
           "command": "thesmos.autopilot.cancel",
-          "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
+          "when": "view == thesmos.activityView && viewItem == autopilotHeader",
           "group": "autopilot@1"
         },
         {
           "command": "thesmos.autopilot.viewJournal",
-          "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
+          "when": "view == thesmos.activityView && viewItem == autopilotHeader",
           "group": "autopilot@2"
         },
         {
           "command": "thesmos.autopilot.review",
-          "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
+          "when": "view == thesmos.activityView && viewItem == autopilotHeader",
           "group": "autopilot@3"
         },
         {
           "command": "thesmos.autopilot.openPR",
-          "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
+          "when": "view == thesmos.activityView && viewItem == autopilotHeader",
           "group": "autopilot@4"
         },
         {
           "command": "thesmos.autopilot.revert",
-          "when": "view == thesmos.autopilotView && viewItem == autopilotHeader",
+          "when": "view == thesmos.activityView && viewItem == autopilotHeader",
           "group": "autopilot@5"
         }
       ],
@@ -575,6 +571,25 @@
           "default": true,
           "description": "Show Error Lens-style inline text (← [BLOCKER] ...) next to findings."
         },
+        "thesmos.usage.showInStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Claude subscription plan usage in the status bar when active session data is available."
+        },
+        "thesmos.usage.warningPercent": {
+          "type": "number",
+          "default": 75,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percent used at which the usage item shows a warning color (requires provider-reported percentage)."
+        },
+        "thesmos.usage.criticalPercent": {
+          "type": "number",
+          "default": 90,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percent used at which the usage item shows a critical (error) color (requires provider-reported percentage)."
+        },
         "thesmos.minSeverity": {
           "type": "string",
           "enum": [
@@ -615,7 +630,7 @@
     "@types/node": "^26.1.0",
     "@types/vscode": "^1.100.0",
     "@vscode/vsce": "^3.9.2",
-    "ovsx": "^1.0.2",
+    "ovsx": "^1.1.1",
     "esbuild": "^0.28.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"

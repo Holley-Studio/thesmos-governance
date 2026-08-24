@@ -137,3 +137,14 @@
 {"ts":"2026-07-24T01:14:56.707Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.40745480000000117,"model":"claude-sonnet-4-6","costUsd":0.6111822000000018}
 {"ts":"2026-07-24T01:15:00.151Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.1228302999999992,"model":"claude-sonnet-4-6","costUsd":0.1842454499999988}
 {"ts":"2026-07-24T01:15:09.802Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.11237639999999989,"model":"claude-sonnet-4-6","costUsd":0.16856459999999984}
+{"ts":"2026-07-29T16:34:02.526Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.24701113333333483,"model":"claude-sonnet-4-6","costUsd":0.37051670000000225}
+{"ts":"2026-07-29T16:38:08.564Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.22669840000000066,"model":"claude-sonnet-4-6","costUsd":0.340047600000001}
+{"ts":"2026-07-29T17:00:10.534Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.03596839999999979,"model":"claude-sonnet-4-6","costUsd":0.053952599999999684}
+{"ts":"2026-07-29T17:31:30.047Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.01760120000000024,"model":"claude-sonnet-4-6","costUsd":0.026401800000000364}
+{"ts":"2026-07-29T21:52:56.597Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.222912,"model":"claude-sonnet-4-6","costUsd":0.334368}
+{"ts":"2026-07-29T21:58:20.719Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.06361280000000002,"model":"claude-sonnet-4-6","costUsd":0.09541920000000004}
+{"ts":"2026-07-29T22:06:38.793Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.7435838000000001,"model":"claude-sonnet-4-6","costUsd":1.1153757000000002}
+{"ts":"2026-07-30T02:03:11.770Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.32773580000000013,"model":"claude-sonnet-4-6","costUsd":0.4916037000000002}
+{"ts":"2026-07-30T02:50:00.205Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":4.2438024,"model":"claude-sonnet-4-6","costUsd":6.3657036}
+{"ts":"2026-07-30T16:44:39.738Z","type":"budget_stop","detail":"session stopped at ~$22.31 (ceiling ~$15.00)","costUsd":22.314349000000004}
+{"ts":"2026-07-30T18:11:00.244Z","type":"model_tier","detail":"chat turn on claude-sonnet-4-6","estSavedUsd":0.20876039999999998,"model":"claude-sonnet-4-6","costUsd":0.3131406}

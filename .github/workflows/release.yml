@@ -90,50 +90,12 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --generate-notes
 
-  publish-vscode:
-    name: Publish VS Code Extension
-    needs: release
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: 22.x
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Extract version from tag
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-
-      - name: Bump extension version
-        working-directory: extensions/vscode
-        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version --allow-same-version
-
-      - name: Build extension
-        working-directory: extensions/vscode
-        run: npm run build
-
-      - name: Publish to VS Code Marketplace
-        working-directory: extensions/vscode
-        run: npx vsce publish --no-dependencies
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        continue-on-error: true
-
-      - name: Publish to Open VSX Registry
-        working-directory: extensions/vscode
-        run: npx ovsx publish --no-dependencies
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        continue-on-error: true
+  # The VS Code extension is NO LONGER published from the npm release tag.
+  # It has its own decoupled pipeline — .github/workflows/release-vscode.yml,
+  # triggered by vscode-v*.*.* tags — which builds ONE VSIX, gates on both
+  # registries without continue-on-error, and verifies the version live before
+  # creating the GitHub Release. The job that lived here force-bumped the
+  # extension version from the npm tag and silently swallowed publish failures.
 
   publish-storefront-facts:
     name: Sync product facts to storefront
