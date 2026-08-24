@@ -10,10 +10,13 @@
  *
  * The extension keeps a thin twin of this module at
  * extensions/vscode/src/chat/savingsLedger.ts (it bundles independently of the
- * engine) — keep formulas in sync.
+ * engine). Both now derive their ratios from the SAME registry data — core
+ * imports thesmos/models directly, the extension reads a generated snapshot —
+ * so the two formulas can no longer drift apart by hand.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { estimateTierSavingFromCost } from './models/index.js';
 
 export interface SavingsEntry {
   ts: string;
@@ -71,19 +74,30 @@ export function summarizeSavings(entries: SavingsEntry[], monthOf: Date): Saving
 }
 
 /**
- * Tier-discipline estimate vs the flagship (Opus) baseline, using the real
- * price sheet — not the old 5×/25× doctrine multiples, which overstated
- * savings ~6× after the 2026 price changes. Current ratios (per MTok, input
- * and output move together): Opus $5/$25, Sonnet $3/$15, Haiku $1/$5.
- * A turn that cost $C on Sonnet would have cost (5/3)×$C on Opus →
- * saving = (2/3)×$C. On Haiku: 5×$C on Opus → saving = 4×$C.
- * Unknown/flagship models return undefined — no claim is made.
- * Revisit if: Anthropic changes relative tier pricing.
+ * Tier-discipline estimate vs the deep-reasoning (Opus 5) baseline.
+ *
+ * Now DERIVED from the model registry rather than hardcoded ratios. Two things
+ * the old constants got wrong:
+ *
+ *  - The `(2/3)` Sonnet constant assumed Sonnet at $3/$15. Sonnet 5 currently
+ *    carries an introductory $2/$10 rate that lapses 2026-08-31, so the real
+ *    ratio is 2.5× until then and 1.67× after. A constant is wrong on one side
+ *    of that date no matter which value you pick; the registry's dated price
+ *    windows are right on both.
+ *
+ *  - `/opus|fable/` lumped Fable in with the baseline and returned undefined.
+ *    Fable is $10/$50 against Opus 5's $5/$25 — running on it costs TWICE the
+ *    baseline. That is a premium, and it is now reported as a negative number
+ *    rather than hidden behind "no claim".
+ *
+ * Returns undefined only when the cost is genuinely unknowable: a model absent
+ * from the registry, or one with no verified price.
  */
-export function estimateTierSaving(model: string, turnCostUsd: number): number | undefined {
-  if (!Number.isFinite(turnCostUsd) || turnCostUsd <= 0) return undefined;
-  if (/opus|fable/i.test(model)) return undefined;
-  if (/sonnet/i.test(model)) return turnCostUsd * (2 / 3);
-  if (/haiku/i.test(model)) return turnCostUsd * 4;
-  return undefined;
+export function estimateTierSaving(
+  model: string,
+  turnCostUsd: number,
+  at: Date = new Date(),
+): number | undefined {
+  const result = estimateTierSavingFromCost(model, turnCostUsd, at);
+  return result.known ? result.estSavedUsd : undefined;
 }

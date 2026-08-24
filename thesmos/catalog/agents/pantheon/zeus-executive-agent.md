@@ -37,10 +37,10 @@ governance:
     - hera-operations-agent
   reports_to: null
 platforms:
-  claude_model: claude-opus-4-8
-  openai_model: gpt-5.5-pro
+  claude_model: claude-opus-5
+  openai_model: gpt-5.6-sol
   cursor_globs: "**/*.md,**/*.json,**/*.yaml"
-  chatgpt_model: gpt-4o
+  chatgpt_model: gpt-5.6-terra
 ---
 
 # God Agent Zeus — Executive Agent

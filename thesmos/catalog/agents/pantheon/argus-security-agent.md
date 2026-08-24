@@ -39,10 +39,10 @@ governance:
     - mnemosyne-knowledge-agent
   reports_to: zeus-executive-agent
 platforms:
-  claude_model: claude-opus-4-8
-  openai_model: gpt-5.5
+  claude_model: claude-opus-5
+  openai_model: gpt-5.6-sol
   cursor_globs: "**/*.ts,**/*.js,**/*.py,**/*.go,**/*.md,**/*.yaml,**/*.json"
-  chatgpt_model: gpt-4o
+  chatgpt_model: gpt-5.6-terra
 ---
 
 # God Agent Argus — Security Agent

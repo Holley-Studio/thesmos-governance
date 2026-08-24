@@ -35,10 +35,10 @@ governance:
     - aether-ai-strategy-agent
   reports_to: zeus-executive-agent
 platforms:
-  claude_model: claude-sonnet-5
-  openai_model: gpt-5.5
+  claude_model: claude-opus-5
+  openai_model: gpt-5.6-sol
   cursor_globs: "**/*.ts,**/*.tsx,**/*.md,**/*.json"
-  chatgpt_model: gpt-4o
+  chatgpt_model: gpt-5.6-terra
 ---
 
 # God Agent Chiron — Architecture Agent

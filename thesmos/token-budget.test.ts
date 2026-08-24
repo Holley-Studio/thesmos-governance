@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   calcCost,
+  calcCostResult,
   appendTokenEvent,
   readTokenEvents,
   getCurrentSessionId,
@@ -38,10 +39,21 @@ describe('calcCost', () => {
     expect(cost).toBeCloseTo(0.0105, 6);
   });
 
-  it('falls back to sonnet pricing for unknown model', () => {
-    const costUnknown = calcCost('unknown-model', 1_000, 1_000, FIXED_TABLE);
-    const costSonnet = calcCost('claude-sonnet-4-6', 1_000, 1_000, FIXED_TABLE);
-    expect(costUnknown).toBe(costSonnet);
+  it('reports UNKNOWN for an unknown model instead of fabricating a price', () => {
+    // Previously this fell back to a Sonnet price, so an unrecognised model
+    // produced a confident, wrong number that then fed budget enforcement.
+    // null means unknown; 0 would read as "free", which is a different lie.
+    expect(calcCost('unknown-model', 1_000, 1_000, FIXED_TABLE)).toBeNull();
+
+    const result = calcCostResult('unknown-model', 1_000, 1_000, FIXED_TABLE);
+    expect(result.known).toBe(false);
+    if (!result.known) expect(result.reason).toContain('not in the registry');
+  });
+
+  it('prices a registry model with no override table entry', () => {
+    // Opus 5 is $5/$25 per MTok — 1M input alone is $5.
+    const cost = calcCost('claude-opus-5', 1_000_000, 0, {}, new Date('2026-08-03T00:00:00Z'));
+    expect(cost).toBeCloseTo(5.0, 4);
   });
 
   it('uses opus pricing for opus model', () => {
@@ -150,15 +162,18 @@ describe('buildBudgetReport', () => {
 
   it('sums tokens and cost within the session', () => {
     const sessionId = 'test-sess';
+    // Priced against the registry (Sonnet 5) rather than a hand-kept table.
+    // `?? 0` is safe here because the assertions below cover tokens, not cost.
+    const at = new Date('2026-09-15T00:00:00Z');
     appendTokenEvent(root, {
       ts: new Date().toISOString(), sessionId, toolName: 'Write',
-      model: 'claude-sonnet-4-6', inputTokens: 10_000, outputTokens: 2_000,
-      costUSD: calcCost('claude-sonnet-4-6', 10_000, 2_000, TOKEN_BUDGET_DEFAULTS.modelCostTable),
+      model: 'claude-sonnet-5', inputTokens: 10_000, outputTokens: 2_000,
+      costUSD: calcCost('claude-sonnet-5', 10_000, 2_000, {}, at) ?? 0,
     });
     appendTokenEvent(root, {
       ts: new Date().toISOString(), sessionId, toolName: 'Read',
-      model: 'claude-sonnet-4-6', inputTokens: 5_000, outputTokens: 1_000,
-      costUSD: calcCost('claude-sonnet-4-6', 5_000, 1_000, TOKEN_BUDGET_DEFAULTS.modelCostTable),
+      model: 'claude-sonnet-5', inputTokens: 5_000, outputTokens: 1_000,
+      costUSD: calcCost('claude-sonnet-5', 5_000, 1_000, {}, at) ?? 0,
     });
     const report = buildBudgetReport(root, config, sessionId);
     expect(report.session.inputTokens).toBe(15_000);

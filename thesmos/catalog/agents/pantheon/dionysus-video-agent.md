@@ -32,9 +32,9 @@ governance:
   reports_to: zeus-executive-agent
 platforms:
   claude_model: claude-sonnet-5
-  openai_model: gpt-5.5
+  openai_model: gpt-5.6-terra
   cursor_globs: "**/*.md"
-  chatgpt_model: gpt-4o
+  chatgpt_model: gpt-5.6-terra
 ---
 
 # God Agent Dionysus — Video Agent

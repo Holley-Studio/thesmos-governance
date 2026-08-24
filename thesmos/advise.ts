@@ -6,20 +6,32 @@
  * deterministic so it's free to run and reproducible.
  */
 import { readFileSync } from 'node:fs';
+import {
+  type LogicalProfile,
+  type ModelRouteDecision,
+  type RoutingSignals,
+  resolveProfile,
+  routeModel,
+} from './models/index.js';
 
-export type ModelTier = 'haiku' | 'sonnet' | 'fable';
+/**
+ * A tier is now a LOGICAL PROFILE from the model registry, not a family name.
+ * `'fable'` used to be a tier label, which is exactly how a creative-sounding
+ * plan ended up selecting the most expensive model in the catalog.
+ */
+export type ModelTier = LogicalProfile;
 
 export interface ModelRecommendation {
-  /** Cost tier bucket. */
+  /** Logical profile the evidence supports. */
   model: ModelTier;
-  /** Concrete Claude model id to run. The top tier resolves to the reasoning
-   * flagship (claude-opus-4-8) for architecture/orchestration or the creative
-   * flagship (claude-fable-5) for creative/customer-facing work. */
+  /** Concrete Claude model id, resolved from the registry. */
   claudeModel: string;
-  /** Concrete Codex CLI model id for the same tier. */
+  /** Concrete Codex CLI model id for the same profile, resolved from the registry. */
   codexModel: string;
   costMultiple: string;
   rationale: string;
+  /** Full auditable routing record backing this recommendation. */
+  decision: ModelRouteDecision;
 }
 
 export interface AgentSuggestion {
@@ -43,16 +55,32 @@ interface GodEntry {
   domain: string;
 }
 
-// ── Configurable model IDs ───────────────────────────────────────────────────
-// Defaults are current as of the release date; override via env vars when
-// Anthropic publishes new model IDs — no code change required.
-// NOTE: do not add more hardcoded IDs here. The Model Steward (Phase C) will
-// replace this with a provider-neutral catalog.
+// ── Model IDs (derived — never restated) ─────────────────────────────────────
+// This is the Model Steward the previous note promised. Ids now come from
+// thesmos/models/registry.ts, so a generation turns over in one file.
+//
+// The env-var overrides that used to live here were removed deliberately: they
+// let an arbitrary, unvalidated model id enter the system, which is precisely
+// the "every consumer keeps its own model list" problem the registry exists to
+// end. To change a model, edit the registry — where the change is typed,
+// sourced, dated, and covered by the audit.
+function idFor(profile: LogicalProfile): string {
+  const entry = resolveProfile(profile, 'anthropic');
+  if (!entry) throw new Error(`Model registry has no anthropic entry for profile "${profile}".`);
+  return entry.id;
+}
+
+function codexIdFor(profile: LogicalProfile): string {
+  const entry = resolveProfile(profile, 'openai');
+  if (!entry) throw new Error(`Model registry has no openai entry for profile "${profile}".`);
+  return entry.id;
+}
+
 export const DEFAULT_MODEL_IDS = {
-  fast: process.env['THESMOS_MODEL_FAST'] ?? 'claude-haiku-4-5-20251001',
-  mid:  process.env['THESMOS_MODEL_MID']  ?? 'claude-sonnet-4-6',
-  top:  process.env['THESMOS_MODEL_TOP']  ?? 'claude-opus-4-8',
-  creative: process.env['THESMOS_MODEL_CREATIVE'] ?? 'claude-fable-5',
+  fast: idFor('fast-mechanical'),
+  mid: idFor('balanced-agentic'),
+  top: idFor('deep-reasoning'),
+  frontier: idFor('frontier-long-horizon'),
 } as const;
 
 // ── Work-type keyword buckets ────────────────────────────────────────────────
@@ -112,45 +140,66 @@ export function classifyPlan(text: string): Classification {
 }
 
 /**
- * Recommend a model tier, biased DOWN by default (AGNT_031). Fable is only
- * recommended when architecture or creative work is genuinely dominant —
- * never as a default for mechanical or bulk-heavy plans.
+ * Translate a plan classification into structured routing signals.
+ *
+ * The load-bearing change from the previous router: `creativePct` contributes
+ * NOTHING to tier selection. It used to send any plan that was ≥30% "creative"
+ * to the frontier model, which meant the word "brand" appearing a few times
+ * silently doubled the cost of a turn with no approval and no record. Creative
+ * work is not inherently harder work — a landing page and a database migration
+ * are not ranked by vocabulary. Frontier is now reachable only through an
+ * explicit, approved route (see `models/routing.ts`).
  */
-export function recommendModel(c: Classification): ModelRecommendation {
-  if (c.bulkPct >= 40 && c.architecturePct < 20 && c.creativePct < 20) {
-    return {
-      model: 'haiku',
-      claudeModel: DEFAULT_MODEL_IDS.fast,
-      codexModel: 'gpt-5.5-instant',
-      costMultiple: '~5x cheaper than Sonnet, ~10x cheaper than the top tier',
-      rationale: `${c.bulkPct}% bulk/repetitive work with little architectural or creative judgment — Haiku handles high-volume mechanical passes at a fraction of the cost.`,
-    };
-  }
-
-  if (c.architecturePct >= 30 || c.creativePct >= 30) {
-    // Top cost tier — but the concrete flagship depends on WHY it was chosen.
-    // Architecture/orchestration wants the reasoning flagship (DEFAULT_MODEL_IDS.top,
-    // the model the Pantheon's Zeus/Argus/Athena actually run on); creative or
-    // customer-facing work wants the creative flagship (claude-fable-5).
-    const architectureLed = c.architecturePct >= c.creativePct;
-    return {
-      model: 'fable',
-      claudeModel: architectureLed ? DEFAULT_MODEL_IDS.top : DEFAULT_MODEL_IDS.creative,
-      codexModel: 'gpt-5.5-pro',
-      costMultiple: '~5x the cost of Sonnet',
-      rationale: architectureLed
-        ? `${c.architecturePct}% architecture/orchestration work — this is where the reasoning flagship (${DEFAULT_MODEL_IDS.top}, what the orchestration gods run on) earns its cost. Delegate mechanical cleanup elsewhere.`
-        : `${c.creativePct}% creative/customer-facing work — ${DEFAULT_MODEL_IDS.creative}'s generative range earns its cost here. Delegate mechanical cleanup elsewhere.`,
-    };
-  }
-
+export function signalsFromClassification(c: Classification): RoutingSignals {
   return {
-    model: 'sonnet',
-    claudeModel: DEFAULT_MODEL_IDS.mid,
-    codexModel: 'gpt-5.5',
-    costMultiple: 'baseline (~5x cheaper than the top tier)',
-    rationale: `${c.mechanicalPct}% mechanical execution — file edits, config changes, regenerations. Sonnet handles this reliably; a top-tier model's extra reasoning depth wouldn't improve find/replace accuracy.`,
+    // Architecture is a genuine depth signal — it changes boundaries and
+    // protocols, where being wrong is expensive to unwind.
+    architecturalImpact: c.architecturePct >= 30,
+    // Bulk work qualifies as mechanical only when nothing else is competing
+    // for judgement in the same plan.
+    boundedMechanical: c.bulkPct >= 40 && c.architecturePct < 20 && c.creativePct < 20,
+    ambiguity: 'low',
   };
+}
+
+/**
+ * Recommend a model, biased DOWN by default (AGNT_031).
+ *
+ * Accepts optional structured signals — task risk, blast radius, security and
+ * release sensitivity — which take precedence over anything inferred from plan
+ * text. Callers that have real mission or Council evidence should pass it;
+ * callers with only prose get the conservative inference above.
+ */
+export function recommendModel(
+  c: Classification,
+  extraSignals: RoutingSignals = {},
+): ModelRecommendation {
+  const signals: RoutingSignals = { ...signalsFromClassification(c), ...extraSignals };
+  const decision = routeModel(signals, { provider: 'anthropic' });
+  const profile = decision.requestedProfile;
+
+  const claudeModel = decision.resolvedModelId;
+  const codexModel = codexIdFor(profile);
+
+  const costMultiple =
+    profile === 'fast-mechanical'
+      ? 'lowest tier — a fraction of the balanced default'
+      : profile === 'balanced-agentic'
+        ? 'baseline'
+        : profile === 'deep-reasoning'
+          ? '~2.5x the balanced default (input and output)'
+          : '~5x the balanced default — requires explicit approval';
+
+  const rationale =
+    profile === 'fast-mechanical'
+      ? `${c.bulkPct}% bulk/repetitive work carrying no architectural, security, product, or release decision — the fast tier handles high-volume mechanical passes at a fraction of the cost.`
+      : profile === 'deep-reasoning'
+        ? `${c.architecturePct}% architecture/orchestration work — boundaries, data models, and protocols are where correctness outweighs latency, so the deep-reasoning tier earns its cost. Delegate mechanical cleanup to the fast tier.`
+        : profile === 'frontier-long-horizon'
+          ? `Frontier tier selected under explicit approval. This is never inferred from plan text.`
+          : `${c.mechanicalPct}% mechanical execution — file edits, config changes, regenerations. The balanced default handles this reliably; extra reasoning depth would not improve find/replace accuracy.`;
+
+  return { model: profile, claudeModel, codexModel, costMultiple, rationale, decision };
 }
 
 interface ScoreOptions {
@@ -327,9 +376,10 @@ export function assignPhases(
 // ── Kickoff prompt v2 ─────────────────────────────────────────────────────────
 
 const TIER_LABEL: Record<ModelTier, string> = {
-  haiku: 'a fast, high-throughput model',
-  sonnet: 'a capable mid-tier model',
-  fable: 'a top-tier reasoning model',
+  'fast-mechanical': 'a fast, high-throughput model for bounded mechanical work',
+  'balanced-agentic': 'a capable general-purpose model — the default',
+  'deep-reasoning': 'a deep-reasoning model for architecture, security, and release work',
+  'frontier-long-horizon': 'the frontier model — approval-gated, long-horizon work only',
 };
 
 export function formatKickoffPrompt(
