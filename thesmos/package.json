@@ -1,6 +1,6 @@
 {
   "name": "thesmos-governance",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "description": "AI-stack-agnostic repo governance: 1,137 rules, MCP server, Learning Brain, Builder Wizard, and Pantheon agents for Claude, Gemini, Cursor, Copilot, Codex, and AGENTS.md",
   "license": "FSL-1.1-MIT",
   "author": {
@@ -188,11 +188,11 @@
     "agents:starters": "tsx scripts/extract-starters.ts"
   },
   "optionalDependencies": {
-    "lightningcss-linux-x64-gnu": "1.32.0",
-    "lightningcss-linux-x64-musl": "1.32.0"
+    "lightningcss-linux-x64-gnu": "1.33.0",
+    "lightningcss-linux-x64-musl": "1.33.0"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.10",
+    "@changesets/cli": "^2.31.1",
     "@types/node": "^26.1.0",
     "@vitest/coverage-v8": "^4.1.10",
     "tsup": "^8.5.1",

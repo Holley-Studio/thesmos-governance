@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/Holley-Studio/thesmos-governance/actions/workflows/ci.yml/badge.svg)](https://github.com/Holley-Studio/thesmos-governance/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/thesmos-governance?color=blue)](https://www.npmjs.com/package/thesmos-governance)
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/holley-studios.thesmos-governance-vscode)](https://marketplace.visualstudio.com/items?itemName=holley-studios.thesmos-governance-vscode)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/holleystudio.thesmos-governance-vscode)](https://marketplace.visualstudio.com/items?itemName=holleystudio.thesmos-governance-vscode)
 
 ---
 
@@ -41,11 +41,11 @@ Thesmos Governance enforces 1,137+ AI-coding rules across your repo — catching
 
 Or install via command line:
 ```bash
-code --install-extension holley-studios.thesmos-governance-vscode
+code --install-extension holleystudio.thesmos-governance-vscode
 ```
 
 **Requirements:**
-- VS Code 1.85+
+- VS Code 1.100+
 - Node.js 20+
 - `thesmos-governance` npm package (auto-detected from `node_modules/.bin` or PATH)
 
