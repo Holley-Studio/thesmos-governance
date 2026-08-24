@@ -42,6 +42,31 @@ export interface ExecutionReceipt {
   artifacts?: string[];
   terminalStatus: ReceiptTerminalStatus;
   blockReason?: string;
+  /**
+   * What governed memory reached this execution.
+   *
+   * Ids and a capsule hash, never memory content: a receipt is an audit record
+   * that may be shared or archived, and copying remembered project detail into
+   * every one of them would turn an audit trail into a second, ungoverned
+   * store of the same material.
+   */
+  memory?: ReceiptMemoryEvidence;
+}
+
+/** Auditable record of the context decision for one execution. */
+export interface ReceiptMemoryEvidence {
+  /** Ids injected into the capsule, in the order they appeared. */
+  includedIds: string[];
+  /** Candidates considered before filtering. */
+  candidates: number;
+  /** Why each rejected candidate was rejected — the useful half of an audit. */
+  excluded?: Array<{ id: string; reason: string }>;
+  /** sha256 of the rendered memory block, so the exact bytes are provable. */
+  capsuleHash?: string;
+  /** ESTIMATE — see `estimateTokens`. Never an measured token count. */
+  tokensEstimate?: number;
+  /** True when recall was attempted but the subsystem was unavailable. */
+  degraded?: boolean;
 }
 
 function receiptsDir(root: string): string {

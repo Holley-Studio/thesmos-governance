@@ -53,7 +53,7 @@ it belong to, and has something newer replaced it.
 
 ## Write governance
 
-```
+```text
 agent proposes → validate → scope · provenance · sensitivity · bounds → accept/reject → store
 ```
 
@@ -103,7 +103,7 @@ rather than making the whole store unreadable.
 
 ## Embeddings
 
-```
+```text
 Mnemosyne → EmbeddingProvider → Ollama
 ```
 
@@ -210,6 +210,140 @@ thesmos memory:doctor
 
 Deleting a record deletes its vector in the same operation — an orphaned vector
 would keep surfacing a "forgotten" memory, which would make deletion a lie.
+
+## Context Intelligence — the live path
+
+```text
+              THESMOS
+                 │
+         Context Intelligence          thesmos/context-intelligence.ts
+                 │
+      ┌──────────┼──────────┐
+      │          │          │
+   Mission    Evidence   Mnemosyne
+      │          │          │
+      └──────────┼──────────┘
+                 │
+          Context Capsule
+                 │
+           Provider Router
+         ┌───────┼───────┐
+         │       │       │
+      Claude   Codex   Ollama
+```
+
+`buildMissionContext()` is the one place Thesmos decides what a provider sees.
+It is re-exported from `context-capsule.ts`, so there is a single import
+surface: that module answers *"what is true about this repo now"*,
+Context Intelligence answers *"what should this provider see for this request"*.
+
+> **Provider adapters never decide what historical context to send.**
+> Thesmos decides, before dispatch.
+
+### Authority hierarchy
+
+Order is fixed and not configurable. Memory is appended last so nothing in it
+can precede — and therefore appear to qualify — anything above it.
+
+```text
+SYSTEM POLICY
+   ↓
+THESMOS GOVERNANCE
+   ↓
+CURRENT USER INTENT
+   ↓
+CURRENT VERIFIED EVIDENCE
+   ↓
+RETRIEVED GOVERNED MEMORY      ← fenced, labelled non-authoritative
+```
+
+A stale memory saying *"deploy automatically"* sits below a policy requiring
+approval. Policy wins, unambiguously.
+
+### Recall policy
+
+Deterministic, not an LLM classifier — that would add a model call, a failure
+mode, and nondeterminism to a decision well served by asking "is this about
+continuing something?".
+
+Recall **requires a project identity**. Without one it declines rather than
+guesses: failing to recall is cheap, leaking across projects is not.
+
+| Recalls | Declines |
+| --- | --- |
+| continue / resume / still failing | `format this string` |
+| migration, deployment, certification | queries under 8 characters |
+| "why did we…", architecture, constraint | no repo or project identity |
+
+### Two thresholds, not one
+
+Relevance is gated on **raw topical similarity separately from the composite
+rank**. This matters: the composite score sums similarity with type, confidence,
+provenance and recency, and those non-similarity terms alone floor an
+authoritative record near 0.5. A `minRelevance` gate can therefore never exclude
+a well-attested memory about a completely unrelated subject.
+
+That would be the wrong model. Authority decides *which of the relevant* records
+matter most; it must not manufacture relevance for an irrelevant one.
+
+`minSimilarity` defaults to 0.08, calibrated for lexical overlap. Semantic
+callers should raise it — cosine similarity runs generously high even for
+loosely related text.
+
+### Budget
+
+Memory is opportunistic. Mandatory current evidence is never dropped to fit more
+history. Defaults: **1500 estimated tokens, 12 records**. Exclusions are recorded
+with a reason (`below-relevance-threshold`, `duplicates-current-evidence`,
+`exceeds-token-budget`, `exceeds-record-budget`).
+
+Token counts come from the single estimator in `token-budget.ts` — roughly four
+characters per token, and labelled an estimate everywhere it surfaces. There is
+deliberately no second tokenizer.
+
+### Mission authority
+
+A task never states its own memory scope, exactly as it never states its own
+permissions. `memoryScopeForTask()` returns `mission` — never `global`, never
+`workspace`. Delegated children inherit the same ceiling because they are bound
+to the same mission object, which makes widening structurally impossible rather
+than merely discouraged.
+
+Retrieval is read-only and its failure is absorbed by the executor, so a memory
+outage can never fail a task or perturb mission state. Verified: the mission
+state hash is byte-identical with and without recall.
+
+### Measured (this fixture only)
+
+`thesmos/context-benchmark.test.ts`, 125-record corpus, lexical retrieval:
+
+| | baseline (transcript carried forward) | memory-aware |
+| --- | --- | --- |
+| characters | 15,115 | **927** |
+| estimated tokens | ~3,779 | **~232** |
+| records injected | — | 3 of 125 |
+| retrieval | — | 5 ms |
+
+Reduction is ~94% **on this corpus**. It is not a general claim, and the token
+figures are estimates, not measurements. The benchmark asserts correctness
+alongside size: the facts needed to continue survive, current evidence is never
+displaced, and the superseded fact stays out while its replacement stays in.
+
+### Inspecting a decision
+
+```bash
+thesmos context:explain "continue fixing the staging migration certification issue"
+```
+
+Reports the retrieval mode, why recall did or didn't run, what was included with
+scores, exclusions grouped by reason, and the estimated token cost.
+
+### Receipts
+
+`ExecutionReceipt.memory` records included ids, candidate count, exclusion
+reasons and a sha256 of the rendered block — **never memory content**. A receipt
+may be shared or archived; copying remembered project detail into every one
+would turn an audit trail into a second, ungoverned store of the same material.
 
 ## Not implemented in this PR
 

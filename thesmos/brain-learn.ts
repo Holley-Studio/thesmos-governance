@@ -17,6 +17,7 @@
 
 import type { BrainStore, ProposedRule, ProposedAgent } from './brain-store.js';
 import { makeLogger } from './logger.js';
+import { estimateTokens } from './token-budget.js';
 
 const log = makeLogger('brain-learn');
 
@@ -33,10 +34,8 @@ function estimateCost(inputTokens: number, outputTokens: number, model: string):
   return (inputTokens / 1000) * rates.input + (outputTokens / 1000) * rates.output;
 }
 
-function estimatePromptTokens(text: string): number {
-  // Rough approximation: ~4 chars per token
-  return Math.ceil(text.length / 4);
-}
+/** Re-exported from token-budget so the codebase has exactly one estimator. */
+const estimatePromptTokens = estimateTokens;
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
 
