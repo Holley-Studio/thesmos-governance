@@ -1,0 +1,138 @@
+##
+## Thesmos Watch — Revert Watcher
+## by Holley Studio
+##
+## Runs as a GitHub Action, not a local poll: a safety guarantee that depends
+## on the user keeping a terminal open is not a guarantee. When main goes red
+## and a Thesmos-performed merge is the culprit, it opens and merges a revert
+## PR (see thesmos/pr/revert.ts and thesmos/bin/commands/pr.ts).
+##
+## WHY workflow_run AND NOT push. This job used to fire on `push: main`,
+## which is the moment CI *starts*, not the moment it has an answer. The job
+## reached its one `gh api` call about 60–90 seconds in (checkout, setup-node,
+## npm ci) while ci.yml was still grinding through a three-way Node matrix
+## plus guard-windows plus typecheck — so it read "checks pending" on
+## essentially every real push and returned before it ever looked for a
+## culprit. And a push event never comes back: a regression that turned the
+## build red ten minutes later produced no second event and was never
+## re-examined. The watcher was, in practice, unable to fire unattended.
+##
+## `workflow_run: [completed]` inverts that — CI has concluded before this
+## job starts, so there is something to judge. workflow_run also runs the
+## workflow definition from the default branch, which is what we want for a
+## job holding write permissions.
+##
+## WHICH COMMIT IT JUDGES. `github.event.workflow_run.head_sha` — the commit
+## CI actually ran against — passed explicitly to `pr:watch --sha`. NOT the
+## tip of main: by the time CI concludes the tip may already be a newer
+## commit whose own checks have not started, and judging that one reads
+## pending and stands down on a regression CI has already reported. The
+## checkout uses the same SHA, so the CLI that runs is the one that was
+## current when the regression landed.
+##
+## LEDGER COMMITS DELIBERATELY DO NOT WAKE THIS JOB. Every commit
+## thesmos/pr/sync.ts writes carries `[skip ci]`, so it produces no CI run and
+## therefore no workflow_run event. That is correct and intended — those
+## commits contain nothing but Thesmos's own state files, there is nothing for
+## CI to judge, and reacting to them is how a watcher that publishes state
+## ends up triggering itself in a loop. Do not "fix" it.
+##
+## CANCELLED AND SKIPPED CI RUNS ARE NOT VERDICTS. ci.yml sets
+## `cancel-in-progress`, so two pushes landing close together leave a
+## cancelled run behind. Acting on one would revert a pull request nothing
+## ever actually judged, so they are filtered out below (and mainCheckStatus
+## treats a cancelled check run the same way).
+##
+## How it knows what Thesmos merged: it ASKS GITHUB, not the checked-out tree.
+## `thesmos pr:merge` labels every pull request it merges `thesmos-merged`, and this job
+## lists merged pull requests carrying that label (and not `thesmos-reverted`) to find a
+## culprit — see thesmos/pr/marks.ts and docs/pr-merge-labels.md. It deliberately does NOT
+## read .thesmos/pr-ledger.jsonl: that file only reaches a checkout if the CLI can push it
+## to the default branch, and this repository's `main` ruleset rejects that push with no
+## bypass actor, so the ledger was empty on every run and this job could never revert
+## anything. The ledger remains the local audit trail; it is not this job's input.
+##
+## Required permissions (workflow level — they apply to every job in this file):
+##   contents:      write  — checkout the code, let `gh pr merge` land the revert commit, and
+##                           push the updated ledger/sentinel back (see thesmos/pr/sync.ts;
+##                           a protected default branch may reject that push, which is
+##                           reported, not fatal — auto-revert no longer depends on it)
+##   pull-requests: write  — open the revert PR (`gh pr revert`), merge it (`gh pr merge`),
+##                           and label merges/reverts (`gh pr edit --add-label`)
+##   issues:        write  — create the `thesmos-merged` / `thesmos-reverted` labels the
+##                           first time they are needed (`gh label create`). Labels are
+##                           issue-scoped in the REST API, so `pull-requests: write` alone
+##                           cannot create one.
+##   checks:        read   — read the judged commit's check-run conclusions via the GitHub
+##                           Checks API, so the watcher confirms redness for itself instead
+##                           of trusting the trigger (a failed run may since have been
+##                           re-run green). This repo's CI runs as GitHub Actions jobs,
+##                           which report through Check Runs, not the legacy commit-status
+##                           endpoint — so this is `checks: read`, not `statuses: read`.
+##
+## Setup:
+##   Nothing to configure. Generated as part of the governed PR merge engine
+##   (`thesmos pr:watch`).
+##
+
+name: Thesmos Watch
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+
+# Two CI runs concluding close together would otherwise put two watchers on
+# the same repository at once, each free to open and merge a revert. Queue
+# them instead of cancelling: a watcher that is cancelled mid-revert leaves a
+# revert PR open and unmerged.
+concurrency:
+  group: thesmos-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: Revert on regression
+    # Only a push to the default branch, and only a CI run that actually
+    # reached a verdict. head_branch alone is not enough: ci.yml also runs on
+    # pull_request, and a contributor whose branch happens to be called "main"
+    # would otherwise send the watcher off to judge an unmerged branch.
+    #
+    # This job's `name:` above is also what its check run is called on the
+    # commit, and mainCheckStatus excludes exactly that name from its own
+    # verdict (WATCH_CHECK_NAME in thesmos/bin/commands/pr.ts) — otherwise a
+    # CI re-run would let this watcher read its own previous failure as a red
+    # main. Renaming the job means renaming that constant; a test enforces it.
+    if: >-
+      github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.conclusion != 'cancelled'
+      && github.event.workflow_run.conclusion != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the commit CI judged
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 20
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check that commit and revert a Thesmos merge if it regressed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npx tsx thesmos/bin/cli.ts pr:watch --range 5 --sha ${{ github.event.workflow_run.head_sha }}

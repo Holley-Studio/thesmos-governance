@@ -1,0 +1,1265 @@
+// Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
+import { describe, it, expect } from 'vitest';
+import { mkdtempSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { classifyGhResult, cmdPr, detectDefaultBranch, exitCodeForWatch, formatExplain, formatWatchResult, mainCheckStatus, makeGhRunner, parseRangeArg, parseShaArg, parseWaveArg, runPr, WATCH_CHECK_NAME, type RawGhResult, type WatchResult } from './pr.ts';
+import type { MergePlan } from '../../pr/plan.ts';
+import { buildGraph } from '../../pr/graph.ts';
+import { isAutonomyDisabled, setAutonomy, type GhRunner } from '../../pr/execute.ts';
+import { acquireLock } from '../../pr/lock.ts';
+import { MERGED_LABEL } from '../../pr/marks.ts';
+import type { Runner } from '../../pr/sync.ts';
+import type { CheckContext, PullRequest } from '../../pr/types.ts';
+
+const testNow = () => new Date('2026-08-16T12:00:00Z');
+
+/** A git that reports success and stages nothing — publishing the ledger is
+ *  proven end-to-end in thesmos/pr/ledger-handoff.test.ts. */
+const testGit: Runner = () => ({ ok: true, stdout: 'main\n', stderr: '' });
+
+/** A root dir for tests that never touch the filesystem (queue/explain paths). */
+const UNUSED_ROOT = '/dev/null/thesmos-unused-root';
+
+const pr = (number: number): PullRequest => ({
+  number,
+  title: `pr #${number}`,
+  isDraft: false,
+  baseRefName: 'main',
+  headRefName: `branch-${number}`,
+  mergeStateStatus: 'CLEAN',
+  changedFiles: 1,
+  files: ['a.ts'],
+  checks: [],
+});
+
+/** Builds the raw JSON `gh pr list --json ...` would return, from plain fixtures. */
+const ghPrListJson = (list: Array<{
+  number: number; title: string; baseRefName: string; headRefName: string; files?: string[];
+  checks?: CheckContext[];
+}>): string => JSON.stringify(list.map((p) => ({
+  number: p.number,
+  title: p.title,
+  isDraft: false,
+  baseRefName: p.baseRefName,
+  headRefName: p.headRefName,
+  mergeStateStatus: 'CLEAN',
+  changedFiles: p.files?.length ?? 0,
+  files: (p.files ?? []).map((path) => ({ path })),
+  statusCheckRollup: p.checks ?? [],
+})));
+
+/** The shape gh reports for this repo's own governance workflow. */
+const GOVERNANCE_FAILED: CheckContext = {
+  name: 'Governance Review', workflowName: 'Thesmos Governance PR Review', conclusion: 'FAILURE',
+};
+const GOVERNANCE_PASSED: CheckContext = { ...GOVERNANCE_FAILED, conclusion: 'SUCCESS' };
+
+/** A GhRunner that answers both `gh repo view` and `gh pr list` from fixtures. */
+const fakeGh = (defaultBranch: string, prListJson: string): GhRunner => (args) =>
+  args[0] === 'repo'
+    ? { ok: true, stdout: `${defaultBranch}\n`, stderr: '' }
+    : { ok: true, stdout: prListJson, stderr: '' };
+
+describe('classifyGhResult', () => {
+  it('names the missing CLI clearly when gh is not installed (ENOENT)', () => {
+    const r: RawGhResult = {
+      error: Object.assign(new Error('spawnSync gh ENOENT'), { code: 'ENOENT' }),
+      status: null,
+      stdout: null,
+      stderr: null,
+    };
+    const out = classifyGhResult(r);
+    expect(out.ok).toBe(false);
+    expect(out.stdout).toBe('');
+    expect(out.stderr).toMatch(/gh.*not found/i);
+    expect(out.stderr).toMatch(/cli\.github\.com/);
+  });
+
+  it('falls back to the raw error message for a non-ENOENT spawn error', () => {
+    const r: RawGhResult = {
+      error: Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }),
+      status: null,
+      stdout: null,
+      stderr: null,
+    };
+    const out = classifyGhResult(r);
+    expect(out.ok).toBe(false);
+    expect(out.stderr).toBe('EACCES: permission denied');
+  });
+
+  it('reports ok:true and passes stdout/stderr through on a clean run', () => {
+    const out = classifyGhResult({ error: undefined, status: 0, stdout: '[]', stderr: '' });
+    expect(out).toEqual({ ok: true, stdout: '[]', stderr: '' });
+  });
+
+  it('reports ok:false with the process stderr when gh runs but exits non-zero', () => {
+    const out = classifyGhResult({ error: undefined, status: 1, stdout: '', stderr: 'not logged in' });
+    expect(out.ok).toBe(false);
+    expect(out.stderr).toBe('not logged in');
+  });
+});
+
+describe('detectDefaultBranch', () => {
+  it('uses the branch gh reports', () => {
+    const branch = detectDefaultBranch(() => ({ ok: true, stdout: 'develop\n', stderr: '' }));
+    expect(branch).toBe('develop');
+  });
+
+  it('falls back to main when gh fails, so a repo with no default-branch access still gets a plan', () => {
+    const branch = detectDefaultBranch(() => ({ ok: false, stdout: '', stderr: 'not logged in' }));
+    expect(branch).toBe('main');
+  });
+
+  it('falls back to main when gh succeeds but returns nothing usable', () => {
+    const branch = detectDefaultBranch(() => ({ ok: true, stdout: '', stderr: '' }));
+    expect(branch).toBe('main');
+  });
+
+  it('rooting a real repo graph by the derived branch differs from — and corrects — a hardcoded "main"', () => {
+    // Repo default branch is "develop". PR #1 happens to have a branch
+    // literally named "develop" (e.g. a one-off sync/mirror PR) — an
+    // incidental but realistic collision. PR #2 is an independent PR based
+    // on the true default branch. A hardcoded defaultBranch of 'main'
+    // (the brief's original, unconditional value) looks up "develop" in
+    // the head-ref map and wrongly nests #2 underneath #1; deriving the
+    // branch correctly recognizes #2 as its own root.
+    const prs: PullRequest[] = [
+      { ...pr(1), baseRefName: 'main', headRefName: 'develop' },
+      { ...pr(2), baseRefName: 'develop', headRefName: 'feature-x' },
+    ];
+
+    const derived = detectDefaultBranch(() => ({ ok: true, stdout: 'develop\n', stderr: '' }));
+    expect(derived).toBe('develop');
+
+    const correctGraph = buildGraph(prs, derived);
+    expect(correctGraph.nodes.get(2)?.parent).toBeNull();
+    expect(correctGraph.roots).toContain(2);
+
+    // The bug this replaces: hardcoding 'main' silently mis-roots #2 as a
+    // child of #1 instead of an independent PR — no error, just a wrong plan.
+    const hardcodedGraph = buildGraph(prs, 'main');
+    expect(hardcodedGraph.nodes.get(2)?.parent).toBe(1);
+  });
+});
+
+describe('formatExplain', () => {
+  const prs = [pr(101), pr(102)];
+
+  it('rejects a missing argument without crashing', () => {
+    const plan: MergePlan = { waves: [], halted: [] };
+    expect(formatExplain(undefined, prs, plan)).toMatch(/is not a pull request number/);
+  });
+
+  it('rejects a non-numeric argument', () => {
+    const plan: MergePlan = { waves: [], halted: [] };
+    expect(formatExplain('abc', prs, plan)).toMatch(/"abc" is not a pull request number/);
+  });
+
+  it('reports the halt reason for a PR that is stuck', () => {
+    const plan: MergePlan = {
+      waves: [],
+      halted: [{ number: 101, reason: 'DIRTY', detail: 'merge conflict — needs a human', blocks: [] }],
+    };
+    expect(formatExplain('101', prs, plan)).toBe('  #101 — merge conflict — needs a human\n');
+  });
+
+  it('says a PR is ready when it is in the list and not halted', () => {
+    const plan: MergePlan = { waves: [[{ number: 102, wave: 0, class: 'reversible' }]], halted: [] };
+    expect(formatExplain('102', prs, plan)).toBe('  #102 is ready to merge.\n');
+  });
+
+  it('distinguishes "not found" from "ready" for a PR number that was never open, instead of misreporting it as ready', () => {
+    const plan: MergePlan = { waves: [[{ number: 102, wave: 0, class: 'reversible' }]], halted: [] };
+    const out = formatExplain('99999', prs, plan);
+    expect(out).toMatch(/#99999 is not among the 2 open pull requests/);
+    expect(out).not.toMatch(/ready to merge/);
+  });
+});
+
+// ── runPr — proves the wiring, not just the extracted pieces ───────────────
+//
+// classifyGhResult, detectDefaultBranch, and formatExplain were all tested
+// above in isolation, but nothing proved cmdPr actually calls them with the
+// right arguments. These tests drive runPr — the function cmdPr delegates
+// to with real dependencies — with fake gh/write, so a regression in the
+// *wiring* (not just the extracted logic) fails a test.
+
+describe('runPr — default branch derivation is actually used by pr:queue', () => {
+  it('roots the plan by the branch gh reports, not a hardcoded "main"', () => {
+    // PR #1's branch happens to be literally named "develop" (a realistic
+    // incidental collision — e.g. a one-off sync/mirror PR). PR #2 is an
+    // independent PR based on the repo's real default branch, "develop".
+    // If runPr ever hardcodes defaultBranch back to 'main', PR #2's base
+    // ("develop") gets looked up in the head-ref map, finds PR #1, and #2
+    // is wrongly nested underneath it instead of being its own root.
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore: sync', baseRefName: 'main', headRefName: 'develop', files: ['README.md'] },
+      { number: 2, title: 'feat: on develop', baseRefName: 'develop', headRefName: 'feature-x', files: ['README.md'] },
+    ]);
+
+    // #1 targets "main", which on this repo is neither the default branch nor
+    // any fetched PR's head, so it is now halted as UNRESOLVED_BASE rather
+    // than quietly treated as a root — the ordering fix from the same review.
+    // #2 is the one that must come out planned and unstacked.
+    let out = '';
+    runPr(['queue'], { gh: fakeGh('develop', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
+
+    expect(out).toContain('✓ 1 ready to merge');
+    const line2 = out.split('\n').find((l) => l.includes('#2'));
+    expect(line2).toBeDefined();
+    expect(line2).not.toMatch(/goes in after/);
+    // Against a hardcoded 'main', #2 nests under #1 and renders as stacked;
+    // against the derived 'develop' it is its own root.
+    expect(out).toMatch(/#1.*can't see/);
+  });
+});
+
+describe('runPr — pr:explain formatting is actually used for a PR that was never open', () => {
+  it('reports "not among the open pull requests", not "ready to merge"', () => {
+    const prListJson = ghPrListJson([
+      { number: 100, title: 'chore: a', baseRefName: 'main', headRefName: 'a', files: ['README.md'] },
+      { number: 101, title: 'chore: b', baseRefName: 'main', headRefName: 'b', files: ['README.md'] },
+    ]);
+
+    let out = '';
+    runPr(['explain', '999'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
+
+    expect(out).toBe('  #999 is not among the 2 open pull requests I looked at. Run "thesmos pr:queue" to see the current list.\n');
+  });
+});
+
+// ── runPr — OBSOLETE wiring: the plan actually fetches the target branch's tree ──
+//
+// Task 10 built detectObsolete as a pure function in thesmos/pr/lock.ts, but
+// a pure function nobody calls in production is dead code. These tests
+// prove runPr itself (not just detectObsolete in isolation) fetches the
+// target branch's file listing via gh and threads it into computePlan as
+// pathsOnTarget, and that a lookup gh can't answer degrades safely — never
+// silently marks every open PR obsolete.
+
+const treeJson = (paths: string[], truncated = false): string => JSON.stringify({ truncated, paths });
+
+/** A GhRunner answering `gh repo view`, `gh pr list`, and the git-trees lookup used for pathsOnTarget. */
+function fakeGhWithTree(
+  defaultBranch: string,
+  prListJson: string,
+  tree: { ok: boolean; stdout?: string },
+): GhRunner {
+  return (args) => {
+    if (args[0] === 'repo') return { ok: true, stdout: `${defaultBranch}\n`, stderr: '' };
+    if (args[0] === 'api' && args[1]?.includes('git/trees')) {
+      return { ok: tree.ok, stdout: tree.stdout ?? '', stderr: tree.ok ? '' : 'HTTP 404' };
+    }
+    return { ok: true, stdout: prListJson, stderr: '' };
+  };
+}
+
+describe('runPr — OBSOLETE fires end-to-end through pr:queue via a real gh-shaped tree lookup', () => {
+  it('halts a PR whose only changed file is absent from the fetched target-branch tree', () => {
+    // Mirrors the #9/#6 case from the spec: a PR bumping a workflow file a
+    // merged PR has already deleted.
+    const prListJson = ghPrListJson([
+      { number: 9, title: 'chore(deps): bump codeql-action', baseRefName: 'main', headRefName: 'dep', files: ['.github/workflows/codeql.yml'] },
+    ]);
+    const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson(['.github/workflows/ci.yml', 'README.md']) });
+
+    let out = '';
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
+
+    expect(out).toMatch(/✗ #9/);
+    expect(out).toMatch(/files it changes no longer exist/);
+    expect(out).not.toMatch(/ready to merge/);
+  });
+
+  it('never touches a PR whose changed file is still present in the fetched tree', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson(['package-lock.json', 'README.md']) });
+
+    let out = '';
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
+
+    expect(out).toContain('✓ 1 ready to merge');
+  });
+});
+
+describe('runPr — a failed or unusable tree lookup never marks every PR obsolete', () => {
+  it('still plans a normal PR when the git-trees gh call fails outright', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const gh = fakeGhWithTree('main', prListJson, { ok: false });
+
+    let out = '';
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
+
+    expect(out).toContain('✓ 1 ready to merge');
+    expect(out).not.toMatch(/no longer exist/);
+  });
+
+  it('still plans a normal PR when gh reports the tree as truncated', () => {
+    // GitHub truncates very large recursive tree listings — a truncated
+    // response cannot be trusted to prove absence, so it must be treated
+    // the same as a failed lookup, not as ground truth.
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson(['package-lock.json'], true) });
+
+    let out = '';
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
+
+    expect(out).toContain('✓ 1 ready to merge');
+  });
+
+  it('still plans a normal PR when gh returns an empty tree', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const gh = fakeGhWithTree('main', prListJson, { ok: true, stdout: treeJson([]) });
+
+    let out = '';
+    runPr(['queue'], { gh, write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
+
+    expect(out).toContain('✓ 1 ready to merge');
+  });
+});
+
+describe('parseWaveArg', () => {
+  it('defaults to wave 0 when no flag is given', () => {
+    // Number(undefined) is NaN, and NaN ?? 0 stays NaN because ?? only
+    // replaces null/undefined — a naive `Number(argv[i+1] ?? 0)` reads as a
+    // safe default but silently produces NaN here, which downstream turns
+    // into "merge nothing, report success" instead of merging wave 0.
+    expect(parseWaveArg(['merge'])).toBe(0);
+  });
+
+  it('reads the number after --wave', () => {
+    expect(parseWaveArg(['merge', '--wave', '2'])).toBe(2);
+  });
+
+  it("returns 'all' when --all is present, taking priority over --wave", () => {
+    expect(parseWaveArg(['merge', '--all'])).toBe('all');
+    expect(parseWaveArg(['merge', '--wave', '1', '--all'])).toBe('all');
+  });
+
+  it('falls back to wave 0 for a non-numeric --wave value instead of propagating NaN', () => {
+    expect(parseWaveArg(['merge', '--wave', 'banana'])).toBe(0);
+  });
+});
+
+// ── runPr — pr:merge and autonomy dispatch ──────────────────────────────────
+//
+// runMerge itself is exercised directly (with a fake gh) in
+// thesmos/pr/merge-command.test.ts. These tests drive the dispatch inside
+// runPr — the same seam queue/explain are proven through above — so a
+// regression in the *wiring* between the CLI subcommand and runMerge/
+// setAutonomy/isAutonomyDisabled fails a test, not just a regression in the
+// extracted logic.
+
+function freshRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), 'thesmos-pr-cmd-'));
+  mkdirSync(join(root, '.thesmos'), { recursive: true });
+  return root;
+}
+
+describe('runPr — pr:merge is actually wired to runMerge', () => {
+  it('merges the reversible PR, never the one-way PR, and reports it in the output', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+      { number: 2, title: 'chore(deps): bump b from 1.0.0 to 2.0.0', baseRefName: 'main', headRefName: 'b', files: ['package-lock.json'] },
+    ]);
+    const baseGh = fakeGh('main', prListJson);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['merge', '--wave', '0'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toContain('#1');
+    expect(out).not.toContain('#2');
+    const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
+    expect(merges).toEqual(['1']);
+  });
+
+  it('merges wave 0 by default when no --wave flag is given at all', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const baseGh = fakeGh('main', prListJson);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
+    expect(merges).toEqual(['1']);
+    expect(out).toContain('#1');
+  });
+});
+
+// ── the governance severity gate — the product's entire wedge (spec §2) ──
+//
+// computePlan's `blockers` was `new Set()` at both call sites, so the BLOCKER
+// halt in plan.ts was dead code: `pr:merge` merged PRs Thesmos itself had
+// refused, and the plain-language BLOCKER string in fetch.ts could never
+// print. These tests drive the real CLI path with a real gh-shaped payload.
+
+describe('runPr — a PR whose Thesmos governance check failed is never merged', () => {
+  it('halts it as a BLOCKER while merging its otherwise-identical twin', () => {
+    // #1 and #2 are deliberately identical in every dimension the planner
+    // cares about — same patch bump, same single lockfile diff, same CLEAN
+    // merge state, both roots — and differ ONLY in the governance check's
+    // verdict. If #2 is excluded for any other reason this test would pass
+    // without the gate doing anything, which is the failure mode it exists
+    // to rule out.
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'], checks: [GOVERNANCE_PASSED] },
+      { number: 2, title: 'chore(deps): bump b from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'b',
+        files: ['package-lock.json'], checks: [GOVERNANCE_FAILED] },
+    ]);
+    const baseGh = fakeGh('main', prListJson);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['merge', '--all'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    const merges = calls.filter((c) => c[1] === 'merge').map((c) => c[2]);
+    expect(merges).toEqual(['1']);
+    expect(merges).not.toContain('2');
+    expect(out).toContain('#1');
+  });
+});
+
+describe('runPr — pr:queue explains a BLOCKER halt in plain language', () => {
+  it('prints the BLOCKER string that could never print while blockers was always empty', () => {
+    const prListJson = ghPrListJson([
+      { number: 2, title: 'chore(deps): bump b from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'b',
+        files: ['package-lock.json'], checks: [GOVERNANCE_FAILED] },
+    ]);
+
+    let out = '';
+    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
+
+    expect(out).toMatch(/✗ #2/);
+    expect(out).toContain('Thesmos found something that must not ship');
+    expect(out).not.toMatch(/ready to merge/);
+  });
+
+  it('says out loud when no PR reported a governance result, instead of letting silence read as approval', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+
+    let out = '';
+    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
+
+    expect(out).toContain('✓ 1 ready to merge');
+    expect(out).toMatch(/none of these pull requests has a Thesmos governance result yet/i);
+    expect(out).toMatch(/nothing was checked against the rules/i);
+  });
+
+  it('says it on the merge path too, not only on the read-only queue', () => {
+    // Someone who only ever runs pr:merge would otherwise never learn the
+    // governance gate had nothing to read — the one way that gate goes quiet.
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+
+    let out = '';
+    runPr(['merge'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toMatch(/merged 1/);
+    expect(out).toMatch(/none of these pull requests has a Thesmos governance result yet/i);
+  });
+
+  it('stays quiet about coverage once a governance result is present', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'], checks: [GOVERNANCE_PASSED] },
+    ]);
+
+    let out = '';
+    runPr(['queue'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root: UNUSED_ROOT, now: testNow, git: testGit });
+
+    expect(out).not.toMatch(/governance result yet/i);
+  });
+});
+
+describe('runPr — pr:merge refuses when autonomy is off (governing property 3)', () => {
+  it('never calls gh at all and says plainly that autonomy is off', () => {
+    const root = freshRoot();
+    setAutonomy(root, false);
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const baseGh = fakeGh('main', prListJson);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toMatch(/autonomy is off/i);
+    expect(calls).toEqual([]);
+  });
+});
+
+describe('runPr — pr:merge refuses when another Thesmos run already holds the lock', () => {
+  it('never calls gh at all and says plainly that another run is already merging', () => {
+    // Proves the wiring reaches production through the actual CLI dispatch
+    // path, not just runMerge in isolation (thesmos/pr/merge-command.test.ts
+    // proves that half already) — a lock nothing in runPr's dispatch checks
+    // would still let a second `thesmos pr:merge` invocation through.
+    const root = freshRoot();
+    acquireLock(root, testNow()); // simulates a concurrent Thesmos run already in progress
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a', files: ['package-lock.json'] },
+    ]);
+    const baseGh = fakeGh('main', prListJson);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toMatch(/already merging/i);
+    expect(calls).toEqual([]);
+  });
+});
+
+describe('runPr — autonomy on/off/status', () => {
+  it('toggles the sentinel via setAutonomy and reports plain-language state, without ever calling gh', () => {
+    const root = freshRoot();
+    const gh: GhRunner = () => { throw new Error('gh must never be called to toggle a local switch'); };
+
+    let out = '';
+    runPr(['autonomy', 'off'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+    expect(isAutonomyDisabled(root)).toBe(true);
+    expect(out).toMatch(/off/i);
+
+    out = '';
+    runPr(['autonomy'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+    expect(out).toMatch(/off/i);
+
+    out = '';
+    runPr(['autonomy', 'on'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+    expect(isAutonomyDisabled(root)).toBe(false);
+    expect(out).toMatch(/on/i);
+  });
+});
+
+// ── makeGhRunner — proves classifyGhResult is wired into realGh's exact composition ──
+//
+// realGh is defined as makeGhRunner(spawn), so testing makeGhRunner with a
+// fake spawn function exercises the identical composition that produces
+// realGh, not a parallel reimplementation. The one thing this cannot prove
+// without an actual missing `gh` binary or a mocked child_process module is
+// that `spawnSync` itself (Node's real implementation) is the function
+// passed in — that seam is accepted as untested here.
+
+describe('makeGhRunner', () => {
+  it('surfaces the ENOENT hint through the same spawn-then-classify path realGh uses', () => {
+    const enoent = Object.assign(new Error('spawnSync gh ENOENT'), { code: 'ENOENT' });
+    const gh = makeGhRunner(() => ({ error: enoent, status: null, stdout: null, stderr: null }));
+    const result = gh(['pr', 'list']);
+    expect(result.ok).toBe(false);
+    expect(result.stderr).toMatch(/gh.*not found/i);
+    expect(result.stderr).toMatch(/cli\.github\.com/);
+  });
+
+  it('passes a clean spawn result through unchanged', () => {
+    const gh = makeGhRunner(() => ({ error: undefined, status: 0, stdout: '[]', stderr: '' }));
+    expect(gh(['pr', 'list'])).toEqual({ ok: true, stdout: '[]', stderr: '' });
+  });
+});
+
+// ── pr:watch — reads main's check state, then reaches chooseCulprit/performRevert ──
+//
+// Task 8 built chooseCulprit/performRevert and the workflow that invokes
+// `thesmos pr:watch`, but nothing registered the subcommand. These tests
+// prove: (1) pr:watch actually determines whether main is currently red
+// before doing anything (a push-triggered workflow fires on every push, not
+// just failures, so watch must check this itself), and (2) when it is red,
+// the wiring genuinely reaches chooseCulprit and performRevert — not just a
+// message that looks right.
+
+describe('parseRangeArg', () => {
+  it('defaults to 5 when no --range flag is given', () => {
+    expect(parseRangeArg(['watch'])).toBe(5);
+  });
+
+  it('reads the number after --range', () => {
+    expect(parseRangeArg(['watch', '--range', '10'])).toBe(10);
+  });
+
+  it('falls back to 5 for a non-numeric --range value instead of propagating NaN', () => {
+    // Same NaN trap as parseWaveArg: Number(undefined) is NaN and NaN ?? 5
+    // stays NaN, so this must be an explicit Number.isFinite check.
+    expect(parseRangeArg(['watch', '--range', 'banana'])).toBe(5);
+  });
+});
+
+describe('parseShaArg', () => {
+  it('reports absent when no --sha flag is given, so a hand-run check still judges the tip', () => {
+    expect(parseShaArg(['watch'])).toEqual({ kind: 'absent' });
+  });
+
+  it('reads the commit after --sha', () => {
+    expect(parseShaArg(['watch', '--sha', 'c097f598abc'])).toEqual({ kind: 'sha', sha: 'c097f598abc' });
+  });
+
+  it('reports a --sha with no value as invalid rather than falling back to the tip', () => {
+    // The fallback is the trap. `--sha ${{ ... }}` expanding to nothing must
+    // not silently become "judge whatever main is now" — that is the exact
+    // bug the flag was added to remove, quietly reinstated.
+    expect(parseShaArg(['watch', '--sha'])).toEqual({ kind: 'invalid', raw: '' });
+  });
+
+  it('reports a value that is not a commit SHA as invalid', () => {
+    expect(parseShaArg(['watch', '--sha', '--range'])).toEqual({ kind: 'invalid', raw: '--range' });
+  });
+});
+
+// mainCheckStatus is driven by realistic Checks API payloads — one
+// conclusion string per check run, exactly what
+// `.check_runs[] | (.conclusion // "pending")` actually prints (verified
+// against a real `gh api` call: gh's --jq output is raw/unquoted, matching
+// jq -r, not JSON-encoded) — not a pre-reduced count. A count-based mock
+// can't distinguish "0 failures, all settled" from "0 failures, one still
+// running", which is exactly the bug this rule exists to catch.
+describe('mainCheckStatus', () => {
+  it('reports green when every check run has concluded successfully', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'success\nsuccess\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('green');
+  });
+
+  it('reports red when at least one check run concluded as a failure', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'success\nfailure\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('red');
+  });
+
+  it('reports red for any concluded-but-not-passing conclusion, not just "failure" literally', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'timed_out\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('red');
+  });
+
+  it('does not read a cancelled check run as a red main', () => {
+    // ci.yml sets cancel-in-progress, so two pushes landing close together
+    // leave cancelled check runs behind. A cancelled run reached no verdict:
+    // treating it as a failure would open and merge a revert of a pull
+    // request nothing ever judged. Indeterminate, like still-running.
+    const gh: GhRunner = () => ({ ok: true, stdout: 'success\ncancelled\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('pending');
+  });
+
+  it('does not read a stale check run as a red main either', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'stale\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('pending');
+  });
+
+  it('still reports red when a real failure sits alongside a cancelled run', () => {
+    // The softening must not reach far enough to hide an actual failure.
+    const gh: GhRunner = () => ({ ok: true, stdout: 'cancelled\nfailure\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('red');
+  });
+
+  it('reports pending, not green, when a settled success sits alongside a still-running check run', () => {
+    // conclusion is null while a check run is queued/in_progress — GitHub
+    // only sets it once status is "completed". The real jq filter maps
+    // that null to the literal string "pending". thesmos-watch.yml fires
+    // on the same push event a multi-job, multi-minute ci.yml matrix
+    // reacts to, and watch is a single fast `gh api` call, so this mixed
+    // shape — one check already green, others still running — is the
+    // *normal* case on a real push, not an edge case.
+    const gh: GhRunner = () => ({ ok: true, stdout: 'success\npending\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('pending');
+  });
+
+  it('reports pending when every check run is still queued or in progress', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'pending\npending\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('pending');
+  });
+
+  it('reports red even when a failure is mixed with still-pending checks — a real failure outranks a pending one', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: 'pending\nfailure\n', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('red');
+  });
+
+  it('reports unknown when the API call itself fails, rather than guessing a color', () => {
+    const gh: GhRunner = () => ({ ok: false, stdout: '', stderr: 'HTTP 403' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('unknown');
+  });
+
+  it('reports unknown when no check runs were reported for the commit at all', () => {
+    const gh: GhRunner = () => ({ ok: true, stdout: '', stderr: '' });
+    expect(mainCheckStatus(gh, 'abc123')).toBe('unknown');
+  });
+
+  it('asks GitHub to leave the watcher\'s own check run out of the answer', () => {
+    // The watcher's job is itself a check run on the commit it judges, and
+    // exitCodeForWatch fails the run on any indeterminate state. Re-run CI on
+    // that commit — the ordinary response to a flake — and the second watch
+    // run would read the first one's own failure as a red main and revert a
+    // pull request because of it. The exclusion happens in the query, so this
+    // asserts the query: a mocked response cannot prove a filter that is not
+    // there. watch-workflow.test.ts pins the name to the job's own.
+    let seen: string[] = [];
+    mainCheckStatus((args) => { seen = args; return { ok: true, stdout: 'success\n', stderr: '' }; }, 'abc123');
+    expect(seen[seen.indexOf('--jq') + 1]).toContain(`select(.name != "${WATCH_CHECK_NAME}")`);
+  });
+});
+
+describe('formatWatchResult', () => {
+  it('formats each status without user-facing jargon', () => {
+    const cases: Array<[WatchResult, RegExp]> = [
+      [{ status: 'autonomy-off' }, /autonomy is off/i],
+      [{ status: 'unreadable-history' }, /could not read.*history/i],
+      [{ status: 'no-history' }, /no commit history/i],
+      [{ status: 'unknown' }, /could not tell whether main/i],
+      [{ status: 'pending' }, /still running/i],
+      [{ status: 'green' }, /currently green/i],
+      [{ status: 'no-culprit' }, /nothing of ours/i],
+      [{ status: 'unreadable-merges', detail: 'HTTP 403' }, /could not read which of these commits were mine/i],
+      [{ status: 'reverted', pr: 12, sync: { ok: true } }, /reverted #12/],
+      [{ status: 'revert-failed', pr: 12, sync: { ok: true } }, /could not revert #12/],
+    ];
+    for (const [result, expected] of cases) {
+      expect(formatWatchResult(result)).toMatch(expected);
+    }
+  });
+
+  it('warns that a later push could retry when the OFF switch after a failed revert did not publish', () => {
+    // The kill switch still travels through the repository, and on a
+    // protected default branch that push is rejected — so the one guarantee
+    // it carries ("one revert attempt per incident") is the thing at risk.
+    const out = formatWatchResult({
+      status: 'revert-failed', pr: 12, sync: { ok: false, detail: 'protected branch hook declined' },
+    });
+    expect(out).toMatch(/could not publish that OFF switch/i);
+    expect(out).toMatch(/attempt the same revert again/i);
+  });
+
+  it('says nothing extra when that switch did publish', () => {
+    const out = formatWatchResult({ status: 'revert-failed', pr: 12, sync: { ok: true } });
+    expect(out).not.toMatch(/OFF switch/);
+  });
+
+  it('warns, and reports autonomy off, when a successful revert could not be marked', () => {
+    const out = formatWatchResult({
+      status: 'reverted', pr: 12, sync: { ok: true }, mark: { ok: false, detail: 'HTTP 403' },
+    });
+    expect(out).toMatch(/reverted #12/);
+    expect(out).toMatch(/cannot promise not to revert it again/i);
+    expect(out).toMatch(/Autonomy is now OFF/);
+  });
+
+  it('does not promise an OFF switch it could not publish when the mark also failed', () => {
+    // The live failure: #12 merged, main red, the revert lands, `gh pr edit
+    // --add-label thesmos-reverted` 403s, and the sentinel that turns autonomy
+    // off is written to a runner that is destroyed seconds later — because the
+    // push that would publish it is rejected on a protected default branch.
+    // #12 still carries only thesmos-merged and is still in range, so the next
+    // red build selects it again and reverts the revert, re-landing the
+    // regression. "Autonomy is now OFF" flat is a promise this repo cannot
+    // keep. The revert-failed branch already says this; the success branch did
+    // not.
+    const out = formatWatchResult({
+      status: 'reverted',
+      pr: 12,
+      sync: { ok: false, detail: 'protected branch hook declined' },
+      mark: { ok: false, detail: 'HTTP 403' },
+    });
+    expect(out).toMatch(/could not publish that OFF switch/i);
+    expect(out).toMatch(/protected branch hook declined/);
+    expect(out).toMatch(/select #12 again/i);
+  });
+
+  it('says nothing about an unpublished OFF switch when the mark succeeded', () => {
+    // A published-or-not sentinel is irrelevant when nothing switched autonomy
+    // off, and a warning that fires when it need not is how the real ones stop
+    // being read.
+    const out = formatWatchResult({
+      status: 'reverted', pr: 12, sync: { ok: false, detail: 'protected branch hook declined' }, mark: { ok: true },
+    });
+    expect(out).not.toMatch(/OFF switch/);
+  });
+});
+
+describe('exitCodeForWatch', () => {
+  it('fails a run that reverted but could not mark the culprit — the engine is now off', () => {
+    // The operator's only signal that autonomy switched itself off would
+    // otherwise be log text under a green tick, which nobody reads. A run that
+    // needs a human must not look like one that had nothing to do.
+    expect(exitCodeForWatch({
+      status: 'reverted', pr: 12, sync: { ok: true }, mark: { ok: false, detail: 'HTTP 403' },
+    })).toBe(1);
+  });
+
+  it('passes a clean revert', () => {
+    expect(exitCodeForWatch({ status: 'reverted', pr: 12, sync: { ok: true }, mark: { ok: true } })).toBe(0);
+  });
+
+  it('fails every state where the watcher could not determine what happened', () => {
+    for (const result of [
+      { status: 'revert-failed', pr: 1, sync: { ok: true } },
+      { status: 'unknown' },
+      { status: 'unreadable-history' },
+      { status: 'unreadable-merges' },
+    ] as WatchResult[]) {
+      expect(exitCodeForWatch(result), result.status).toBe(1);
+    }
+  });
+
+  it('passes the ordinary nothing-to-do outcomes', () => {
+    for (const result of [
+      { status: 'autonomy-off' }, { status: 'green' }, { status: 'pending' },
+      { status: 'no-culprit' }, { status: 'no-history' },
+    ] as WatchResult[]) {
+      expect(exitCodeForWatch(result), result.status).toBe(0);
+    }
+  });
+});
+
+function freshWatchRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), 'thesmos-pr-watch-'));
+  mkdirSync(join(root, '.thesmos'), { recursive: true });
+  return root;
+}
+
+/** A merge Thesmos has marked on GitHub — the Action's only record of one. */
+interface Marked { pr: number; sha: string }
+
+/** Newest commit first, one minute apart — the shape
+ *  `.[] | [.sha, .commit.committer.date] | @tsv` actually prints. */
+const WATCH_COMMIT_BASE = Date.parse('2026-08-16T11:30:00Z');
+const watchCommitLines = (shas: string[]): string =>
+  shas.map((sha, i) => `${sha}\t${new Date(WATCH_COMMIT_BASE - i * 60_000).toISOString()}`).join('\n') + '\n';
+
+/** The JSON `gh pr list --state merged --label thesmos-merged --json ...` prints. */
+const mergedListJson = (marked: Marked[]): string => JSON.stringify(marked.map((m, i) => ({
+  number: m.pr,
+  labels: [{ name: MERGED_LABEL }],
+  mergeCommit: { oid: m.sha },
+  mergedAt: `2026-08-16T11:0${i}:00Z`,
+})));
+
+/** A GhRunner covering the calls pr:watch makes: the recent-commit list, the
+ * check-runs lookup for a given sha (a realistic one-conclusion-per-line
+ * payload, matching `.check_runs[] | (.conclusion // "pending")`, not a
+ * pre-reduced count), the merged-pull-request listing the Action rebuilds its
+ * candidate merges from, and (when a revert is warranted) `gh pr revert` /
+ * `gh pr merge` / `gh pr edit`, matching performRevert's own expectations. */
+function fakeWatchGh(opts: { shas: string[]; failingShas: Set<string>; marked?: Marked[] }): GhRunner {
+  return (args) => {
+    if (args[0] === 'api' && args[1]?.includes('/check-runs')) {
+      const sha = args[1].split('/commits/')[1]?.split('/check-runs')[0];
+      return { ok: true, stdout: `${opts.failingShas.has(sha ?? '') ? 'failure' : 'success'}\n`, stderr: '' };
+    }
+    if (args[0] === 'api' && args[1]?.includes('/commits?')) {
+      return { ok: true, stdout: watchCommitLines(opts.shas), stderr: '' };
+    }
+    if (args[0] === 'pr' && args[1] === 'list') {
+      return { ok: true, stdout: mergedListJson(opts.marked ?? []), stderr: '' };
+    }
+    if (args[0] === 'pr' && args[1] === 'edit') {
+      return { ok: true, stdout: '', stderr: '' };
+    }
+    if (args[0] === 'pr' && args[1] === 'revert') {
+      return { ok: true, stdout: 'https://github.com/o/r/pull/999\n', stderr: '' };
+    }
+    if (args[0] === 'pr' && args[1] === 'merge') {
+      return { ok: true, stdout: '', stderr: '' };
+    }
+    throw new Error(`unexpected gh call in pr:watch test: ${JSON.stringify(args)}`);
+  };
+}
+
+describe('runPr — pr:watch does nothing when main is green', () => {
+  it('checks the newest commit, reports green, and never calls gh pr revert', () => {
+    const root = freshWatchRoot();
+    const calls: string[][] = [];
+    const baseGh = fakeWatchGh({ shas: ['aaa', 'zzz'], failingShas: new Set(), marked: [{ pr: 1, sha: 'aaa' }] });
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toMatch(/green/i);
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
+    // A green main must not even ask which merges were ours.
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'list')).toBe(false);
+  });
+});
+
+describe('runPr — pr:watch judges the commit it is given, not the tip of main', () => {
+  it('passes --sha all the way through to the check-runs lookup', () => {
+    // The CLI boundary of the trigger fix. thesmos-watch.yml now runs from a
+    // workflow_run event and hands over github.event.workflow_run.head_sha —
+    // the commit CI actually ran against. If runPr drops that flag, the
+    // watcher silently reverts to judging whatever main has become, which is
+    // the failure this whole change exists to remove.
+    const JUDGED = 'c0ffee1';   // what CI ran against — red
+    const TIP = 'dead1ee';      // where main has got to since — green
+    const root = freshWatchRoot();
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => {
+      calls.push(args);
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) {
+        const sha = args[1].split('/commits/')[1]?.split('/check-runs')[0];
+        return { ok: true, stdout: sha === JUDGED ? 'failure\n' : 'success\n', stderr: '' };
+      }
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) {
+        return { ok: true, stdout: watchCommitLines([TIP, JUDGED]), stderr: '' };
+      }
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: '[]', stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    let out = '';
+    runPr(['watch', '--sha', JUDGED], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(calls.find((c) => c[1]?.includes('/check-runs'))?.[1]).toContain(`/commits/${JUDGED}/check-runs`);
+    expect(out).toMatch(/nothing of ours/i);  // reached the red path, so it judged JUDGED
+  });
+
+  it('refuses, loudly and non-zero, when --sha was given but is not a commit', () => {
+    // `--sha ${{ ... }}` expanding to nothing must never quietly degrade into
+    // "judge the tip instead": that is the original bug wearing the fix's
+    // clothes. Doing nothing and saying so is the only honest answer.
+    const root = freshWatchRoot();
+    const gh: GhRunner = (args) => { throw new Error(`gh must not be called: ${JSON.stringify(args)}`); };
+
+    let out = '';
+    const code = runPr(['watch', '--sha'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(code).toBe(1);
+    expect(out).toMatch(/which commit to check/i);
+  });
+});
+
+describe('runPr — pr:watch treats outstanding checks as pending, never as green', () => {
+  it('does not look for a culprit or revert while a check run is still in progress', () => {
+    // The exact shape watch will typically see on a real push: this repo's
+    // ci.yml runs a multi-job, multi-minute matrix on the same push event
+    // thesmos-watch.yml reacts to, and watch is one fast `gh api` call —
+    // some checks settled green, one still running. Reading that as green
+    // is the bug this test exists to catch. The gh fake below throws on any
+    // call beyond the two lookups, so reaching the merged-list query at all
+    // fails this test.
+    const root = freshWatchRoot();
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => {
+      calls.push(args);
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'success\npending\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\nzzz\n', stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    let out = '';
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toMatch(/still running/i);
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
+  });
+});
+
+describe('runPr — pr:watch when main is red but nothing of ours is in range', () => {
+  it('reports plainly and never calls gh pr revert', () => {
+    const root = freshWatchRoot(); // no marked merges on GitHub at all
+    const calls: string[][] = [];
+    const baseGh = fakeWatchGh({ shas: ['aaa'], failingShas: new Set(['aaa']) });
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toMatch(/nothing of ours/i);
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert')).toBe(false);
+  });
+});
+
+describe('runPr — pr:watch reaches chooseCulprit and performRevert when main is red', () => {
+  it('reverts the Thesmos merge inside the failing range and reports success', () => {
+    const root = freshWatchRoot();
+    const calls: string[][] = [];
+    const baseGh = fakeWatchGh({ shas: ['aaa', 'zzz'], failingShas: new Set(['aaa']), marked: [{ pr: 7, sha: 'aaa' }] });
+    const gh: GhRunner = (args) => { calls.push(args); return baseGh(args); };
+
+    let out = '';
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toMatch(/reverted #7/);
+    // Proves the wiring reaches performRevert's actual two-call sequence
+    // (create, then merge the *new* PR — #999, not #7), not a stub.
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'revert' && c[2] === '7')).toBe(true);
+    expect(calls.some((c) => c[0] === 'pr' && c[1] === 'merge' && c[2] === '999')).toBe(true);
+  });
+});
+
+describe('runPr — pr:watch surfaces a failed revert and leaves autonomy off', () => {
+  it('reports the failure instead of crashing or claiming success', () => {
+    const root = freshWatchRoot();
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: mergedListJson([{ pr: 3, sha: 'aaa' }]), stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'revert') return { ok: false, stdout: '', stderr: 'no permission' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    let out = '';
+    runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toMatch(/could not revert #3/i);
+    expect(isAutonomyDisabled(root)).toBe(true);
+  });
+});
+
+describe('runPr — pr:watch says so when it could not read which merges were its own', () => {
+  it('reports the indeterminate state and exits non-zero, never "nothing of ours"', () => {
+    // The whole shape of this fix. "None of these commits are mine" is a
+    // stand-down; "I could not find out" is not. Reporting the second as the
+    // first is how auto-revert went inert the first time round.
+    const root = freshWatchRoot();
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: false, stdout: '', stderr: 'HTTP 403' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    let out = '';
+    const code = runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toMatch(/could not read which of these commits were mine/i);
+    expect(out).not.toMatch(/nothing of ours/i);
+    expect(code).toBe(1);
+  });
+});
+
+describe('runPr — pr:merge says out loud when a merge could not be marked', () => {
+  it('reports the merge as real, names the missing label, and gives the by-hand remedy', () => {
+    // An unmarked merge is one auto-revert can never undo — the single case
+    // where the recoverability that justifies unattended merging is genuinely
+    // absent. It must never be swallowed by an otherwise cheerful "merged 1".
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'repo') return { ok: true, stdout: 'main\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: prListJson, stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'edit') return { ok: false, stdout: '', stderr: 'HTTP 403' };
+      if (args[0] === 'label') return { ok: false, stdout: '', stderr: 'HTTP 403' };
+      return { ok: true, stdout: '', stderr: '' };
+    };
+
+    let out = '';
+    const code = runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).toMatch(/merged 1/);
+    expect(out).toMatch(/#1 really did merge/);
+    expect(out).toMatch(/automatic revert cannot undo this one/i);
+    expect(out).toContain('gh pr edit 1 --add-label thesmos-merged');
+    expect(code, 'the merge really happened, so this is not a failed run').toBe(0);
+  });
+
+  it('stays quiet when every merge was marked', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+
+    let out = '';
+    runPr(['merge'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(out).not.toMatch(/really did merge/);
+  });
+});
+
+// ── exit codes — a failed revert must not show a green check ────────────────
+//
+// runWatch returned revert-failed / unknown / unreadable-history as plain
+// values, cmdPr returned normally, and cli.ts only exits non-zero on a
+// thrown error. So a run that failed to revert a regression and switched
+// autonomy off finished with a green tick in the Actions tab — the only
+// signal a user would ever have noticed.
+
+describe('runPr — exit codes', () => {
+  it('exits non-zero when the revert failed', () => {
+    const root = freshWatchRoot();
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: mergedListJson([{ pr: 3, sha: 'aaa' }]), stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'revert') return { ok: false, stdout: '', stderr: 'no permission' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    expect(runPr(['watch'], { gh, write: () => {}, root, now: testNow, git: testGit })).toBe(1);
+  });
+
+  it("exits non-zero when it could not tell whether main is green or red", () => {
+    const root = freshWatchRoot();
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: false, stdout: '', stderr: 'HTTP 403' };
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+    expect(runPr(['watch'], { gh, write: () => {}, root, now: testNow, git: testGit })).toBe(1);
+  });
+
+  it("exits non-zero when main's history could not be read at all", () => {
+    const root = freshWatchRoot();
+    const gh: GhRunner = () => ({ ok: false, stdout: '', stderr: 'not logged in' });
+    expect(runPr(['watch'], { gh, write: () => {}, root, now: testNow, git: testGit })).toBe(1);
+  });
+
+  it('exits zero on the ordinary outcomes — green, pending, nothing of ours', () => {
+    const root = freshWatchRoot();
+    const gh = fakeWatchGh({ shas: ['aaa'], failingShas: new Set() });
+    expect(runPr(['watch'], { gh, write: () => {}, root, now: testNow, git: testGit })).toBe(0);
+  });
+
+  it('exits non-zero when a merge failed, instead of reporting a clean run', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+    const gh: GhRunner = (args) => {
+      if (args[0] === 'repo') return { ok: true, stdout: 'main\n', stderr: '' };
+      if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: prListJson, stderr: '' };
+      if (args[1] === 'merge') return { ok: false, stdout: '', stderr: 'boom' };
+      return { ok: true, stdout: '', stderr: '' };
+    };
+
+    let out = '';
+    const code = runPr(['merge'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+    expect(out).toMatch(/stopped at #1/);
+    expect(code).toBe(1);
+  });
+
+  it('exits zero on a merge run where everything landed', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+    expect(runPr(['merge'], { gh: fakeGh('main', prListJson), write: () => {}, root, now: testNow, git: testGit }))
+      .toBe(0);
+  });
+
+  it('exits zero for the read-only queue', () => {
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore: a', baseRefName: 'main', headRefName: 'a', files: ['README.md'] },
+    ]);
+    expect(runPr(['queue'], { gh: fakeGh('main', prListJson), write: () => {}, root: UNUSED_ROOT, now: testNow, git: testGit }))
+      .toBe(0);
+  });
+});
+
+describe('cmdPr — the exit code actually reaches the process', () => {
+  // runPr returning the right number proves nothing on its own: the single
+  // line that assigns it to process.exitCode was deleted in a sabotage run
+  // and the entire suite stayed green. This is that line's test.
+  it('sets a non-zero process.exitCode when the revert failed, and clears it on a clean run', async () => {
+    const previous = process.exitCode;
+    try {
+      const root = freshWatchRoot();
+      const failing: GhRunner = (args) => {
+        if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'failure\n', stderr: '' };
+        if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+        if (args[0] === 'pr' && args[1] === 'list') return { ok: true, stdout: mergedListJson([{ pr: 3, sha: 'aaa' }]), stderr: '' };
+        if (args[0] === 'pr' && args[1] === 'revert') return { ok: false, stdout: '', stderr: 'no permission' };
+        throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+      };
+
+      await cmdPr(['watch'], { gh: failing, git: testGit, write: () => {}, root, now: testNow });
+      expect(process.exitCode).toBe(1);
+
+      const cleanRoot = freshWatchRoot();
+      const green = fakeWatchGh({ shas: ['aaa'], failingShas: new Set() });
+      await cmdPr(['watch'], { gh: green, git: testGit, write: () => {}, root: cleanRoot, now: testNow });
+      expect(process.exitCode).toBe(0);
+    } finally {
+      process.exitCode = previous;
+    }
+  });
+});
+
+describe('runPr — pr:watch refuses to act while autonomy is off', () => {
+  it('says so plainly and never calls gh', () => {
+    const root = freshWatchRoot();
+    setAutonomy(root, false);
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => { calls.push(args); throw new Error('gh must not be called'); };
+
+    let out = '';
+    const code = runPr(['watch'], { gh, write: (s) => { out += s; }, root, now: testNow, git: testGit });
+
+    expect(calls).toEqual([]);
+    expect(out).toMatch(/autonomy is off/i);
+    expect(code).toBe(0); // a switch the user set on purpose is not a failure
+  });
+});
+
+describe('runPr — pr:merge distinguishes a wave that does not exist from an empty queue', () => {
+  it('names the missing group instead of saying nothing was ready', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([
+      { number: 1, title: 'chore(deps): bump a from 1.0.0 to 1.0.1', baseRefName: 'main', headRefName: 'a',
+        files: ['package-lock.json'] },
+    ]);
+
+    let out = '';
+    runPr(['merge', '--wave', '7'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root, now: testNow, git: testGit });
+    expect(out).toMatch(/no group 7/i);
+    expect(out).not.toMatch(/nothing was ready/i);
+
+    out = '';
+    runPr(['merge', '--wave', '-1'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root, now: testNow, git: testGit });
+    expect(out).toMatch(/no group -1/i);
+  });
+
+  it('still says "nothing was ready" when the plan genuinely has no groups', () => {
+    const root = freshRoot();
+    const prListJson = ghPrListJson([]);
+
+    let out = '';
+    runPr(['merge'], { gh: fakeGh('main', prListJson), write: (s) => { out += s; }, root, now: testNow, git: testGit });
+    expect(out).toMatch(/nothing was ready/i);
+  });
+});
+
+describe('runPr — pr:watch honors --range for how much history to check', () => {
+  it('passes the requested count through to the commit-list lookup', () => {
+    const root = freshWatchRoot();
+    const calls: string[][] = [];
+    const gh: GhRunner = (args) => {
+      calls.push(args);
+      if (args[0] === 'api' && args[1]?.includes('/commits?')) return { ok: true, stdout: 'aaa\n', stderr: '' };
+      if (args[0] === 'api' && args[1]?.includes('/check-runs')) return { ok: true, stdout: 'success\n', stderr: '' };
+      throw new Error(`unexpected gh call: ${JSON.stringify(args)}`);
+    };
+
+    runPr(['watch', '--range', '10'], { gh, write: () => {}, root, now: testNow, git: testGit });
+
+    const commitsCall = calls.find((c) => c[0] === 'api' && c[1]?.includes('/commits?'));
+    expect(commitsCall?.[1]).toContain('per_page=10');
+  });
+});

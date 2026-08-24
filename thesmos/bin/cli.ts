@@ -57,6 +57,7 @@ import { cmdReport } from './commands/report.ts';
 import { cmdAiLint } from './commands/ai-lint.ts';
 import { cmdPackCreate } from './commands/pack-create.ts';
 import { cmdPackPublish } from './commands/pack-publish.ts';
+import { cmdPr } from './commands/pr.ts';
 import { cmdAutopilot } from './commands/autopilot.ts';
 import { cmdClaudeGovern } from './commands/claude-govern.ts';
 import { cmdImportScan } from './commands/import-scan.ts';
@@ -115,6 +116,11 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'pack:validate': (argv) => cmdPacks('validate', argv),
   'pack:create': cmdPackCreate,
   'pack:publish': cmdPackPublish,
+  'pr:queue':   (argv) => cmdPr(['queue', ...argv]),
+  'pr:explain': (argv) => cmdPr(['explain', ...argv]),
+  'pr:merge':   (argv) => cmdPr(['merge', ...argv]),
+  'pr:watch':   (argv) => cmdPr(['watch', ...argv]),
+  'autonomy':   (argv) => cmdPr(['autonomy', ...argv]),
   health: cmdHealth,
   ci: cmdCiGate,
   'ci:github-security': cmdCiGithubSecurity,
@@ -529,6 +535,27 @@ PACKS
     --dry-run                  Preview without publishing
     --access=<level>           npm publish access (default: public)
     --tag=<tag>                npm dist-tag (e.g. --tag=beta)
+
+PULL REQUESTS  (governed merge engine — plain-language status, no jargon)
+  pr:queue                 Show which open pull requests are ready to merge and which are stuck
+  pr:explain <number>      Explain why one pull request is stuck (or confirm it is ready)
+  pr:merge                 Merge the next ready wave of pull requests (stops at the first failure)
+    --wave <n>               Merge only wave n (default: 0)
+    --all                    Merge every ready wave, in order
+  pr:watch                 Used by CI: check whether main just went red, and undo the merge that caused it
+    --range <n>               How many recent commits on main to check (default: 5)
+    --sha <commit>            Judge this commit (the one CI ran against), not the tip of main
+  autonomy                 Show whether Thesmos is allowed to merge pull requests right now
+  autonomy on              Allow Thesmos to merge pull requests that meet the rules in place
+  autonomy off             Stop Thesmos from merging or changing any pull request
+
+  Two labels make this work, and they are ordinary labels anyone can edit:
+    thesmos-merged      Thesmos merged this — and may automatically revert it if main goes red.
+                        Remove it and that merge can no longer be undone automatically; add it
+                        to a pull request Thesmos did not merge and that work becomes revertable.
+    thesmos-reverted    Thesmos already reverted this one. Removing it can let a later red build
+                        revert the revert, putting the change back on main.
+  Full detail, including what to do when Thesmos asks you to add one by hand: docs/pr-merge-labels.md
 
 CUSTOM AGENTS
   agent:create "<Name>"    Scaffold a new agent in .thesmos/agents/ and register it
