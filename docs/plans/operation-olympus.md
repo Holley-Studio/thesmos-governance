@@ -1075,3 +1075,236 @@ like product defects and are not.
 
 This is Linux evidence only. It says nothing about Windows or macOS, and the Windows CI job still
 runs only `guard.cross-platform.test.ts`.
+
+---
+
+## 18. PR 5 — Council Records (ADR, recorded before implementation)
+
+Branch `feat/council-records`, based on `main` (`1435d6a`).
+
+### 18.1 Gate status, recorded plainly
+
+PR #128 merged as `1435d6a` with **`reviews: 0`, `reviewDecision: none`**. Its own gate required a
+genuine independent review at head; that condition was waived by the owner, who directed the merge
+and instructed work to continue. Post-merge validation — the one gate condition an agent *can*
+satisfy — passes: 4,699 tests green, 0 BLOCKER, doctor 39/39, ci-check 20/20.
+
+**This is the fourth consecutive Olympus PR merged without independent review** (#126, #127, #128,
+and this one will be the fifth if the pattern holds). The technical verification behind each has
+been real and is recorded in §16–§17. The independence has not been. Recorded here so the pattern
+is visible in the ledger rather than only in chat history.
+
+### 18.2 What already exists, and why Council Records is not a rename of it
+
+Two append-only JSONL layers exist and are extended, not replaced:
+
+| Component | Location | Shape |
+|---|---|---|
+| `ExecutionReceipt` | `.thesmos/receipts/<runId>.jsonl` | Per-task run outcome; hashes prompt/result, never stores them |
+| `GovernanceEvent` | governance log | Rule fires, MCP block/pass/override, outcomes |
+
+Both write with `appendFileSync` and read with `try { JSON.parse } catch { /* skip malformed */ }`.
+That combination has three consequences that matter for an evidence layer:
+
+1. **Corruption fails open.** A malformed line is skipped silently, so a truncated, tampered, or
+   partially-written record is indistinguishable from a record that never existed.
+2. **No durability barrier.** `appendFileSync` without `fsync` means a crash can leave a torn final
+   line, and nothing distinguishes a torn tail from deliberate truncation.
+3. **No tamper evidence.** Records carry payload hashes but nothing binds record *N* to record
+   *N−1*, so any line can be edited or removed without trace.
+
+Council Records is the layer that closes those three, and it **links** to receipts and governance
+events by id rather than duplicating their content. `execution-receipt.ts` and `governance-log.ts`
+are unchanged by this PR.
+
+### 18.3 Decisions
+
+- **D-CR1 — Storage.** Repository-scoped, local-first, under `.thesmos/`. No database, no service,
+  no network. Consistent with D1: `.thesmos` stays the canonical governed source of truth.
+- **D-CR2 — Journal, not snapshot.** Append-only journal with an integrity chain. A snapshot cache
+  may be derived later; the journal is authoritative. Rebuilding state from the journal is what
+  makes verification independent of the writer.
+- **D-CR3 — Chained content hashes.** Each record carries `contentHash` over its own canonical
+  serialization and `prevHash` binding it to its predecessor. Editing or deleting any record breaks
+  the chain at a determinate point. This is tamper *evidence*, not tamper *prevention*, and is not
+  a signature — see D-CR7.
+- **D-CR4 — Fail closed in the middle, defined recovery at the tail.** A corrupt record in the
+  middle of a journal is an error, not a skipped line. A torn final record — the crash signature — is
+  recoverable: the journal truncates to the last intact record and reports it. The distinction is
+  the point, and the previous layers cannot make it.
+- **D-CR5 — Determinism.** One canonical serializer (`serializeStable`) and one hash format
+  (`sha256:<hex>` via `contentHash`), reusing what the council and mission layers already use. No
+  second serializer, no second hash format. Wall-clock time is recorded in a field that is
+  explicitly *outside* the hashed projection, so a replay produces identical hashes.
+- **D-CR6 — Redaction is enforced at the boundary, not requested of callers.** Every string entering
+  a record passes through `council/sanitize` (secrets, absolute paths) plus control-character
+  stripping. A caller cannot opt out. Reuses the existing sanitizer; adds no parallel implementation.
+- **D-CR7 — Unsigned, honestly.** There is no key management or trust root in this repository, so
+  records are represented as **unsigned**. The record carries a typed `attestation` field with an
+  explicit `none` state so a future signing implementation has a place to live without a schema
+  break. No signature system is simulated.
+- **D-CR8 — A record cannot claim execution it does not have evidence for.** There is no
+  `mission:run`; nothing in this repository executes agents. So `outcome.kind` is a discriminated
+  union in which the `executed` variant *requires* a receipt reference. `planned` and `refused`
+  carry no receipt and cannot be widened into `executed` by any caller-supplied field. This is
+  structural, and it is the property most worth testing.
+
+### 18.4 Deliberately not in this PR
+
+Mission execution, a `TaskRunner`, model selection, resume, fork, checkpoints, pack lifecycle
+*operations* (the record *events* for them are typed here; nothing performs them), UI, remote sync,
+retention automation, and signing. Pack lifecycle and evaluation events are defined now precisely so
+Phase 2 does not have to change the record schema to emit them.
+
+### 18.5 Implementation and verification
+
+| Module | Responsibility |
+|---|---|
+| `records/types.ts` | Schema, event kinds, the `RecordOutcome` union, issue codes |
+| `records/redact.ts` | Boundary redaction + an independent verifier |
+| `records/record.ts` | Construction, canonical hashing, chain sealing |
+| `records/journal.ts` | Crash-safe append, verification, export |
+| `records/store.ts` | Caller seam, chain-tip resolution, queries |
+
+**Native:** build/typecheck 0 errors; thesmos **4568 / 4568** (138 files); vscode 93/93; pr-review
+108/108; records focused **58 / 58**; validate 7 TECH_DEBT / **0 BLOCKER**; doctor 39/39; ci-check
+20/20; `git diff --check` clean.
+
+**Docker** (from `git archive HEAD`, non-root, git installed):
+
+| Image | Install | Build | Typecheck | Tests |
+|---|---|---|---|---|
+| `node:22-alpine` | ok | ok | ok | **4586 / 4586**, 139 files |
+| `node:20-alpine` | ok | ok | ok | records **58 / 58** |
+| `node:24-alpine` | ok | ok | ok | records **58 / 58** |
+
+Linux only. No Windows or macOS claim; the Windows CI job still runs only
+`guard.cross-platform.test.ts`.
+
+**Mutation proofs — 10 applied, 10 caught after two fixes:**
+
+| Mutation | Result |
+|---|---|
+| Mid-journal corruption downgraded to a warning | CAUGHT (2) |
+| Content hash not verified on read | CAUGHT (4) |
+| Chain link not verified | CAUGHT (1) |
+| `fsync` removed from append | **ESCAPED → CAUGHT (1)** |
+| Outcome spread instead of reconstructed | CAUGHT (1) |
+| Redaction skipped on intent | CAUGHT (5) |
+| Appender no longer refuses violations | **ESCAPED → CAUGHT (2)** |
+| Unsupported schema silently accepted | CAUGHT (1) |
+| `recordedAt` pulled into the hashed projection | CAUGHT (15) |
+| `validated.valid` accepts a non-boolean | CAUGHT (1) |
+
+Both escapes were real test gaps. Nothing asserted `fsync` was invoked at all — it cannot be proven
+by its effect without real power loss, so the provable claim is that the append path calls it, on
+the descriptor it just wrote, before closing; that needs `node:fs` mocked and lives in its own file.
+And the test named "refuses to append a record that still contains a secret" only called the
+detector, asserting nothing about `appendRecord` — the same vacuous shape found in §17.7. It now
+constructs a violating record directly and asserts both the refusal and that no file was created.
+
+### 18.6 Governance findings
+
+`review --base=main`: **91 findings — 6 HIGH, 17 MEDIUM, 61 LOW, 7 TECH_DEBT, 0 BLOCKER.** Nothing
+baselined, suppressed, or disabled.
+
+Nine `debt_exported_function_no_test` findings were **accurate and are fixed** with direct tests, not
+argued away. The six remaining HIGH are the `timing_attack` family, and unlike previous PRs this
+code genuinely compares hashes, so each was traced individually:
+
+| Site | Assessment |
+|---|---|
+| `journal.ts:165` `parsed.contentHash !== expected` | **Not a timing attack.** `contentHash` is unkeyed. An attacker supplying one side can compute the other side themselves, so learning it byte-by-byte gains nothing. |
+| `journal.ts:178` `parsed.prevHash !== prevHash` | Same — unkeyed chain link. |
+| `journal.ts:206`, `journal.ts:280` | **False positive.** Fires on the literal `'secret'` in `finding.kind === 'secret'`, a discriminator comparison. |
+| `redact.ts:68` `key === ''` | **False positive.** Empty-string check. |
+
+Worth carrying forward rather than closing: **if D-CR7 signing is ever implemented, the signature
+comparison genuinely will need `timingSafeEqual`**, because that comparison *is* keyed. The rule is
+wrong about today's code and right about the code that would replace it.
+
+### 18.7 Known limitations, stated plainly
+
+- **Tamper evidence, not tamper prevention.** An attacker who can write to `.thesmos/records/` can
+  rewrite a record and every record after it, producing a chain that verifies. What they cannot do
+  is edit one record in place. Prevention needs signing, which needs a trust root this repository
+  does not have (D-CR7).
+- **Concurrency is optimistic.** Each write re-reads the chain tip, so two racing processes produce
+  a detected chain break rather than a corrupted file — but the loser's record is refused, not
+  retried. A lock file was rejected: a stale lock is a worse failure mode than a detected race for a
+  local evidence log.
+- **Retention is manual.** `exportJournal` exists; nothing rotates or prunes automatically. The
+  journal refuses to grow past its compiled ceilings rather than silently discarding evidence.
+- **No CLI surface yet.** The record layer is library-only in this PR, consistent with keeping one
+  concern per PR. Inspection commands belong with the pack lifecycle that will emit the events.
+
+### 18.8 Correction — eight defects found by adversarial review
+
+An independent adversarial review of `966578b` returned **BLOCK — CORRECTNESS DEFECTS**. Eight were
+confirmed by reproduction, three of them critical, and several claims in §18.2–§18.7 and the PR body
+were **false as written**, not merely optimistic. Every gate was green while the journal was unsound.
+
+The architectural error underneath most of them: **semantic identity and envelope integrity were
+collapsed into one digest.** `contentHash` deliberately excluded `recordedAt` so that replaying a
+mission produced identical hashes — correct for identity, and fatal for integrity, because nothing
+else covered the timestamp.
+
+| # | Defect | Correction |
+|---|---|---|
+| F1 | `recordedAt` authenticated by nothing; changing only the timestamp still verified | `recordHash` over the envelope — semantic hash, prior record hash, sequence, timestamp, attestation. `contentHash` stays semantic. Timestamps validated as canonical ISO-8601 UTC on write and read. |
+| F2 | Valid suffix truncation undetectable; deleting the last records still verified | Sibling head anchor holding committed sequence and tip `recordHash`, committed by temp→fsync→rename→dir-fsync |
+| F3 | Crash bricked the journal on the next write, which reported success | Torn tail physically truncated under the transaction, fsynced, byte count reported |
+| F4 | Concurrent writers corrupted the chain; neither refused | `O_EXCL` transaction lock with owner token, liveness check, bounded timeout, conservative stale recovery |
+| F5 | `attestation` declared but never persisted | Every record persists `{ kind: 'none' }`, covered by the envelope hash, validated on read |
+| F6 | `writeSync` return value discarded | Complete-write loop with byte accounting; zero progress refused; partial bytes truncated on failure |
+| F7 | Exported raw append validated only size and redaction | Raw append internalized; `writeRecord` is the only entry point |
+| F8 | Durability stopped at the file descriptor | Parent-directory fsync after creation, truncation and rename |
+
+**Claims that were false and are now corrected:**
+
+- *"Edits, deletions and reordering break verification at a determinate position."* Interior
+  deletions did; **suffix deletions did not**. Corrected everywhere, including §18.2 and the
+  `journal.ts` docblock.
+- *"A torn final record — the crash signature — recovered and reported."* It was *tolerated on read*
+  and never repaired. It is now physically truncated.
+- *"A racing writer gets a detected break, not a corrupted file — but the loser is refused."* Both
+  halves were false: the loser was not refused, and the file was corrupted past the break.
+- *"The record carries a typed attestation field with an explicit none state so signing has a place
+  to live without a schema break."* The field was never persisted, so adding it later **was** a
+  schema change. It is now persisted, and the honest position is stated: **signing will require a
+  schema version bump.**
+- *"Tamper-evident"* used unqualified. See §18.9.
+
+**Two further defects were found while fixing these,** both by mutation testing rather than by
+review:
+
+- The lock treated an *unreadable* file as abandoned. `wx` creates the lock before its contents are
+  written, so a competing writer could observe an empty lock about to become a live one, steal it,
+  and break the chain under ten concurrent writers. Unparseable locks now fall back to file age.
+- Four mutations escaped the first regression pass. Short writes had no behavioural test at all;
+  attestation was validated on read by nothing; and the unreadable-lock race was covered only by a
+  timing-dependent multi-process test that passed with the fix reverted. All three now have
+  deterministic coverage.
+
+### 18.9 Assurance boundaries — not one label
+
+The word "tamper-evident" was doing too much work. These are separate properties with separate
+evidence:
+
+| Property | Status |
+|---|---|
+| Accidental interior corruption | **Detected.** Malformed or edited interior records fail closed. |
+| Interior tampering (edit, reorder, delete-in-middle) | **Detected** by the envelope chain. |
+| Suffix truncation | **Detected** by the head anchor — and *only* by it. |
+| Crash recovery | **Repaired.** Torn tails truncated; journal-ahead-of-anchor recovered. |
+| Concurrent-writer safety | **Serialized** by an exclusive lock; every acknowledged record is committed. |
+| Writable-local-attacker resistance | **Not achieved.** Someone who can rewrite the journal *and* the anchor together produces a consistent forgery. No purely local artifact can prevent this. |
+| Externally signed certification | **Not present.** Records are honestly unsigned; signing requires a trust root this repository does not have, and a schema version bump. |
+
+For Phase 2 this matters concretely: unsigned local evaluation may be called **`evaluated-local`**.
+It may **not** be called `verified`. `verified-signed` is reserved for a state that does not yet
+exist.
+
+**Durability is POSIX.** Directory fsync is unavailable on Windows, where a directory cannot be
+opened as a file. There, record *contents* are fsynced and directory metadata is left to the
+filesystem — a weaker guarantee, documented rather than hidden. No Windows durability claim is made.
