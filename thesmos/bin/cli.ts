@@ -64,6 +64,7 @@ import { cmdScope } from './commands/scope.ts';
 import { cmdTokens } from './commands/tokens.ts';
 import { cmdDebtScan } from './commands/debt.ts';
 import { cmdContext } from './commands/context.ts';
+import { cmdProviders } from './commands/providers.ts';
 import { cmdCommitLint, cmdCommitCreate } from './commands/commit-lint.ts';
 import { cmdVercelLint } from './commands/vercel-lint.ts';
 import { cmdCiGithubSecurity } from './commands/ci-github-security.ts';
@@ -173,6 +174,8 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<void>> = {
   'agent:adopt': cmdAgentAdopt,
   'agent:release': cmdAgentRelease,
   'agents': cmdAgents,
+  'providers:list': (argv) => cmdProviders('list', argv),
+  'providers:doctor': (argv) => cmdProviders('doctor', argv),
   'agents:list': cmdAgentsList,
   'agent:show': cmdAgentShow,
   'agent:validate': cmdAgentValidate,
@@ -544,6 +547,8 @@ CUSTOM AGENTS
     --dry-run --delete
 
 FEDERATED AGENTS
+  providers:list [--json] [--verbose]  Provider reachability and installed models
+  providers:doctor [--json]        Same, exits non-zero if a required provider is down
   agents:list [--all] [--json]     List project, user, plugin, and Pantheon agents
     --primary                      The eight primary roles and their leads
     --specialists [--role=<role>]  Specialist agents, on demand

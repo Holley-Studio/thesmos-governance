@@ -24,7 +24,7 @@ const TEAM_SLUGS = [
 describe('pantheon team catalog', () => {
   for (const slug of TEAM_SLUGS) {
     it(`${slug} exposes a non-empty Zeus orchestration prompt`, () => {
-      const body = readFileSync(join(TEAMS_DIR, `${slug}.md`), 'utf8').split('---\n').slice(2).join('---\n');
+      const body = readFileSync(join(TEAMS_DIR, `${slug}.md`), 'utf8').split(/---\r?\n/).slice(2).join('---\n');
       const prompt = extractZeusPrompt(body);
       expect(prompt.length).toBeGreaterThan(80);
       expect(prompt).toMatch(/\[USER_MISSION\]/);
