@@ -26,6 +26,7 @@
  */
 
 import { loadConfig, CONFIG_DEFAULTS } from '../config.js';
+import { spawnBackgroundFetch } from './fetch.js';
 import { assessFreshness } from './freshness.js';
 import { gatherFreshnessInputs } from './gather.js';
 import { renderSessionContext } from './render.js';
@@ -59,6 +60,10 @@ export async function runSessionStart(root: string): Promise<void> {
     const inputs = gatherFreshnessInputs(root);
     const report = assessFreshness(inputs, resolveThresholds(config));
     const context = renderSessionContext(report, options.maxBytes);
+
+    if (options.backgroundFetch && report.refsUncertain) {
+      spawnBackgroundFetch(root);
+    }
 
     if (context.length > 0) {
       // Exactly one write; nothing else touches stdout on this path.
