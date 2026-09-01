@@ -55,13 +55,15 @@ describe('gatherFreshnessInputs', () => {
     }
   });
 
-  it('counts dirty files', () => {
+  it('counts dirty files exactly', () => {
     const dir = tmpRepo();
     try {
       execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: dir });
-      writeFileSync(join(dir, 'dirty.txt'), 'x');
+      writeFileSync(join(dir, 'dirty1.txt'), 'x');
+      writeFileSync(join(dir, 'dirty2.txt'), 'y');
+      writeFileSync(join(dir, 'dirty3.txt'), 'z');
       const out = gatherFreshnessInputs(dir);
-      expect(out.repo.dirtyCount).toBeGreaterThan(0);
+      expect(out.repo.dirtyCount).toBe(3);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -75,5 +77,75 @@ describe('gatherFreshnessInputs', () => {
     const started = Date.now();
     gatherFreshnessInputs(process.cwd(), 400);
     expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it('counts behind and ahead with local upstream tracking', () => {
+    const originDir = tmpRepo();
+    const cloneDir = tmpRepo();
+    try {
+      // Set up origin repo with initial commit
+      execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: originDir });
+      execFileSync('git', ['config', 'user.email', 't@t.local'], { cwd: originDir });
+      execFileSync('git', ['config', 'user.name', 'T'], { cwd: originDir });
+      writeFileSync(join(originDir, 'file.txt'), 'v1');
+      execFileSync('git', ['add', '.'], { cwd: originDir });
+      execFileSync('git', ['commit', '-qm', 'v1'], { cwd: originDir });
+
+      // Clone locally (no network)
+      execFileSync('git', ['clone', '-q', originDir, cloneDir]);
+
+      // Add 2 commits to origin
+      writeFileSync(join(originDir, 'file.txt'), 'v2');
+      execFileSync('git', ['commit', '-qam', 'v2'], { cwd: originDir });
+      writeFileSync(join(originDir, 'file.txt'), 'v3');
+      execFileSync('git', ['commit', '-qam', 'v3'], { cwd: originDir });
+
+      // Fetch in clone to update remote-tracking refs (no network)
+      execFileSync('git', ['fetch', '-q'], { cwd: cloneDir });
+
+      // Clone should be 2 behind, 0 ahead
+      const out = gatherFreshnessInputs(cloneDir);
+      expect(out.repo.upstream).not.toBeNull();
+      expect(out.repo.behind).toBe(2);
+      expect(out.repo.ahead).toBe(0);
+
+      // Add 1 commit in clone
+      writeFileSync(join(cloneDir, 'file.txt'), 'v2-local');
+      execFileSync('git', ['commit', '-qam', 'v2-local'], { cwd: cloneDir });
+
+      // Clone should be 2 behind, 1 ahead
+      const out2 = gatherFreshnessInputs(cloneDir);
+      expect(out2.repo.behind).toBe(2);
+      expect(out2.repo.ahead).toBe(1);
+    } finally {
+      rmSync(originDir, { recursive: true, force: true });
+      rmSync(cloneDir, { recursive: true, force: true });
+    }
+  });
+
+  it('reports successful probes even when artifacts are absent', () => {
+    const dir = tmpRepo();
+    try {
+      execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: dir });
+      execFileSync('git', ['config', 'user.email', 't@t.local'], { cwd: dir });
+      execFileSync('git', ['config', 'user.name', 'T'], { cwd: dir });
+      writeFileSync(join(dir, 'a.txt'), 'a');
+      execFileSync('git', ['add', '.'], { cwd: dir });
+      execFileSync('git', ['commit', '-qm', 'init'], { cwd: dir });
+
+      const out = gatherFreshnessInputs(dir);
+      // Repo probes should succeed
+      expect(out.repo.isGitRepo).toBe(true);
+      expect(out.repo.branch).toBe('main');
+      expect(out.repo.dirtyCount).toBeTypeOf('number');
+      // Artifact probes should all fail (no .thesmos dir)
+      expect(out.artifacts.reportMtimeMs).toBeNull();
+      expect(out.artifacts.baselineMtimeMs).toBeNull();
+      expect(out.artifacts.contextMtimeMs).toBeNull();
+      expect(out.artifacts.guardDistMtimeMs).toBeNull();
+      expect(out.artifacts.guardSourceMtimeMs).toBeNull();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
