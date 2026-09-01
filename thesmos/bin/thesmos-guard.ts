@@ -6,12 +6,18 @@
  * Thin `.sh` / `.cmd` wrappers only forward here — no governance logic in shell.
  *
  * Usage:
- *   node dist/thesmos-guard.js <check|budget-check|drift> [--quiet]
+ *   node dist/thesmos-guard.js <check|budget-check|drift|session-start> [--quiet]
  *
  * Exit codes:
  *   0 — allow / success
  *   2 — block (Claude PreToolUse contract) or failClosed infrastructure failure
  *   1 — drift BLOCKER findings (Stop hook)
+ *
+ * `session-start` is the one subcommand that always exits 0, whether or not
+ * it emits a JSON payload — it observes and reports, never authorizes, and
+ * fails open (deliberately, even under `failClosed: true`; see
+ * `session/start.ts`'s module docstring). It never uses this file's other
+ * exit codes.
  */
 import { runPreToolCheck, runPostToolBudgetHook, isFailClosed } from '../claude-govern.js';
 import { loadConfig, CONFIG_DEFAULTS, ConfigLoadError } from '../config.js';
