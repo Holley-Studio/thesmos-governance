@@ -55,6 +55,19 @@ describe('loadConfig with preloaded data', () => {
     expect(cfg.doctor.requiredScripts).toEqual(CONFIG_DEFAULTS.doctor.requiredScripts);
   });
 
+  it('merges session defaults when only partial session config provided', () => {
+    const cfg = loadConfig('/any/path', {
+      session: { start: { enabled: false } },
+    });
+    // The provided override survives...
+    expect(cfg.session?.start?.enabled).toBe(false);
+    // ...and the untouched sibling key (staleness) still carries its defaults,
+    // proving the top-level `session` merge block ran (without it, `raw.session`
+    // would replace `CONFIG_DEFAULTS.session` wholesale and `staleness` would be
+    // undefined rather than defaulted).
+    expect(cfg.session?.staleness).toEqual(CONFIG_DEFAULTS.session?.staleness);
+  });
+
   it('returns defaults for secretPatterns when not specified', () => {
     const cfg = loadConfig('/any/path', {});
     expect(Array.isArray(cfg.secretPatterns)).toBe(true);

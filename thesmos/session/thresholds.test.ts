@@ -42,11 +42,14 @@ describe('resolveSessionOptions', () => {
     expect(resolveSessionOptions(bare).enabled).toBe(true);
   });
 
-  it('respects an explicit disable', () => {
+  it('respects an explicit disable while defaulting untouched sibling fields', () => {
     const cfg = {
       ...CONFIG_DEFAULTS,
       session: { start: { enabled: false } },
     } as ThesmosConfig;
-    expect(resolveSessionOptions(cfg).enabled).toBe(false);
+    const o = resolveSessionOptions(cfg);
+    expect(o.enabled).toBe(false);
+    expect(o.backgroundFetch).toBe(true);
+    expect(o.maxBytes).toBe(1200);
   });
 });
