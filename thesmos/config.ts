@@ -116,6 +116,11 @@ export const CONFIG_DEFAULTS: ThesmosConfig = {
     ],
     requiredIdeDirs: ['.claude', '.cursor', '.codex'],
   },
+
+  session: {
+    start: { enabled: true, backgroundFetch: true, maxBytes: 1200 },
+    staleness: { baselineDays: 30, fetchHours: 12 },
+  },
 };
 
 // ── Severity rule helpers ─────────────────────────────────────────────────────
@@ -197,6 +202,12 @@ export function loadConfig(
     doctor: {
       ...CONFIG_DEFAULTS.doctor,
       ...(typeof raw.doctor === 'object' && raw.doctor !== null ? raw.doctor as object : {}),
+    },
+    session: {
+      ...CONFIG_DEFAULTS.session,
+      ...(typeof raw.session === 'object' && raw.session !== null
+        ? (raw.session as object)
+        : {}),
     },
     autoMode: {
       ...CONFIG_DEFAULTS.autoMode,

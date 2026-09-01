@@ -187,6 +187,19 @@ export interface ThesmosConfig {
     requiredIdeDirs: string[];
   };
 
+  // Session lifecycle (start-of-session freshness hook)
+  session?: {
+    start?: {
+      enabled?: boolean;
+      backgroundFetch?: boolean;
+      maxBytes?: number;
+    };
+    staleness?: {
+      baselineDays?: number;
+      fetchHours?: number;
+    };
+  };
+
   // Design governance
   design?: DesignConfig;
 
