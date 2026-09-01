@@ -123,27 +123,30 @@ describe('gatherFreshnessInputs', () => {
     }
   });
 
-  it('reports successful probes even when artifacts are absent', () => {
+  it('a failing probe does not prevent sibling probes from reporting', () => {
     const dir = tmpRepo();
     try {
+      // Create unborn-HEAD repo: init without committing anything.
+      // This causes git rev-parse --abbrev-ref HEAD to fail (exit 128),
+      // while other probes like git status succeed with real values.
       execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: dir });
       execFileSync('git', ['config', 'user.email', 't@t.local'], { cwd: dir });
       execFileSync('git', ['config', 'user.name', 'T'], { cwd: dir });
-      writeFileSync(join(dir, 'a.txt'), 'a');
-      execFileSync('git', ['add', '.'], { cwd: dir });
-      execFileSync('git', ['commit', '-qm', 'init'], { cwd: dir });
+
+      // Create 2 untracked files to test that status probe succeeds
+      writeFileSync(join(dir, 'file1.txt'), 'a');
+      writeFileSync(join(dir, 'file2.txt'), 'b');
 
       const out = gatherFreshnessInputs(dir);
-      // Repo probes should succeed
+
+      // is-inside-work-tree probe succeeds
       expect(out.repo.isGitRepo).toBe(true);
-      expect(out.repo.branch).toBe('main');
-      expect(out.repo.dirtyCount).toBeTypeOf('number');
-      // Artifact probes should all fail (no .thesmos dir)
-      expect(out.artifacts.reportMtimeMs).toBeNull();
-      expect(out.artifacts.baselineMtimeMs).toBeNull();
-      expect(out.artifacts.contextMtimeMs).toBeNull();
-      expect(out.artifacts.guardDistMtimeMs).toBeNull();
-      expect(out.artifacts.guardSourceMtimeMs).toBeNull();
+
+      // rev-parse --abbrev-ref HEAD fails on unborn HEAD → branch is null
+      expect(out.repo.branch).toBeNull();
+
+      // status --porcelain succeeds with 2 untracked files
+      expect(out.repo.dirtyCount).toBe(2);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
