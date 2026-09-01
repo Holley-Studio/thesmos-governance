@@ -20,8 +20,9 @@ import {
   resolveGuardEntry,
   writeFailClosedDiagnostic,
 } from '../guard-resolve.js';
+import { runSessionStart } from '../session/start.js';
 
-const SUBCOMMANDS = new Set(['check', 'budget-check', 'drift']);
+const SUBCOMMANDS = new Set(['check', 'budget-check', 'drift', 'session-start']);
 
 async function runGuardDrift(root: string, quiet: boolean): Promise<void> {
   let failClosed = isFailClosed(CONFIG_DEFAULTS);
@@ -64,7 +65,7 @@ async function main(): Promise<void> {
 
   if (!subcommand || !SUBCOMMANDS.has(subcommand)) {
     process.stderr.write(
-      'Usage: thesmos-guard <check|budget-check|drift> [--quiet]\n',
+      'Usage: thesmos-guard <check|budget-check|drift|session-start> [--quiet]\n',
     );
     process.exit(2);
   }
@@ -75,6 +76,10 @@ async function main(): Promise<void> {
   }
   if (subcommand === 'budget-check') {
     await runPostToolBudgetHook(root);
+    return;
+  }
+  if (subcommand === 'session-start') {
+    await runSessionStart(root);
     return;
   }
 
