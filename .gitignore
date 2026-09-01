@@ -128,3 +128,6 @@ pantheon/exports/**
 # defense-in-depth only. See docs/backup-recovery.md.
 rclone.conf
 *.credentials.json
+
+# Superpowers SDD scratch (ledgers, briefs, review packages)
+.superpowers/
