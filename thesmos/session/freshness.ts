@@ -48,6 +48,13 @@ export function assessFreshness(
           severity: 'notice',
           text: 'No upstream is configured for this branch — remote state is unknown.',
         });
+      } else {
+        signals.push({
+          id: 'behind',
+          severity: 'notice',
+          text: `Commits behind ${repo.upstream} could not be determined — try fetching to update remote refs.`,
+          remedy: 'git fetch --all --prune',
+        });
       }
     } else if (repo.behind > 0) {
       signals.push({

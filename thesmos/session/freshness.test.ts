@@ -54,12 +54,33 @@ describe('assessFreshness', () => {
     expect(r.signals.find((s) => s.id === 'behind')?.text).toContain('14');
   });
 
-  it('treats an unknown behind-count as unknown, never as zero', () => {
+  it('flags unpushed commits when ahead > 0', () => {
+    const r = assessFreshness(
+      inputs({ repo: { ...inputs().repo, ahead: 3 } }),
+      THRESHOLDS,
+    );
+    expect(ids(r)).toContain('ahead');
+    expect(r.signals.find((s) => s.id === 'ahead')?.text).toContain('3');
+  });
+
+  it('signals when behind count is unknown and upstream is null', () => {
     const r = assessFreshness(
       inputs({ repo: { ...inputs().repo, behind: null, upstream: null } }),
       THRESHOLDS,
     );
-    expect(r.signals.find((s) => s.id === 'behind')?.text ?? '').not.toMatch(/\b0\b/);
+    const signal = r.signals.find((s) => s.id === 'behind');
+    expect(signal).toBeDefined();
+    expect(signal!.text).not.toMatch(/\b0\b/);
+  });
+
+  it('signals when behind count is unknown but upstream is configured', () => {
+    const r = assessFreshness(
+      inputs({ repo: { ...inputs().repo, behind: null, upstream: 'origin/main' } }),
+      THRESHOLDS,
+    );
+    const signal = r.signals.find((s) => s.id === 'behind');
+    expect(signal).toBeDefined();
+    expect(signal!.text).not.toMatch(/\b0\b/);
   });
 
   it('marks refs uncertain when the last fetch is older than the threshold', () => {
