@@ -694,3 +694,7 @@ A blocked action states which rule fired, why, and a suggested fix inline. For m
 
 _Run `thesmos catalog:list` to see them by name, or `thesmos agents:list` to discover invocation details._
 <!-- THESMOS:GENERATED END rules -->
+
+## Studio-wide AI rules (Holley OS)
+
+This repo follows Holley OS. Read [Holley-Studio/studio-ops](https://github.com/Holley-Studio/studio-ops) -> START_HERE.md and your role in pantheon/roles/ before working here. This AGENTS.md wins on repo specifics.
