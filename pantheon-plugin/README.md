@@ -18,6 +18,17 @@ pantheon:zeus-executive-agent
 pantheon:argus-security-agent
 ```
 
+## Product library vs studio team
+
+This plugin is the **Pantheon product library** - the full 68-agent catalog that
+Thesmos distributes and demos. It is not the roster Holley Studio runs on.
+
+The studio operating team is the **16 Pantheon roles** in the private repo
+`Holley-Studio/studio-ops` (`pantheon/ROSTER.md`), and `pantheon/PANTHEON_MAP.md`
+there records how every agent in this library folds into those roles, which six
+specialists remain in active studio use, and the PR-only path improvements take
+in each direction. Studio seats are never created directly from this library.
+
 ## Relationship to Thesmos Core
 
 | Concern | Owner |
