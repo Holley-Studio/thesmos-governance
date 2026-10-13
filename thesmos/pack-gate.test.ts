@@ -7,15 +7,19 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const manifest = JSON.parse(
-  readFileSync(join(__dirname, 'catalog', 'free-agents.json'), 'utf8'),
+  readFileSync(join(__dirname, 'catalog', 'free-agents.json'), 'utf8')
 ) as { freeAgentIds: string[] };
 
 let packedFiles: string[] = [];
 
 beforeAll(() => {
-  const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
+  const npmCli = process.env.npm_execpath;
+  if (!npmCli)
+    throw new Error('Run the packaging gate through npm test so npm_execpath is available');
+  const out = execFileSync(process.execPath, [npmCli, 'pack', '--dry-run', '--json'], {
     cwd: __dirname,
     encoding: 'utf8',
+    windowsHide: true,
   });
   const parsed = JSON.parse(out) as Array<{ files: Array<{ path: string }> }>;
   packedFiles = parsed[0]!.files.map((f) => f.path);
@@ -34,16 +38,18 @@ describe('npm tarball content gate', () => {
   });
 
   it('ships ZERO premium agents — the content gate is physical', () => {
-    const freeSet = new Set(manifest.freeAgentIds.flatMap((id) => [
-      `catalog/agents/pantheon/${id}.md`,
-      `catalog/agents/pantheon/${id}-README.md`,
-    ]));
+    const freeSet = new Set(
+      manifest.freeAgentIds.flatMap((id) => [
+        `catalog/agents/pantheon/${id}.md`,
+        `catalog/agents/pantheon/${id}-README.md`,
+      ])
+    );
     const leaked = packedFiles.filter(
       (p) =>
         (p.startsWith('catalog/agents/pantheon/') ||
-         p.startsWith('catalog/agents/figma/') ||
-         /^catalog\/agents\/[^/]+\.md$/.test(p)) &&
-        !freeSet.has(p),
+          p.startsWith('catalog/agents/figma/') ||
+          /^catalog\/agents\/[^/]+\.md$/.test(p)) &&
+        !freeSet.has(p)
     );
     expect(leaked, `premium agents leaked into the tarball: ${leaked.join(', ')}`).toEqual([]);
   });

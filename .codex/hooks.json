@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node 'c:\\Users\\Holle\\Desktop\\GitHub Repos\\Holley-Studio\\thesmos-governance\\.codex\\hooks\\agent-activity.cjs'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node 'c:\\Users\\Holle\\Desktop\\GitHub Repos\\Holley-Studio\\thesmos-governance\\.codex\\hooks\\agent-activity.cjs'"
+          }
+        ]
+      }
+    ]
+  }
+}

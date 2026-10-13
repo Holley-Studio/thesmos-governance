@@ -403,7 +403,9 @@ export const VIBE_CODING_RULES: ThesmosRule[] = [
       // examples — `SELECT ... '${email}'` has a quote that broke [^`'"]* —
       // while identifiers like createTerminal(`${x}`) DID match via the
       // unanchored keyword CREATE. Content may contain quotes ([^`]*).
-      const SQL_INTERP = /`\s*(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE)\b[^`]*\$\{/i;
+      // CREATE needs a SQL object keyword; a UI label such as `Create ${name} job`
+      // is an interpolated string, but it is not a database statement.
+      const SQL_INTERP = /`\s*(?:(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE)\b|CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:TEMP(?:ORARY)?|UNIQUE|UNLOGGED)\s+)?(?:TABLE|INDEX|VIEW|MATERIALIZED\s+VIEW|DATABASE|SCHEMA|TRIGGER|FUNCTION|PROCEDURE|TYPE|EXTENSION|ROLE|USER|SEQUENCE|POLICY|RULE)\b)[^`]*\$\{/i;
       for (const { path, content } of changedFiles) {
         if (isTestPath(path)) continue;
         const lines = content.split('\n');

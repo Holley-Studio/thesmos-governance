@@ -1,0 +1,7 @@
+[mcp_servers.thesmos]
+command = "npx"
+args = [
+    "thesmos-governance",
+    "mcp",
+    "--stdio",
+]

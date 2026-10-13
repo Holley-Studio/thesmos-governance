@@ -7,8 +7,15 @@
  * Log file: .thesmos/agent-activity.jsonl (gitignored by default)
  * Format:   one JSON object per line, ordered by timestamp.
  */
-import { existsSync, appendFileSync, readFileSync, mkdirSync } from 'node:fs';
+import { existsSync, appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import {
+  isObject,
+  isTimestamp,
+  isNonNegativeNumber,
+  readValidatedJsonl,
+  type JsonlReadResult,
+} from './jsonl.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -45,7 +52,7 @@ function ensureDir(root: string): void {
 
 export function logAgentSpawn(
   root: string,
-  event: Omit<AgentActivityEvent, 'ts' | 'type'>,
+  event: Omit<AgentActivityEvent, 'ts' | 'type'>
 ): AgentActivityEvent {
   const full: AgentActivityEvent = {
     ts: new Date().toISOString(),
@@ -60,7 +67,7 @@ export function logAgentSpawn(
 export function logAgentComplete(
   root: string,
   partial: Pick<AgentActivityEvent, 'agentId' | 'sessionId'> &
-    Partial<Pick<AgentActivityEvent, 'durationMs' | 'resultSummary'>>,
+    Partial<Pick<AgentActivityEvent, 'durationMs' | 'resultSummary'>>
 ): AgentActivityEvent {
   const full: AgentActivityEvent = {
     ts: new Date().toISOString(),
@@ -77,7 +84,7 @@ export function logAgentComplete(
 export function logAgentError(
   root: string,
   partial: Pick<AgentActivityEvent, 'agentId' | 'sessionId'> &
-    Partial<Pick<AgentActivityEvent, 'durationMs' | 'resultSummary'>>,
+    Partial<Pick<AgentActivityEvent, 'durationMs' | 'resultSummary'>>
 ): AgentActivityEvent {
   const full: AgentActivityEvent = {
     ts: new Date().toISOString(),
@@ -94,28 +101,30 @@ export function logAgentError(
 // ── Read ──────────────────────────────────────────────────────────────────────
 
 export function readAgentActivityLog(root: string, limit = 200): AgentActivityEvent[] {
-  const p = logPath(root);
-  if (!existsSync(p)) return [];
+  return readAgentActivityResult(root, limit).records;
+}
 
-  const lines = readFileSync(p, 'utf-8')
-    .split('\n')
-    .filter(Boolean)
-    .slice(-limit);
-
-  const events: AgentActivityEvent[] = [];
-  for (const line of lines) {
-    try {
-      events.push(JSON.parse(line) as AgentActivityEvent);
-    } catch {
-      // skip malformed lines
-    }
-  }
-  return events;
+export function readAgentActivityResult(
+  root: string,
+  limit = 200
+): JsonlReadResult<AgentActivityEvent> {
+  return readValidatedJsonl(
+    logPath(root),
+    (value): value is AgentActivityEvent =>
+      isObject(value) &&
+      isTimestamp(value.ts) &&
+      ['spawn', 'complete', 'error'].includes(value.type as string) &&
+      ['sessionId', 'agentId', 'description', 'subagentType'].every(
+        (key) => typeof value[key] === 'string'
+      ) &&
+      (value.durationMs === undefined || isNonNegativeNumber(value.durationMs)),
+    limit
+  );
 }
 
 /** Return only events newer than `since`. */
 export function readAgentActivitySince(root: string, since: Date): AgentActivityEvent[] {
-  return readAgentActivityLog(root, 2000).filter(
-    (e) => new Date(e.ts) >= since,
+  return readAgentActivityLog(root, Number.POSITIVE_INFINITY).filter(
+    (e) => new Date(e.ts) >= since
   );
 }

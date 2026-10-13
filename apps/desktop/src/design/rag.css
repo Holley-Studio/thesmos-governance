@@ -1,0 +1,15 @@
+.p-knowledge-intro { padding:22px; border:1px solid var(--p-border); background:var(--p-accent-wash); border-radius:10px; margin-bottom:20px; }
+.p-knowledge-intro h2 { margin:0 0 8px; font:22px/1.4 var(--p-serif); color:var(--p-accent); }
+.p-knowledge-intro p,.p-knowledge-index p { font-size:12px; line-height:1.7; }
+.p-knowledge-actions,.p-source-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.p-knowledge-index { border-top:1px solid var(--p-border); padding-top:15px; margin-top:18px; }
+.p-knowledge-index progress { width:100%; accent-color:var(--p-accent); }
+.p-knowledge-opt-in { border:1px solid var(--p-border); border-radius:7px; padding:10px 12px; margin-bottom:12px; }
+.p-knowledge-opt-in label { display:flex; gap:9px; align-items:center; font-size:12px; color:var(--p-text); }
+.p-knowledge-opt-in input { accent-color:var(--p-accent); }
+.p-knowledge-opt-in p { margin:6px 0 0 25px; color:var(--p-muted); font-size:10px; line-height:1.6; }
+.p-knowledge-evidence { border-top:1px solid var(--p-border); margin-top:18px; padding-top:15px; font-size:11px; line-height:1.7; }
+.p-knowledge-evidence .p-evidence-heading { margin:0; font-size:12px; }.p-knowledge-source { border:1px solid var(--p-border); border-radius:7px; padding:12px; margin-top:10px; background:var(--p-surface); }
+.p-knowledge-source .p-source-heading { margin:0 0 8px; font-size:12px; }.p-source-number { color:var(--p-accent); }.p-source-excerpt { white-space:pre-wrap; overflow-wrap:anywhere; max-height:190px; overflow:auto; margin:0; }
+.p-knowledge-warning { color:var(--p-text); border-left:3px solid var(--p-accent); padding-left:9px; }.p-source-actions details { min-width:0; flex:1; }.p-source-actions summary { cursor:pointer; color:var(--p-accent); }.p-source-actions dl { overflow-wrap:anywhere; }.p-source-actions dt { font-weight:600; }.p-source-actions dd { margin:0 0 5px; color:var(--p-muted); }
+@media(max-width:850px) { .p-knowledge-intro { padding:16px; }.p-knowledge-evidence .p-section-heading { display:block; }.p-knowledge-opt-in { padding:8px; } }

@@ -142,10 +142,10 @@ jobs:
           path: thesmos/coverage/
           retention-days: 7
 
-  # Cross-platform guard: real Node entry + Windows wrapper path (Operation Aegis).
-  # Does not require Bash/WSL — exercises dist/thesmos-guard.js on windows-latest.
+  # Exercise the complete core on native Windows, including the real guard.
+  # Linux-only green checks missed path, command launching and rollback defects.
   guard-windows:
-    name: Guard (Windows)
+    name: Core and Guard (Windows)
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -161,6 +161,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Typecheck core on Windows
+        working-directory: thesmos
+        run: npm run typecheck
+
       - name: Build thesmos (emits dist/thesmos-guard.js)
         working-directory: thesmos
         run: npm run build
@@ -173,9 +177,9 @@ jobs:
             throw "dist/thesmos-guard.js missing after build"
           }
 
-      - name: Cross-platform guard tests
+      - name: Complete core tests on Windows
         working-directory: thesmos
-        run: npx vitest run guard.cross-platform.test.ts
+        run: npm test
 
   # Status-check aggregator: branch ruleset requires a check named "typecheck".
   # This job runs only after all matrix legs of `ci` pass, creating exactly

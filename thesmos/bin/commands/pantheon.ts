@@ -199,6 +199,27 @@ export function listRoutableAgents(): {
   };
 }
 
+/**
+ * Read one agent's raw markdown source by id.
+ *
+ * The same `PANTHEON_DIR`/`FIGMA_DIR`/`AGENTS_DIR` lookup `cmdInstall`'s own
+ * catalog-source resolution already uses (below), which — unlike
+ * `thesmos/catalog.ts`'s `findCatalogDir()` — has no `import.meta.url`
+ * dependency and is proven safe inside the sealed SEA executable the desktop
+ * app ships. Callers needing a full agent turn (not just the catalog
+ * listing `listRoutableAgents` provides) load the persona source through
+ * this, not through `loadCouncilContracts`.
+ */
+export function loadAgentSource(agentId: string): { content: string; sourcePath: string } | undefined {
+  for (const dir of [PANTHEON_DIR, FIGMA_DIR, AGENTS_DIR]) {
+    const path = join(dir, `${agentId}.md`);
+    if (existsSync(path)) {
+      return { content: readFileSync(path, 'utf8'), sourcePath: path };
+    }
+  }
+  return undefined;
+}
+
 function loadPantheonAgents(): PantheonAgent[] {
   const agents: PantheonAgent[] = [];
 

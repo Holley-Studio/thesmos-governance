@@ -251,6 +251,73 @@ body {
 }
 .fact-value { display: block; margin-top: 2px; font-weight: 500; }
 
+/* ── Channel ───────────────────────────────────────────────────────────── */
+
+.channel {
+  max-width: 780px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.channel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+
+.channel-title { margin: 0; padding: 0; border-bottom: 0; }
+.channel-roster-note { margin: 0; }
+.channel-error { color: var(--state-blocked); }
+
+.channel-gate { justify-content: center; }
+
+/* Scrolls independently of the composer, which stays anchored at the foot —
+   the room fills the available height instead of growing without bound. */
+.channel-log {
+  flex: 1;
+  min-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-2) 0 var(--s-6);
+}
+
+.channel-message {
+  padding: var(--s-3) var(--s-4);
+  border-left: 2px solid var(--edge-strong);
+}
+
+/* The user's own messages read as the room's anchor, not a chat bubble on a
+   side — an inscribed rule in the authority colour, not a filled pill. */
+.channel-message[data-author-type='user'] { border-left-color: var(--authority); }
+.channel-message[data-author='zeus-executive-agent'] { border-left-color: var(--inscription); }
+
+.channel-message-author {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  font-size: var(--text-micro);
+  color: var(--ink-mute);
+}
+
+.channel-message[data-author-type='user'] .channel-message-author { color: var(--authority-strong); }
+.channel-message[data-author='zeus-executive-agent'] .channel-message-author { color: var(--inscription); }
+
+.channel-message-text {
+  margin: var(--s-1) 0 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.channel-typing { font-style: italic; }
+
 /* ── Sections ──────────────────────────────────────────────────────────── */
 
 .section { max-width: 900px; margin: 0 auto; }

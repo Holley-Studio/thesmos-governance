@@ -547,7 +547,12 @@ export const IMPORT_RULES: ThesmosRule[] = [
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
         if (!SOURCE_EXT.test(path)) continue;
-        if (path.includes('server') || path.includes('api/') || path.includes('actions/')) return findings;
+        const portablePath = path.replace(/\\/g, '/');
+        const isClient = isClientComponentFile(content);
+        const serverPath = /(?:^|\/)(?:server|api|actions|bin|scripts|sidecar)\//.test(portablePath)
+          || /\.server\.[^.]+$/.test(portablePath);
+        const nodeOnlyImports = /(?:from\s+|require\s*\(\s*)['"]node:(?:fs|fs\/promises|child_process|os|net|http|https)['"]/.test(content);
+        if (!isClient && (serverPath || nodeOnlyImports || /^\s*['"]use server['"]\s*;/.test(content))) continue;
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]!;

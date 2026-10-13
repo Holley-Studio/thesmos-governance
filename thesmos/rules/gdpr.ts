@@ -767,10 +767,14 @@ const GDPR_020: ThesmosRule = {
     const HIGH_RISK_RE = /\b(?:biometric|health.?data|medical.?record|genetic|racial.?origin|political.?opinion|religious.?belief|sex.?life|criminal.?conviction)\b/i;
     for (const cf of (input.changedFiles ?? [])) {
       if (!isSourceFile(cf.path) || isTestFile(cf.path)) continue;
-      if (!HIGH_RISK_RE.test(cf.content)) continue;
+      // A regex dictionary used to reject/redact text does not itself hold a
+      // special-category record. Keep checking arguments and other processing
+      // code, including on the same line after the regex literal.
+      const processingSource = cf.content.replace(/\/(?:\\.|[^/\\\r\n])+\/[dgimsuvy]*(?=\s*\.test\s*\()/g, '');
+      if (!HIGH_RISK_RE.test(processingSource)) continue;
       const hasDpia = /dpia|data.?protection.?impact.?assessment/i.test(cf.content);
       if (hasDpia) continue;
-      const lines = cf.content.split('\n');
+      const lines = processingSource.split('\n');
       let line: number | undefined;
       for (let i = 0; i < lines.length; i++) {
         if (HIGH_RISK_RE.test(lines[i]!)) { line = i + 1; break; }

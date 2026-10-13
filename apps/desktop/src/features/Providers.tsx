@@ -6,8 +6,9 @@
  * "free". Local inference costs the user's hardware; calling that free is the
  * exact dishonesty the provider contracts were designed to prevent.
  *
- * Only Ollama appears because only Ollama is implemented. The subscription and
- * API providers are named as unbuilt rather than shown as broken buttons.
+ * Ollama and the Claude Code CLI (subscription auth, no API key) are
+ * implemented. The remaining API-key adapters are named as unbuilt rather
+ * than shown as broken buttons.
  */
 import { useEffect, useState} from 'react';
 import type { JSX } from 'react';
@@ -77,9 +78,9 @@ export function Providers(): JSX.Element {
       <div className="unbuilt">
         <span className="label">Not yet connected</span>
         <p>
-          Claude (subscription), Anthropic API, OpenAI Codex (subscription) and OpenAI API adapters
-          are specified but not implemented in this alpha. They are listed here rather than shown as
-          buttons that would not work.
+          Anthropic API and OpenAI (API and Codex subscription) adapters are specified but not
+          implemented in this alpha. They are listed here rather than shown as buttons that would
+          not work.
         </p>
       </div>
     </section>

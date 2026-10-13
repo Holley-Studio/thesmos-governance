@@ -27,7 +27,7 @@ Thesmos Runtime          thesmos/runtime/
 Governance               endpoint egress · tool authority
    ↓
 Provider Router          thesmos/runtime/registry.ts
-   ├── Claude Code       (CLI subprocess — extension-hosted today)
+   ├── Claude Code       thesmos/runtime/providers/claude-cli/  (subscription auth via `claude` CLI)
    ├── Codex             (CLI subprocess — extension-hosted today)
    └── Ollama            thesmos/runtime/providers/ollama/
          ↓
@@ -212,10 +212,28 @@ Working and verified end-to-end against a live Ollama:
 - endpoint egress governance and locality classification
 - embeddings (`/api/embed`) exposed via `EmbeddingProvider`
 
+`thesmos/runtime/providers/claude-cli/` (`kind: 'cli'`) is now native too,
+registered in the desktop sidecar alongside Ollama:
+
+- health check (binary launches), turn execution, and stream-json → `RuntimeEvent`
+  mapping ported from the wire format `extensions/vscode/src/chat/claudeSession.ts`
+  already proved out
+- every session runs `--permission-mode plan`, so the CLI itself denies any
+  filesystem/shell tool the model asks for — Thesmos does not re-govern a `cli`
+  provider's tool calls the way it must for an `http` one (see [The
+  contracts](#the-contracts): a `cli` provider inherits whatever the binary's
+  own settings and hooks permit)
+- reactive, best-effort "not logged in" detection (`classifyClaudeCliFailure`)
+  by pattern-matching a failed turn's stderr/result text — **not yet validated
+  against a real logged-out session**, so treat the first missed detection as
+  expected, not a regression
+- `listModels()` returns `[]` — no cheap way to enumerate a subscription
+  session's available models without a network round trip through the CLI
+
 **Deliberately not implemented yet** — the contracts and the authority check are
 real, the execute-and-return loop is not:
 
-- **Tool execution.** A model's tool request is authorized and reported. An
+- **Tool execution (Ollama).** A model's tool request is authorized and reported. An
   allowed call is *not* executed and no result is fed back to the model; the UI
   says so explicitly rather than implying the tool ran. Wiring execution means
   routing through the same approval path Claude uses (`permissionBridge`), which
@@ -225,3 +243,7 @@ real, the execute-and-return loop is not:
   queue or scheduler exists yet.
 - **Ollama in mission execution / Zeus routing.** `ModelDescriptor` carries the
   metadata routing will need; no routing policy consumes it yet.
+- **Claude CLI binary resolution on Windows** is a best guess (PATH +
+  `PATHEXT` probing, an `%APPDATA%\npm\claude.cmd` fallback, then `where
+  claude`) — not yet verified against every install method (nvm-windows,
+  volta, scoop diverge from a plain `npm install -g`).

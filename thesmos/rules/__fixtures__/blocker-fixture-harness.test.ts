@@ -74,9 +74,9 @@ describe('BLOCKER rule detect() fixture harness', () => {
 
     it(`${RULE_ID} — POSITIVE fixture fires detect()`, () => {
       if (!rule) {
-        console.warn(`Rule ${RULE_ID} not found in registry — skipping`);
-        return;
+        throw new Error(`Fixture rule ${RULE_ID} is missing from the registry`);
       }
+      expect(rule.severity,`${RULE_ID} fixture must exercise a declared BLOCKER`).toBe('BLOCKER');
 
       const result = runReview(
         {
@@ -97,11 +97,12 @@ describe('BLOCKER rule detect() fixture harness', () => {
         result.findings.length,
         `Rule ${RULE_ID} did not fire on its positive fixture.\nPath: ${fixturePath}\nContent: ${POSITIVE_FIXTURE}`,
       ).toBeGreaterThan(0);
+      expect(result.findings.some(finding=>finding.category===rule.category && finding.severity==='BLOCKER'),`${RULE_ID} must remain BLOCKER through the real engine`).toBe(true);
     });
 
     if (NEGATIVE_FIXTURE) {
       it(`${RULE_ID} — NEGATIVE fixture does NOT fire detect()`, () => {
-        if (!rule) return; // already warned above
+        if (!rule) throw new Error(`Fixture rule ${RULE_ID} is missing from the registry`);
 
         const negPath = `src/fixture-${RULE_ID}${pathSuffix}-negative.ts`;
         const result = runReview(

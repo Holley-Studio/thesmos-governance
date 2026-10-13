@@ -14,8 +14,10 @@
  */
 
 import { loadConfig } from '../../config.js';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { MnemosyneService } from '../../memory/service.js';
-import { MemoryStore } from '../../memory/store.js';
+import { MemoryStore, WRITE_LOCK_PATH } from '../../memory/store.js';
 import { indexMemories, resolveEmbeddingModel } from '../../memory/embeddings.js';
 import { detectConflicts } from '../../memory/retrieve.js';
 import { OllamaProvider } from '../../runtime/providers/ollama/provider.js';
@@ -53,7 +55,7 @@ function service(root: string): MnemosyneService {
  * enhancement, and its absence must leave structured memory fully working.
  */
 async function embeddingContext(
-  root: string,
+  root: string
 ): Promise<{ context?: EmbeddingContext; note: string }> {
   const config = providersConfig(root);
   if (config.ollama?.enabled === false) return { note: 'Ollama disabled in config' };
@@ -61,13 +63,20 @@ async function embeddingContext(
   const provider = new OllamaProvider({ baseUrl: config.ollama?.baseUrl });
   const health = await provider.health();
   if (!health.available) {
-    return { note: `Ollama unavailable (${health.errorCode ?? 'unknown'}) — lexical retrieval only` };
+    return {
+      note: `Ollama unavailable (${health.errorCode ?? 'unknown'}) — lexical retrieval only`,
+    };
   }
 
-  const resolved = resolveEmbeddingModel(await provider.listModels(), config.ollama?.embeddingModel);
+  const resolved = resolveEmbeddingModel(
+    await provider.listModels(),
+    config.ollama?.embeddingModel
+  );
   if ('error' in resolved) return { note: resolved.error };
   if (!resolved.model.embeddingDimensions) {
-    return { note: `Model ${resolved.model.id} did not report its vector width — cannot index safely` };
+    return {
+      note: `Model ${resolved.model.id} did not report its vector width — cannot index safely`,
+    };
   }
 
   return {
@@ -132,7 +141,7 @@ export async function cmdMemory(sub: string, argv: string[]): Promise<void> {
       console.log(`\n  Query: ${query}`);
       console.log(`  Retrieval: ${note}`);
       console.log(
-        `  ${outcome.telemetry.retrieved} of ${outcome.telemetry.candidatesConsidered} considered · ${outcome.telemetry.retrievalMs}ms\n`,
+        `  ${outcome.telemetry.retrieved} of ${outcome.telemetry.candidatesConsidered} considered · ${outcome.telemetry.retrievalMs}ms\n`
       );
       for (const result of outcome.results) {
         console.log(`  [${result.relevanceScore.toFixed(3)}] ${result.memory.id.slice(0, 8)}`);
@@ -141,7 +150,9 @@ export async function cmdMemory(sub: string, argv: string[]): Promise<void> {
         console.log('');
       }
       if (outcome.capsule.conflicts.length > 0) {
-        console.log(`  ⚠ ${outcome.capsule.conflicts.length} unresolved conflict(s) among these results.\n`);
+        console.log(
+          `  ⚠ ${outcome.capsule.conflicts.length} unresolved conflict(s) among these results.\n`
+        );
       }
       if (outcome.results.length === 0) console.log('  No matching memories.\n');
       return;
@@ -166,11 +177,13 @@ export async function cmdMemory(sub: string, argv: string[]): Promise<void> {
       console.log(`  confidence  ${record.confidence}`);
       console.log(`  sensitivity ${record.sensitivity}`);
       console.log(
-        `  provenance  ${record.provenance.sourceKind} · ${record.provenance.creator} · ${record.provenance.derivation}`,
+        `  provenance  ${record.provenance.sourceKind} · ${record.provenance.creator} · ${record.provenance.derivation}`
       );
-      if (record.provenance.evidenceRef) console.log(`  evidence    ${record.provenance.evidenceRef}`);
+      if (record.provenance.evidenceRef)
+        console.log(`  evidence    ${record.provenance.evidenceRef}`);
       if (record.supersedes?.length) console.log(`  supersedes  ${record.supersedes.join(', ')}`);
-      if (record.supersededBy?.length) console.log(`  superseded  ${record.supersededBy.join(', ')}`);
+      if (record.supersededBy?.length)
+        console.log(`  superseded  ${record.supersededBy.join(', ')}`);
       console.log(`  created     ${record.createdAt}`);
       console.log(`  updated     ${record.updatedAt}\n`);
       return;
@@ -179,7 +192,9 @@ export async function cmdMemory(sub: string, argv: string[]): Promise<void> {
     case 'add': {
       const content = argv.filter((a) => !a.startsWith('--'))[0];
       if (!content) {
-        process.stderr.write('Usage: thesmos memory:add "<content>" [--type=<type>] [--scope=<scope>]\n');
+        process.stderr.write(
+          'Usage: thesmos memory:add "<content>" [--type=<type>] [--scope=<scope>]\n'
+        );
         process.exit(1);
       }
       const proposal: MemoryProposal = {
@@ -215,7 +230,9 @@ export async function cmdMemory(sub: string, argv: string[]): Promise<void> {
       const missionId = flagValue(argv, 'mission');
       const repoId = flagValue(argv, 'repo');
       if (missionId) {
-        console.log(`\n  Forgot ${svc.forgetMission(missionId)} memories from mission ${missionId}\n`);
+        console.log(
+          `\n  Forgot ${svc.forgetMission(missionId)} memories from mission ${missionId}\n`
+        );
         return;
       }
       if (repoId) {
@@ -302,12 +319,36 @@ export async function cmdMemory(sub: string, argv: string[]): Promise<void> {
       const namespaces = new Set(store.vectors().map((v) => v.namespace));
 
       const checks: Array<[boolean, string]> = [
-        [corruptLines.length === 0, corruptLines.length === 0 ? 'record log parses cleanly' : `${corruptLines.length} corrupt line(s): ${corruptLines.join(', ')}`],
+        [
+          !existsSync(join(root, WRITE_LOCK_PATH)),
+          'writer lock absent; if held, wait for the writer or inspect ownership before recovering it',
+        ],
+        [
+          corruptLines.length === 0,
+          corruptLines.length === 0
+            ? 'record log parses cleanly'
+            : `${corruptLines.length} corrupt line(s): ${corruptLines.join(', ')}`,
+        ],
         [store.meta().schemaVersion === 1, `schema version ${store.meta().schemaVersion}`],
-        [orphans.length === 0, orphans.length === 0 ? 'no orphaned vectors' : `${orphans.length} orphaned vector(s) — run memory:index --rebuild`],
-        [namespaces.size <= 1, namespaces.size <= 1 ? `single vector namespace` : `${namespaces.size} namespaces present — incompatible spaces, rebuild recommended`],
+        [
+          orphans.length === 0,
+          orphans.length === 0
+            ? 'no orphaned vectors'
+            : `${orphans.length} orphaned vector(s) — run memory:index --rebuild`,
+        ],
+        [
+          namespaces.size <= 1,
+          namespaces.size <= 1
+            ? `single vector namespace`
+            : `${namespaces.size} namespaces present — incompatible spaces, rebuild recommended`,
+        ],
         // Conflicts are reported, never auto-resolved.
-        [conflicts.length === 0, conflicts.length === 0 ? 'no unresolved conflicts' : `${conflicts.length} unresolved conflict(s)`],
+        [
+          conflicts.length === 0,
+          conflicts.length === 0
+            ? 'no unresolved conflicts'
+            : `${conflicts.length} unresolved conflict(s)`,
+        ],
       ];
 
       console.log('\n  Mnemosyne\n');
@@ -330,7 +371,7 @@ export async function cmdMemory(sub: string, argv: string[]): Promise<void> {
     default:
       process.stderr.write(`thesmos memory: unknown subcommand "${sub}"\n`);
       process.stderr.write(
-        'Usage: thesmos memory:list | memory:search | memory:show | memory:add | memory:forget | memory:index | memory:stats | memory:doctor\n',
+        'Usage: thesmos memory:list | memory:search | memory:show | memory:add | memory:forget | memory:index | memory:stats | memory:doctor\n'
       );
       process.exit(1);
   }

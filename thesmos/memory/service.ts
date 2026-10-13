@@ -8,12 +8,32 @@
  * search being unavailable must never mean memory is unavailable.
  */
 
-import { DEFAULT_MEMORY_BUDGET, type MemoryBudget, type MemoryProposal, type MemoryRecord, type MemorySearchResult } from './types.js';
-import { MemoryStore } from './store.js';
-import { validateMemoryProposal, type MemoryValidationResult, type MemoryWriteContext } from './validate.js';
-import { applyBudget, deduplicate, detectConflicts, rankMemories, type MemoryQuery } from './retrieve.js';
+import {
+  DEFAULT_MEMORY_BUDGET,
+  type MemoryBudget,
+  type MemoryProposal,
+  type MemoryRecord,
+  type MemorySearchResult,
+} from './types.js';
+import { hashContent, MemoryStore } from './store.js';
+import {
+  validateMemoryProposal,
+  type MemoryValidationResult,
+  type MemoryWriteContext,
+} from './validate.js';
+import {
+  applyBudget,
+  deduplicate,
+  detectConflicts,
+  rankMemories,
+  type MemoryQuery,
+} from './retrieve.js';
 import { embedQuery, type EmbeddingContext } from './embeddings.js';
-import { renderMemoryCapsule, type MemoryTelemetry, type RenderedMemoryCapsule } from './capsule.js';
+import {
+  renderMemoryCapsule,
+  type MemoryTelemetry,
+  type RenderedMemoryCapsule,
+} from './capsule.js';
 
 export interface RecallOptions extends MemoryQuery {
   budget?: MemoryBudget;
@@ -33,7 +53,7 @@ export class MnemosyneService {
 
   constructor(
     private readonly root: string,
-    private readonly writeContext: MemoryWriteContext,
+    private readonly writeContext: MemoryWriteContext
   ) {
     this.store = new MemoryStore(root);
   }
@@ -68,7 +88,9 @@ export class MnemosyneService {
    */
   async recall(options: RecallOptions): Promise<RecallOutcome> {
     const startedAt = Date.now();
-    const records = this.store.all();
+    const loaded = this.store.load();
+    const records = loaded.records;
+    const byId = new Map(records.map((record) => [record.id, record]));
 
     let queryVector: readonly number[] | undefined;
     let embeddingMs: number | undefined;
@@ -86,9 +108,18 @@ export class MnemosyneService {
             .vectorsIn(
               options.embedding.provider.id,
               options.embedding.model,
-              options.embedding.dimensions,
+              options.embedding.dimensions
             )
-            .map((v) => [v.memoryId, v.vector]),
+            // Only vectors for the exact current bytes and width can rank a fact.
+            .filter((v) => {
+              const record = byId.get(v.memoryId);
+              return (
+                record &&
+                v.contentHash === hashContent(record.content) &&
+                v.vector.length === options.embedding!.dimensions
+              );
+            })
+            .map((v) => [v.memoryId, v.vector])
         )
       : undefined;
 
@@ -96,7 +127,7 @@ export class MnemosyneService {
       records,
       options,
       vectorIndex ? (id) => vectorIndex.get(id) : undefined,
-      queryVector,
+      queryVector
     );
 
     const deduped = deduplicate(ranked);
@@ -124,6 +155,7 @@ export class MnemosyneService {
         embeddingUsed: Boolean(queryVector),
         retrievalMs: Date.now() - startedAt,
         embeddingMs,
+        corruptRecordsSkipped: loaded.corruptLines.length,
       },
     };
   }

@@ -6,9 +6,16 @@
  * session snapshots append to `.thesmos/metrics-export.jsonl`.
  * No third-party SaaS — BYOK observability stays in-repo.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { MetricsConfig } from './types.js';
+import {
+  isObject,
+  isTimestamp,
+  isNonNegativeNumber,
+  readValidatedJsonl,
+  type JsonlReadResult,
+} from './jsonl.js';
 
 export interface MetricsExportEvent {
   ts: string;
@@ -45,20 +52,35 @@ export function appendMetricsExport(root: string, event: MetricsExportEvent): vo
 }
 
 export function readMetricsExport(root: string, limit = 200): MetricsExportEvent[] {
-  const p = exportPath(root);
-  if (!existsSync(p)) return [];
-  const lines = readFileSync(p, 'utf8').split('\n').filter(Boolean).slice(-limit);
-  const out: MetricsExportEvent[] = [];
-  for (const line of lines) {
-    try {
-      out.push(JSON.parse(line) as MetricsExportEvent);
-    } catch {
-      // skip
-    }
-  }
-  return out;
+  return readMetricsExportResult(root, limit).records;
+}
+
+export function readMetricsExportResult(
+  root: string,
+  limit = 200
+): JsonlReadResult<MetricsExportEvent> {
+  return readValidatedJsonl(
+    exportPath(root),
+    (value): value is MetricsExportEvent =>
+      isObject(value) &&
+      isTimestamp(value.ts) &&
+      ['session', 'task'].includes(value.kind as string) &&
+      typeof value.runId === 'string' &&
+      typeof value.source === 'string' &&
+      [
+        'taskCount',
+        'completed',
+        'blocked',
+        'timedOut',
+        'llmCalls',
+        'durationMs',
+        'costUSD',
+        'tokens',
+      ].every((key) => value[key] === undefined || isNonNegativeNumber(value[key])),
+    limit
+  );
 }
 
 export function countMetricsExport(root: string): number {
-  return readMetricsExport(root, 10_000).length;
+  return readMetricsExport(root, Number.POSITIVE_INFINITY).length;
 }

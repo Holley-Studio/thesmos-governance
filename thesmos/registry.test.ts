@@ -129,7 +129,10 @@ describe('loadRegistryConfig', () => {
   const ROOT = '/fake/root';
 
   function makeReader(files: Record<string, string>) {
-    return (absPath: string): string | null => files[absPath] ?? null;
+    const normalized = new Map(
+      Object.entries(files).map(([key, value]) => [key.replace(/\\/g, '/'), value])
+    );
+    return (absPath: string): string | null => normalized.get(absPath.replace(/\\/g, '/')) ?? null;
   }
 
   it('returns empty config when file is missing', () => {
@@ -142,28 +145,19 @@ describe('loadRegistryConfig', () => {
       rules: ['@thesmos/core'],
       agents: ['security-reviewer'],
     });
-    const cfg = loadRegistryConfig(
-      ROOT,
-      makeReader({ [`${ROOT}/${REGISTRY_PATH}`]: content })
-    );
+    const cfg = loadRegistryConfig(ROOT, makeReader({ [`${ROOT}/${REGISTRY_PATH}`]: content }));
     expect(cfg.rules).toEqual(['@thesmos/core']);
     expect(cfg.agents).toEqual(['security-reviewer']);
   });
 
   it('returns empty config on malformed JSON', () => {
-    const cfg = loadRegistryConfig(
-      ROOT,
-      makeReader({ [`${ROOT}/${REGISTRY_PATH}`]: '{not json' })
-    );
+    const cfg = loadRegistryConfig(ROOT, makeReader({ [`${ROOT}/${REGISTRY_PATH}`]: '{not json' }));
     expect(cfg).toEqual({});
   });
 
   it('returns empty config when validation fails', () => {
     const content = JSON.stringify({ rules: 'not-an-array' });
-    const cfg = loadRegistryConfig(
-      ROOT,
-      makeReader({ [`${ROOT}/${REGISTRY_PATH}`]: content })
-    );
+    const cfg = loadRegistryConfig(ROOT, makeReader({ [`${ROOT}/${REGISTRY_PATH}`]: content }));
     expect(cfg).toEqual({});
   });
 
@@ -172,10 +166,7 @@ describe('loadRegistryConfig', () => {
       rules: ['@thesmos/core'],
       futureKey: 'value',
     });
-    const cfg = loadRegistryConfig(
-      ROOT,
-      makeReader({ [`${ROOT}/${REGISTRY_PATH}`]: content })
-    );
+    const cfg = loadRegistryConfig(ROOT, makeReader({ [`${ROOT}/${REGISTRY_PATH}`]: content }));
     expect(cfg.rules).toEqual(['@thesmos/core']);
   });
 });
@@ -189,7 +180,10 @@ describe('resolveRegistry', () => {
   const SKILL_CONTENT = '# Web Review Skill\n\n## Use when\n\nReviewing web apps.';
 
   function makeReader(files: Record<string, string>) {
-    return (absPath: string): string | null => files[absPath] ?? null;
+    const normalized = new Map(
+      Object.entries(files).map(([key, value]) => [key.replace(/\\/g, '/'), value])
+    );
+    return (absPath: string): string | null => normalized.get(absPath.replace(/\\/g, '/')) ?? null;
   }
 
   it('returns empty agents and skills when config has none', () => {

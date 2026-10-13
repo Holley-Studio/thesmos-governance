@@ -24,12 +24,14 @@
 import type { AgentHandoff, AgentTestResult } from '../council/handoff.js';
 import type { Mission, MissionState } from '../mission/types.js';
 import { lexicalSimilarity } from './retrieve.js';
+import { sameMemoryNamespace } from './types.js';
 import type { MemoryStore } from './store.js';
 import type {
   MemoryConfidence,
   MemoryProposal,
   MemoryRecord,
   MemoryType,
+  SensitivityClass,
 } from './types.js';
 
 /**
@@ -141,7 +143,7 @@ export interface ProposalContext {
  */
 export function proposeFromHandoff(
   handoff: AgentHandoff,
-  context: ProposalContext = {},
+  context: ProposalContext = {}
 ): MemoryProposal[] {
   const proposals: MemoryProposal[] = [];
   const scope = context.scope ?? 'repository';
@@ -215,10 +217,10 @@ export function proposeFromMission(
   mission: Mission,
   state: MissionState,
   handoffs: readonly AgentHandoff[],
-  context: ProposalContext = {},
+  context: ProposalContext = {}
 ): MemoryProposal[] {
   const completed = new Set(
-    state.tasks.filter((t) => t.status === 'complete').map((t) => t.taskId),
+    state.tasks.filter((t) => t.status === 'complete').map((t) => t.taskId)
   );
 
   return [...handoffs]
@@ -262,13 +264,14 @@ export function qualifiesForAutoWrite(proposal: MemoryProposal): boolean {
 function findDuplicate(
   proposal: MemoryProposal,
   existing: readonly MemoryRecord[],
-  threshold: number,
+  threshold: number
 ): MemoryRecord | undefined {
   return existing.find(
     (r) =>
       r.status === 'active' &&
+      sameMemoryNamespace(proposal, r) &&
       r.type === proposal.type &&
-      lexicalSimilarity(r.content, proposal.content) >= threshold,
+      lexicalSimilarity(r.content, proposal.content) >= threshold
   );
 }
 
@@ -285,13 +288,14 @@ function findDuplicate(
  */
 function findSuperseded(
   proposal: MemoryProposal,
-  existing: readonly MemoryRecord[],
+  existing: readonly MemoryRecord[]
 ): MemoryRecord[] {
   const SUPERSEDABLE: MemoryType[] = ['architecture-decision', 'constraint', 'procedure'];
   if (!SUPERSEDABLE.includes(proposal.type)) return [];
 
   return existing.filter((r) => {
-    if (r.status !== 'active' || r.type !== proposal.type) return false;
+    if (r.status !== 'active' || r.type !== proposal.type || !sameMemoryNamespace(proposal, r))
+      return false;
     const overlap = lexicalSimilarity(r.content, proposal.content);
     return overlap >= 0.45 && overlap < 0.85;
   });
@@ -314,8 +318,12 @@ export interface CommitOptions {
 export function commitProposals(
   store: MemoryStore,
   proposals: readonly MemoryProposal[],
-  validate: (proposal: MemoryProposal) => { decision: string; issues: Array<{ message: string }> },
-  options: CommitOptions = {},
+  validate: (proposal: MemoryProposal) => {
+    decision: string;
+    issues: Array<{ message: string }>;
+    effectiveSensitivity?: SensitivityClass;
+  },
+  options: CommitOptions = {}
 ): CommitOutcome[] {
   const duplicateThreshold = options.duplicateThreshold ?? 0.85;
   const supersede = options.supersede ?? true;
@@ -325,11 +333,11 @@ export function commitProposals(
 
   for (const proposal of proposals) {
     const validation = validate(proposal);
-    if (validation.decision === 'reject') {
+    if (validation.decision !== 'accept') {
       outcomes.push({
         proposal,
         status: 'rejected',
-        reason: validation.issues.map((i) => i.message).join('; '),
+        reason: `${validation.decision === 'ask' ? 'Approval required; nothing persisted. ' : ''}${validation.issues.map((i) => i.message).join('; ')}`,
       });
       continue;
     }
@@ -343,6 +351,7 @@ export function commitProposals(
     const stale = supersede ? findSuperseded(proposal, known) : [];
     const record = store.append({
       ...proposal,
+      sensitivity: validation.effectiveSensitivity ?? proposal.sensitivity,
       supersedes: stale.length > 0 ? stale.map((r) => r.id) : undefined,
     });
 
@@ -356,7 +365,7 @@ export function commitProposals(
 
     outcomes.push({
       proposal,
-      status: qualifiesForAutoWrite(proposal) ? 'stored' : 'needs-review',
+      status: qualifiesForAutoWrite(record) ? 'stored' : 'needs-review',
       recordId: record.id,
       superseded: stale.length > 0 ? stale.map((r) => r.id) : undefined,
     });

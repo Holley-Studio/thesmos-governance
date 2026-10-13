@@ -236,7 +236,10 @@ Body content.
 `;
 
   function makeReader(files: Record<string, string>) {
-    return (p: string): string | null => files[p] ?? null;
+    const normalized = new Map(
+      Object.entries(files).map(([key, value]) => [key.replace(/\\/g, '/'), value])
+    );
+    return (p: string): string | null => normalized.get(p.replace(/\\/g, '/')) ?? null;
   }
 
   // listFn mirrors readdirSync — returns bare filenames, NOT full paths.

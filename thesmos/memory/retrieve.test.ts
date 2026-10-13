@@ -52,6 +52,16 @@ describe('cosineSimilarity', () => {
 });
 
 describe('scope and project isolation', () => {
+  it('does not widen an unscoped query into named repositories or clients', () => {
+    expect(isVisible(record({ repoId: 'ohw' }), { text: 'x' })).toBe(false);
+    expect(isVisible(record({ projectId: 'client-b' }), { text: 'x', repoId: 'studio' })).toBe(
+      false
+    );
+    expect(isVisible(record({ projectId: 'client-a' }), { text: 'x', projectId: 'client-a' })).toBe(
+      true
+    );
+  });
+
   it('hides another repository entirely', () => {
     const other = record({ repoId: 'other-repo' });
     expect(isVisible(other, { text: 'x', repoId: 'mine' })).toBe(false);
@@ -76,8 +86,11 @@ describe('scope and project isolation', () => {
 
   it('excludes cross-project records from ranked output', () => {
     const results = rankMemories(
-      [record({ repoId: 'mine', content: 'provider orchestration' }), record({ repoId: 'theirs', content: 'provider orchestration' })],
-      { text: 'provider orchestration', repoId: 'mine' },
+      [
+        record({ repoId: 'mine', content: 'provider orchestration' }),
+        record({ repoId: 'theirs', content: 'provider orchestration' }),
+      ],
+      { text: 'provider orchestration', repoId: 'mine' }
     );
     expect(results).toHaveLength(1);
     expect(results[0].memory.repoId).toBe('mine');
@@ -88,14 +101,17 @@ describe('status and expiry', () => {
   it('excludes superseded memory by default', () => {
     const results = rankMemories(
       [record({ status: 'superseded', content: 'ProviderManager owns routing' })],
-      { text: 'provider routing' },
+      { text: 'provider routing' }
     );
     expect(results).toHaveLength(0);
   });
 
   it('includes superseded memory when asked, but heavily demoted', () => {
     const current = record({ content: 'provider runtime moved into thesmos runtime providers' });
-    const old = record({ status: 'superseded', content: 'provider runtime moved into thesmos runtime providers' });
+    const old = record({
+      status: 'superseded',
+      content: 'provider runtime moved into thesmos runtime providers',
+    });
     const results = rankMemories([old, current], {
       text: 'provider runtime providers',
       includeInactive: true,
@@ -124,14 +140,21 @@ describe('ranking factors', () => {
   it('ranks a decision above a hypothesis with identical text', () => {
     // An inference must never outrank a stated decision on similarity alone.
     const decision = record({ type: 'user-decision', content: 'never auto-merge production PRs' });
-    const guess = record({ type: 'hypothesis', confidence: 'medium', content: 'never auto-merge production PRs' });
+    const guess = record({
+      type: 'hypothesis',
+      confidence: 'medium',
+      content: 'never auto-merge production PRs',
+    });
     const results = rankMemories([guess, decision], { text: 'auto-merge production' });
     expect(results[0].memory.type).toBe('user-decision');
   });
 
   it('lets confidence break a tie between same-type records', () => {
     const low = record({ confidence: 'low', content: 'staging migration repair procedure' });
-    const verified = record({ confidence: 'verified', content: 'staging migration repair procedure' });
+    const verified = record({
+      confidence: 'verified',
+      content: 'staging migration repair procedure',
+    });
     const results = rankMemories([low, verified], { text: 'staging migration repair' });
     expect(results[0].memory.confidence).toBe('verified');
   });
@@ -143,7 +166,12 @@ describe('ranking factors', () => {
     });
     const observed = record({
       content: 'ci is green on main',
-      provenance: { sourceKind: 'execution-receipt', creator: 'ci', derivation: 'observed', evidenceRef: 'r1' },
+      provenance: {
+        sourceKind: 'execution-receipt',
+        creator: 'ci',
+        derivation: 'observed',
+        evidenceRef: 'r1',
+      },
     });
     const results = rankMemories([inferred, observed], { text: 'ci green main' });
     expect(results[0].memory.provenance.derivation).toBe('observed');
@@ -160,12 +188,7 @@ describe('ranking factors', () => {
   it('uses vectors when supplied and reports why', () => {
     const target = record({ id: 'mem-vec', content: 'unrelated words entirely' });
     const vectors = new Map([['mem-vec', [1, 0, 0]]]);
-    const results = rankMemories(
-      [target],
-      { text: 'query' },
-      (id) => vectors.get(id),
-      [1, 0, 0],
-    );
+    const results = rankMemories([target], { text: 'query' }, (id) => vectors.get(id), [1, 0, 0]);
     expect(results[0].similarity).toBeCloseTo(1);
     expect(results[0].reasons.join(' ')).toMatch(/semantic similarity/);
   });
@@ -175,14 +198,16 @@ describe('ranking factors', () => {
       [record({ id: 'mem-none', content: 'staging migration repair' })],
       { text: 'staging migration' },
       () => undefined,
-      [1, 0, 0],
+      [1, 0, 0]
     );
     expect(results).toHaveLength(1);
     expect(results[0].reasons.join(' ')).toMatch(/lexical fallback/);
   });
 
   it('honours the result limit', () => {
-    const many = Array.from({ length: 20 }, (_, i) => record({ content: `provider fact number ${i}` }));
+    const many = Array.from({ length: 20 }, (_, i) =>
+      record({ content: `provider fact number ${i}` })
+    );
     expect(rankMemories(many, { text: 'provider fact', limit: 5 })).toHaveLength(5);
   });
 });
@@ -255,7 +280,10 @@ describe('conflict detection', () => {
   it('does not flag two records that merely both mention approval', () => {
     // Same vocabulary, same polarity — agreement, not conflict.
     const a = record({ type: 'user-decision', content: 'Production deploys require approval.' });
-    const b = record({ type: 'user-decision', content: 'Production deploys require approval from an owner.' });
+    const b = record({
+      type: 'user-decision',
+      content: 'Production deploys require approval from an owner.',
+    });
     expect(detectConflicts([a, b])).toHaveLength(0);
   });
 
@@ -279,13 +307,24 @@ describe('conflict detection', () => {
 
   it('stays quiet on unrelated decisions', () => {
     const a = record({ type: 'user-decision', content: 'never auto-merge production PRs' });
-    const b = record({ type: 'user-decision', content: 'use the wide hero layout on the homepage' });
+    const b = record({
+      type: 'user-decision',
+      content: 'use the wide hero layout on the homepage',
+    });
     expect(detectConflicts([a, b])).toHaveLength(0);
   });
 
   it('ignores low-confidence chatter', () => {
-    const a = record({ type: 'user-decision', confidence: 'low', content: 'deployment requires approval' });
-    const b = record({ type: 'user-decision', confidence: 'low', content: 'deployment must not require approval' });
+    const a = record({
+      type: 'user-decision',
+      confidence: 'low',
+      content: 'deployment requires approval',
+    });
+    const b = record({
+      type: 'user-decision',
+      confidence: 'low',
+      content: 'deployment must not require approval',
+    });
     expect(detectConflicts([a, b])).toHaveLength(0);
   });
 });
@@ -308,7 +347,9 @@ describe('budget', () => {
 
 describe('lexicalSimilarity', () => {
   it('scores overlap and ignores short noise words', () => {
-    expect(lexicalSimilarity('staging migration repair', 'staging migration repair')).toBeCloseTo(1);
+    expect(lexicalSimilarity('staging migration repair', 'staging migration repair')).toBeCloseTo(
+      1
+    );
     expect(lexicalSimilarity('staging migration', 'homepage design')).toBe(0);
   });
 });

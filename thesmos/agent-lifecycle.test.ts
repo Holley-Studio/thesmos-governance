@@ -9,7 +9,17 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, mkdtempSync, readdirSync, writeFileSync, existsSync, readFileSync, rmSync, chmodSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  writeFileSync,
+  existsSync,
+  readFileSync,
+  rmSync,
+  chmodSync,
+  rmdirSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -94,7 +104,8 @@ describe('toKebabCase', () => {
   it('strips special characters', () => expect(toKebabCase('My (Agent!) 2')).toBe('my-agent-2'));
   it('collapses repeated hyphens/spaces', () => expect(toKebabCase('my--agent')).toBe('my-agent'));
   it('trims edges', () => expect(toKebabCase('  agent  ')).toBe('agent'));
-  it('handles already-kebab input unchanged', () => expect(toKebabCase('my-agent')).toBe('my-agent'));
+  it('handles already-kebab input unchanged', () =>
+    expect(toKebabCase('my-agent')).toBe('my-agent'));
 });
 
 // ── isValidAgentId ────────────────────────────────────────────────────────────
@@ -142,16 +153,26 @@ describe('isIgnoredAgentFile', () => {
   it('ignores README.md', () => expect(isIgnoredAgentFile('README.md')).toBe(true));
   it('ignores readme.md', () => expect(isIgnoredAgentFile('readme.md')).toBe(true));
   it('ignores CHANGELOG.md', () => expect(isIgnoredAgentFile('CHANGELOG.md')).toBe(true));
-  it('does not ignore regular agent files', () => expect(isIgnoredAgentFile('my-agent.md')).toBe(false));
-  it('does not ignore security-review.md', () => expect(isIgnoredAgentFile('security-review.md')).toBe(false));
+  it('does not ignore regular agent files', () =>
+    expect(isIgnoredAgentFile('my-agent.md')).toBe(false));
+  it('does not ignore security-review.md', () =>
+    expect(isIgnoredAgentFile('security-review.md')).toBe(false));
 });
 
 // ── addAgentToRegistry ────────────────────────────────────────────────────────
 
 describe('addAgentToRegistry', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   it('creates registry.json and adds agent when file is absent', () => {
     const result = addAgentToRegistry(root, 'my-agent');
@@ -197,49 +218,83 @@ describe('addAgentToRegistry', () => {
 
 describe('installAgent — validation', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   it('throws AgentInstallError on empty content', () => {
-    expect(() => installAgent({
-      content: AGENT_EMPTY, sourcePath: 'empty.md', dryRun: true, noSync: true, root
-    })).toThrow(AgentInstallError);
+    expect(() =>
+      installAgent({
+        content: AGENT_EMPTY,
+        sourcePath: 'empty.md',
+        dryRun: true,
+        noSync: true,
+        root,
+      })
+    ).toThrow(AgentInstallError);
   });
 
   it('throws AgentInstallError when ID cannot be derived', () => {
     // Filename that normalizes to empty after kebab stripping
-    expect(() => installAgent({
-      content: '---\n---\n\nno heading', sourcePath: '!!@@##.md', dryRun: true, noSync: true, root
-    })).toThrow(AgentInstallError);
+    expect(() =>
+      installAgent({
+        content: '---\n---\n\nno heading',
+        sourcePath: '!!@@##.md',
+        dryRun: true,
+        noSync: true,
+        root,
+      })
+    ).toThrow(AgentInstallError);
   });
 
   it('throws AgentInstallError on path traversal via targetId override', () => {
     // targetId bypasses frontmatter normalization — isValidAgentId must catch ../etc/passwd
     // (toKebabCase normalises frontmatter ids, so direct-traversal can only arrive via targetId)
-    expect(() => installAgent({
-      content: AGENT_NO_FM,
-      sourcePath: 'test.md',
-      targetId: '../etc/passwd',
-      dryRun: true,
-      noSync: true,
-      root,
-    })).toThrow(AgentInstallError);
+    expect(() =>
+      installAgent({
+        content: AGENT_NO_FM,
+        sourcePath: 'test.md',
+        targetId: '../etc/passwd',
+        dryRun: true,
+        noSync: true,
+        root,
+      })
+    ).toThrow(AgentInstallError);
   });
 
   it('throws AgentInstallError on duplicate without --force', () => {
     mkdirSync(join(root, '.thesmos', 'agents'), { recursive: true });
     writeFileSync(join(root, '.thesmos', 'agents', 'security-review.md'), 'existing', 'utf8');
-    expect(() => installAgent({
-      content: AGENT_WITH_ID_FM, sourcePath: 'test.md', dryRun: false, noSync: true, root
-    })).toThrow(AgentInstallError);
+    expect(() =>
+      installAgent({
+        content: AGENT_WITH_ID_FM,
+        sourcePath: 'test.md',
+        dryRun: false,
+        noSync: true,
+        root,
+      })
+    ).toThrow(AgentInstallError);
   });
 
   it('does not throw on duplicate with --force', () => {
     mkdirSync(join(root, '.thesmos', 'agents'), { recursive: true });
     writeFileSync(join(root, '.thesmos', 'agents', 'security-review.md'), 'existing', 'utf8');
-    expect(() => installAgent({
-      content: AGENT_WITH_ID_FM, sourcePath: 'test.md', force: true, noSync: true, root
-    })).not.toThrow();
+    expect(() =>
+      installAgent({
+        content: AGENT_WITH_ID_FM,
+        sourcePath: 'test.md',
+        force: true,
+        noSync: true,
+        root,
+      })
+    ).not.toThrow();
   });
 });
 
@@ -247,12 +302,24 @@ describe('installAgent — validation', () => {
 
 describe('installAgent — dry-run', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   it('returns structured result without writing any files', () => {
     const result = installAgent({
-      content: AGENT_WITH_ID_FM, sourcePath: 'security-review.md', dryRun: true, noSync: true, root
+      content: AGENT_WITH_ID_FM,
+      sourcePath: 'security-review.md',
+      dryRun: true,
+      noSync: true,
+      root,
     });
     expect(result.agentId).toBe('security-review');
     expect(result.canonicalFile).toBe('.thesmos/agents/security-review.md');
@@ -262,7 +329,11 @@ describe('installAgent — dry-run', () => {
 
   it('does not create or modify registry.json', () => {
     installAgent({
-      content: AGENT_WITH_ID_FM, sourcePath: 'test.md', dryRun: true, noSync: true, root
+      content: AGENT_WITH_ID_FM,
+      sourcePath: 'test.md',
+      dryRun: true,
+      noSync: true,
+      root,
     });
     expect(existsSync(join(root, '.thesmos', 'registry.json'))).toBe(false);
   });
@@ -271,9 +342,15 @@ describe('installAgent — dry-run', () => {
     mkdirSync(join(root, '.thesmos', 'agents'), { recursive: true });
     writeFileSync(join(root, '.thesmos', 'agents', 'security-review.md'), 'existing');
     // dry-run still runs validation — duplicate without force should throw
-    expect(() => installAgent({
-      content: AGENT_WITH_ID_FM, sourcePath: 'test.md', dryRun: true, noSync: true, root
-    })).toThrow(AgentInstallError);
+    expect(() =>
+      installAgent({
+        content: AGENT_WITH_ID_FM,
+        sourcePath: 'test.md',
+        dryRun: true,
+        noSync: true,
+        root,
+      })
+    ).toThrow(AgentInstallError);
   });
 });
 
@@ -281,8 +358,16 @@ describe('installAgent — dry-run', () => {
 
 describe('installAgent — real install', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   it('writes canonical file to .thesmos/agents/', () => {
     installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root });
@@ -296,7 +381,12 @@ describe('installAgent — real install', () => {
   });
 
   it('adds agent to registry when fresh', () => {
-    const result = installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root });
+    const result = installAgent({
+      content: AGENT_WITH_ID_FM,
+      sourcePath: 'test.md',
+      noSync: true,
+      root,
+    });
     expect(result.registryResult).toBe('added');
     const reg = readRegistry(root);
     expect(reg['agents']).toContain('security-review');
@@ -304,14 +394,23 @@ describe('installAgent — real install', () => {
 
   it('reports already-present when ID is already in registry', () => {
     writeRegistry(root, { rules: ['@thesmos/core'], agents: ['security-review'] });
-    const result = installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root });
+    const result = installAgent({
+      content: AGENT_WITH_ID_FM,
+      sourcePath: 'test.md',
+      noSync: true,
+      root,
+    });
     expect(result.registryResult).toBe('already-present');
   });
 
   it('adds agent only once when called twice (idempotent registry)', () => {
     installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root });
     const result2 = installAgent({
-      content: AGENT_WITH_ID_FM, sourcePath: 'test.md', force: true, noSync: true, root
+      content: AGENT_WITH_ID_FM,
+      sourcePath: 'test.md',
+      force: true,
+      noSync: true,
+      root,
     });
     expect(result2.registryResult).toBe('already-present');
     const reg = readRegistry(root);
@@ -321,7 +420,10 @@ describe('installAgent — real install', () => {
 
   it('derives ID from frontmatter name when id is absent', () => {
     const result = installAgent({
-      content: AGENT_WITH_NAME_FM_ONLY, sourcePath: 'test.md', noSync: true, root
+      content: AGENT_WITH_NAME_FM_ONLY,
+      sourcePath: 'test.md',
+      noSync: true,
+      root,
     });
     expect(result.agentId).toBe('my-custom-agent');
     expect(existsSync(join(root, '.thesmos', 'agents', 'my-custom-agent.md'))).toBe(true);
@@ -329,7 +431,10 @@ describe('installAgent — real install', () => {
 
   it('derives ID from filename when frontmatter has neither id nor name', () => {
     const result = installAgent({
-      content: AGENT_NO_FM, sourcePath: '/tmp/my-headless-agent.md', noSync: true, root
+      content: AGENT_NO_FM,
+      sourcePath: '/tmp/my-headless-agent.md',
+      noSync: true,
+      root,
     });
     expect(result.agentId).toBe('my-headless-agent');
   });
@@ -338,7 +443,11 @@ describe('installAgent — real install', () => {
     mkdirSync(join(root, '.thesmos', 'agents'), { recursive: true });
     writeFileSync(join(root, '.thesmos', 'agents', 'security-review.md'), 'old content');
     const result = installAgent({
-      content: AGENT_WITH_ID_FM, sourcePath: 'test.md', force: true, noSync: true, root
+      content: AGENT_WITH_ID_FM,
+      sourcePath: 'test.md',
+      force: true,
+      noSync: true,
+      root,
     });
     const written = readFileSync(join(root, '.thesmos', 'agents', 'security-review.md'), 'utf8');
     expect(written).toBe(AGENT_WITH_ID_FM);
@@ -347,7 +456,10 @@ describe('installAgent — real install', () => {
 
   it('returns empty adapterPaths when noSync is true', () => {
     const result = installAgent({
-      content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root
+      content: AGENT_WITH_ID_FM,
+      sourcePath: 'test.md',
+      noSync: true,
+      root,
     });
     expect(result.adapterPaths).toHaveLength(0);
   });
@@ -357,21 +469,39 @@ describe('installAgent — real install', () => {
 
 describe('installAgent — all-or-nothing (validation before mutation)', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   it('does not write canonical file when validation fails', () => {
-    expect(() => installAgent({
-      content: AGENT_EMPTY, sourcePath: 'empty.md', noSync: true, root
-    })).toThrow(AgentInstallError);
+    expect(() =>
+      installAgent({
+        content: AGENT_EMPTY,
+        sourcePath: 'empty.md',
+        noSync: true,
+        root,
+      })
+    ).toThrow(AgentInstallError);
     expect(existsSync(join(root, '.thesmos', 'agents'))).toBe(false);
   });
 
   it('does not mutate registry when validation fails', () => {
     writeRegistry(root, { rules: ['@thesmos/core'], agents: ['existing'] });
-    expect(() => installAgent({
-      content: AGENT_EMPTY, sourcePath: 'empty.md', noSync: true, root
-    })).toThrow(AgentInstallError);
+    expect(() =>
+      installAgent({
+        content: AGENT_EMPTY,
+        sourcePath: 'empty.md',
+        noSync: true,
+        root,
+      })
+    ).toThrow(AgentInstallError);
     const reg = readRegistry(root);
     expect(reg['agents']).toEqual(['existing']);
   });
@@ -381,8 +511,16 @@ describe('installAgent — all-or-nothing (validation before mutation)', () => {
 
 describe('scope: improved suggestion for .claude/ authoring surfaces', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   function writeScopeWith(blockedPaths: string[]): void {
     const cfg: ScopeConfig = {
@@ -398,7 +536,11 @@ describe('scope: improved suggestion for .claude/ authoring surfaces', () => {
 
   it('returns agent:install suggestion for .claude/agents/', () => {
     writeScopeWith(['.claude/']);
-    const violation = checkScope({ toolName: 'Write', filePath: '.claude/agents/my-agent.md', root });
+    const violation = checkScope({
+      toolName: 'Write',
+      filePath: '.claude/agents/my-agent.md',
+      root,
+    });
     expect(violation).not.toBeNull();
     expect(violation!.suggestion).toContain('thesmos agent:install');
     expect(violation!.suggestion).toContain('.thesmos/agents/');
@@ -406,7 +548,11 @@ describe('scope: improved suggestion for .claude/ authoring surfaces', () => {
 
   it('returns skill:create suggestion for .claude/skills/ (NOT agent:install)', () => {
     writeScopeWith(['.claude/']);
-    const violation = checkScope({ toolName: 'Write', filePath: '.claude/skills/my-skill.md', root });
+    const violation = checkScope({
+      toolName: 'Write',
+      filePath: '.claude/skills/my-skill.md',
+      root,
+    });
     expect(violation).not.toBeNull();
     expect(violation!.suggestion).toContain('skill:create');
     // skill path should NOT suggest agent:install
@@ -415,7 +561,11 @@ describe('scope: improved suggestion for .claude/ authoring surfaces', () => {
 
   it('returns no-installer advisory for .claude/commands/ (NOT agent:install)', () => {
     writeScopeWith(['.claude/']);
-    const violation = checkScope({ toolName: 'Write', filePath: '.claude/commands/my-cmd.md', root });
+    const violation = checkScope({
+      toolName: 'Write',
+      filePath: '.claude/commands/my-cmd.md',
+      root,
+    });
     expect(violation).not.toBeNull();
     expect(violation!.suggestion).toContain('no Thesmos-managed installer');
     // commands path should NOT suggest agent:install
@@ -438,7 +588,9 @@ describe('scope: improved suggestion for .claude/ authoring surfaces', () => {
 
   it('existing scope enforcement tests continue to pass', () => {
     writeScopeWith(['node_modules/', '.env']);
-    expect(checkScope({ toolName: 'Write', filePath: 'node_modules/pkg/index.js', root })).not.toBeNull();
+    expect(
+      checkScope({ toolName: 'Write', filePath: 'node_modules/pkg/index.js', root })
+    ).not.toBeNull();
     expect(checkScope({ toolName: 'Write', filePath: '.env', root })).not.toBeNull();
     expect(checkScope({ toolName: 'Write', filePath: 'src/index.ts', root })).toBeNull();
   });
@@ -448,8 +600,16 @@ describe('scope: improved suggestion for .claude/ authoring surfaces', () => {
 
 describe('installAgent — source-equals-destination', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   it('is a no-op (register-only) when source IS the canonical path', () => {
     // Pre-create the canonical file
@@ -478,8 +638,16 @@ describe('installAgent — source-equals-destination', () => {
 
 describe('installAgent — transaction integrity', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   it('does not leave orphaned canonical file when registry update fails', () => {
     // Write a broken registry to force addAgentToRegistry to throw
@@ -499,8 +667,16 @@ describe('installAgent — transaction integrity', () => {
 
 describe('installAgent — audit trail', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   it('writes an audit entry with AgentCanonicalInstall after successful install', () => {
     installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', noSync: true, root });
@@ -515,7 +691,13 @@ describe('installAgent — audit trail', () => {
   });
 
   it('does NOT write an audit entry on dry-run', () => {
-    installAgent({ content: AGENT_WITH_ID_FM, sourcePath: 'test.md', dryRun: true, noSync: true, root });
+    installAgent({
+      content: AGENT_WITH_ID_FM,
+      sourcePath: 'test.md',
+      dryRun: true,
+      noSync: true,
+      root,
+    });
     const auditFile = join(root, '.thesmos', 'audit.jsonl');
     expect(existsSync(auditFile)).toBe(false);
   });
@@ -525,38 +707,31 @@ describe('installAgent — audit trail', () => {
 
 describe('rollback behavior', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   /**
-   * Simulate registry failure by making the .thesmos/ directory read-only.
-   *
-   * The atomic write helper (writeRegistryAtomic) creates a temp file in the same
-   * directory before renaming it to registry.json. Making the *directory* read-only
-   * blocks new file creation, so the rename never reaches the destination — the
-   * registry stays intact and addAgentToRegistry throws.
-   *
-   * Making registry.json read-only would NOT work here because rename(2) on POSIX
-   * ignores the destination file's mode — only the directory's write permission
-   * determines whether the rename can proceed.
-   *
-   * Only works on macOS/Linux. Windows is not targeted by this repo (Node ≥20, macOS CI).
+   * A directory at the registry's file path makes registry reading fail on every
+   * platform, after the canonical agent write. Unlike chmod, it also works on
+   * Windows and for elevated/root runners. Rollback assertions are unchanged.
    */
   function makeRegistryUnwritable(root: string): void {
-    mkdirSync(join(root, '.thesmos'), { recursive: true });
-    writeFileSync(join(root, '.thesmos', 'registry.json'), '{"agents":[]}', 'utf8');
-    chmodSync(join(root, '.thesmos'), 0o555); // r-xr-xr-x: directory not writable
+    mkdirSync(join(root, '.thesmos', 'registry.json'), { recursive: true });
   }
 
   function restoreRegistryPermissions(root: string): void {
-    try { chmodSync(join(root, '.thesmos'), 0o755); } catch { /**/ }
+    rmdirSync(join(root, '.thesmos', 'registry.json'));
   }
 
   it('new-file rollback: canonical file does not exist after registry failure', () => {
-    // Skip on root (chmod has no effect) or Windows
-    if (process.platform === 'win32') return;
-    if (typeof process.getuid === 'function' && process.getuid() === 0) return;
-
     makeRegistryUnwritable(root);
     try {
       // installAgent throws (either AgentInstallError or the underlying EACCES) —
@@ -635,7 +810,7 @@ describe('rollback behavior', () => {
       expect(() =>
         installAgent({
           content: AGENT_WITH_ID_FM,
-          sourcePath: canonicalPath,  // source IS the destination
+          sourcePath: canonicalPath, // source IS the destination
           noSync: true,
           root,
         })
@@ -650,10 +825,6 @@ describe('rollback behavior', () => {
   });
 
   it('no audit entry is written after rollback', () => {
-    // Skip on root (chmod has no effect) or Windows
-    if (process.platform === 'win32') return;
-    if (typeof process.getuid === 'function' && process.getuid() === 0) return;
-
     makeRegistryUnwritable(root);
     try {
       // installAgent throws (specific error class depends on which step fails first)
@@ -672,12 +843,24 @@ describe('rollback behavior', () => {
 
 describe('audit trail', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   it('no audit file created on dry-run', () => {
     installAgent({
-      content: AGENT_WITH_ID_FM, sourcePath: 'test.md', dryRun: true, noSync: true, root,
+      content: AGENT_WITH_ID_FM,
+      sourcePath: 'test.md',
+      dryRun: true,
+      noSync: true,
+      root,
     });
     expect(existsSync(join(root, '.thesmos', 'audit.jsonl'))).toBe(false);
   });
@@ -716,8 +899,16 @@ describe('audit trail', () => {
 
 describe('batch partial-success semantics', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   // Preflight catches ID collisions and --force-less conflicts before any mutation.
   // Unexpected mutation-time failures (rare: e.g. filesystem permission change between
@@ -766,7 +957,9 @@ describe('batch partial-success semantics', () => {
     ).toThrow(AgentInstallError);
 
     // Original file must still say 'old'.
-    expect(readFileSync(join(root, '.thesmos', 'agents', 'security-review.md'), 'utf8')).toBe('old');
+    expect(readFileSync(join(root, '.thesmos', 'agents', 'security-review.md'), 'utf8')).toBe(
+      'old'
+    );
   });
 });
 
@@ -774,8 +967,16 @@ describe('batch partial-success semantics', () => {
 
 describe('atomic registry writes (writeRegistryAtomic)', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true, force: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true, force: true });
+    } catch {
+      /**/
+    }
+  });
 
   it('successful write: addAgentToRegistry produces valid JSON with agent present', () => {
     const result = addAgentToRegistry(root, 'my-agent');
@@ -796,7 +997,9 @@ describe('atomic registry writes (writeRegistryAtomic)', () => {
   it('no .registry-*.tmp files remain after a successful write', () => {
     addAgentToRegistry(root, 'my-agent');
     const thesmosDir = join(root, '.thesmos');
-    const tmpFiles = readdirSync(thesmosDir).filter((f) => f.startsWith('.registry-') && f.endsWith('.tmp'));
+    const tmpFiles = readdirSync(thesmosDir).filter(
+      (f) => f.startsWith('.registry-') && f.endsWith('.tmp')
+    );
     expect(tmpFiles).toHaveLength(0);
   });
 
@@ -821,7 +1024,11 @@ describe('atomic registry writes (writeRegistryAtomic)', () => {
       expect(reg['agents']).toEqual(['existing']);
       expect(reg['agents']).not.toContain('new-agent');
     } finally {
-      try { chmodSync(thesmosDir, 0o755); } catch { /**/ }
+      try {
+        chmodSync(thesmosDir, 0o755);
+      } catch {
+        /**/
+      }
     }
   });
 
@@ -838,8 +1045,16 @@ describe('atomic registry writes (writeRegistryAtomic)', () => {
 
 describe('installAgent — adapter sync timing', () => {
   let root: string;
-  beforeEach(() => { root = makeTmpDir(); });
-  afterEach(() => { try { rmSync(root, { recursive: true }); } catch { /**/ } });
+  beforeEach(() => {
+    root = makeTmpDir();
+  });
+  afterEach(() => {
+    try {
+      rmSync(root, { recursive: true });
+    } catch {
+      /**/
+    }
+  });
 
   it('noSync:true installs two agents without calling syncAdapters, adapterPaths empty', () => {
     const agents = [AGENT_WITH_ID_FM, AGENT_WITH_NAME_FM_ONLY];

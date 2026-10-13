@@ -267,8 +267,15 @@ export const THESMOS_RULES: ThesmosRule[] = [
               .filter((l) => l.startsWith('+') && !l.startsWith('+++'))
               .map((l) => l.slice(1))
           : content.split('\n');
+        const pemSource = content.replace(/\\[rn]/g, '\n').replace(/['"`]\s*\+\s*['"`]/g, '');
         for (let i = 0; i < lines.length; i++) {
-          if (matchesSecretPattern(lines[i], patterns)) {
+          const matched = matchesSecretPattern(lines[i], patterns);
+          // A bare PEM boundary marker used by validation is not key material.
+          // Other configured secrets still apply, and partial PEM payloads block.
+          const barePemMarker = matched === '-----BEGIN[^-]+PRIVATE KEY-----'
+            && !matchesSecretPattern(lines[i], patterns.filter((pattern) => pattern !== matched))
+            && !/-----BEGIN[^-\r\n]+PRIVATE KEY-----\s+[A-Za-z0-9+/]{32,}={0,2}/.test(pemSource);
+          if (matched && !barePemMarker) {
             findings.push({
               severity,
               category: 'secret_in_diff',

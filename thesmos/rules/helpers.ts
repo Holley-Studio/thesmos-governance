@@ -15,6 +15,30 @@ export function isCommentLine(line: string): boolean {
   return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*');
 }
 
+// Match operands, rather than secret-like words elsewhere on the same line.
+// This is a bounded lexical heuristic, not authentication data-flow analysis.
+const COMPARISON_OPERAND = String.raw`(?:typeof\s+)?(?:[A-Za-z_$][\w$]*(?:(?:\?\.|\.)[A-Za-z_$][\w$]*|\[(?:['"][^'"]+['"]|[A-Za-z_$][\w$]*)\])*|['"][^'"]*['"]|\d+(?:\.\d+)?)`;
+const COMPARISON_PATTERN = `${COMPARISON_OPERAND}\\s*(?:===|!==|==|!=)\\s*${COMPARISON_OPERAND}`;
+const COMPARISON_SENTINEL = /^(?:undefined|null|true|false|\d+(?:\.\d+)?)$/;
+const PUBLIC_HASH_FIELD = /(?:(?:content|capsule|prompt|result|commit)Hash|hashContent)$/i;
+const TOKEN_METADATA_FIELD = /tokens?(?:Estimate|Count|Usage|Limit|Budget|Available|Enabled)$/i;
+
+/** Recognize direct secret comparisons without treating schema checks as auth. */
+export function hasUnsafeSecretComparison(line: string): boolean {
+  const comparisons = line.matchAll(new RegExp(COMPARISON_PATTERN, 'g'));
+  for (const comparison of comparisons) {
+    const operands = comparison[0].split(/===|!==|==|!=/).map((value) => value.trim());
+    if (operands.some((value) => /^typeof\s/.test(value) || COMPARISON_SENTINEL.test(value)))
+      continue;
+    for (const operand of operands) {
+      if (PUBLIC_HASH_FIELD.test(operand) || TOKEN_METADATA_FIELD.test(operand)) continue;
+      const words = operand.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+      if (/\b(?:password|token|secret|key|hash|digest|signature|hmac)\b/i.test(words)) return true;
+    }
+  }
+  return false;
+}
+
 /** Find all 1-based line numbers in content matching re, skipping pure comment lines. */
 export function matchLines(
   content: string,
@@ -32,7 +56,12 @@ export function matchLines(
 }
 
 /** Return true if any line in a N-line window starting at lineIdx matches re. */
-export function windowMatches(lines: string[], startIdx: number, windowSize: number, re: RegExp): boolean {
+export function windowMatches(
+  lines: string[],
+  startIdx: number,
+  windowSize: number,
+  re: RegExp
+): boolean {
   const end = Math.min(startIdx + windowSize, lines.length);
   for (let i = startIdx; i < end; i++) {
     if (re.test(lines[i]!)) return true;

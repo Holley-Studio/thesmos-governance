@@ -25,13 +25,7 @@
  * context is the failure mode this exists to prevent.
  */
 export type MemoryScope =
-  | 'global'
-  | 'workspace'
-  | 'repository'
-  | 'project'
-  | 'mission'
-  | 'session'
-  | 'agent';
+  'global' | 'workspace' | 'repository' | 'project' | 'mission' | 'session' | 'agent';
 
 /** Widest-to-narrowest ordering, used for containment checks. */
 export const MEMORY_SCOPE_ORDER: readonly MemoryScope[] = [
@@ -195,6 +189,21 @@ export interface MemoryRecord {
 
   /** Free-form, non-authoritative. Never consulted for governance decisions. */
   metadata: Record<string, unknown>;
+}
+
+/** Duplicate/supersession identity, distinct from ranking across wider scopes. */
+export function sameMemoryNamespace(
+  a: Pick<MemoryRecord, 'scope' | 'repoId' | 'projectId' | 'missionId' | 'sessionId' | 'agentId'>,
+  b: Pick<MemoryRecord, 'scope' | 'repoId' | 'projectId' | 'missionId' | 'sessionId' | 'agentId'>
+): boolean {
+  return (
+    a.scope === b.scope &&
+    a.repoId === b.repoId &&
+    a.projectId === b.projectId &&
+    (a.scope !== 'mission' || a.missionId === b.missionId) &&
+    (a.scope !== 'session' || a.sessionId === b.sessionId) &&
+    (a.scope !== 'agent' || a.agentId === b.agentId)
+  );
 }
 
 /** The current on-disk schema. Bumping this requires a migration path. */

@@ -23,20 +23,44 @@
  * a few thousand floats per line would destroy that.
  */
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+  unlinkSync,
+  rmdirSync,
+} from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import {
   MEMORY_SCHEMA_VERSION,
+  MEMORY_SCOPE_ORDER,
+  CONFIDENCE_WEIGHT,
+  SENSITIVITY_ORDER,
+  sameMemoryNamespace,
   embeddingNamespace,
   type MemoryProposal,
   type MemoryRecord,
 } from './types.js';
+import { isObject, isTimestamp, readValidatedJsonl } from '../jsonl.js';
 
 export const MEMORY_DIR = join('.thesmos', 'memory');
 export const RECORDS_PATH = join(MEMORY_DIR, 'records.jsonl');
 export const VECTORS_PATH = join(MEMORY_DIR, 'vectors.jsonl');
 export const META_PATH = join(MEMORY_DIR, 'meta.json');
+export const WRITE_LOCK_PATH = join(MEMORY_DIR, '.write.lock');
+
+export class MemoryStoreBusyError extends Error {
+  readonly code = 'MEMORY_WRITE_LOCKED';
+  constructor() {
+    super(
+      'Memory writer lock is held by another or interrupted process; retry after it finishes, or inspect .thesmos/memory/.write.lock before recovery'
+    );
+    this.name = 'MemoryStoreBusyError';
+  }
+}
 
 /** One stored vector, keyed to a record and a namespace. */
 export interface StoredVector {
@@ -67,27 +91,89 @@ export function hashContent(content: string): string {
  */
 function atomicWrite(path: string, contents: string): void {
   mkdirSync(dirname(path), { recursive: true });
-  const tmp = `${path}.${process.pid}.tmp`;
-  writeFileSync(tmp, contents, 'utf8');
-  renameSync(tmp, path);
+  const tmp = `${path}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    writeFileSync(tmp, contents, { encoding: 'utf8', flag: 'wx' });
+    // Windows readers (including indexers and antivirus) can briefly prevent
+    // replacement even after our own handles close. Keep the existing file
+    // intact and retry the same atomic rename, with a bounded backoff.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        renameSync(tmp, path);
+        break;
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (process.platform !== 'win32' || attempt >= 5 ||
+            !['EPERM', 'EACCES', 'EBUSY'].includes(code ?? '')) throw error;
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10 * 2 ** attempt);
+      }
+    }
+  } catch (error) {
+    try {
+      unlinkSync(tmp);
+    } catch {
+      /* preserve the original error */
+    }
+    throw error;
+  }
 }
 
-function readJsonl<T>(path: string, onCorrupt?: (line: number) => void): T[] {
-  if (!existsSync(path)) return [];
-  const out: T[] = [];
-  const lines = readFileSync(path, 'utf8').split(/\r?\n/);
-  lines.forEach((line, index) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    try {
-      out.push(JSON.parse(trimmed) as T);
-    } catch {
-      // A damaged line is skipped, not fatal — one bad record must not make the
-      // entire memory unreadable. The count is surfaced by `memory doctor`.
-      onCorrupt?.(index + 1);
-    }
-  });
-  return out;
+function isMemoryRecord(value: unknown): value is MemoryRecord {
+  if (!isObject(value) || !isObject(value.provenance)) return false;
+  const provenance = value.provenance;
+  return (
+    typeof value.id === 'string' &&
+    value.id.length > 0 &&
+    typeof value.content === 'string' &&
+    Number.isSafeInteger(value.schemaVersion) &&
+    (value.schemaVersion as number) >= 0 &&
+    (value.schemaVersion as number) <= MEMORY_SCHEMA_VERSION &&
+    MEMORY_SCOPE_ORDER.includes(value.scope as MemoryRecord['scope']) &&
+    [
+      'user-decision',
+      'architecture-decision',
+      'constraint',
+      'procedure',
+      'observation',
+      'summary',
+      'hypothesis',
+      'ephemeral',
+    ].includes(value.type as string) &&
+    (value.status === undefined ||
+      ['active', 'superseded', 'expired', 'disputed'].includes(value.status as string)) &&
+    Object.hasOwn(CONFIDENCE_WEIGHT, value.confidence as string) &&
+    SENSITIVITY_ORDER.includes(value.sensitivity as MemoryRecord['sensitivity']) &&
+    isTimestamp(value.createdAt) &&
+    isTimestamp(value.updatedAt) &&
+    typeof provenance.creator === 'string' &&
+    typeof provenance.sourceKind === 'string' &&
+    ['observed', 'stated', 'inferred', 'consolidated'].includes(provenance.derivation as string) &&
+    ['repoId', 'projectId', 'missionId', 'sessionId', 'agentId'].every(
+      (key) => value[key] === undefined || typeof value[key] === 'string'
+    ) &&
+    ['supersedes', 'supersededBy'].every(
+      (key) =>
+        value[key] === undefined ||
+        (Array.isArray(value[key]) &&
+          (value[key] as unknown[]).every((id) => typeof id === 'string'))
+    ) &&
+    (value.metadata === undefined || isObject(value.metadata)) &&
+    (value.retention === undefined ||
+      (isObject(value.retention) &&
+        (value.retention.expiresAt === undefined || isTimestamp(value.retention.expiresAt))))
+  );
+}
+
+function isStoredVector(value: unknown): value is StoredVector {
+  return (
+    isObject(value) &&
+    typeof value.memoryId === 'string' &&
+    typeof value.namespace === 'string' &&
+    typeof value.contentHash === 'string' &&
+    Array.isArray(value.vector) &&
+    value.vector.length > 0 &&
+    value.vector.every((n) => typeof n === 'number' && Number.isFinite(n))
+  );
 }
 
 export interface LoadResult {
@@ -99,6 +185,34 @@ export class MemoryStore {
   private readonly recordsPath: string;
   private readonly vectorsPath: string;
   private readonly metaPath: string;
+
+  /** Serialize the entire read/modify/write across processes, not just rename. */
+  private withWriteLock<T>(operation: () => T): T {
+    const lock = join(this.root, WRITE_LOCK_PATH);
+    mkdirSync(dirname(lock), { recursive: true });
+    // A directory avoids Windows file-open/delete sharing races on a lock file.
+    try {
+      mkdirSync(lock);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new MemoryStoreBusyError();
+      throw error;
+    }
+    const owner = join(lock, 'owner.json');
+    try {
+      writeFileSync(
+        owner,
+        JSON.stringify({ pid: process.pid, createdAt: new Date().toISOString() }) + '\n',
+        'utf8'
+      );
+      return operation();
+    } finally {
+      try {
+        if (existsSync(owner)) unlinkSync(owner);
+      } finally {
+        rmdirSync(lock);
+      }
+    }
+  }
 
   constructor(private readonly root: string) {
     this.recordsPath = join(root, RECORDS_PATH);
@@ -130,9 +244,18 @@ export class MemoryStore {
    * never end up running new code against an unmigrated file.
    */
   load(): LoadResult {
-    const corruptLines: number[] = [];
-    const raw = readJsonl<MemoryRecord>(this.recordsPath, (line) => corruptLines.push(line));
-    return { records: raw.map((r) => migrateRecord(r)), corruptLines };
+    const raw = readValidatedJsonl(this.recordsPath, isMemoryRecord);
+    if (raw.error) throw new Error(`Memory records are unreadable: ${raw.error}`);
+    return { records: raw.records.map((r) => migrateRecord(r)), corruptLines: raw.invalidLines };
+  }
+
+  private loadForWrite(): MemoryRecord[] {
+    const loaded = this.load();
+    if (loaded.corruptLines.length > 0)
+      throw new Error(
+        'Memory records are damaged/corrupt; preserve and repair the file before modifying it'
+      );
+    return loaded.records;
   }
 
   all(): MemoryRecord[] {
@@ -151,6 +274,10 @@ export class MemoryStore {
    * both records look active and retrieval returns contradictory truth.
    */
   append(proposal: MemoryProposal, overrides: Partial<MemoryRecord> = {}): MemoryRecord {
+    return this.withWriteLock(() => this.appendUnlocked(proposal, overrides));
+  }
+
+  private appendUnlocked(proposal: MemoryProposal, overrides: Partial<MemoryRecord>): MemoryRecord {
     const now = new Date().toISOString();
     const record: MemoryRecord = {
       ...proposal,
@@ -163,8 +290,18 @@ export class MemoryStore {
       ...overrides,
     };
 
-    const records = this.all();
+    const records = this.loadForWrite();
+    if (!isMemoryRecord(record)) throw new TypeError('Invalid memory record');
+    if (records.some((existing) => existing.id === record.id))
+      throw new Error('Memory record ID already exists');
     const superseded = new Set(record.supersedes ?? []);
+    for (const id of superseded) {
+      const existing = records.find((candidate) => candidate.id === id);
+      if (!existing) throw new Error('Memory supersession target does not exist');
+      if (!sameMemoryNamespace(existing, record)) {
+        throw new Error('Memory supersession cannot cross repository, client or session scope');
+      }
+    }
     const next = records.map((existing) => {
       if (!superseded.has(existing.id)) return existing;
       return {
@@ -181,10 +318,16 @@ export class MemoryStore {
 
   /** Replace a record wholesale. Returns false when the id is unknown. */
   update(id: string, patch: Partial<MemoryRecord>): boolean {
-    const records = this.all();
+    return this.withWriteLock(() => this.updateUnlocked(id, patch));
+  }
+
+  private updateUnlocked(id: string, patch: Partial<MemoryRecord>): boolean {
+    const records = this.loadForWrite();
     const index = records.findIndex((r) => r.id === id);
     if (index === -1) return false;
+    if (patch.id !== undefined && patch.id !== id) throw new Error('Memory record ID is immutable');
     records[index] = { ...records[index], ...patch, updatedAt: new Date().toISOString() };
+    if (!isMemoryRecord(records[index])) throw new TypeError('Invalid memory record update');
     this.writeAll(records);
     return true;
   }
@@ -196,22 +339,33 @@ export class MemoryStore {
    * a "forgotten" memory through semantic search, which would make deletion a
    * lie.
    */
-  forget(predicate: (record: MemoryRecord) => boolean): { removed: number; vectorsRemoved: number } {
-    const records = this.all();
+  forget(predicate: (record: MemoryRecord) => boolean): {
+    removed: number;
+    vectorsRemoved: number;
+  } {
+    return this.withWriteLock(() => this.forgetUnlocked(predicate));
+  }
+
+  private forgetUnlocked(predicate: (record: MemoryRecord) => boolean): {
+    removed: number;
+    vectorsRemoved: number;
+  } {
+    const records = this.loadForWrite();
     const doomed = new Set(records.filter(predicate).map((r) => r.id));
     if (doomed.size === 0) return { removed: 0, vectorsRemoved: 0 };
 
-    this.writeAll(records.filter((r) => !doomed.has(r.id)));
-
     const vectors = this.vectors();
     const keptVectors = vectors.filter((v) => !doomed.has(v.memoryId));
+    this.writeAll(records.filter((r) => !doomed.has(r.id)));
     this.writeVectors(keptVectors);
 
     return { removed: doomed.size, vectorsRemoved: vectors.length - keptVectors.length };
   }
 
   vectors(): StoredVector[] {
-    return readJsonl<StoredVector>(this.vectorsPath);
+    const read = readValidatedJsonl(this.vectorsPath, isStoredVector);
+    if (read.error) throw new Error(`Memory vectors are unreadable: ${read.error}`);
+    return read.records;
   }
 
   /** Vectors in one namespace only — never mix incompatible spaces. */
@@ -221,8 +375,13 @@ export class MemoryStore {
   }
 
   putVector(vector: StoredVector): void {
+    this.withWriteLock(() => this.putVectorUnlocked(vector));
+  }
+
+  private putVectorUnlocked(vector: StoredVector): void {
+    if (!isStoredVector(vector)) throw new TypeError('Invalid memory vector');
     const existing = this.vectors().filter(
-      (v) => !(v.memoryId === vector.memoryId && v.namespace === vector.namespace),
+      (v) => !(v.memoryId === vector.memoryId && v.namespace === vector.namespace)
     );
     existing.push(vector);
     this.writeVectors(existing);
@@ -230,6 +389,10 @@ export class MemoryStore {
 
   /** Drop every vector, optionally only in one namespace. Records are untouched. */
   clearVectors(namespace?: string): number {
+    return this.withWriteLock(() => this.clearVectorsUnlocked(namespace));
+  }
+
+  private clearVectorsUnlocked(namespace?: string): number {
     const vectors = this.vectors();
     const kept = namespace ? vectors.filter((v) => v.namespace !== namespace) : [];
     this.writeVectors(kept);
@@ -254,8 +417,8 @@ export class MemoryStore {
       JSON.stringify(
         { ...meta, schemaVersion: MEMORY_SCHEMA_VERSION, updatedAt: new Date().toISOString() },
         null,
-        2,
-      ) + '\n',
+        2
+      ) + '\n'
     );
   }
 

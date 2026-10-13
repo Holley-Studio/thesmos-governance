@@ -39,13 +39,16 @@ const bundlePath = join(workDir, 'runtime.cjs');
 
 mkdirSync(outDir, { recursive: true });
 mkdirSync(workDir, { recursive: true });
+copyFileSync(join(appDir, 'node_modules', '@fontsource', 'cinzel', 'LICENSE'), join(outDir, 'Cinzel-OFL.txt'));
+copyFileSync(join(appDir, 'public', 'brands', 'NOTICE.txt'), join(outDir, 'Brand-Notices.txt'));
+copyFileSync(join(appDir, 'docs', 'hermes-bridge-instructions.md'), join(outDir, 'hermes-bridge-instructions.md'));
 
 // ── 1. Bundle ────────────────────────────────────────────────────────────────
 await build({
   entryPoints: [join(appDir, 'sidecar', 'main.ts')],
   bundle: true,
   platform: 'node',
-  target: 'node20',
+  target: 'node24',
   format: 'cjs',
   outfile: bundlePath,
   // Node builtins stay external; everything from Thesmos core is inlined.
@@ -53,6 +56,7 @@ await build({
   logLevel: 'info',
 });
 console.log('[sidecar] bundled →', bundlePath);
+await build({ entryPoints: [join(here, 'refresh-brief.ts')], bundle: true, platform: 'node', target: 'node24', format: 'esm', outfile: join(outDir, 'refresh-brief.mjs'), external: ['node:*'], logLevel: 'info' });
 
 // ── 1b. Stage the agent catalog ──────────────────────────────────────────────
 // The runtime classifies agents from `.md` frontmatter, so the catalog must
@@ -96,6 +100,12 @@ try {
   // Copy the running Node binary, then inject the blob into that copy.
   if (existsSync(target)) rmSync(target, { force: true });
   copyFileSync(process.execPath, target);
+  if (isWindows) {
+    const sdk = join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Windows Kits', '10', 'bin');
+    const signTool = existsSync(sdk) ? readdirSync(sdk).sort().reverse().map((v) => join(sdk, v, 'x64', 'signtool.exe')).find(existsSync) : undefined;
+    if (!signTool) throw new Error('Windows SDK signtool is required to remove the copied Node signature before SEA injection');
+    execFileSync(signTool, ['remove', '/s', target], { stdio: 'inherit' });
+  }
 
   // Resolve postject's JS entry and run it with `node` directly.
   //
@@ -123,5 +133,6 @@ try {
   console.warn('[sidecar] The bundle exists but no self-contained executable was produced.');
   console.warn('[sidecar] An installed build WILL require Node until this succeeds.');
   copyFileSync(bundlePath, join(outDir, 'runtime.cjs'));
-  process.exitCode = 0;
+  // A desktop release must never claim success with an absent runtime.
+  process.exitCode = 1;
 }

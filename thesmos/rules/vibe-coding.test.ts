@@ -95,6 +95,12 @@ describe('VIBE_007 — vibe_hardcoded_secret', () => {
 // ── VIBE_009 — vibe_sql_template_injection ───────────────────────────────────
 
 describe('VIBE_009 — vibe_sql_template_injection', () => {
+  it('distinguishes a Create job UI label from CREATE TABLE and CREATE OR REPLACE VIEW statements', () => {
+    const label = detect('VIBE_009', [{ path: 'src/StudioApp.tsx', content: '<button aria-label={`Create ${playbook.name} job`}>Create job</button>' }]);
+    expect(label).toEqual([]);
+    const sql = detect('VIBE_009', [{ path: 'src/db.ts', content: 'db.exec(`CREATE TABLE ${table} (id text)`);\ndb.exec(`CREATE OR REPLACE VIEW ${view} AS SELECT 1`);' }]);
+    expect(sql).toHaveLength(2);
+  });
   it('does NOT fire on identifiers that merely contain SQL keywords (createTerminal, updateConfig)', () => {
     const findings = detect('VIBE_009', [
       {

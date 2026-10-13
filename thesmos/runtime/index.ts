@@ -61,3 +61,11 @@ export {
   type OllamaProviderOptions,
 } from './providers/ollama/provider.js';
 export { OllamaClient } from './providers/ollama/client.js';
+
+export {
+  ClaudeCliProvider,
+  CLAUDE_CLI_PROVIDER_ID,
+  type ClaudeCliProviderOptions,
+} from './providers/claude-cli/provider.js';
+export { resolveClaudeBinary, type ResolveClaudeBinaryOptions } from './providers/claude-cli/binary-resolver.js';
+export { classifyClaudeCliFailure } from './providers/claude-cli/errors.js';

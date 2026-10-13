@@ -7,13 +7,13 @@
  *   thesmos commit:lint <msg-file>       # Used by commit-msg hook (pass $1)
  *   thesmos commit:lint --last           # Lint the last git commit
  *   thesmos commit:lint --message "..."  # Lint an inline string
+ *   thesmos commit:lint -m "..."         # Short alias
  *   thesmos commit:lint --json           # JSON output
  *   thesmos commit:create                # Interactive wizard
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
-import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { COMMIT_RULES } from '../../rules/commits.js';
 import type { DetectInput, Finding, ScanResult } from '../../types.js';
@@ -22,32 +22,48 @@ import { CONFIG_DEFAULTS, loadConfig } from '../../config.js';
 const COMMIT_EDITMSG = '.git/COMMIT_EDITMSG';
 
 const DEFAULT_TYPES: Array<{ type: string; description: string }> = [
-  { type: 'feat',     description: 'A new feature' },
-  { type: 'fix',      description: 'A bug fix' },
-  { type: 'docs',     description: 'Documentation only changes' },
-  { type: 'style',    description: 'Formatting, missing semicolons, etc.' },
+  { type: 'feat', description: 'A new feature' },
+  { type: 'fix', description: 'A bug fix' },
+  { type: 'docs', description: 'Documentation only changes' },
+  { type: 'style', description: 'Formatting, missing semicolons, etc.' },
   { type: 'refactor', description: 'A code change that is not a fix or feature' },
-  { type: 'perf',     description: 'A change that improves performance' },
-  { type: 'test',     description: 'Adding missing tests or correcting existing tests' },
-  { type: 'chore',    description: 'Changes to the build process or auxiliary tools' },
-  { type: 'ci',       description: 'Changes to CI configuration files and scripts' },
-  { type: 'build',    description: 'Changes that affect the build system or dependencies' },
-  { type: 'revert',   description: 'Reverts a previous commit' },
+  { type: 'perf', description: 'A change that improves performance' },
+  { type: 'test', description: 'Adding missing tests or correcting existing tests' },
+  { type: 'chore', description: 'Changes to the build process or auxiliary tools' },
+  { type: 'ci', description: 'Changes to CI configuration files and scripts' },
+  { type: 'build', description: 'Changes that affect the build system or dependencies' },
+  { type: 'revert', description: 'Reverts a previous commit' },
 ];
 
 function buildEmptyScan(): ScanResult {
   return {
-    _generatedSections: [], generatedAt: new Date().toISOString(), scanVersion: '0',
-    pages: [], apiRoutes: [], componentCount: 0, sharedUiFiles: [],
-    designSystemFiles: [], storeFiles: [], testFiles: [], largeFiles: [],
-    riskyFiles: [], scriptFiles: [], envFiles: [], clientBoundaryRisks: [],
-    languages: [], detectedStacks: [],
+    _generatedSections: [],
+    generatedAt: new Date().toISOString(),
+    scanVersion: '0',
+    pages: [],
+    apiRoutes: [],
+    componentCount: 0,
+    sharedUiFiles: [],
+    designSystemFiles: [],
+    storeFiles: [],
+    testFiles: [],
+    largeFiles: [],
+    riskyFiles: [],
+    scriptFiles: [],
+    envFiles: [],
+    clientBoundaryRisks: [],
+    languages: [],
+    detectedStacks: [],
   };
 }
 
 function lintMessage(message: string, root: string): Finding[] {
   let config = CONFIG_DEFAULTS;
-  try { config = loadConfig(root); } catch { /* */ }
+  try {
+    config = loadConfig(root);
+  } catch {
+    /* */
+  }
 
   const detectInput: DetectInput = {
     scan: buildEmptyScan(),
@@ -57,72 +73,114 @@ function lintMessage(message: string, root: string): Finding[] {
 
   const findings: Finding[] = [];
   for (const rule of COMMIT_RULES) {
-    try { findings.push(...rule.detect(detectInput)); } catch { /* */ }
+    try {
+      findings.push(...rule.detect(detectInput));
+    } catch {
+      /* */
+    }
   }
   return findings;
 }
 
-function getLastCommitMessage(): string {
-  try {
-    return execSync('git log -1 --format=%B', { encoding: 'utf8' }).trim();
-  } catch {
-    process.stderr.write('commit:lint: could not read last git commit.\n');
-    process.exit(1);
+function getLastCommitMessage(root: string): string {
+  return execFileSync('git', ['log', '-1', '--format=%B'], {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+  }).trim();
+}
+
+/** Parse exactly one source; values remain literal even when they start with -. */
+export function parseCommitLintArgs(argv: string[]): {
+  json: boolean;
+  last: boolean;
+  message?: string;
+  file?: string;
+} {
+  const parsed: { json: boolean; last: boolean; message?: string; file?: string } = {
+    json: false,
+    last: false,
+  };
+  let sources = 0;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === '--json') parsed.json = true;
+    else if (arg === '--last') {
+      parsed.last = true;
+      sources++;
+    } else if (arg === '--message' || arg === '-m') {
+      const value = argv[++i];
+      if (value === undefined) throw new Error(`${arg} requires a message`);
+      parsed.message = value;
+      sources++;
+    } else if (arg.startsWith('--message=')) {
+      parsed.message = arg.slice('--message='.length);
+      sources++;
+    } else if (arg === '--') {
+      const remaining = argv.slice(i + 1);
+      if (remaining.length !== 1) throw new Error('Provide exactly one message file after --');
+      parsed.file = remaining[0];
+      sources++;
+      break;
+    } else if (arg.startsWith('-')) throw new Error(`Unknown commit:lint option: ${arg}`);
+    else {
+      parsed.file = arg;
+      sources++;
+    }
   }
+  if (sources > 1)
+    throw new Error('Choose one commit message source: a file, -m/--message, or --last');
+  return parsed;
 }
 
 export async function cmdCommitLint(argv: string[]): Promise<void> {
-  const asJson   = argv.includes('--json');
-  const useLast  = argv.includes('--last');
-  const root     = process.cwd();
-
-  let message: string | null = null;
-
-  // --message "..." inline
-  const msgIdx = argv.indexOf('--message');
-  if (msgIdx !== -1 && argv[msgIdx + 1]) {
-    message = argv[msgIdx + 1]!;
-  }
-
-  // --last: lint most recent commit
-  if (useLast) {
-    message = getLastCommitMessage();
-  }
-
-  // Positional arg: path to COMMIT_EDITMSG file (from commit-msg hook)
-  if (!message) {
-    const positional = argv.find((a) => !a.startsWith('--'));
-    if (positional) {
-      try {
-        message = readFileSync(positional, 'utf8');
-      } catch {
-        process.stderr.write(`commit:lint: cannot read file "${positional}"\n`);
-        process.exit(1);
-      }
-    }
+  const root = process.cwd();
+  let parsed: ReturnType<typeof parseCommitLintArgs>;
+  let message: string | undefined;
+  try {
+    parsed = parseCommitLintArgs(argv);
+    message = parsed.last
+      ? getLastCommitMessage(root)
+      : parsed.file !== undefined
+        ? readFileSync(parsed.file, 'utf8')
+        : parsed.message;
+  } catch (error) {
+    process.stderr.write(
+      `commit:lint: ${error instanceof Error ? error.message : String(error)}\n`
+    );
+    process.exitCode = 1;
+    return;
   }
 
   if (!message) {
     process.stderr.write(
-      'commit:lint: provide a message file, --message "...", or --last\n\n' +
-      'Examples:\n' +
-      '  thesmos commit:lint "$1"          # from commit-msg hook\n' +
-      '  thesmos commit:lint --last        # lint most recent commit\n' +
-      '  thesmos commit:lint --message "feat: add login"\n'
+      'commit:lint: provide a message file, -m/--message "...", or --last\n\n' +
+        'Examples:\n' +
+        '  thesmos commit:lint "$1"          # from commit-msg hook\n' +
+        '  thesmos commit:lint --last        # lint most recent commit\n' +
+        '  thesmos commit:lint --message "feat: add login"\n'
     );
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const findings = lintMessage(message, root);
   const blockers = findings.filter((f) => f.severity === 'BLOCKER' || f.severity === 'HIGH');
 
-  if (asJson) {
-    process.stdout.write(JSON.stringify({
-      message: message.split('\n')[0],
-      valid: blockers.length === 0,
-      findings,
-    }, null, 2) + '\n');
-    process.exit(blockers.length > 0 ? 1 : 0);
+  if (parsed.json) {
+    process.stdout.write(
+      JSON.stringify(
+        {
+          message: message.split('\n')[0],
+          valid: blockers.length === 0,
+          findings,
+        },
+        null,
+        2
+      ) + '\n'
+    );
+    process.exitCode = blockers.length > 0 ? 1 : 0;
+    return;
   }
 
   if (findings.length === 0) {
@@ -140,8 +198,10 @@ export async function cmdCommitLint(argv: string[]): Promise<void> {
   console.log('');
 
   if (blockers.length > 0) {
-    process.stderr.write(`commit:lint: ${blockers.length} blocking finding(s) — commit rejected.\n`);
-    process.exit(1);
+    process.stderr.write(
+      `commit:lint: ${blockers.length} blocking finding(s) — commit rejected.\n`
+    );
+    process.exitCode = 1;
   }
 }
 
@@ -154,7 +214,7 @@ function ask(rl: ReturnType<typeof createInterface>, question: string): Promise<
 async function askWithMenu(
   rl: ReturnType<typeof createInterface>,
   prompt: string,
-  choices: Array<{ label: string; description: string }>,
+  choices: Array<{ label: string; description: string }>
 ): Promise<string> {
   console.log(`\n${prompt}`);
   choices.forEach((c, i) => {
@@ -176,13 +236,16 @@ export async function cmdCommitCreate(argv: string[]): Promise<void> {
   const root = process.cwd();
 
   let config = CONFIG_DEFAULTS;
-  try { config = loadConfig(root); } catch { /* */ }
+  try {
+    config = loadConfig(root);
+  } catch {
+    /* */
+  }
 
-  const allowedTypes = (config.commitLint?.types ?? DEFAULT_TYPES.map((t) => t.type))
-    .map((t) => {
-      const found = DEFAULT_TYPES.find((d) => d.type === t);
-      return { label: t, description: found?.description ?? '' };
-    });
+  const allowedTypes = (config.commitLint?.types ?? DEFAULT_TYPES.map((t) => t.type)).map((t) => {
+    const found = DEFAULT_TYPES.find((d) => d.type === t);
+    return { label: t, description: found?.description ?? '' };
+  });
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
 
@@ -193,7 +256,9 @@ export async function cmdCommitCreate(argv: string[]): Promise<void> {
     const type = await askWithMenu(rl, 'Select a commit type:', allowedTypes);
 
     // 2. Scope (optional)
-    const scopeInput = (await ask(rl, '\n  Scope (optional, e.g. "auth", press Enter to skip): ')).trim();
+    const scopeInput = (
+      await ask(rl, '\n  Scope (optional, e.g. "auth", press Enter to skip): ')
+    ).trim();
     const scope = scopeInput ? `(${scopeInput.toLowerCase().replace(/\s+/g, '-')})` : '';
 
     // 3. Breaking change
@@ -206,10 +271,15 @@ export async function cmdCommitCreate(argv: string[]): Promise<void> {
     const maxLen = config.commitLint?.maxSubjectLength ?? 72;
     while (true) {
       subject = (await ask(rl, '  Subject (imperative, no period): ')).trim();
-      if (!subject) { console.log('  Subject is required.'); continue; }
+      if (!subject) {
+        console.log('  Subject is required.');
+        continue;
+      }
       const prefix = `${type}${scope}${bang}: `;
       if ((prefix + subject).length > maxLen) {
-        console.log(`  Subject is ${(prefix + subject).length} chars (max ${maxLen}). Please shorten.`);
+        console.log(
+          `  Subject is ${(prefix + subject).length} chars (max ${maxLen}). Please shorten.`
+        );
         continue;
       }
       break;
@@ -235,13 +305,24 @@ export async function cmdCommitCreate(argv: string[]): Promise<void> {
     // Build message
     const firstLine = `${type}${scope}${bang}: ${subject}`;
     const parts = [firstLine];
-    if (body) { parts.push(''); parts.push(body); }
-    if (footer) { parts.push(''); parts.push(footer); }
+    if (body) {
+      parts.push('');
+      parts.push(body);
+    }
+    if (footer) {
+      parts.push('');
+      parts.push(footer);
+    }
     const commitMsg = parts.join('\n');
 
     console.log('\n  ─────────────────────────');
     console.log('  Generated commit message:\n');
-    console.log(commitMsg.split('\n').map((l) => `  ${l}`).join('\n'));
+    console.log(
+      commitMsg
+        .split('\n')
+        .map((l) => `  ${l}`)
+        .join('\n')
+    );
     console.log('\n  ─────────────────────────');
 
     // Validate before committing
@@ -252,22 +333,33 @@ export async function cmdCommitCreate(argv: string[]): Promise<void> {
         console.log(`  ⚠ [${f.severity}] ${f.message}`);
       }
     }
+    if (doCommit && findings.some((f) => f.severity === 'BLOCKER' || f.severity === 'HIGH')) {
+      process.stderr.write('commit:create: resolve blocking findings before committing.\n');
+      process.exitCode = 1;
+      return;
+    }
 
     if (doCommit) {
       const confirm = (await ask(rl, '\n  Commit now? (Y/n): ')).trim().toLowerCase();
       if (confirm === '' || confirm === 'y' || confirm === 'yes') {
         try {
-          const tmpFile = join(root, '.git', 'COMMIT_EDITMSG.thesmos-wizard');
-          writeFileSync(tmpFile, commitMsg);
-          execSync(`git commit -F "${tmpFile}"`, { stdio: 'inherit' });
+          // No shell and no .git directory assumption: linked worktrees use a file.
+          execFileSync('git', ['commit', '--file=-'], {
+            cwd: root,
+            input: commitMsg,
+            encoding: 'utf8',
+            stdio: ['pipe', 'inherit', 'inherit'],
+            windowsHide: true,
+          });
         } catch {
           process.stderr.write('commit:create: git commit failed.\n');
-          process.exit(1);
+          process.exitCode = 1;
+          return;
         }
       }
     } else {
       console.log('\n  To commit, run:');
-      console.log(`  git commit -m ${JSON.stringify(firstLine)}`);
+      console.log('  git commit');
       if (body || footer) {
         console.log('\n  Or copy the full message above into your editor with:');
         console.log('  git commit');

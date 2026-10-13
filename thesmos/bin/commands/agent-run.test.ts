@@ -25,7 +25,7 @@ describe('resolveAgentPath', () => {
     const dir = join(root, '.thesmos', 'catalog', 'agents');
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'custom-agent.md'), '---\nid: custom\n---\nBody\n', 'utf8');
-    expect(resolveAgentPath(root, 'custom-agent')).toContain('catalog/agents/custom-agent.md');
+    expect(resolveAgentPath(root, 'custom-agent')).toBe(join(dir, 'custom-agent.md'));
   });
 
   it('returns null when missing', () => {

@@ -1,71 +1,72 @@
 {
-  "version": "1.0",
-  "workspace": {
-    "allowedPaths": [
-      "thesmos/",
-      "extensions/vscode/",
-      "actions/pr-review/",
-      "website/",
-      "growth/",
-      "pantheon/",
-      "docs/",
-      ".changeset/",
-      ".claude-plugin/",
-      ".thesmos/",
-      ".github/",
-      ".cursor/",
-      ".codex/",
-      "scripts/",
-      "../../.claude/projects/-Users-MHolley-Desktop-thesmos-governance/memory/",
-      "CLAUDE.md",
-      "AGENTS.md",
-      "GEMINI.md",
-      ".gitignore",
-      "package.json",
-      "package-lock.json",
-      "LICENSE",
-      "README.md",
-      "CHANGELOG.md"
-    ],
-    "blockedPaths": [
-      "node_modules/",
-      ".env",
-      ".env.*",
-      "*.pem",
-      "*.key",
-      "*.p12",
-      "*.pfx",
-      ".claude/"
-    ],
-    "absoluteBlockPaths": [
-      "/etc/",
-      "/usr/",
-      "/bin/",
-      "/sbin/",
-      "/System/",
-      "/Library/"
-    ]
-  },
-  "operations": {
-    "allowDelete": true,
-    "allowGitPush": true,
-    "allowNetworkHosts": [
-      "registry.npmjs.org",
-      "api.github.com"
-    ],
-    "allowDatabaseWrites": false,
-    "requireConfirmation": [
-      "npm publish",
-      "git push --force"
-    ]
-  },
-  "destructivePatterns": [
-    "rm -rf",
-    "rm -r /",
-    "DROP TABLE",
-    "DELETE FROM",
-    "TRUNCATE",
-    "truncate -s 0",
-    "mkfs"
-  ]
+"version": "1.0",
+"workspace": {
+"allowedPaths": [
+"thesmos/",
+"apps/desktop/",
+"extensions/vscode/",
+"actions/pr-review/",
+"website/",
+"growth/",
+"pantheon/",
+"docs/",
+".changeset/",
+".claude-plugin/",
+".thesmos/",
+".github/",
+".cursor/",
+".codex/",
+"scripts/",
+"../../.claude/projects/-Users-MHolley-Desktop-thesmos-governance/memory/",
+"CLAUDE.md",
+"AGENTS.md",
+"GEMINI.md",
+".gitignore",
+"package.json",
+"package-lock.json",
+"LICENSE",
+"README.md",
+"CHANGELOG.md"
+],
+"blockedPaths": [
+"node_modules/",
+".env",
+".env.*",
+"*.pem",
+"*.key",
+"*.p12",
+"*.pfx",
+".claude/"
+],
+"absoluteBlockPaths": [
+"/etc/",
+"/usr/",
+"/bin/",
+"/sbin/",
+"/System/",
+"/Library/"
+]
+},
+"operations": {
+"allowDelete": true,
+"allowGitPush": true,
+"allowNetworkHosts": [
+"registry.npmjs.org",
+"api.github.com"
+],
+"allowDatabaseWrites": false,
+"requireConfirmation": [
+"npm publish",
+"git push --force"
+]
+},
+"destructivePatterns": [
+"rm -rf",
+"rm -r /",
+"DROP TABLE",
+"DELETE FROM",
+"TRUNCATE",
+"truncate -s 0",
+"mkfs"
+]
 }

@@ -30,7 +30,13 @@ import {
 export function cosineSimilarity(a: readonly number[], b: readonly number[]): number {
   // Length mismatch means different vector spaces. Comparing them anyway would
   // return a plausible number, which is worse than returning nothing.
-  if (a.length === 0 || a.length !== b.length) return 0;
+  if (
+    a.length === 0 ||
+    a.length !== b.length ||
+    !a.every(Number.isFinite) ||
+    !b.every(Number.isFinite)
+  )
+    return 0;
   let dot = 0;
   let magA = 0;
   let magB = 0;
@@ -40,7 +46,8 @@ export function cosineSimilarity(a: readonly number[], b: readonly number[]): nu
     magB += b[i] * b[i];
   }
   if (magA === 0 || magB === 0) return 0;
-  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+  const similarity = dot / (Math.sqrt(magA) * Math.sqrt(magB));
+  return Number.isFinite(similarity) ? Math.max(-1, Math.min(1, similarity)) : 0;
 }
 
 /**
@@ -56,7 +63,7 @@ export function lexicalSimilarity(query: string, content: string): number {
       s
         .toLowerCase()
         .split(/[^a-z0-9]+/)
-        .filter((w) => w.length > 2),
+        .filter((w) => w.length > 2)
     );
   const q = tokenize(query);
   const c = tokenize(content);
@@ -111,8 +118,9 @@ function isExpired(record: MemoryRecord, now: Date): boolean {
  * without one is scope-global knowledge and stays visible.
  */
 export function isVisible(record: MemoryRecord, query: MemoryQuery): boolean {
-  if (record.repoId && query.repoId && record.repoId !== query.repoId) return false;
-  if (record.projectId && query.projectId && record.projectId !== query.projectId) return false;
+  // Missing caller identity is not a wildcard authorization for named clients.
+  if (record.repoId && record.repoId !== query.repoId) return false;
+  if (record.projectId && record.projectId !== query.projectId) return false;
 
   // Mission/session records are private to their mission unless it is the one asking.
   if (record.scope === 'mission' && record.missionId && query.missionId !== record.missionId) {
@@ -165,7 +173,7 @@ export function rankMemories(
   query: MemoryQuery,
   vectorFor?: VectorLookup,
   queryVector?: readonly number[],
-  now: Date = new Date(),
+  now: Date = new Date()
 ): MemorySearchResult[] {
   const results: MemorySearchResult[] = [];
   const semantic = Boolean(queryVector && vectorFor);
@@ -220,12 +228,14 @@ export function rankMemories(
   }
 
   const minRelevance = query.minRelevance ?? 0;
-  return results
-    .filter((r) => r.relevanceScore >= minRelevance)
-    // Ties break on id so ordering is stable across runs — a flapping order
-    // would make retrieval non-reproducible and untestable.
-    .sort((a, b) => b.relevanceScore - a.relevanceScore || a.memory.id.localeCompare(b.memory.id))
-    .slice(0, query.limit ?? 10);
+  return (
+    results
+      .filter((r) => r.relevanceScore >= minRelevance)
+      // Ties break on id so ordering is stable across runs — a flapping order
+      // would make retrieval non-reproducible and untestable.
+      .sort((a, b) => b.relevanceScore - a.relevanceScore || a.memory.id.localeCompare(b.memory.id))
+      .slice(0, query.limit ?? 10)
+  );
 }
 
 /**
@@ -236,12 +246,12 @@ export function rankMemories(
  */
 export function deduplicate(
   results: readonly MemorySearchResult[],
-  threshold = 0.82,
+  threshold = 0.82
 ): MemorySearchResult[] {
   const kept: MemorySearchResult[] = [];
   for (const candidate of results) {
     const duplicate = kept.find(
-      (k) => lexicalSimilarity(k.memory.content, candidate.memory.content) >= threshold,
+      (k) => lexicalSimilarity(k.memory.content, candidate.memory.content) >= threshold
     );
     if (duplicate) {
       duplicate.reasons.push('absorbed a near-duplicate');
@@ -320,7 +330,7 @@ function subjectOverlap(a: string, b: string): number {
       s
         .toLowerCase()
         .split(/[^a-z0-9]+/)
-        .filter((w) => w.length > 2 && !POLARITY_WORDS.has(w)),
+        .filter((w) => w.length > 2 && !POLARITY_WORDS.has(w))
     );
   const sa = subject(a);
   const sb = subject(b);
@@ -356,7 +366,7 @@ export function detectConflicts(records: readonly MemoryRecord[]): MemoryConflic
     (r) =>
       r.status === 'active' &&
       (r.confidence === 'high' || r.confidence === 'verified') &&
-      (r.type === 'user-decision' || r.type === 'architecture-decision' || r.type === 'constraint'),
+      (r.type === 'user-decision' || r.type === 'architecture-decision' || r.type === 'constraint')
   );
 
   for (let i = 0; i < eligible.length; i++) {
@@ -375,7 +385,8 @@ export function detectConflicts(records: readonly MemoryRecord[]): MemoryConflic
       const bPermits = assertsPermission(b.content);
 
       // Opposite polarity: one demands, the other waives.
-      const opposed = (aRequires && bPermits && !bRequires) || (bRequires && aPermits && !aRequires);
+      const opposed =
+        (aRequires && bPermits && !bRequires) || (bRequires && aPermits && !aRequires);
       if (!opposed) continue;
 
       conflicts.push({
@@ -396,7 +407,7 @@ export function detectConflicts(records: readonly MemoryRecord[]): MemoryConflic
  */
 export function applyBudget(
   results: readonly MemorySearchResult[],
-  budget: { maxChars: number; maxRecords: number },
+  budget: { maxChars: number; maxRecords: number }
 ): { kept: MemorySearchResult[]; droppedForBudget: number; chars: number } {
   const kept: MemorySearchResult[] = [];
   let chars = 0;

@@ -6,8 +6,9 @@
  * Log file: .thesmos/governance.log.jsonl (gitignored by default)
  * Format: one JSON object per line, ordered by timestamp.
  */
-import { existsSync, appendFileSync, readFileSync, mkdirSync } from 'node:fs';
+import { existsSync, appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { isObject, isTimestamp, readValidatedJsonl, type JsonlReadResult } from './jsonl.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,19 @@ export interface GovernanceEvent {
   message?: string;
 }
 
+export function isGovernanceEvent(value: unknown): value is GovernanceEvent {
+  if (!isObject(value)) return false;
+  return (
+    isTimestamp(value.ts) &&
+    ['scan', 'mcp', 'hook', 'eval', 'ci'].includes(value.source as string) &&
+    ['PASS', 'BLOCKED', 'WARN', 'BYPASSED'].includes(value.outcome as string) &&
+    ['rule', 'action', 'path'].every((key) => typeof value[key] === 'string') &&
+    typeof value.override === 'boolean' &&
+    (value.session === undefined || typeof value.session === 'string') &&
+    (value.message === undefined || typeof value.message === 'string')
+  );
+}
+
 // ── Paths ─────────────────────────────────────────────────────────────────────
 
 function logPath(root: string): string {
@@ -40,9 +54,10 @@ function thesmosDir(root: string): string {
 
 export function appendGovernanceEvent(
   root: string,
-  event: Omit<GovernanceEvent, 'ts'>,
+  event: Omit<GovernanceEvent, 'ts'>
 ): GovernanceEvent {
-  const full: GovernanceEvent = { ts: new Date().toISOString(), ...event };
+  const full: GovernanceEvent = { ...event, ts: new Date().toISOString() };
+  if (!isGovernanceEvent(full)) throw new TypeError('Invalid governance event');
 
   const dir = thesmosDir(root);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -58,7 +73,7 @@ export function logRuleFire(
   outcome: GovernanceOutcome,
   source: GovernanceSource = 'scan',
   session?: string,
-  message?: string,
+  message?: string
 ): GovernanceEvent {
   return appendGovernanceEvent(root, {
     source,
@@ -78,7 +93,7 @@ export function logMcpBlock(
   path: string,
   rule: string,
   message: string,
-  session?: string,
+  session?: string
 ): GovernanceEvent {
   return appendGovernanceEvent(root, {
     source: 'mcp',
@@ -96,7 +111,7 @@ export function logMcpPass(
   root: string,
   tool: string,
   path: string,
-  session?: string,
+  session?: string
 ): GovernanceEvent {
   return appendGovernanceEvent(root, {
     source: 'mcp',
@@ -115,7 +130,7 @@ export function logMcpOverride(
   path: string,
   rule: string,
   message: string,
-  session?: string,
+  session?: string
 ): GovernanceEvent {
   return appendGovernanceEvent(root, {
     source: 'mcp',
@@ -132,29 +147,18 @@ export function logMcpOverride(
 // ── Read ──────────────────────────────────────────────────────────────────────
 
 export function readGovernanceLog(root: string, limit = 1000): GovernanceEvent[] {
-  const p = logPath(root);
-  if (!existsSync(p)) return [];
+  return readGovernanceLogResult(root, limit).records;
+}
 
-  const lines = readFileSync(p, 'utf-8')
-    .split('\n')
-    .filter(Boolean)
-    .slice(-limit);
-
-  const events: GovernanceEvent[] = [];
-  for (const line of lines) {
-    try {
-      events.push(JSON.parse(line) as GovernanceEvent);
-    } catch {
-      // skip malformed lines
-    }
-  }
-  return events;
+export function readGovernanceLogResult(
+  root: string,
+  limit = 1000
+): JsonlReadResult<GovernanceEvent> {
+  return readValidatedJsonl(logPath(root), isGovernanceEvent, limit);
 }
 
 export function readGovernanceLogSince(root: string, since: Date): GovernanceEvent[] {
-  return readGovernanceLog(root, 10000).filter(
-    (e) => new Date(e.ts) >= since,
-  );
+  return readGovernanceLog(root, Number.POSITIVE_INFINITY).filter((e) => new Date(e.ts) >= since);
 }
 
 // ── Analysis ──────────────────────────────────────────────────────────────────
@@ -176,6 +180,8 @@ export interface GovernanceSummary {
   categoryHits: Record<string, number>;
   topCategory: string | null;
   period: { from: string; to: string } | null;
+  /** Invalid/unreadable evidence prevents a clean assurance claim. */
+  evidenceIssues: string[];
 }
 
 function ruleToCategory(rule: string): string {
@@ -197,7 +203,14 @@ function ruleToCategory(rule: string): string {
   return MAP[prefix] ?? prefix;
 }
 
-export function summariseGovernanceLog(events: GovernanceEvent[]): GovernanceSummary {
+export function summariseGovernanceLog(
+  input: GovernanceEvent[],
+  evidenceIssues: string[] = []
+): GovernanceSummary {
+  const events = input.filter(isGovernanceEvent);
+  const issues = [...evidenceIssues];
+  if (events.length !== input.length)
+    issues.push(`${input.length - events.length} invalid governance event(s)`);
   const blocked = events.filter((e) => e.outcome === 'BLOCKED');
   const warned = events.filter((e) => e.outcome === 'WARN');
   const passed = events.filter((e) => e.outcome === 'PASS');
@@ -207,12 +220,18 @@ export function summariseGovernanceLog(events: GovernanceEvent[]): GovernanceSum
   const compliant = passed.length + warned.length;
   // Empty log → INCOMPLETE (null score), never a fake 100%.
   const complianceScore =
-    enforced === 0 ? null : Math.round((compliant / enforced) * 1000) / 10;
+    issues.length > 0 || enforced === 0 ? null : Math.round((compliant / enforced) * 1000) / 10;
   const assuranceState: GovernanceSummary['assuranceState'] =
-    enforced === 0 ? 'INCOMPLETE' : blocked.length + bypassed.length > 0 ? 'FAIL' : 'PASS';
+    issues.length > 0
+      ? 'ERROR'
+      : enforced === 0
+        ? 'INCOMPLETE'
+        : blocked.length + bypassed.length > 0
+          ? 'FAIL'
+          : 'PASS';
 
-  const ruleHits: Record<string, number> = {};
-  const categoryHits: Record<string, number> = {};
+  const ruleHits: Record<string, number> = Object.create(null);
+  const categoryHits: Record<string, number> = Object.create(null);
 
   for (const e of events) {
     if (e.rule === 'passthrough') continue;
@@ -222,14 +241,11 @@ export function summariseGovernanceLog(events: GovernanceEvent[]): GovernanceSum
   }
 
   const topRule = Object.entries(ruleHits).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-  const topCategory =
-    Object.entries(categoryHits).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const topCategory = Object.entries(categoryHits).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
-  const timestamps = events.map((e) => e.ts).sort();
+  const timestamps = events.map((e) => e.ts).sort((a, b) => Date.parse(a) - Date.parse(b));
   const period =
-    timestamps.length > 0
-      ? { from: timestamps[0]!, to: timestamps[timestamps.length - 1]! }
-      : null;
+    timestamps.length > 0 ? { from: timestamps[0]!, to: timestamps[timestamps.length - 1]! } : null;
 
   return {
     total: events.length,
@@ -246,5 +262,6 @@ export function summariseGovernanceLog(events: GovernanceEvent[]): GovernanceSum
     categoryHits,
     topCategory,
     period,
+    evidenceIssues: issues,
   };
 }

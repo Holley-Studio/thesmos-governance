@@ -196,7 +196,9 @@ const EU_AI_004: ThesmosRule = {
     // ("s-train") and "restrain" do not.
     const TRAINING_RE = /\bfine.?tun|\btrain|\bdataset|embedding.*ingest|createFineTune|fine_tune/i;
     const files = (input.changedFiles ?? []).filter((cf) => isSourceFile(cf.path) && !isTestFile(cf.path));
-    const hasTraining = files.some((cf) => TRAINING_RE.test(cf.content));
+    const hasTraining = files.some((cf) => TRAINING_RE.test(
+      cf.content.replace(/\/\*[\s\S]*?\*\//g, '\n').split('\n').filter(line => !line.trim().startsWith('//')).join('\n')
+    ));
     if (!hasTraining) return [];
     const hasDataGovernance = existsSync(join(root, '.thesmos', 'data-governance.md'))
       || existsSync(join(root, 'docs', 'data-governance.md'))

@@ -29,11 +29,34 @@ export type RuntimeMethod =
   | 'memory.search'
   | 'memory.stats'
   | 'project.open'
-  | 'pantheon.list';
+  | 'pantheon.list'
+  | 'channel.get'
+  | 'channel.postMessage'
+  | 'channel.getMessages'
+  | 'studio.snapshot'
+  | 'brief.read'
+  | 'finance.read' | 'finance.preview' | 'finance.commit' | 'finance.backup'
+  | 'chat.list' | 'chat.get' | 'chat.create' | 'chat.send' | 'chat.stop' | 'chat.delete'
+  | 'rag.status' | 'rag.rebuild' | 'rag.cancel' | 'rag.search' | 'rag.source'
+  | 'drive.status' | 'drive.files' | 'drive.search' | 'drive.source'
+  | 'studio.knowledge'
+  | 'studio.backup'
+  | 'studio.artifact'
+  | 'studio.connections'
+  | 'studio.createJob'
+  | 'studio.runJob'
+  | 'studio.cancelJob'
+  | 'studio.reviewJob'
+  | 'studio.exportJob';
+
+/** Private inherited-pipe operations. Native allowlist excludes every member. */
+export type NativeRuntimeMethod = RuntimeMethod
+  | 'drive.session' | 'drive.sync' | 'drive.disconnect'
+  | 'drive.pause' | 'drive.resume' | 'drive.authState';
 
 export interface RuntimeRequest {
   id: string;
-  method: RuntimeMethod;
+  method: NativeRuntimeMethod;
   params?: Record<string, unknown>;
 }
 

@@ -37,10 +37,23 @@ function fakeProvider(dimensions = 3): EmbeddingProvider & { seen: string[] } {
     seen,
     async embed(_model, input) {
       seen.push(...input);
-      return input.map((_, i) => Array.from({ length: dimensions }, (_, d) => (d === 0 ? 1 : i * 0.01)));
+      return input.map((_, i) =>
+        Array.from({ length: dimensions }, (_, d) => (d === 0 ? 1 : i * 0.01))
+      );
     },
   };
 }
+
+it('rejects non-finite embedding values instead of persisting or ranking them', async () => {
+  const provider: EmbeddingProvider = { id: 'bad', embed: async () => [[Number.NaN, 1]] };
+  const context = { provider, model: 'embed', dimensions: 2 };
+  const store = new MemoryStore(root);
+  const saved = store.append(proposal());
+  const result = await indexMemories(store, [saved], context);
+  expect(result).toMatchObject({ embedded: 0, failed: 1 });
+  expect(store.vectors()).toEqual([]);
+  expect(await embedQuery('query', context)).toBeNull();
+});
 
 function model(overrides: Partial<ModelDescriptor> = {}): ModelDescriptor {
   return {
@@ -59,7 +72,7 @@ describe('resolveEmbeddingModel', () => {
   it('picks an embedding-capable model deterministically', () => {
     const out = resolveEmbeddingModel(
       [model({ id: 'zeta-embed' }), model({ id: 'alpha-embed' })],
-      undefined,
+      undefined
     );
     expect('model' in out && out.model.id).toBe('alpha-embed');
   });
@@ -78,7 +91,7 @@ describe('resolveEmbeddingModel', () => {
   it('refuses a model that cannot embed', () => {
     const out = resolveEmbeddingModel(
       [model({ id: 'chat-only', capabilities: { embeddings: false } })],
-      'chat-only',
+      'chat-only'
     );
     expect('error' in out && out.error).toMatch(/does not support embeddings/);
   });
@@ -198,9 +211,7 @@ describe('indexMemories', () => {
   it('batches rather than sending one enormous request', async () => {
     const store = new MemoryStore(root);
     for (let i = 0; i < 40; i++) store.append(proposal({ content: `fact number ${i}` }));
-    const embed = vi.fn(async (_m: string, input: readonly string[]) =>
-      input.map(() => [1, 0, 0]),
-    );
+    const embed = vi.fn(async (_m: string, input: readonly string[]) => input.map(() => [1, 0, 0]));
     const provider: EmbeddingProvider = { id: 'ollama', embed };
 
     await indexMemories(store, store.all(), { provider, model: 'm', dimensions: 3 });
@@ -235,7 +246,9 @@ describe('embedQuery', () => {
         throw new Error('connection refused');
       },
     };
-    await expect(embedQuery('q', { provider: down, model: 'm', dimensions: 3 })).resolves.toBeNull();
+    await expect(
+      embedQuery('q', { provider: down, model: 'm', dimensions: 3 })
+    ).resolves.toBeNull();
   });
 });
 

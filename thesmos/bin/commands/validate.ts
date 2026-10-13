@@ -37,7 +37,9 @@ export async function cmdValidate(argv: string[]): Promise<void> {
   const scan = loadReport(root);
 
   if (!scan) {
-    process.stderr.write('thesmos validate: .thesmos/report.json not found — run thesmos scan first\n');
+    process.stderr.write(
+      'thesmos validate: .thesmos/report.json not found — run thesmos scan first\n'
+    );
     process.exit(1);
   }
 
@@ -45,28 +47,31 @@ export async function cmdValidate(argv: string[]): Promise<void> {
   if (positionals.length > 0) {
     changedFiles = readFilesFromPaths(root, positionals, config.reviewIgnorePaths ?? []);
   } else if (base) {
-    changedFiles = getChangedFiles(root, base, config.ignoredFolders ?? [], config.reviewIgnorePaths ?? []);
+    changedFiles = getChangedFiles(
+      root,
+      base,
+      config.ignoredFolders ?? [],
+      config.reviewIgnorePaths ?? []
+    );
   }
 
   const registry = await getActiveRules(root);
-  const reviewResult = runReview({ scan, config, changedFiles }, registry);
+  const reviewResult = runReview({ scan, config, changedFiles, root }, registry);
   const allFindings = reviewResult.findings;
 
   if (reviewResult.engineErrors.length > 0) {
     const ids = reviewResult.engineErrors.map((e) => e.ruleId).join(', ');
     process.stderr.write(
       `\nerror: ${reviewResult.engineErrors.length} rule(s) crashed during detect() and could not be evaluated: ${ids}\n` +
-      `These rules are ENABLED in your config. Failing closed to prevent silent security gaps.\n` +
-      `Fix the rule implementation or disable the rule explicitly to continue.\n`
+        `These rules are ENABLED in your config. Failing closed to prevent silent security gaps.\n` +
+        `Fix the rule implementation or disable the rule explicitly to continue.\n`
     );
     process.exit(2);
   }
 
   // Auto-load baseline if present (suppresses known debt from CI exit code)
   const baseline = noBaseline ? null : loadBaseline(root);
-  const findings = baseline
-    ? partitionFindings(allFindings, baseline).newFindings
-    : allFindings;
+  const findings = baseline ? partitionFindings(allFindings, baseline).newFindings : allFindings;
 
   const exitCode = exitCodeFor(findings, config);
 
@@ -97,7 +102,9 @@ export async function cmdValidate(argv: string[]): Promise<void> {
   if (baseline) {
     const suppressed = allFindings.length - findings.length;
     if (suppressed > 0) {
-      process.stderr.write(`\nnote: ${suppressed} baseline finding${suppressed === 1 ? '' : 's'} suppressed — run thesmos baseline:report for details\n`);
+      process.stderr.write(
+        `\nnote: ${suppressed} baseline finding${suppressed === 1 ? '' : 's'} suppressed — run thesmos baseline:report for details\n`
+      );
     }
   }
 

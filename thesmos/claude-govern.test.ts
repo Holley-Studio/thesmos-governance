@@ -163,7 +163,9 @@ describe('evaluateGovernFindings — real-time govern check', () => {
 // (exit 0 + hookSpecificOutput JSON) that Claude Code's own permission UI can
 // resolve, while genuine hard blocks keep exiting 2.
 
-describe('runPreToolCheck — requires_confirmation vs. hard block (Bash)', () => {
+// CLI startup under concurrent load can exceed the unit-test deadline. Keep
+// the outer deadline above the bounded subprocess timeout (30 seconds).
+describe('runPreToolCheck — requires_confirmation vs. hard block (Bash)', { timeout: 35_000 }, () => {
   it('requires_confirmation emits an "ask" decision (exit 0), not a hard block', () => {
     const root = makeScopeFixture(['zzz-test-risky-op']);
     const result = runPreToolHook(
@@ -273,7 +275,7 @@ describe('runPreToolCheck — requires_confirmation vs. hard block (Bash)', () =
 // must reach Claude Code as a permission request, never a silent allow and
 // never an unrecoverable hard block.
 
-describe('runPreToolCheck — ambiguous command syntax (end-to-end)', () => {
+describe('runPreToolCheck — ambiguous command syntax (end-to-end)', { timeout: 35_000 }, () => {
   it('$() command substitution emits an "ask" decision (exit 0), not a hard block', () => {
     const root = makeScopeFixture([]);
     const result = runPreToolHook(

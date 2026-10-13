@@ -20,6 +20,19 @@ function scaffold(root: string, files: Record<string, string>): void {
 }
 
 describe('walkFiles', () => {
+  it('honors nested root-anchored ignore patterns with native filesystem paths', () => {
+    const root = makeTmpDir();
+    scaffold(root, {
+      '.thesmosignore': '/src/private/\n',
+      'src/private/key.ts': '',
+      'src/public/page.ts': '',
+    });
+    const files = walkFiles(root);
+    expect(files).toContain('src/public/page.ts');
+    expect(files.some((file) => file.startsWith('src/private'))).toBe(false);
+    expect(files.every((file) => !file.includes('\\'))).toBe(true);
+    rmSync(root, { recursive: true });
+  });
   it('returns relative paths from root', () => {
     const root = makeTmpDir();
     scaffold(root, { 'a.ts': '', 'b.ts': '' });

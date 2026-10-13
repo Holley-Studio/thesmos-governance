@@ -43,7 +43,7 @@ export function sanitizeMemoryContent(content: string): string {
       // is left intact.
       .replace(
         /(^|[.!?;]\s+)(system|assistant|developer|user|tool)\s*:/gim,
-        (_match, boundary: string) => `${boundary}[role-removed]:`,
+        (_match, boundary: string) => `${boundary}[role-removed]:`
       )
   );
 }
@@ -97,7 +97,7 @@ function renderRecord(result: MemorySearchResult): string {
  */
 export function renderMemoryCapsule(
   results: readonly MemorySearchResult[],
-  conflicts: readonly MemoryConflict[] = [],
+  conflicts: readonly MemoryConflict[] = []
 ): RenderedMemoryCapsule {
   if (results.length === 0 && conflicts.length === 0) {
     return { text: '', recordCount: 0, chars: 0, conflicts: [] };
@@ -126,7 +126,7 @@ export function renderMemoryCapsule(
       lines.push(
         `- A [${conflict.a.id.slice(0, 8)}]: ${sanitizeMemoryContent(conflict.a.content)}`,
         `  B [${conflict.b.id.slice(0, 8)}]: ${sanitizeMemoryContent(conflict.b.content)}`,
-        `  (${conflict.reason})`,
+        `  (${conflict.reason})`
       );
     }
     lines.push('');
@@ -147,6 +147,8 @@ export function renderMemoryCapsule(
  * finding.
  */
 export interface MemoryTelemetry {
+  /** Damaged records excluded from recall; investigate with memory doctor. */
+  corruptRecordsSkipped?: number;
   candidatesConsidered: number;
   retrieved: number;
   droppedForBudget: number;

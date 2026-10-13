@@ -12,14 +12,26 @@
  */
 
 import { createInterface } from 'node:readline';
-import { OllamaProvider } from '../../../thesmos/runtime/providers/ollama/provider.js';
-import { ProviderRegistry } from '../../../thesmos/runtime/registry.js';
+import { join, isAbsolute } from 'node:path';
+import { homedir } from 'node:os';
+import { realpathSync } from 'node:fs';
+import { StudioService, textParam } from './studio/service.js';
+import { CouncilChatService } from './studio/chat.js';
+import { RagService } from './studio/rag.js';
+import { DriveService } from './studio/drive/service.js';
+import { registeredProjectKind } from './studio/store.js';
+import { readBrief } from './studio/brief.js';
+import { FinanceStore } from './studio/finance.js';
+import { godIdentity } from '../shared/pantheon.js';
+import { connections } from './studio/workers.js';
+import { createProviderRegistry } from './providers.js';
 import { MnemosyneService } from '../../../thesmos/memory/service.js';
 import { MemoryStore } from '../../../thesmos/memory/store.js';
 import { listRoutableAgents } from '../../../thesmos/bin/commands/pantheon.js';
 import type {
   RuntimeHealth,
   RuntimeMethod,
+  NativeRuntimeMethod,
   RuntimeOutbound,
   RuntimeRequest,
 } from './protocol.js';
@@ -35,6 +47,29 @@ const startedAt = Date.now();
  * granted — the opposite of the narrow-grant model the desktop promises.
  */
 let projectRoot: string | undefined;
+
+function argument(name: string): string | undefined {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : undefined;
+}
+const dataDir = argument('--data-dir') ?? join(process.env.LOCALAPPDATA ?? join(homedir(), '.local', 'share'), 'HolleyStudio', 'Pantheon');
+if (!isAbsolute(dataDir)) throw new Error('Runtime data directory must be absolute');
+const studio = new StudioService(dataDir, () => projectRoot);
+const finance = new FinanceStore(dataDir);
+const rag = new RagService(dataDir, studio.store, () => projectRoot);
+let chat: CouncilChatService;
+const drive = new DriveService(dataDir, { onInvalidate: () => chat?.cancelKnowledge('drive') });
+chat = new CouncilChatService(studio.store, () => projectRoot,
+ () => { const catalog = listRoutableAgents(); if (!catalog.holdbackFilterApplied) throw new Error('The agent availability ledger is unreadable'); return catalog.agents.map((a) => ({ god: godIdentity(a.id, a.god), role: a.role })); },
+ () => studio.snapshot().jobs.some((j) => j.state === 'running'), undefined, {
+ search: (projectId, query, signal, library) => library === 'drive' ? drive.search(query, signal) : rag.search(projectId, query, signal),
+ identity: library => { const status = drive.status(); return library === 'drive' && status.account && status.state !== 'signin' && status.state !== 'disconnected' ? 'drive:' + status.account.id : undefined; },
+ });
+const initialRoot = argument('--project-root');
+if (initialRoot && isAbsolute(initialRoot)) {
+  projectRoot = realpathSync.native(initialRoot);
+  studio.register(projectRoot);
+}
 
 function send(message: RuntimeOutbound): void {
   process.stdout.write(JSON.stringify(message) + '\n');
@@ -55,7 +90,21 @@ function memoryHealth(): RuntimeHealth['memory'] {
   }
 }
 
-const handlers: Record<RuntimeMethod, (params: Record<string, unknown>) => Promise<unknown>> = {
+const handlers: Record<NativeRuntimeMethod, (params: Record<string, unknown>) => Promise<unknown>> = {
+  'drive.session': async (params) => drive.setSession({ accountId: textParam(params,'accountId',200), email:textParam(params,'email',320), accessToken:textParam(params,'accessToken',8192), expiresAt:Number(params.expiresAt) }),
+  'drive.disconnect': async () => { chat.cancelKnowledge('drive'); return drive.disconnect(); },
+  'drive.authState': async (params) => { if(params.state !== 'signin' && params.state !== 'offline') throw new Error('Invalid Drive connection state'); chat.cancelKnowledge('drive'); return drive.setAuthState(params.state); },
+  'drive.sync': async (params) => drive.sync(params.force !== false),
+  'drive.pause': async () => drive.pause(),
+  'drive.resume': async () => drive.sync(true),
+  'drive.status': async () => drive.status(),
+  'drive.files': async (params) => drive.files(Number(params.limit ?? 100),Number(params.offset ?? 0),typeof params.query === 'string' ? params.query : ''),
+  'drive.search': async (params) => drive.search(textParam(params,'query',5200)),
+  'drive.source': async (params) => drive.source(textParam(params,'sourceId',200)),
+  'finance.read': async () => finance.read(),
+  'finance.preview': async (params) => finance.preview(params),
+  'finance.commit': async (params) => finance.commit(params),
+  'finance.backup': async () => finance.backup(),
   'runtime.health': async () => {
     const memory = memoryHealth();
     const health: RuntimeHealth = {
@@ -72,13 +121,13 @@ const handlers: Record<RuntimeMethod, (params: Record<string, unknown>) => Promi
   'runtime.shutdown': async () => {
     // Acknowledge before exiting so the shell sees a clean close rather than a
     // dropped pipe it would have to treat as a crash.
-    setTimeout(() => process.exit(0), 10);
+    chat.shutdown(); drive.shutdown(); rag.shutdown(); studio.shutdown();
+    setTimeout(() => process.exit(0), 50);
     return { stopping: true };
   },
 
   'providers.list': async () => {
-    const registry = new ProviderRegistry();
-    registry.register(new OllamaProvider());
+    const registry = createProviderRegistry();
     const statuses = await registry.statuses();
     return statuses.map((s) => ({
       id: s.id,
@@ -155,8 +204,8 @@ const handlers: Record<RuntimeMethod, (params: Record<string, unknown>) => Promi
     return {
       agents: agents.map((a) => ({
         id: a.id,
-        god: a.god,
-        name: a.name,
+        god: godIdentity(a.id, a.god),
+        name: `${godIdentity(a.id, a.god)} — ${a.role}`,
         role: a.role,
         emoji: a.emoji,
         tags: a.tags,
@@ -180,13 +229,58 @@ const handlers: Record<RuntimeMethod, (params: Record<string, unknown>) => Promi
     }
     // The shell resolves and validates the path against a user grant before it
     // reaches here; the runtime records it rather than discovering it.
-    projectRoot = root;
+    const openedRoot = realpathSync.native(root);
+    if (projectRoot?.toLowerCase() !== openedRoot.toLowerCase()) {
+      chat.shutdown();
+      const previous = studio.store.projects().find((project) => project.root.toLowerCase() === projectRoot?.toLowerCase());
+      if (previous && registeredProjectKind(previous.root) !== 'client') rag.cancel(previous.id);
+    }
+    projectRoot = openedRoot;
+    studio.register(projectRoot);
     return { projectRoot, memory: memoryHealth() };
   },
+
+  'studio.snapshot': async () => studio.snapshot(),
+  'brief.read': async () => readBrief(dataDir),
+  'chat.list': async (params) => chat.list(params),
+  'chat.get': async (params) => chat.get(params),
+  'chat.create': async (params) => chat.create(params),
+  'chat.send': async (params) => chat.send(params),
+  'chat.stop': async (params) => chat.stop(params),
+  'chat.delete': async (params) => chat.delete(params),
+  'rag.status': async (params) => rag.status(textParam(params, 'projectId', 80)),
+  'rag.rebuild': async (params) => rag.rebuild(textParam(params, 'projectId', 80)),
+  'rag.cancel': async (params) => rag.cancel(textParam(params, 'projectId', 80)),
+  'rag.search': async (params) => rag.search(textParam(params, 'projectId', 80), textParam(params, 'query', 5200)),
+  'rag.source': async (params) => rag.source(textParam(params, 'projectId', 80), textParam(params, 'sourceId', 200)),
+  'studio.knowledge': async (params) => studio.knowledge(params),
+  'studio.backup': async () => studio.store.backup(),
+  'studio.artifact': async (params) => studio.store.artifact(textParam(params, 'artifactId', 80)),
+  'studio.connections': async () => connections(dataDir),
+  'studio.createJob': async (params) => studio.create(params),
+  'studio.runJob': async (params) => { if (chat.busy) throw new Error('Finish or stop the council conversation before starting a workboard job'); return studio.run(params); },
+  'studio.cancelJob': async (params) => studio.cancel(textParam(params, 'jobId', 80)),
+  'studio.reviewJob': async (params) => {
+    const action = textParam(params, 'action', 20);
+    if (action !== 'approve' && action !== 'revise') throw new Error('Choose approve or revise');
+    return studio.store.review(textParam(params, 'jobId', 80), action, textParam(params, 'note', 2000));
+  },
+  'studio.exportJob': async (params) => studio.export(textParam(params, 'jobId', 80)),
+
+  'channel.get': async () => { throw new Error('Legacy channels are unavailable in the business pilot. Use the workboard.'); },
+
+  /**
+   * Returns as soon as the user's message is recorded — the round runs in
+   * the background (see thesmos/channel/orchestrator.ts), so this never
+   * blocks on an agent turn the way a synchronous mission-execute call would.
+   */
+  'channel.postMessage': async () => { throw new Error('Legacy channel execution is disabled. Create an explicit workboard job.'); },
+
+  'channel.getMessages': async () => { throw new Error('Legacy channels are unavailable in the business pilot. Use the workboard.'); },
 };
 
 async function handle(request: RuntimeRequest): Promise<void> {
-  const handler = handlers[request.method];
+  const handler = Object.hasOwn(handlers, request.method) ? handlers[request.method] : undefined;
   if (!handler) {
     send({
       id: request.id,
@@ -227,7 +321,7 @@ rl.on('line', (line) => {
 });
 
 // Parent went away: exit rather than linger as an orphan.
-rl.on('close', () => process.exit(0));
+rl.on('close', () => { chat.shutdown(); drive.shutdown(); rag.shutdown(); studio.shutdown(); process.exit(0); });
 
 process.on('uncaughtException', (err) => {
   send({ event: 'runtime.error', payload: { message: err.message } });

@@ -59,7 +59,9 @@ function handoff(overrides: Partial<AgentHandoff> = {}): AgentHandoff {
 
 describe('durability filter', () => {
   it('accepts a substantive finding', () => {
-    expect(isDurableContent('Staging migration repair requires a validated project ref.')).toBe(true);
+    expect(isDurableContent('Staging migration repair requires a validated project ref.')).toBe(
+      true
+    );
   });
 
   it('rejects conversational filler', () => {
@@ -113,10 +115,14 @@ describe('confidence from evidence', () => {
 describe('classification', () => {
   it('recognizes decisions, constraints and procedures', () => {
     expect(classifySummary('We decided to standardize on the runtime provider path.')).toBe(
-      'architecture-decision',
+      'architecture-decision'
     );
-    expect(classifySummary('Production deploys must never run without approval.')).toBe('constraint');
-    expect(classifySummary('Procedure to repair a staging migration after failure.')).toBe('procedure');
+    expect(classifySummary('Production deploys must never run without approval.')).toBe(
+      'constraint'
+    );
+    expect(classifySummary('Procedure to repair a staging migration after failure.')).toBe(
+      'procedure'
+    );
   });
 
   it('defaults to observation', () => {
@@ -160,7 +166,7 @@ describe('proposals from a handoff', () => {
     const proposals = proposeFromHandoff(
       handoff({
         unresolvedRisks: ['The rollback path has not been exercised against a partial migration.'],
-      }),
+      })
     );
     const risk = proposals.find((p) => p.type === 'hypothesis');
     expect(risk).toBeDefined();
@@ -172,7 +178,7 @@ describe('proposals from a handoff', () => {
     // A hypothesis claiming `verified` is rejected outright, so the proposer
     // must never emit one.
     const [, risk] = proposeFromHandoff(
-      handoff({ unresolvedRisks: ['The rollback path has not been exercised end to end.'] }),
+      handoff({ unresolvedRisks: ['The rollback path has not been exercised end to end.'] })
     );
     expect(validate(risk).decision).toBe('accept');
   });
@@ -227,7 +233,7 @@ describe('proposals from a mission', () => {
       [
         handoff({ taskId: 'task-1' }),
         handoff({ taskId: 'task-2', summary: 'A different durable finding about migrations.' }),
-      ],
+      ]
     );
     expect(proposals).toHaveLength(1);
     expect(proposals[0].metadata.taskId).toBe('task-1');
@@ -240,7 +246,9 @@ describe('proposals from a mission', () => {
     ];
     const s = state({ 'task-a': 'complete', 'task-b': 'complete' });
     const first = proposeFromMission(mission(), s, handoffs).map((p) => p.metadata.taskId);
-    const second = proposeFromMission(mission(), s, [...handoffs].reverse()).map((p) => p.metadata.taskId);
+    const second = proposeFromMission(mission(), s, [...handoffs].reverse()).map(
+      (p) => p.metadata.taskId
+    );
     expect(first).toEqual(['task-a', 'task-b']);
     expect(second).toEqual(first);
   });
@@ -254,14 +262,14 @@ describe('auto-write gate', () => {
 
   it('refuses a hypothesis', () => {
     const [, risk] = proposeFromHandoff(
-      handoff({ unresolvedRisks: ['Rollback has not been exercised against a partial migration.'] }),
+      handoff({ unresolvedRisks: ['Rollback has not been exercised against a partial migration.'] })
     );
     expect(qualifiesForAutoWrite(risk)).toBe(false);
   });
 
   it('refuses low confidence', () => {
     const [proposal] = proposeFromHandoff(
-      handoff({ testResults: [{ name: 'unit', status: 'failed' }] }),
+      handoff({ testResults: [{ name: 'unit', status: 'failed' }] })
     );
     expect(qualifiesForAutoWrite(proposal)).toBe(false);
   });
@@ -278,12 +286,73 @@ describe('auto-write gate', () => {
       qualifiesForAutoWrite({
         ...base,
         provenance: { sourceKind: 'mission', creator: 'x', derivation: 'stated' },
-      }),
+      })
     ).toBe(false);
   });
 });
 
 describe('commit pipeline', () => {
+  it('does not persist a proposal when the write validator requires approval', () => {
+    const outcomes = commitProposals(store, proposeFromHandoff(handoff()), () => ({
+      decision: 'ask',
+      issues: [{ message: 'Human approval required' }],
+    }));
+    expect(outcomes[0].status).toBe('rejected');
+    expect(store.all()).toHaveLength(0);
+  });
+
+  it('does not deduplicate identical content across different clients', () => {
+    const proposal = proposeFromHandoff(handoff())[0];
+    const outcomes = commitProposals(
+      store,
+      [
+        { ...proposal, projectId: 'a' },
+        { ...proposal, projectId: 'b' },
+      ],
+      () => ({ decision: 'accept', issues: [] })
+    );
+    expect(outcomes.map((o) => o.status)).toEqual(['stored', 'stored']);
+    expect(store.all().map((record) => record.projectId)).toEqual(['a', 'b']);
+  });
+
+  it('does not retire another client’s decision when similar wording changes', () => {
+    const proposal = proposeFromHandoff(handoff())[0];
+    commitProposals(
+      store,
+      [
+        {
+          ...proposal,
+          type: 'constraint',
+          projectId: 'a',
+          content: 'Production deployment requires human approval before release',
+        },
+      ],
+      () => ({ decision: 'accept', issues: [] })
+    );
+    commitProposals(
+      store,
+      [
+        {
+          ...proposal,
+          type: 'constraint',
+          projectId: 'b',
+          content: 'Production deployment no longer requires human approval before release',
+        },
+      ],
+      () => ({ decision: 'accept', issues: [] })
+    );
+    expect(store.all().filter((record) => record.status === 'active')).toHaveLength(2);
+  });
+
+  it('stores the validator’s evaluated sensitivity and applies the auto-write gate to it', () => {
+    const outcomes = commitProposals(store, proposeFromHandoff(handoff()), () => ({
+      decision: 'accept',
+      issues: [],
+      effectiveSensitivity: 'private' as const,
+    }));
+    expect(store.all()[0].sensitivity).toBe('private');
+    expect(outcomes[0].status).toBe('needs-review');
+  });
   it('stores a valid proposal', () => {
     const outcomes = commitProposals(store, proposeFromHandoff(handoff()), validate);
     expect(outcomes[0].status).toBe('stored');
@@ -292,7 +361,10 @@ describe('commit pipeline', () => {
 
   it('marks a hypothesis for review rather than presenting it as settled', () => {
     const proposals = proposeFromHandoff(
-      handoff({ summary: 'Done.', unresolvedRisks: ['Rollback is unexercised against partial state.'] }),
+      handoff({
+        summary: 'Done.',
+        unresolvedRisks: ['Rollback is unexercised against partial state.'],
+      })
     );
     const outcomes = commitProposals(store, proposals, validate);
     expect(outcomes[0].status).toBe('needs-review');
@@ -301,11 +373,14 @@ describe('commit pipeline', () => {
   });
 
   it('rejects a proposal carrying a secret and stores nothing', () => {
-    const credential = ['AWS', 'SECRET', 'ACCESS', 'KEY'].join('_') + '=' + 'A1b2C3d4E5f6G7h8I9j0K1l2';
+    const credential =
+      ['AWS', 'SECRET', 'ACCESS', 'KEY'].join('_') + '=' + 'A1b2C3d4E5f6G7h8I9j0K1l2';
     const outcomes = commitProposals(
       store,
-      proposeFromHandoff(handoff({ summary: `Deployment configured with ${credential} for staging.` })),
-      validate,
+      proposeFromHandoff(
+        handoff({ summary: `Deployment configured with ${credential} for staging.` })
+      ),
+      validate
     );
     expect(outcomes[0].status).toBe('rejected');
     expect(store.all()).toHaveLength(0);
@@ -313,7 +388,11 @@ describe('commit pipeline', () => {
 
   it('deduplicates against what is already known', () => {
     commitProposals(store, proposeFromHandoff(handoff()), validate);
-    const outcomes = commitProposals(store, proposeFromHandoff(handoff({ taskId: 'task-2' })), validate);
+    const outcomes = commitProposals(
+      store,
+      proposeFromHandoff(handoff({ taskId: 'task-2' })),
+      validate
+    );
     expect(outcomes[0].status).toBe('duplicate');
     expect(store.all()).toHaveLength(1);
   });
@@ -331,9 +410,9 @@ describe('commit pipeline', () => {
     commitProposals(
       store,
       proposeFromHandoff(
-        handoff({ summary: 'We decided staging migrations replay against the production ref.' }),
+        handoff({ summary: 'We decided staging migrations replay against the production ref.' })
       ),
-      validate,
+      validate
     );
     const outcomes = commitProposals(
       store,
@@ -341,9 +420,9 @@ describe('commit pipeline', () => {
         handoff({
           taskId: 'task-2',
           summary: 'We decided staging migrations must never replay against the production ref.',
-        }),
+        })
       ),
-      validate,
+      validate
     );
 
     expect(outcomes[0].superseded).toHaveLength(1);
@@ -356,15 +435,20 @@ describe('commit pipeline', () => {
   it('does not supersede an unrelated record', () => {
     commitProposals(
       store,
-      proposeFromHandoff(handoff({ summary: 'We decided to standardize on the wide homepage hero.' })),
-      validate,
+      proposeFromHandoff(
+        handoff({ summary: 'We decided to standardize on the wide homepage hero.' })
+      ),
+      validate
     );
     const outcomes = commitProposals(
       store,
       proposeFromHandoff(
-        handoff({ taskId: 't2', summary: 'We decided the staging replay order follows dependency graph.' }),
+        handoff({
+          taskId: 't2',
+          summary: 'We decided the staging replay order follows dependency graph.',
+        })
       ),
-      validate,
+      validate
     );
     expect(outcomes[0].superseded).toBeUndefined();
     expect(store.all().every((r) => r.status === 'active')).toBe(true);
@@ -373,7 +457,10 @@ describe('commit pipeline', () => {
   it('does not let an observation retire another observation', () => {
     // One CI run does not invalidate another.
     const a = handoff({ summary: 'CI run 4821 completed on the staging branch successfully.' });
-    const b = handoff({ taskId: 't2', summary: 'CI run 4822 completed on the staging branch with warnings.' });
+    const b = handoff({
+      taskId: 't2',
+      summary: 'CI run 4822 completed on the staging branch with warnings.',
+    });
     commitProposals(store, proposeFromHandoff(a), validate);
     const outcomes = commitProposals(store, proposeFromHandoff(b), validate);
     expect(outcomes[0].superseded).toBeUndefined();
@@ -382,16 +469,21 @@ describe('commit pipeline', () => {
   it('can be told not to supersede', () => {
     commitProposals(
       store,
-      proposeFromHandoff(handoff({ summary: 'We decided staging replays against the production ref.' })),
-      validate,
+      proposeFromHandoff(
+        handoff({ summary: 'We decided staging replays against the production ref.' })
+      ),
+      validate
     );
     const outcomes = commitProposals(
       store,
       proposeFromHandoff(
-        handoff({ taskId: 't2', summary: 'We decided staging must never replay against the production ref.' }),
+        handoff({
+          taskId: 't2',
+          summary: 'We decided staging must never replay against the production ref.',
+        })
       ),
       validate,
-      { supersede: false },
+      { supersede: false }
     );
     expect(outcomes[0].superseded).toBeUndefined();
   });

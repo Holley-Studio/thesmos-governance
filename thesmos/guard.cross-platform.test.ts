@@ -68,7 +68,7 @@ function makeConsumerRepo(): string {
   writeFileSync(
     join(root, '.thesmos', 'config.json'),
     JSON.stringify({ name: 'guard-fixture', version: '1.0.0', project: 'guard-fixture' }, null, 2),
-    'utf8',
+    'utf8'
   );
   writeFileSync(
     join(root, '.thesmos', 'scope.json'),
@@ -92,16 +92,16 @@ function makeConsumerRepo(): string {
         destructivePatterns: [],
       },
       null,
-      2,
+      2
     ),
-    'utf8',
+    'utf8'
   );
   return root;
 }
 
 function runGuard(
   args: string[],
-  opts: { cwd?: string; stdin?: string; env?: NodeJS.ProcessEnv } = {},
+  opts: { cwd?: string; stdin?: string; env?: NodeJS.ProcessEnv } = {}
 ): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync(process.execPath, [GUARD_ENTRY, ...args], {
     // Default to the hermetic consumer repo, never this repository — see
@@ -124,7 +124,7 @@ function runGuard(
 beforeAll(() => {
   if (!existsSync(GUARD_ENTRY)) {
     throw new Error(
-      `Missing ${GUARD_ENTRY}. Run \`npm run build\` in thesmos/ before these tests.`,
+      `Missing ${GUARD_ENTRY}. Run \`npm run build\` in thesmos/ before these tests.`
     );
   }
   CONSUMER_ROOT = makeConsumerRepo();
@@ -157,14 +157,14 @@ describe('guard-resolve', () => {
 
   it('isThesmosGuardHookCommand matches Node-direct, legacy npx, and exec-form args', () => {
     expect(isThesmosGuardHookCommand('node "/x/thesmos-guard.js" check', 'check')).toBe(true);
+    expect(isThesmosGuardHookCommand('npx --no-install thesmos claude:govern check', 'check')).toBe(
+      true
+    );
     expect(
-      isThesmosGuardHookCommand('npx --no-install thesmos claude:govern check', 'check'),
+      isThesmosGuardHookCommand('npx thesmos-governance drift --quiet 2>&1 || true', 'drift')
     ).toBe(true);
     expect(
-      isThesmosGuardHookCommand('npx thesmos-governance drift --quiet 2>&1 || true', 'drift'),
-    ).toBe(true);
-    expect(
-      isThesmosGuardHookCommand('node', 'check', ['thesmos/dist/thesmos-guard.js', 'check']),
+      isThesmosGuardHookCommand('node', 'check', ['thesmos/dist/thesmos-guard.js', 'check'])
     ).toBe(true);
     expect(isThesmosGuardHookCommand('echo hello', 'check')).toBe(false);
   });
@@ -200,9 +200,9 @@ describe('install wiring — Node-direct hooks', () => {
       expect(status.stopDrift).toBe(true);
       expect(status.installed).toBe(true);
 
-      const settings = JSON.parse(
-        readFileSync(join(tmp, '.claude', 'settings.json'), 'utf8'),
-      ) as { hooks: Record<string, Array<{ hooks?: Array<{ command?: string }> }>> };
+      const settings = JSON.parse(readFileSync(join(tmp, '.claude', 'settings.json'), 'utf8')) as {
+        hooks: Record<string, Array<{ hooks?: Array<{ command?: string }> }>>;
+      };
       const driftCmd = settings.hooks['Stop']?.[0]?.hooks?.[0]?.command ?? '';
       expect(driftCmd).not.toMatch(/\|\|/);
       expect(driftCmd).toMatch(/thesmos-guard\.js/);
@@ -293,7 +293,7 @@ describe('thesmos-guard.js — real execution', () => {
       writeFileSync(
         join(tmp, '.thesmos', 'config.json'),
         JSON.stringify({ autoMode: { failClosed: false } }, null, 2),
-        'utf8',
+        'utf8'
       );
       const result = runGuard(['check'], { cwd: tmp, stdin: '{not-json' });
       expect(result.status).toBe(0);
@@ -310,7 +310,7 @@ describe('thesmos-guard.js — real execution', () => {
     writeFileSync(
       join(tmp, '.thesmos', 'config.json'),
       JSON.stringify({ project: 'space-test' }, null, 2),
-      'utf8',
+      'utf8'
     );
     try {
       const stdin = JSON.stringify({
@@ -384,16 +384,20 @@ describe('wrapper parity', () => {
       },
     });
     const direct = runGuard(['check'], { stdin });
-    const wrapped = spawnSync(cmd, ['check'], {
-      // Same hermetic root on both sides — see the POSIX parity test above.
-      cwd: CONSUMER_ROOT,
-      encoding: 'utf8',
-      input: stdin,
-      timeout: 60_000,
-      shell: true,
-      windowsHide: true,
-    });
-    expect(wrapped.status).toBe(direct.status);
+    const wrapped = spawnSync(
+      process.env.ComSpec ?? 'cmd.exe',
+      ['/d', '/s', '/c', `""${cmd}" check"`],
+      {
+        // Same hermetic root on both sides — see the POSIX parity test above.
+        cwd: CONSUMER_ROOT,
+        encoding: 'utf8',
+        input: stdin,
+        timeout: 60_000,
+        windowsVerbatimArguments: true,
+        windowsHide: true,
+      }
+    );
+    expect(wrapped.status, wrapped.stderr).toBe(direct.status);
     expect(direct.status).toBe(0);
   });
 
@@ -442,7 +446,11 @@ describe('wrapper parity', () => {
 // Windows CI they run against genuinely native path/quoting handling.
 
 describe('Windows interpreter forms through the real guard', () => {
-  function bashDecision(command: string): { status: number | null; stdout: string; stderr: string } {
+  function bashDecision(command: string): {
+    status: number | null;
+    stdout: string;
+    stderr: string;
+  } {
     return runGuard(['check'], {
       cwd: WINDOWS_FIXTURE_ROOT,
       stdin: JSON.stringify({ tool_name: 'Bash', tool_input: { command } }),
@@ -469,7 +477,7 @@ describe('Windows interpreter forms through the real guard', () => {
         },
         destructivePatterns: [],
       }),
-      'utf8',
+      'utf8'
     );
   });
 

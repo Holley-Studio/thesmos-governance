@@ -1,7 +1,7 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 import type { ThesmosRule, DetectInput, Finding } from '../types';
 import { classifySeverity } from '../severity';
-import { SOURCE_EXT, SQL_EXT, isTestPath, isCommentLine, matchLines } from './helpers';
+import { SOURCE_EXT, SQL_EXT, isTestPath, isCommentLine, matchLines, hasUnsafeSecretComparison } from './helpers';
 
 export const SECURITY_RULES: ThesmosRule[] = [
   {
@@ -392,7 +392,8 @@ export const SECURITY_RULES: ThesmosRule[] = [
     },
     detect({ config, changedFiles = [] }: DetectInput): Finding[] {
       const severity = classifySeverity('ssrf_fetch', config.severityRules);
-      const SSRF_RE = /\b(?:fetch|axios|got|request)\s*\(\s*(?:req\.|.*(?:query|params|body)\.\w+|`[^`]*\$\{(?:req|query|params|body))/;
+      // Inspect the URL argument, not a request body in the options argument.
+      const SSRF_RE = /\b(?:fetch|axios|got|request)\s*\(\s*(?:req\.|[^,\n)]*\b(?:query|params|body)\.\w+|`[^`]*\$\{(?:req|query|params|body))/;
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
         if (!SOURCE_EXT.test(path)) continue;
@@ -538,7 +539,7 @@ export const SECURITY_RULES: ThesmosRule[] = [
     },
     detect({ config, changedFiles = [] }: DetectInput): Finding[] {
       const severity = classifySeverity('password_in_url', config.severityRules);
-      const PWD_URL_RE = /https?:\/\/[^:@\s]+:[^@\s]+@|\?(?:api_key|password|secret|token|key)=/i;
+      const PWD_URL_RE = /https?:\/\/[^:@\s"'`/?#]+:[^@\s"'`/?#]+@|[?&](?:api_key|password|secret|token|key)=/i;
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
         if (!SOURCE_EXT.test(path)) continue;
@@ -573,7 +574,6 @@ export const SECURITY_RULES: ThesmosRule[] = [
     },
     detect({ config, changedFiles = [] }: DetectInput): Finding[] {
       const severity = classifySeverity('timing_attack', config.severityRules);
-      const TIMING_RE = /\b(?:password|token|secret|key|hash|digest|signature)\b.*(?:===|!==|==|!=)/i;
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {
         if (!SOURCE_EXT.test(path) || isTestPath(path)) continue;
@@ -581,7 +581,7 @@ export const SECURITY_RULES: ThesmosRule[] = [
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]!;
           if (isCommentLine(line)) continue;
-          if (TIMING_RE.test(line) && !/timingSafeEqual|bcrypt\.compare|argon2\.verify/.test(line)) {
+          if (hasUnsafeSecretComparison(line)) {
             findings.push({ severity, category: 'timing_attack', file: path, line: i + 1, message: 'String equality comparison on secret/token — timing attack risk.', suggestion: 'Use crypto.timingSafeEqual() for constant-time comparison.' });
           }
         }
@@ -919,14 +919,13 @@ export const SECURITY_RULES: ThesmosRule[] = [
     detect({ config, changedFiles = [] }: DetectInput): Finding[] {
       const severity = classifySeverity('timing_attack_comparison', config.severityRules);
       const findings: Finding[] = [];
-      const TOKEN_VARS = /(?:token|hmac|hash|signature|secret|key|password|digest)/i;
       for (const { path, content } of changedFiles) {
         if (!SOURCE_EXT.test(path)) continue;
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]!;
           if (isCommentLine(line)) continue;
-          if (/===|!==/.test(line) && TOKEN_VARS.test(line) && !/timingSafeEqual/.test(line)) {
+          if (hasUnsafeSecretComparison(line)) {
             findings.push({ severity, category: 'timing_attack_comparison', file: path, line: i + 1, message: 'Secret/token compared with === — vulnerable to timing attacks.', suggestion: 'Use crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)) for constant-time comparison.' });
           }
         }

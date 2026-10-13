@@ -14,6 +14,8 @@
 
 import type { ThesmosRule, DetectInput, Finding } from '../types';
 import { classifySeverity } from '../severity';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { isAbsolute, relative, resolve } from 'node:path';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -171,17 +173,35 @@ export const DEBT_RULES: ThesmosRule[] = [
       relatedAgents: [],
       relatedSkills: [],
     },
-    detect({ changedFiles = [], config }: DetectInput): Finding[] {
+    detect({ changedFiles = [], config, scan, root }: DetectInput): Finding[] {
       const sev = classifySeverity('debt_exported_function_no_test', config.severityRules);
       const findings: Finding[] = [];
       const EXPORT_FUNC_RE = /^export\s+(?:async\s+)?function\s+(\w+)/gm;
       const EXPORT_CONST_FUNC_RE = /^export\s+(?:const|let)\s+(\w+)\s*=\s*(?:async\s+)?(?:\(|function)/gm;
 
-      // Collect all test file content in one pass
-      const testContent = changedFiles
+      // Changed tests take precedence over the scanned workspace copies.
+      let testContent = changedFiles
         .filter((f) => isTestFile(f.path))
         .map((f) => f.content)
         .join('\n');
+      if (root && (scan.testFiles ?? []).length > 0) {
+        let workspace: string | undefined;
+        try { workspace = realpathSync(root); } catch { /* no workspace test evidence */ }
+        const changed = new Set(changedFiles.map(file => file.path.replace(/\\/g, '/')));
+        for (const testPath of scan.testFiles ?? []) {
+          if (!workspace) break;
+          if (!isSourceFile(testPath) || !isTestFile(testPath) || changed.has(testPath.replace(/\\/g, '/'))) continue;
+          try {
+            const actual = realpathSync(resolve(workspace, testPath));
+            const within = relative(workspace, actual);
+            if (isAbsolute(within) || within === '..' || within.startsWith('../') || within.startsWith('..\\')) continue;
+            if (statSync(actual).size > 1024 * 1024) continue;
+            testContent += '\n' + readFileSync(actual, 'utf8');
+          } catch {
+            // Missing/unreadable tests provide no evidence; the finding remains.
+          }
+        }
+      }
 
       for (const { path, content } of changedFiles) {
         if (!isSourceFile(path) || isTestFile(path)) continue;
@@ -210,7 +230,7 @@ export const DEBT_RULES: ThesmosRule[] = [
               severity: sev,
               category: 'debt_exported_function_no_test',
               file: path, line,
-              message: `Exported function "${name}" has no test coverage in changed files.`,
+              message: `Exported function "${name}" has no test reference in the supplied tests or scanned workspace.`,
               suggestion: `Add tests for "${name}" in a *.test.ts file. AI-generated functions are commonly exported but never tested.`,
             });
           }

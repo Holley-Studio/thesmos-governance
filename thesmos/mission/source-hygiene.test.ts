@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 
 const MISSION_DIR = import.meta.dirname;
 
@@ -28,7 +28,11 @@ const MISSION_DIR = import.meta.dirname;
  * suite exists to prevent — and nothing failed, because the guard was not
  * looking at that directory. A hygiene check is only worth what it covers.
  */
-const WATCHED_DIRS = [MISSION_DIR, join(MISSION_DIR, '..', 'bin', 'commands')];
+const WATCHED_DIRS = [
+  MISSION_DIR,
+  join(MISSION_DIR, '..', 'bin', 'commands'),
+  join(MISSION_DIR, '..', 'scanner'),
+];
 
 const sourceFiles = WATCHED_DIRS.flatMap((dir) =>
   readdirSync(dir)
@@ -37,7 +41,7 @@ const sourceFiles = WATCHED_DIRS.flatMap((dir) =>
 ).sort();
 
 /** Shown in test titles — the absolute path would be noise and machine-specific. */
-const label = (file: string): string => file.split('/').slice(-2).join('/');
+const label = (file: string): string => file.split(sep).slice(-2).join('/');
 
 describe('mission sources stay text', () => {
   it('finds every watched module', () => {
@@ -53,10 +57,11 @@ describe('mission sources stay text', () => {
       'mission/graph.ts',
       'bin/commands/mission.ts',
       'bin/commands/mission.test.ts',
+      'scanner/walker.ts',
     ];
     for (const suffix of required) {
       expect(
-        sourceFiles.some((f) => f.endsWith(suffix)),
+        sourceFiles.some((f) => f.endsWith(suffix.split('/').join(sep))),
         `${suffix} is not being checked for source hygiene`
       ).toBe(true);
     }
@@ -81,9 +86,9 @@ describe('mission sources stay text', () => {
       const code = ch.codePointAt(0) ?? 0;
       return code < 0x20 && ch !== '\t' && ch !== '\n' && ch !== '\r';
     });
-    expect(offending.map((c) => `U+${(c.codePointAt(0) ?? 0).toString(16).padStart(4, '0')}`)).toEqual(
-      []
-    );
+    expect(
+      offending.map((c) => `U+${(c.codePointAt(0) ?? 0).toString(16).padStart(4, '0')}`)
+    ).toEqual([]);
   });
 
   it.each(sourceFiles)('%s round-trips as UTF-8', (file) => {

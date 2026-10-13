@@ -360,7 +360,7 @@ export const QUALITY_RULES: ThesmosRule[] = [
     },
     detect({ config, changedFiles = [] }: DetectInput): Finding[] {
       const severity = classifySeverity('no_assertions', config.severityRules);
-      const TEST_START_RE = /\b(?:it|test)\s*\(/;
+      const TEST_START_RE = /(?<![\w$.])(?:it|test)\s*\(/;
       const ASSERT_RE = /\b(?:expect|assert|should)\s*\(/;
       const findings: Finding[] = [];
       for (const { path, content } of changedFiles) {

@@ -801,6 +801,11 @@ export const NODE_RULES: ThesmosRule[] = [
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]!;
           if (isCommentLine(line)) continue;
+          const directCall = /^\s*([A-Za-z_$][\w$]*)\s*\(/.exec(line)?.[1];
+          // Node Sync APIs and Promise executor callbacks are synchronous calls.
+          if (directCall?.endsWith('Sync')) continue;
+          if ((directCall === 'resolve' || directCall === 'reject')
+            && /new\s+Promise(?:<[^>]*>)?\s*\(\s*\(?\s*resolve(?:\s*,\s*reject)?\s*\)?\s*=>/.test(content)) continue;
           if (/^\s+(?!await\s|return\s|const\s|let\s|var\s|\w+\s*=)\w+(?:Async)?\(/.test(line) && !line.includes('.catch(') && !line.includes('void ')) {
             const next2 = lines.slice(i + 1, Math.min(lines.length, i + 3)).join('\n');
             if (/^\s+\.catch\(/.test(next2) || /^\s+\)/.test(next2)) continue;

@@ -48,7 +48,7 @@ export interface IndexResult {
  */
 export function resolveEmbeddingModel(
   models: readonly ModelDescriptor[],
-  configured: string | undefined,
+  configured: string | undefined
 ): { model: ModelDescriptor } | { error: string } {
   const embedders = models.filter((m) => m.capabilities.embeddings === true);
 
@@ -88,14 +88,14 @@ export async function indexMemories(
   store: MemoryStore,
   records: readonly MemoryRecord[],
   context: EmbeddingContext,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<IndexResult> {
   const namespace = embeddingNamespace(context.provider.id, context.model, context.dimensions);
   const existing = new Map(
     store
       .vectors()
       .filter((v) => v.namespace === namespace)
-      .map((v) => [v.memoryId, v]),
+      .map((v) => [v.memoryId, v])
   );
 
   const pending: MemoryRecord[] = [];
@@ -131,12 +131,16 @@ export async function indexMemories(
       const vectors = await context.provider.embed(
         context.model,
         batch.map((r) => r.content),
-        signal,
+        signal
       );
       batch.forEach((record, index) => {
         const vector = vectors[index];
         // A width that disagrees with the namespace would corrupt the space.
-        if (!Array.isArray(vector) || vector.length !== context.dimensions) {
+        if (
+          !Array.isArray(vector) ||
+          vector.length !== context.dimensions ||
+          !vector.every(Number.isFinite)
+        ) {
           failed++;
           return;
         }
@@ -166,11 +170,16 @@ export async function indexMemories(
 export async function embedQuery(
   text: string,
   context: EmbeddingContext,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<number[] | null> {
   try {
     const [vector] = await context.provider.embed(context.model, [text], signal);
-    if (!Array.isArray(vector) || vector.length !== context.dimensions) return null;
+    if (
+      !Array.isArray(vector) ||
+      vector.length !== context.dimensions ||
+      !vector.every(Number.isFinite)
+    )
+      return null;
     return vector;
   } catch {
     return null;
