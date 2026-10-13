@@ -36,6 +36,8 @@ const ALLOWED_METHODS: &[&str] = &[
     "channel.get",
     "channel.postMessage",
     "channel.getMessages",
+    "settings.get",
+    "settings.set",
     "studio.snapshot",
     "brief.read",
     "finance.read", "finance.preview", "finance.commit", "finance.backup",

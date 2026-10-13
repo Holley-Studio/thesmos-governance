@@ -136,19 +136,88 @@ async fn open_chatgpt() -> Result<(), String> {
     { Err("Open https://chatgpt.com in your browser and paste the prepared prompt".into()) }
 }
 
-/// The one portal destination. Fixed here so the webview cannot redirect it.
+/// The studio's portal. A different address can be saved in Settings.
 const PORTAL_URL: &str = "https://portal.holley.studio/portal";
 
+/// The portal address to open: the one saved in Settings when it is a plain
+/// HTTPS address, otherwise the default. Validated here as well as in the
+/// runtime, because this is the value handed to the operating system.
+fn portal_url(data_dir: &Path) -> String {
+    let saved = std::fs::read_to_string(data_dir.join("settings.json")).ok()
+        .and_then(|text| serde_json::from_str::<Value>(text.trim_start_matches('\u{feff}')).ok())
+        .and_then(|value| value.get("portalUrl").and_then(Value::as_str).map(str::to_owned));
+    let Some(raw) = saved else { return PORTAL_URL.into() };
+    if raw.len() > 200 || raw.bytes().any(|b| !(0x21..=0x7e).contains(&b)) { return PORTAL_URL.into(); }
+    match tauri::Url::parse(&raw) {
+        Ok(url) if url.scheme() == "https" && url.username().is_empty() && url.password().is_none() && url.host_str().is_some_and(|h| h.contains('.')) => url.to_string(),
+        _ => PORTAL_URL.into(),
+    }
+}
+
 #[tauri::command]
-async fn open_portal() -> Result<(), String> {
+async fn open_portal(app: tauri::AppHandle) -> Result<(), String> {
+    let url = portal_url(&data_dir(&app)?);
     #[cfg(windows)]
     {
         let explorer = PathBuf::from(std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into())).join("explorer.exe");
-        std::process::Command::new(explorer).arg(PORTAL_URL).spawn().map_err(|e| e.to_string())?;
+        std::process::Command::new(explorer).arg(url).spawn().map_err(|e| e.to_string())?;
         Ok(())
     }
     #[cfg(not(windows))]
-    { Err(format!("Open {PORTAL_URL} in your browser")) }
+    { Err(format!("Open {url} in your browser")) }
+}
+
+/// Choose the update folder in a native dialog. The path comes from the dialog,
+/// never from the webview: whoever controls this folder controls what installs.
+#[tauri::command]
+async fn update_choose_folder(app: tauri::AppHandle) -> Result<Option<update::UpdateStatus>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let dir = data_dir(&app)?;
+    let current = app.package_info().version.to_string();
+    let (tx, rx) = std::sync::mpsc::channel();
+    app.dialog().file().set_title("Choose the Pantheon update folder").pick_folder(move |path| { let _ = tx.send(path.map(|p| p.to_string())); });
+    tauri::async_runtime::spawn_blocking(move || -> Result<Option<update::UpdateStatus>, String> {
+        let Some(raw) = rx.recv().map_err(|e| e.to_string())? else { return Ok(None) };
+        let folder = PathBuf::from(raw).canonicalize().map_err(|_| "That folder is not available")?;
+        if !folder.is_dir() { return Err("Choose a folder".into()); }
+        std::fs::write(dir.join("update-channel.json"), serde_json::json!({ "dir": folder }).to_string()).map_err(|e| e.to_string())?;
+        log::line("update", "update folder changed in Settings");
+        Ok(Some(update::status(&current, &dir)))
+    }).await.map_err(|e| e.to_string())?
+}
+
+/// Forget a chosen update folder and find the studio release folder automatically again.
+#[tauri::command]
+async fn update_reset_folder(app: tauri::AppHandle) -> Result<update::UpdateStatus, String> {
+    let dir = data_dir(&app)?;
+    let current = app.package_info().version.to_string();
+    tauri::async_runtime::spawn_blocking(move || -> Result<update::UpdateStatus, String> {
+        let file = dir.join("update-channel.json");
+        if file.exists() { std::fs::remove_file(&file).map_err(|e| e.to_string())?; }
+        Ok(update::status(&current, &dir))
+    }).await.map_err(|e| e.to_string())?
+}
+
+#[cfg(test)]
+mod portal_url_tests {
+    use super::{portal_url, PORTAL_URL};
+    fn with(settings: &str) -> String {
+        let dir = std::env::temp_dir().join(format!("pantheon-portal-url-{}-{}", std::process::id(), settings.len()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("settings.json"), settings).unwrap();
+        let url = portal_url(&dir);
+        let _ = std::fs::remove_dir_all(dir);
+        url
+    }
+    #[test]
+    fn saved_https_address_is_used_and_anything_else_falls_back() {
+        assert_eq!(with(r#"{"portalUrl":"https://portal.example.studio/portal"}"#), "https://portal.example.studio/portal");
+        for bad in [r#"{"portalUrl":"http://portal.example.studio"}"#, r#"{"portalUrl":"https://user:pw@portal.example.studio"}"#, r#"{"portalUrl":"file:///C:/Windows"}"#,
+            r#"{"portalUrl":"https://localhost"}"#, r#"{"portalUrl":"https://portal.example.studio/a b"}"#, r#"{"portalUrl":42}"#, r#"{}"#, "not json"] {
+            assert_eq!(with(bad), PORTAL_URL, "{bad}");
+        }
+        assert_eq!(portal_url(std::path::Path::new("Z:\\no\\such\\folder")), PORTAL_URL);
+    }
 }
 
 /// Import a portal request the user picks in a native file dialog.
@@ -368,7 +437,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(Arc::new(RuntimeHandle::new()))
         .manage(ProjectGrants::default())
-        .invoke_handler(tauri::generate_handler![runtime_request, update_status, update_install, open_portal, import_portal_request, choose_project_folder, open_exports, connect_subscription, open_chatgpt, open_google, open_knowledge_source, drive_auth_status, drive_configure, drive_connect, drive_disconnect, drive_sync_now, drive_pause, drive_resume, open_drive_source])
+        .invoke_handler(tauri::generate_handler![runtime_request, update_status, update_install, open_portal, update_choose_folder, update_reset_folder, import_portal_request, choose_project_folder, open_exports, connect_subscription, open_chatgpt, open_google, open_knowledge_source, drive_auth_status, drive_configure, drive_connect, drive_disconnect, drive_sync_now, drive_pause, drive_resume, open_drive_source])
         .setup(|app| {
             let handle = app.handle().clone();
             let state = app.state::<Arc<RuntimeHandle>>();

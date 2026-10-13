@@ -134,7 +134,7 @@ export class StudioService {
     if (!['planned', 'running', 'failed'].includes(job.state)) throw new Error('This job cannot be stopped in its current state');
     if (this.active?.id === id) { this.active.controller.abort(); this.active.worker?.stop(); }
     const cancelled: StudioJob = { ...job, state: 'cancelled', stage: 'Stopped by you', updatedAt: new Date().toISOString() };
-    this.store.saveJob(cancelled); this.store.event('job-cancelled', 'Stopped by Matthew; no automatic retry.', id);
+    this.store.saveJob(cancelled); this.store.event('job-cancelled', 'Stopped by the user; no automatic retry.', id);
     return cancelled;
   }
   export(id: string): { path: string; integrity: string } {

@@ -1,3 +1,4 @@
+import { ollamaOrigin, ollamaUrl, ollamaPolicy } from './ollama-endpoint.js';
 import { mkdirSync, readFileSync, writeFileSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
@@ -41,10 +42,9 @@ export function isLocalEmbeddingModel(value:unknown):boolean {
  const info=value as Record<string,unknown>;const details=info.details as Record<string,unknown>|undefined;
  return !info.remote_host&&!info.remote_model&&!!details&&details.format==='gguf'&&Array.isArray(info.capabilities)&&info.capabilities.includes('embedding');
 }
-const endpoint='http://127.0.0.1:11434';
 const localFetch:typeof fetch=async(input,init)=>{
  const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url);
- if(url.origin!==endpoint||url.username||url.password)throw Error('Private embeddings require the local Ollama endpoint');
+ if(url.origin!==ollamaOrigin()||url.username||url.password)throw Error('Private embeddings require the local Ollama endpoint');
  return fetch(input,{...init,redirect:'error',signal:AbortSignal.any([...(init?.signal?[init.signal]:[]),AbortSignal.timeout(30_000)])});
 };
 
@@ -60,7 +60,7 @@ export class RagService {
  constructor(dataDir:string,private readonly store:StudioStore,private readonly currentRoot:()=>string|undefined,private readonly options:RagOptions={}){
   this.folder=join(dataDir,'rag');mkdirSync(this.folder,{recursive:true});
   this.model=options.model??'nomic-embed-text:latest';
-  this.provider=options.embeddingProvider??new OllamaProvider({baseUrl:endpoint,fetchImpl:localFetch});
+  this.provider=options.embeddingProvider??new OllamaProvider({baseUrl:ollamaOrigin(),policy:ollamaPolicy(),fetchImpl:localFetch});
   if(this.provider.id!=='ollama')throw Error('Private embeddings permit only Ollama');
   for(const scope of ['studio','ohw'] as const){
    try{
@@ -99,11 +99,11 @@ export class RagService {
  private check(projectId:string,scope:string,signal:AbortSignal){if(signal.aborted||this.access(projectId)!==scope)throw abort();}
  private async modelSpace(signal:AbortSignal):Promise<string>{
   if(this.options.embeddingProvider)return this.model;
-  const response=await localFetch('http://127.0.0.1:11434/api/tags',{signal});if(!response.ok)throw Error('Local embedding service unavailable');
+  const response=await localFetch(ollamaUrl('/api/tags'),{signal});if(!response.ok)throw Error('Local embedding service unavailable');
   const data=await response.json() as {models?:{name?:string;digest?:string;remote_host?:string;remote_model?:string}[]};
   const tag=data.models?.find(m=>m.name===this.model);
   if(!tag||tag.remote_host||tag.remote_model||typeof tag.digest!=='string'||!tag.digest)throw Error('Install the local nomic-embed-text model to enable semantic search');
-  const shown=await localFetch('http://127.0.0.1:11434/api/show',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:this.model}),signal});
+  const shown=await localFetch(ollamaUrl('/api/show'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:this.model}),signal});
   if(!shown.ok||!isLocalEmbeddingModel(await shown.json()))throw Error('Semantic search requires a local GGUF embedding model; remote models are not permitted');
   return this.model+':'+tag.digest;
  }

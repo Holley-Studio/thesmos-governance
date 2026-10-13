@@ -63,6 +63,16 @@ Limits to know:
 - **Windows only.** There is no macOS build or installer.
 - **One data folder for all versions.** `%LOCALAPPDATA%\studio.holley.thesmos` is shared and never touched by the installer. A database written by a newer schema is refused by an older build rather than opened.
 
+## Settings (per PC)
+
+Workspace settings → **This PC** sets a machine up for its user. Values live in `%LOCALAPPDATA%studio.holley.thesmossettings.json`, are never changed by an update, and are validated by the runtime (unknown keys refused; a damaged file reads as defaults).
+
+- **Your name / Studio** — shown in the sidebar only.
+- **Default intelligence** — preselects the engine for new AI jobs (playbook default, local Ollama, Claude, ChatGPT). It never skips the per-job confirmation before anything is sent to a subscription worker.
+- **Ollama address** — this PC by default. It may be set to another machine on the private network (10.x, 172.16–31.x, 192.168.x, Tailscale 100.64–127.x; numeric address and port only). Prompts, briefs and document passages for local AI then go to that machine. The core egress policy is granted for exactly that origin and nothing else; a public or named host is refused. Applies after Pantheon is reopened.
+- **Portal address** — where “Open the portal” goes; must be plain `https://`. The native shell validates it again before opening.
+- **Update folder** — chosen in a native folder dialog under Version and updates, never typed into the page, because whoever controls that folder controls what installs.
+
 ## Diagnostics
 
 The shell writes `%LOCALAPPDATA%\studio.holley.thesmos\logs\pantheon.log` (rotated once at 1 MB): startup, runtime stderr, uncaught runtime errors, runtime restarts and update installs. No request parameters, prompts, tokens or document text are logged. If the runtime process dies, the next request relaunches it — at most three times a minute; an interrupted job is marked failed and is never retried automatically. The installer logs to `%LOCALAPPDATA%\HolleyStudio\Pantheon\install.log`.

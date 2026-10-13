@@ -4,6 +4,7 @@ import { join, delimiter, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import type { AgentSession, RuntimeEvent, ModelProvider } from '../../../../thesmos/runtime/types.js';
 import { OllamaProvider } from '../../../../thesmos/runtime/providers/ollama/provider.js';
+import { ollamaOrigin, ollamaUrl, ollamaPolicy, ollamaIsLocal } from './ollama-endpoint.js';
 import { resolveClaudeBinary, isBatchShim } from '../../../../thesmos/runtime/providers/claude-cli/binary-resolver.js';
 import type { Connection, WorkerId } from '../../shared/studio.js';
 import { readBrief } from './brief.js';
@@ -17,7 +18,7 @@ export interface WorkerRun { promise: Promise<WorkerResult>; stop(): void }
 // governed endpoint, stream parser and cancellation; only tune the request.
 export const draftingFetch: typeof fetch = async (input, init) => {
   const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
-  if (url.origin !== 'http://127.0.0.1:11434' || url.username || url.password) throw new Error('Drafting requires the fixed local Ollama endpoint');
+  if (url.origin !== ollamaOrigin() || url.username || url.password) throw new Error('Drafting requires the configured Ollama endpoint');
   const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
   signal?.throwIfAborted();
   if (url.pathname === '/api/chat') {
@@ -27,14 +28,14 @@ export const draftingFetch: typeof fetch = async (input, init) => {
     // Loopback alone is insufficient: Ollama may proxy cloud models. This probe
     // contains only the model name, and is repeated immediately before the POST.
     const verificationSignal = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(15_000)]);
-    const installedResponse = await fetch(new Request('http://127.0.0.1:11434/api/tags', { method: 'GET', credentials: 'omit', redirect: 'error', signal: verificationSignal }));
+    const installedResponse = await fetch(new Request(ollamaUrl('/api/tags'), { method: 'GET', credentials: 'omit', redirect: 'error', signal: verificationSignal }));
     if (!installedResponse.ok || installedResponse.redirected) throw new Error('Could not verify installed models');
     const installed = await installedResponse.json() as { models?: { name?: unknown }[] };
     const allowedModels = new Set(Array.isArray(installed.models) ? installed.models.flatMap((tag) => typeof tag?.name === 'string' && tag.name && tag.name === tag.name.trim() && !/[\s\x00-\x1f]/.test(tag.name) ? [tag.name] : []) : []);
     verificationSignal.throwIfAborted();
     if (!allowedModels.has(body.model)) throw new Error('Model is not in the installed model allowlist');
     const model = [...allowedModels].find((name) => name === body.model)!;
-    const metadataRequest = new Request('http://127.0.0.1:11434/api/show', { method: 'POST', credentials: 'omit', redirect: 'error', signal: verificationSignal,
+    const metadataRequest = new Request(ollamaUrl('/api/show'), { method: 'POST', credentials: 'omit', redirect: 'error', signal: verificationSignal,
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model }) });
     const response = await fetch(metadataRequest);
     if (!response.ok || response.redirected) throw new Error('Could not verify a local GGUF completion model');
@@ -43,7 +44,7 @@ export const draftingFetch: typeof fetch = async (input, init) => {
     if (detail.remote_host || detail.remote_model || detail.details?.format !== 'gguf' || !Array.isArray(detail.capabilities) || !detail.capabilities.includes('completion')) throw new Error('Drafting requires a verified local GGUF completion model; remote models are refused');
     signal?.throwIfAborted();
     if (!allowedModels.has(model)) throw new Error('Model is not in the installed model allowlist');
-    const completionRequest = new Request('http://127.0.0.1:11434/api/chat', { method: 'POST', credentials: 'omit', signal, redirect: 'error',
+    const completionRequest = new Request(ollamaUrl('/api/chat'), { method: 'POST', credentials: 'omit', signal, redirect: 'error',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, messages: body.messages, stream: body.stream, think: false,
       options: { num_ctx: 8192, num_predict: 1200, temperature: 0.3 }, keep_alive: '5m' }) });
     return fetch(completionRequest);
@@ -125,7 +126,7 @@ function safeText(raw: string): string {
 }
 
 export async function connections(cwd: string): Promise<Connection[]> {
-  const ollama = new OllamaProvider();
+  const ollama = new OllamaProvider({ baseUrl: ollamaOrigin(), policy: ollamaPolicy() });
   const [health, models] = await Promise.all([ollama.health(), ollama.listModels()]);
   const local: Connection = { id: 'ollama', name: 'Ollama', kind: 'model', state: health.available && models.length > 0 ? 'ready' : 'missing', detail: health.available ? 'Local service reached. Model quality is checked per task.' : 'Local model service is not reachable.', models: models.filter((m) => m.capabilities.chat).map((m) => m.id), billing: 'Local compute · no cloud-model credits' };
   const codex = resolveCodex();
@@ -164,7 +165,7 @@ export async function startWorker(worker: Exclude<WorkerId, 'evidence'>, cwd: st
   const signal = options?.signal; signal?.throwIfAborted();
   if (prompt.length > 36_000) throw new Error('Evidence exceeds this job’s context limit');
   if (worker === 'ollama') {
-    const provider = ollama ?? new OllamaProvider({ fetchImpl: (input, init) => draftingFetch(input, { ...init, signal: AbortSignal.any([...(init?.signal ? [init.signal] : []), ...(signal ? [signal] : [])]) }) });
+    const provider = ollama ?? new OllamaProvider({ baseUrl: ollamaOrigin(), policy: ollamaPolicy(), fetchImpl: (input, init) => draftingFetch(input, { ...init, signal: AbortSignal.any([...(init?.signal ? [init.signal] : []), ...(signal ? [signal] : [])]) }) });
     const models = (await provider.listModels()).filter((m) => m.capabilities.chat === true && m.capabilities.embeddings !== true);
     signal?.throwIfAborted();
     const model = models.find((m) => m.id === options?.preferredModel) ?? models.find((m) => m.id === 'llama3.2:3b') ?? models.find((m) => m.id === 'qwen3.5:4b') ?? models.find((m) => m.id.startsWith('qwen')) ?? models[0];

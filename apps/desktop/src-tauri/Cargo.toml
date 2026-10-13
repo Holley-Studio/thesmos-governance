@@ -1,6 +1,6 @@
 [package]
 name = "thesmos-desktop"
-version = "0.2.2"
+version = "0.3.0"
 description = "Thesmos — a local-first Governed Agent OS"
 authors = ["Holley Studio LLC"]
 edition = "2021"

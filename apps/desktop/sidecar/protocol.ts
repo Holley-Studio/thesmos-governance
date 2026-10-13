@@ -43,6 +43,8 @@ export type RuntimeMethod =
   | 'studio.backup'
   | 'studio.artifact'
   | 'studio.connections'
+  | 'settings.get'
+  | 'settings.set'
   | 'studio.createJob'
   | 'studio.runJob'
   | 'studio.cancelJob'

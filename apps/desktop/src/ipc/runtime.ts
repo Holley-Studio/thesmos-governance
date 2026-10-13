@@ -36,6 +36,7 @@ export type RuntimeMethod =
   | 'chat.list' | 'chat.get' | 'chat.create' | 'chat.send' | 'chat.stop' | 'chat.delete'
   | 'rag.status' | 'rag.rebuild' | 'rag.cancel' | 'rag.search' | 'rag.source'
   | 'drive.status' | 'drive.files' | 'drive.search' | 'drive.source'
+  | 'settings.get' | 'settings.set'
   | 'studio.knowledge'
   | 'studio.backup'
   | 'studio.artifact'
@@ -168,6 +169,8 @@ export const runtime = {
   backup: () => call<{ path: string; sha256: string }>('studio.backup'),
   artifact: (artifactId: string) => call<StudioArtifact>('studio.artifact', { artifactId }),
   connections: () => call<Connection[]>('studio.connections'),
+  settings: () => call<SettingsView>('settings.get'),
+  saveSettings: (values: Partial<PantheonSettings>) => call<SettingsView>('settings.set', { values }),
   createJob: (params: { projectId: string; playbookId: string; brief: string; dueAt?: string; requestId: string }) => call<StudioJob>('studio.createJob', params),
   runJob: (jobId: string, worker: WorkerId) => call<{ accepted: true; job: StudioJob }>('studio.runJob', { jobId, worker, allowCloud: worker === 'codex' || worker === 'claude' }),
   cancelJob: (jobId: string) => call<StudioJob>('studio.cancelJob', { jobId }),
@@ -228,7 +231,14 @@ export interface UpdateStatus { current: string; channel: string | null; availab
 export const updateStatus = () => invoke<UpdateStatus>('update_status');
 /** Installs what the update folder offers and restarts. Takes no arguments by design. */
 export const updateInstall = () => invoke<void>('update_install');
-/** Opens the fixed portal address in the browser. */
+export type PreferredWorker = 'playbook' | 'ollama' | 'codex' | 'claude';
+export interface PantheonSettings { displayName: string; studioName: string; preferredWorker: PreferredWorker; ollamaEndpoint: string; portalUrl: string }
+export interface SettingsView { settings: PantheonSettings; activeOllama: string; ollamaIsLocal: boolean; restartRequired?: boolean }
+/** Native folder picker for the update folder. Resolves the new status, or null when cancelled. */
+export const chooseUpdateFolder = () => invoke<UpdateStatus | null>('update_choose_folder');
+/** Go back to finding the studio release folder automatically. */
+export const resetUpdateFolder = () => invoke<UpdateStatus>('update_reset_folder');
+/** Opens the portal address from Settings in the browser. */
 export const openPortal = () => invoke<void>('open_portal');
 /** Native file picker, then a planned job. Resolves null when the picker is cancelled. */
 export const importPortalRequest = (projectId: string, playbookId: string) => invoke<StudioJob | null>('import_portal_request', { projectId, playbookId });

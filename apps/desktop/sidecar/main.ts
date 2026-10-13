@@ -25,6 +25,8 @@ import { FinanceStore } from './studio/finance.js';
 import { godIdentity } from '../shared/pantheon.js';
 import { connections } from './studio/workers.js';
 import { createProviderRegistry } from './providers.js';
+import { SettingsStore } from './studio/settings.js';
+import { setOllamaEndpoint, ollamaIsLocal, ollamaOrigin } from './studio/ollama-endpoint.js';
 import { MnemosyneService } from '../../../thesmos/memory/service.js';
 import { MemoryStore } from '../../../thesmos/memory/store.js';
 import { listRoutableAgents } from '../../../thesmos/bin/commands/pantheon.js';
@@ -57,6 +59,10 @@ function argument(name: string): string | undefined {
 }
 const dataDir = argument('--data-dir') ?? join(process.env.LOCALAPPDATA ?? join(homedir(), '.local', 'share'), 'HolleyStudio', 'Pantheon');
 if (!isAbsolute(dataDir)) throw new Error('Runtime data directory must be absolute');
+// Before any service is built: they capture the Ollama address when constructed.
+const settingsStore = new SettingsStore(dataDir);
+setOllamaEndpoint(settingsStore.read().ollamaEndpoint);
+const settingsView = () => ({ settings: settingsStore.read(), activeOllama: ollamaOrigin(), ollamaIsLocal: ollamaIsLocal() });
 const studio = new StudioService(dataDir, () => projectRoot);
 const finance = new FinanceStore(dataDir);
 const rag = new RagService(dataDir, studio.store, () => projectRoot);
@@ -260,6 +266,9 @@ const handlers: Record<NativeRuntimeMethod, (params: Record<string, unknown>) =>
   'studio.backup': async () => studio.store.backup(),
   'studio.artifact': async (params) => studio.store.artifact(textParam(params, 'artifactId', 80)),
   'studio.connections': async () => connections(dataDir),
+  'settings.get': async () => settingsView(),
+  // The Ollama address applies at the next start: running services keep the one they were built with.
+  'settings.set': async (params) => { settingsStore.update(params.values); const view = settingsView(); return { ...view, restartRequired: view.settings.ollamaEndpoint !== view.activeOllama }; },
   'studio.createJob': async (params) => studio.create(params),
   'studio.importRequest': async (params) => studio.importRequest(params),
   'studio.runJob': async (params) => { if (chat.busy) throw new Error('Finish or stop the council conversation before starting a workboard job'); return studio.run(params); },

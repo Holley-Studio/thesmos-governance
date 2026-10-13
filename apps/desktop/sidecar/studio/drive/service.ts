@@ -1,3 +1,4 @@
+import { ollamaOrigin, ollamaUrl, ollamaPolicy } from '../ollama-endpoint.js';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -94,7 +95,7 @@ export class DriveService {
  CREATE TABLE IF NOT EXISTS passages(account TEXT,id TEXT,file TEXT,title TEXT,section TEXT,text TEXT,hash TEXT,synced TEXT,vector TEXT,space TEXT,dimensions INTEGER,PRIMARY KEY(account,id));
  CREATE VIRTUAL TABLE IF NOT EXISTS lexical USING fts5(account UNINDEXED,id UNINDEXED,title,section,text);
  CREATE TABLE IF NOT EXISTS vectors(account TEXT,hash TEXT,space TEXT,dimensions INTEGER,vector TEXT,PRIMARY KEY(account,hash,space)); CREATE TABLE IF NOT EXISTS model_spaces(account TEXT,space TEXT,dimensions INTEGER,PRIMARY KEY(account,space)); CREATE INDEX IF NOT EXISTS passage_file ON passages(account,file);`);
-        this.provider = options.embeddingProvider ?? new OllamaProvider({ baseUrl: 'http://127.0.0.1:11434', fetchImpl: (input, init) => this.local(input, init) });
+        this.provider = options.embeddingProvider ?? new OllamaProvider({ baseUrl: ollamaOrigin(), policy: ollamaPolicy(), fetchImpl: (input, init) => this.local(input, init) });
         if (this.provider.id !== 'ollama')
             throw Error('Drive embeddings require local Ollama');
     }
@@ -332,10 +333,10 @@ export class DriveService {
             if(e instanceof Error && e.message.includes('offline'))throw e;this.db.prepare('UPDATE files SET reason=? WHERE account=? AND id=?').run(e instanceof Error ? e.message : 'Shortcut target unavailable', this.account(), JSON.parse(row.meta).id);
         }
     } }
-    private async local(input: RequestInfo | URL, init?: RequestInit) { const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url); if (url.origin !== 'http://127.0.0.1:11434' || url.username || url.password)
+    private async local(input: RequestInfo | URL, init?: RequestInit) { const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url); if (url.origin !== ollamaOrigin() || url.username || url.password)
         throw Error('Private embeddings require local Ollama'); return fetch(input, { ...init, redirect: 'error', signal: AbortSignal.any([...(init?.signal ? [init.signal] : []), AbortSignal.timeout(30000)]) }); }
     private async space(signal: AbortSignal) { if (this.options.embeddingProvider)
-        return this.options.embeddingSpace?this.options.embeddingSpace(signal):'fixture:nomic-embed-text'; const tags = await this.local('http://127.0.0.1:11434/api/tags', { signal }); if (!tags.ok)
+        return this.options.embeddingSpace?this.options.embeddingSpace(signal):'fixture:nomic-embed-text'; const tags = await this.local(ollamaUrl('/api/tags'), { signal }); if (!tags.ok)
         throw Error('Local embedding model unavailable'); const data = await tags.json() as {
         models?: {
             name: string;
@@ -344,7 +345,7 @@ export class DriveService {
             remote_host?: string;
         }[];
     }; const tag = data.models?.find(m => m.name === 'nomic-embed-text:latest'); if (!tag || tag.remote_host || tag.remote_model || !tag.digest)
-        throw Error('Install local nomic-embed-text'); const show = await this.local('http://127.0.0.1:11434/api/show', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: 'nomic-embed-text:latest' }), signal }); if (!show.ok || !isLocalEmbeddingModel(await show.json()))
+        throw Error('Install local nomic-embed-text'); const show = await this.local(ollamaUrl('/api/show'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: 'nomic-embed-text:latest' }), signal }); if (!show.ok || !isLocalEmbeddingModel(await show.json()))
         throw Error('Remote embedding models are forbidden'); return 'nomic-embed-text:latest:' + tag.digest; }
     private async jobs(signal: AbortSignal, gen: number) { let space: string | undefined; try {
         space = await this.space(signal);
