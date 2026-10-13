@@ -1,5 +1,7 @@
 import type { RagBundle } from './rag.js';
-export type ChatEngine = 'ollama' | 'codex';
+import { API_WORKERS, type ApiWorkerId } from './studio.js';
+export type ChatEngine = 'ollama' | 'codex' | 'claude' | ApiWorkerId;
+export const CHAT_ENGINES: readonly ChatEngine[] = ['ollama', 'codex', 'claude', ...API_WORKERS];
 export interface ChatMessage {
  id: string; role: 'user' | 'assistant'; text: string; at: string;
  state: 'complete' | 'pending' | 'failed' | 'cancelled';

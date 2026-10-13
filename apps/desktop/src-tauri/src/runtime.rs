@@ -29,6 +29,7 @@ const ALLOWED_METHODS: &[&str] = &[
     "runtime.health",
     "runtime.shutdown",
     "providers.list",
+    "providers.models",
     "memory.search",
     "memory.stats",
     "project.open",
@@ -140,7 +141,7 @@ impl RuntimeHandle {
 
     /// Relaunch a supervised runtime that has exited. Interrupted work is not
     /// replayed: the store marks it failed on open and the user retries it.
-    fn ensure_running(&self) {
+    pub(crate) fn ensure_running(&self) {
         let Some((program, args)) = self.launch.lock().ok().and_then(|l| l.clone()) else { return };
         let exited = match self.child.lock() {
             Ok(mut guard) => match guard.as_mut() {
@@ -162,6 +163,9 @@ impl RuntimeHandle {
             Err(err) => crate::log::line("runtime", &format!("relaunch failed: {err}")),
         }
     }
+
+    /// Changes each time a sidecar is started, so in-memory state it lost can be pushed again.
+    pub(crate) fn generation(&self) -> u64 { self.generation.load(Ordering::Relaxed) }
 
     /// Spawn the sidecar and start the reader thread.
     ///
@@ -429,6 +433,16 @@ mod tests {
     }
 
     #[test]
+    fn private_provider_frames_never_reach_sidecar_from_browser_requests() {
+        let handle=RuntimeHandle::new();start_helper(&handle,ECHO);
+        let reply=handle.request("providers.session",json!({"provider":"claude-api","apiKey":"fixture-private-api-key-0123456789"}));
+        let serialized=serde_json::to_string(&reply).unwrap();assert!(!serialized.contains("fixture-private-api-key"));assert_eq!(error(reply),"method_not_allowed");
+        // The first frame the helper sees is the permitted one: the refused frame was never written.
+        assert_eq!(handle.request("providers.models",json!({"provider":"claude-api"})).result.unwrap()["count"],1);
+        handle.shutdown();
+    }
+
+    #[test]
     fn crash_releases_waiters_and_restart_does_not_replay_requests() {
         let handle = RuntimeHandle::new();
         start_helper(&handle, "require('readline').createInterface({input:process.stdin}).on('line',()=>process.exit(17));");
@@ -535,6 +549,11 @@ mod rag_method_tests {
  fn tokens_and_native_controls_are_absent_from_webview_allowlist() {
   for method in ["drive.status","drive.files","drive.search","drive.source"] {assert!(ALLOWED_METHODS.contains(&method));}
   for method in ["drive.session","drive.sync","drive.pause","drive.resume","drive.disconnect","drive.authState"] {assert!(!ALLOWED_METHODS.contains(&method));}
+ }
+ #[test]
+ fn api_keys_enter_the_sidecar_only_from_the_native_shell() {
+  assert!(ALLOWED_METHODS.contains(&"providers.models"));
+  for method in ["providers.session","providers.key","providers.setKey"] {assert!(!ALLOWED_METHODS.contains(&method));}
  }
 }
 

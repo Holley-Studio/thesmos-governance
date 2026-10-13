@@ -1,7 +1,12 @@
 // Copyright (c) 2024–2026 Holley Studio LLC. All rights reserved.
 // Data-only contract shared by the desktop and its governed runtime.
 export type JobState = 'planned' | 'running' | 'review' | 'approved' | 'failed' | 'cancelled';
-export type WorkerId = 'evidence' | 'ollama' | 'codex' | 'claude';
+/** Engines billed per use to the user's own API account. Off unless enabled in Settings. */
+export type ApiWorkerId = 'claude-api' | 'openai-api' | 'gemini-api';
+export const API_WORKERS: readonly ApiWorkerId[] = ['claude-api', 'openai-api', 'gemini-api'];
+export const isApiWorker = (id: unknown): id is ApiWorkerId => API_WORKERS.includes(id as ApiWorkerId);
+export const API_COMPANY: Record<ApiWorkerId, string> = { 'claude-api': 'Anthropic', 'openai-api': 'OpenAI', 'gemini-api': 'Google' };
+export type WorkerId = 'evidence' | 'ollama' | 'codex' | 'claude' | ApiWorkerId;
 export interface Playbook {
   id: string; name: string; category: string; description: string;
   owner: string; reviewer: string; worker: WorkerId; cadence: string;
@@ -39,7 +44,14 @@ export interface Connection {
   id: string; name: string; kind: 'model' | 'business';
   state: 'ready' | 'signin' | 'missing' | 'unverified' | 'planned';
   detail: string; models?: string[]; billing: string;
+  /** API-key engines only. Never carries the key or any part of it. */
+  api?: { hasKey: boolean; verified: boolean; model: string; enabled: boolean };
 }
+/** A subscription or local engine is usable when ready; an API engine needs the setting, a key and a chosen model. */
+export const workerReady = (connections: Connection[], id: string): boolean => {
+  const c = connections.find((item) => item.id === id);
+  return isApiWorker(id) ? Boolean(c?.api?.enabled && c.api.hasKey && c.api.model) : c?.state === 'ready';
+};
 export interface StudioSnapshot {
   projects: StudioProject[]; jobs: StudioJob[]; artifacts: ArtifactSummary[];
   events: StudioEvent[]; playbooks: Playbook[]; dataDir: string;

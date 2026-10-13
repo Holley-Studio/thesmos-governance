@@ -24,6 +24,7 @@ import { readBrief } from './studio/brief.js';
 import { FinanceStore } from './studio/finance.js';
 import { godIdentity } from '../shared/pantheon.js';
 import { connections } from './studio/workers.js';
+import { setProviderKey, listProviderModels, redactSecrets } from './studio/api-providers.js';
 import { createProviderRegistry } from './providers.js';
 import { SettingsStore } from './studio/settings.js';
 import { setOllamaEndpoint, ollamaIsLocal, ollamaOrigin } from './studio/ollama-endpoint.js';
@@ -101,6 +102,10 @@ function memoryHealth(): RuntimeHealth['memory'] {
 
 const handlers: Record<NativeRuntimeMethod, (params: Record<string, unknown>) => Promise<unknown>> = {
   'drive.session': async (params) => drive.setSession({ accountId: textParam(params,'accountId',200), email:textParam(params,'email',320), accessToken:textParam(params,'accessToken',8192), expiresAt:Number(params.expiresAt) }),
+  // Native-only: the shell unseals a key and hands it over the private pipe. The reply carries no secret.
+  'providers.session': async (params) => setProviderKey(params.provider, params.apiKey),
+  // Uses the key already held here; the webview names a provider and never supplies or sees a key.
+  'providers.models': async (params) => listProviderModels(params.provider),
   'drive.disconnect': async () => { chat.cancelKnowledge('drive'); return drive.disconnect(); },
   'drive.authState': async (params) => { if(params.state !== 'signin' && params.state !== 'offline') throw new Error('Invalid Drive connection state'); chat.cancelKnowledge('drive'); return drive.setAuthState(params.state); },
   'drive.sync': async (params) => drive.sync(params.force !== false),
@@ -265,7 +270,7 @@ const handlers: Record<NativeRuntimeMethod, (params: Record<string, unknown>) =>
   'studio.knowledge': async (params) => studio.knowledge(params),
   'studio.backup': async () => studio.store.backup(),
   'studio.artifact': async (params) => studio.store.artifact(textParam(params, 'artifactId', 80)),
-  'studio.connections': async () => connections(dataDir),
+  'studio.connections': async () => connections(dataDir, settingsStore.read()),
   'settings.get': async () => settingsView(),
   // The Ollama address applies at the next start: running services keep the one they were built with.
   'settings.set': async (params) => { settingsStore.update(params.values); const view = settingsView(); return { ...view, restartRequired: view.settings.ollamaEndpoint !== view.activeOllama }; },
@@ -310,7 +315,7 @@ async function handle(request: RuntimeRequest): Promise<void> {
       ok: false,
       error: {
         code: 'handler_failed',
-        message: err instanceof Error ? err.message : String(err),
+        message: redactSecrets(err instanceof Error ? err.message : String(err)),
       },
     });
   }

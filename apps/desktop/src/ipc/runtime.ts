@@ -16,13 +16,15 @@
 import type { RagBundle, RagStatus } from '../../shared/rag';
 import type { DriveStatus, DriveFileView, DriveAuthStatus } from '../../shared/drive';
 import { invoke } from '@tauri-apps/api/core';
-import type { Connection, StudioSnapshot, StudioJob, StudioArtifact, WorkerId, KnowledgeView } from '../../shared/studio';
+import type { Connection, StudioSnapshot, StudioJob, StudioArtifact, WorkerId, KnowledgeView, ApiWorkerId } from '../../shared/studio';
+import { isApiWorker } from '../../shared/studio';
 import type { CouncilThread, ThreadSummary, ChatEngine } from '../../shared/chat';
 
 export type RuntimeMethod =
   | 'runtime.health'
   | 'runtime.shutdown'
   | 'providers.list'
+  | 'providers.models'
   | 'memory.search'
   | 'memory.stats'
   | 'project.open'
@@ -153,8 +155,8 @@ export const runtime = {
   brief: () => call<import('../../shared/brief').BriefView>('brief.read'),
   chatList: (projectId: string) => call<ThreadSummary[]>('chat.list', { projectId }),
   chatGet: (threadId: string) => call<CouncilThread>('chat.get', { threadId }),
-  chatCreate: (projectId: string, god: string, engine: ChatEngine, allowCloud: boolean) => call<CouncilThread>('chat.create', { projectId, god, engine, allowCloud }),
-  chatSend: (thread: CouncilThread, text: string, requestId: string, allowCloud: boolean, useKnowledge = false, knowledgeLibrary: 'project'|'drive' = 'project') => call<CouncilThread>('chat.send', { threadId: thread.id, revision: thread.revision, text, requestId, allowCloud, useKnowledge, ...(useKnowledge ? {knowledgeLibrary} : {}) }),
+  chatCreate: (projectId: string, god: string, engine: ChatEngine, allowCloud: boolean) => call<CouncilThread>('chat.create', { projectId, god, engine, allowCloud, allowPaidApi: allowCloud && isApiWorker(engine) }),
+  chatSend: (thread: CouncilThread, text: string, requestId: string, allowCloud: boolean, useKnowledge = false, knowledgeLibrary: 'project'|'drive' = 'project') => call<CouncilThread>('chat.send', { threadId: thread.id, revision: thread.revision, text, requestId, allowCloud, allowPaidApi: allowCloud && isApiWorker(thread.engine), useKnowledge, ...(useKnowledge ? {knowledgeLibrary} : {}) }),
   driveStatus: () => call<DriveStatus>('drive.status'),
   driveFiles: (limit = 100, offset = 0, query = '') => call<DriveFileView[]>('drive.files',{limit,offset,query}),
   driveSearch: (query: string) => call<RagBundle>('drive.search',{query}),
@@ -172,12 +174,15 @@ export const runtime = {
   settings: () => call<SettingsView>('settings.get'),
   saveSettings: (values: Partial<PantheonSettings>) => call<SettingsView>('settings.set', { values }),
   createJob: (params: { projectId: string; playbookId: string; brief: string; dueAt?: string; requestId: string }) => call<StudioJob>('studio.createJob', params),
-  runJob: (jobId: string, worker: WorkerId) => call<{ accepted: true; job: StudioJob }>('studio.runJob', { jobId, worker, allowCloud: worker === 'codex' || worker === 'claude' }),
+  /** `paidConsent` is the user's tick on the per-use billing notice; without it an API engine is refused. */
+  runJob: (jobId: string, worker: WorkerId, paidConsent = false) => call<{ accepted: true; job: StudioJob }>('studio.runJob', { jobId, worker, allowCloud: worker === 'codex' || worker === 'claude' || (isApiWorker(worker) && paidConsent), allowPaidApi: isApiWorker(worker) && paidConsent }),
   cancelJob: (jobId: string) => call<StudioJob>('studio.cancelJob', { jobId }),
   reviewJob: (jobId: string, action: 'approve' | 'revise', note: string) => call<StudioJob>('studio.reviewJob', { jobId, action, note }),
   exportJob: (jobId: string) => call<{ path: string; integrity: string }>('studio.exportJob', { jobId }),
   health: () => call<RuntimeHealth>('runtime.health'),
   providers: () => call<ProviderSummary[]>('providers.list'),
+  /** Lists models with the key the shell already holds. No key crosses the webview. */
+  providerModels: (provider: ApiWorkerId) => call<{ provider: ApiWorkerId; models: string[] }>('providers.models', { provider }),
   memoryStats: () => call<MemoryStats>('memory.stats'),
   memorySearch: (query: string, limit = 20) =>
     call<{ results: MemoryHit[]; telemetry: Record<string, unknown> }>('memory.search', {
@@ -231,8 +236,14 @@ export interface UpdateStatus { current: string; channel: string | null; availab
 export const updateStatus = () => invoke<UpdateStatus>('update_status');
 /** Installs what the update folder offers and restarts. Takes no arguments by design. */
 export const updateInstall = () => invoke<void>('update_install');
-export type PreferredWorker = 'playbook' | 'ollama' | 'codex' | 'claude';
-export interface PantheonSettings { displayName: string; studioName: string; preferredWorker: PreferredWorker; ollamaEndpoint: string; portalUrl: string }
+export type PreferredWorker = 'playbook' | 'ollama' | 'codex' | 'claude' | ApiWorkerId;
+export interface PantheonSettings { displayName: string; studioName: string; preferredWorker: PreferredWorker; ollamaEndpoint: string; portalUrl: string; paidApiEnabled: boolean; claudeApiModel: string; openaiApiModel: string; geminiApiModel: string }
+/** Which providers have a sealed key on this PC. Never the key or any part of it. */
+export type ApiKeyStatus = Record<ApiWorkerId, boolean>;
+export const apiKeyStatus = () => invoke<ApiKeyStatus>('api_key_status');
+/** The key goes straight to the native shell, which seals it with Windows and hands it to the runtime. */
+export const setApiKey = (provider: ApiWorkerId, key: string) => invoke<ApiKeyStatus>('api_key_set', { provider, key });
+export const clearApiKey = (provider: ApiWorkerId) => invoke<ApiKeyStatus>('api_key_clear', { provider });
 export interface SettingsView { settings: PantheonSettings; activeOllama: string; ollamaIsLocal: boolean; restartRequired?: boolean }
 /** Native folder picker for the update folder. Resolves the new status, or null when cancelled. */
 export const chooseUpdateFolder = () => invoke<UpdateStatus | null>('update_choose_folder');

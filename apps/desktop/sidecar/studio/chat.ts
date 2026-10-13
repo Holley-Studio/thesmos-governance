@@ -1,13 +1,17 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { councilInstructions, recentConversation, type CouncilThread, type ChatEngine } from '../../shared/chat.js';
+import { councilInstructions, recentConversation, CHAT_ENGINES, type CouncilThread, type ChatEngine } from '../../shared/chat.js';
+import { isApiWorker } from '../../shared/studio.js';
+import { authorizePaidApi, redactSecrets, type ApiGrant } from './api-providers.js';
+import { SettingsStore, type PantheonSettings } from './settings.js';
 import { StudioStore } from './store.js';
 import { startWorker, type WorkerRun } from './workers.js';
 import type { RagBundle } from '../../shared/rag.js';
 
 interface GodRole { god: string; role: string }
-type StartChatWorker = (engine: ChatEngine, cwd: string, prompt: string, instructions: string, signal?: AbortSignal) => Promise<WorkerRun>;
+type StartChatWorker = (engine: ChatEngine, cwd: string, prompt: string, instructions: string, signal?: AbortSignal, api?: ApiGrant) => Promise<WorkerRun>;
+const CLOUD_CONSENT: Record<'codex' | 'claude', string> = { codex: 'Confirm OpenAI conversation sharing and Work/Codex plan usage', claude: 'Confirm Anthropic conversation sharing and Claude subscription usage' };
 const now = () => new Date().toISOString();
 function text(params: Record<string, unknown>, key: string, max = 80): string {
  const value = params[key];
@@ -19,8 +23,9 @@ export class CouncilChatService {
  private active?: { threadId: string; requestId: string; worker?: WorkerRun; controller: AbortController; knowledge?: RagBundle; knowledgeLibrary?:'project'|'drive' };
  constructor(private readonly store: StudioStore, private readonly root: () => string | undefined,
   private readonly roster: () => GodRole[], private readonly jobsBusy: () => boolean,
-  private readonly start: StartChatWorker = (engine, cwd, prompt, systemPrompt, signal) => startWorker(engine, cwd, prompt, undefined, { systemPrompt, preferredModel: 'qwen3.5:4b', signal }),
-  private readonly knowledge?: { search(projectId: string, query: string, signal?: AbortSignal, library?:'project'|'drive'): Promise<RagBundle>; identity?(library:'project'|'drive'):string|undefined }) {
+  private readonly start: StartChatWorker = (engine, cwd, prompt, systemPrompt, signal, api) => startWorker(engine, cwd, prompt, undefined, { systemPrompt, preferredModel: 'qwen3.5:4b', signal, api }),
+  private readonly knowledge?: { search(projectId: string, query: string, signal?: AbortSignal, library?:'project'|'drive'): Promise<RagBundle>; identity?(library:'project'|'drive'):string|undefined },
+  private readonly settings: () => PantheonSettings = () => new SettingsStore(store.dataDir).read()) {
   // An interrupted turn never restarts itself or consumes subscription allowance.
   for (const thread of store.chatThreads()) {
    if (!thread.messages.some((m) => m.state === 'pending')) continue;
@@ -41,16 +46,22 @@ export class CouncilChatService {
  private save(thread: CouncilThread): CouncilThread {
   const updated = { ...thread, updatedAt: now(), revision: thread.revision + 1 }; this.store.saveChat(updated); return updated;
  }
+ // Every cloud engine needs consent on every request; an API engine also needs the setting, a model and a key.
+ private consent(engine: ChatEngine, params: Record<string, unknown>): ApiGrant | undefined {
+  if (isApiWorker(engine)) return authorizePaidApi(engine, this.settings(), params);
+  if (engine !== 'ollama' && params.allowCloud !== true) throw new Error(CLOUD_CONSENT[engine]);
+  return undefined;
+ }
  list(params: Record<string, unknown>) { const projectId = text(params, 'projectId'); this.assertProject(projectId); return this.store.chatSummaries(projectId); }
  get(params: Record<string, unknown>): CouncilThread { const thread = this.store.chat(text(params, 'threadId')); this.assertProject(thread.projectId); return thread; }
  create(params: Record<string, unknown>): CouncilThread {
   const projectId = text(params, 'projectId'); this.assertProject(projectId);
   const god = text(params, 'god'); this.roles(god);
   const engine = text(params, 'engine');
-  if (engine !== 'ollama' && engine !== 'codex') throw new Error('Choose local Ollama or the official ChatGPT subscription worker');
-  if (engine === 'codex' && params.allowCloud !== true) throw new Error('Confirm OpenAI conversation sharing and Work/Codex plan usage');
+  if (!CHAT_ENGINES.includes(engine as ChatEngine)) throw new Error('Choose local Ollama, a subscription worker, or an API engine you have set up');
+  this.consent(engine as ChatEngine, params);
   if (this.store.chatThreads().length >= 100) throw new Error('Delete an old conversation before starting another (100 conversation limit)');
-  const thread: CouncilThread = { id: randomUUID(), projectId, god, engine, title: `${god} \u00b7 New conversation`, createdAt: now(), updatedAt: now(), revision: 0, messages: [] };
+  const thread: CouncilThread = { id: randomUUID(), projectId, god, engine: engine as ChatEngine, title: `${god} \u00b7 New conversation`, createdAt: now(), updatedAt: now(), revision: 0, messages: [] };
   this.store.insertChat(thread); return thread;
  }
  send(params: Record<string, unknown>): CouncilThread {
@@ -67,7 +78,7 @@ export class CouncilChatService {
   if (!/^[a-zA-Z0-9-]{12,80}$/.test(requestId)) throw new Error('A valid message request ID is required');
   const existing = thread.messages.find((m) => m.id === requestId);
   if (existing) { if (existing.text !== message || Boolean(existing.useKnowledge) !== useKnowledge || (useKnowledge && (existing.knowledgeLibrary ?? 'project') !== knowledgeLibrary) || (knowledgeLibraryId && existing.knowledgeLibraryId !== knowledgeLibraryId)) throw new Error('This request ID belongs to a different message or Drive account'); return thread; }
-  if (thread.engine === 'codex' && params.allowCloud !== true) throw new Error('Confirm OpenAI sharing and Work/Codex plan usage');
+  const api = this.consent(thread.engine, params);
   if (this.busy || this.jobsBusy()) throw new Error('Wait for the current chat or workboard job to finish, or stop it first');
   if (params.revision !== thread.revision) throw new Error('Conversation changed. Refresh before sending.');
   if (thread.messages.length >= 120 || thread.messages.reduce((n, m) => n + m.text.length, 0) > 200_000) throw new Error('Start a fresh conversation with a short summary to keep context useful');
@@ -106,7 +117,7 @@ export class CouncilChatService {
    }
    if (this.active !== active || active.controller.signal.aborted) return;
    this.assertProject(thread.projectId);
-   return this.start(thread.engine, cwd, prompt, system, active.controller.signal);
+   return this.start(thread.engine, cwd, prompt, system, active.controller.signal, api);
   };
   void generate().then((worker) => {
    if (!worker) return;
@@ -118,7 +129,7 @@ export class CouncilChatService {
     this.finish(active, 'complete', result.text.slice(0, 16_000), result.model);
    });
   }).catch((err: unknown) => {
-   if (this.active === active) this.finish(active, 'failed', '', undefined, err instanceof Error ? err.message.slice(0, 1200) : 'The model could not answer');
+   if (this.active === active) this.finish(active, 'failed', '', undefined, err instanceof Error ? redactSecrets(err.message).slice(0, 1200) : 'The model could not answer');
   });
   return updated;
  }

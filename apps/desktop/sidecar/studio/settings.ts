@@ -15,9 +15,11 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { LOCAL_OLLAMA, validateOllamaEndpoint } from './ollama-endpoint.js';
+import { isApiWorker, type ApiWorkerId } from '../../shared/studio.js';
 
 export const DEFAULT_PORTAL_URL = 'https://portal.holley.studio/portal';
-export type PreferredWorker = 'playbook' | 'ollama' | 'codex' | 'claude';
+export const DEFAULT_CLAUDE_API_MODEL = 'claude-sonnet-5-5';
+export type PreferredWorker = 'playbook' | 'ollama' | 'codex' | 'claude' | ApiWorkerId;
 
 export interface PantheonSettings {
   /** Shown in the sidebar; not sent anywhere. */
@@ -29,12 +31,29 @@ export interface PantheonSettings {
   ollamaEndpoint: string;
   /** Where "Open the portal" goes. */
   portalUrl: string;
+  /** Allows the API-key engines at all. Off by default; each use still asks. */
+  paidApiEnabled: boolean;
+  /** Model id sent to each provider. Empty means none chosen, and that engine is refused. */
+  claudeApiModel: string;
+  openaiApiModel: string;
+  geminiApiModel: string;
 }
 
 export const DEFAULT_SETTINGS: PantheonSettings = {
   displayName: 'Matthew Holley', studioName: 'Holley Studio', preferredWorker: 'playbook',
   ollamaEndpoint: LOCAL_OLLAMA, portalUrl: DEFAULT_PORTAL_URL,
+  paidApiEnabled: false, claudeApiModel: DEFAULT_CLAUDE_API_MODEL, openaiApiModel: '', geminiApiModel: '',
 };
+
+export const MODEL_ID = /^[A-Za-z0-9._:\-/]{1,80}$/;
+export function validateModelId(raw: unknown, fallback = ''): string {
+  if (typeof raw !== 'string' || raw.length > 80) throw new Error('Choose a model from the provider’s list');
+  if (!raw) return fallback;
+  if (!MODEL_ID.test(raw)) throw new Error('That model name is not valid');
+  return raw;
+}
+export const apiModel = (settings: PantheonSettings, worker: ApiWorkerId): string => worker === 'claude-api' ? settings.claudeApiModel : worker === 'openai-api' ? settings.openaiApiModel : settings.geminiApiModel;
+export const API_MODEL_KEY: Record<ApiWorkerId, 'claudeApiModel' | 'openaiApiModel' | 'geminiApiModel'> = { 'claude-api': 'claudeApiModel', 'openai-api': 'openaiApiModel', 'gemini-api': 'geminiApiModel' };
 
 function label(raw: unknown, name: string, max: number): string {
   if (typeof raw !== 'string') throw new Error(`Enter ${name}`);
@@ -58,9 +77,13 @@ export function validatePortalUrl(raw: unknown): string {
 const VALIDATORS: { [K in keyof PantheonSettings]: (raw: unknown) => PantheonSettings[K] } = {
   displayName: (raw) => label(raw, 'your name', 60),
   studioName: (raw) => label(raw, 'the studio name', 60),
-  preferredWorker: (raw) => { if (raw !== 'playbook' && raw !== 'ollama' && raw !== 'codex' && raw !== 'claude') throw new Error('Choose a supported default intelligence'); return raw; },
+  preferredWorker: (raw) => { if (raw !== 'playbook' && raw !== 'ollama' && raw !== 'codex' && raw !== 'claude' && !isApiWorker(raw)) throw new Error('Choose a supported default intelligence'); return raw; },
   ollamaEndpoint: validateOllamaEndpoint,
   portalUrl: validatePortalUrl,
+  paidApiEnabled: (raw) => { if (typeof raw !== 'boolean') throw new Error('Paid API use must be on or off'); return raw; },
+  claudeApiModel: (raw) => validateModelId(raw, DEFAULT_CLAUDE_API_MODEL),
+  openaiApiModel: (raw) => validateModelId(raw),
+  geminiApiModel: (raw) => validateModelId(raw),
 };
 const KEYS = Object.keys(VALIDATORS) as (keyof PantheonSettings)[];
 

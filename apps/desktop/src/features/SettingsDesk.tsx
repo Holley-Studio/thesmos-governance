@@ -9,6 +9,7 @@ const LOCAL_OLLAMA = 'http://127.0.0.1:11434';
 const WORKERS: { id: PreferredWorker; label: string }[] = [
  { id: 'playbook', label: 'Each playbook’s own default' }, { id: 'ollama', label: 'Local Ollama' },
  { id: 'claude', label: 'Claude (your Claude subscription)' }, { id: 'codex', label: 'ChatGPT (your ChatGPT/Codex plan)' },
+ { id: 'claude-api', label: 'Claude API key (paid per use)' }, { id: 'openai-api', label: 'OpenAI API key (paid per use)' }, { id: 'gemini-api', label: 'Gemini API key (paid per use)' },
 ];
 
 /**
@@ -36,6 +37,10 @@ export function SettingsDesk({ onSaved, onError }: { onSaved: (view: SettingsVie
   <label htmlFor="set-worker">Default intelligence for new AI jobs</label>
   <select id="set-worker" value={draft.preferredWorker} onChange={(e) => set('preferredWorker', e.target.value as PreferredWorker)}>{WORKERS.map((w) => <option value={w.id} key={w.id}>{w.label}</option>)}</select>
   <p className="p-muted">This only preselects the engine. Each job still asks before anything is sent to Claude or ChatGPT, and each person signs in to their own subscription under Connections.</p>
+  <label className="p-checkbox"><input type="checkbox" checked={draft.paidApiEnabled} onChange={(e) => set('paidApiEnabled', e.target.checked)}/>Allow paid API engines (Claude API, OpenAI API, Gemini API)</label>
+  <p className="p-muted">{draft.paidApiEnabled
+   ? 'An API engine can be chosen for a job or a conversation. Each use still asks first, sends that content to the provider, and is billed per use to your own API account. Nothing ever switches to an API engine by itself.'
+   : 'Off: no API key is used, even if one is saved. Subscriptions and local Ollama are unaffected. Keys are added under Connections.'}</p>
   <label htmlFor="set-ollama">Ollama address</label><input id="set-ollama" value={draft.ollamaEndpoint} maxLength={60} spellCheck={false} placeholder={LOCAL_OLLAMA} onChange={(e) => set('ollamaEndpoint', e.target.value)}/>
   <p className="p-muted">{remoteOllama
    ? 'This is another machine on your network. Prompts, briefs and document passages for local AI will be sent to it instead of staying on this PC. Only private-network addresses are accepted.'

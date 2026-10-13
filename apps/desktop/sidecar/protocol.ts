@@ -26,6 +26,7 @@ export type RuntimeMethod =
   | 'runtime.health'
   | 'runtime.shutdown'
   | 'providers.list'
+  | 'providers.models'
   | 'memory.search'
   | 'memory.stats'
   | 'project.open'
@@ -55,6 +56,8 @@ export type RuntimeMethod =
 export type NativeRuntimeMethod = RuntimeMethod
   | 'drive.session' | 'drive.sync' | 'drive.disconnect'
   | 'drive.pause' | 'drive.resume' | 'drive.authState'
+  // Carries an API key from the native vault. The webview can never send one.
+  | 'providers.session'
   // Reached only from the native file picker: the webview cannot supply request content.
   | 'studio.importRequest';
 

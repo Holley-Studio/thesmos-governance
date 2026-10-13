@@ -10,6 +10,7 @@
 
 mod runtime;
 mod drive;
+mod keys;
 mod log;
 mod update;
 
@@ -48,14 +49,37 @@ fn authorize_project_open(app: &tauri::AppHandle, params: &Value) -> Result<(), 
 async fn runtime_request(
     app: tauri::AppHandle,
     state: tauri::State<'_, Arc<RuntimeHandle>>,
+    keys: tauri::State<'_, Arc<keys::ApiKeys>>,
     method: String,
     params: Value,
 ) -> Result<RuntimeReply, String> {
     let handle = Arc::clone(state.inner());
+    let keys = Arc::clone(keys.inner());
     tauri::async_runtime::spawn_blocking(move || -> Result<RuntimeReply, String> {
         if method == "project.open" { authorize_project_open(&app, &params)?; }
+        // A relaunched runtime has no keys until the shell offers them again.
+        if method != "runtime.shutdown" { keys.sync(); }
         Ok(handle.request(&method, params))
     }).await.map_err(|e| e.to_string())?
+}
+
+/// Which API providers have a saved key. Never the key or any part of it.
+#[tauri::command]
+async fn api_key_status(state: tauri::State<'_, Arc<keys::ApiKeys>>) -> Result<Value, String> {
+    Ok(state.status())
+}
+
+/// Seal an API key with Windows and hand it to the runtime. The key is not returned or logged.
+#[tauri::command]
+async fn api_key_set(state: tauri::State<'_, Arc<keys::ApiKeys>>, provider: String, key: String) -> Result<Value, String> {
+    let keys = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || keys.set(&provider, &key)).await.map_err(|_| "API key could not be saved".to_string())?
+}
+
+#[tauri::command]
+async fn api_key_clear(state: tauri::State<'_, Arc<keys::ApiKeys>>, provider: String) -> Result<Value, String> {
+    let keys = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || keys.clear(&provider)).await.map_err(|_| "API key could not be removed".to_string())?
 }
 
 /// Native folder picker — how a user *grants* project access.
@@ -437,7 +461,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(Arc::new(RuntimeHandle::new()))
         .manage(ProjectGrants::default())
-        .invoke_handler(tauri::generate_handler![runtime_request, update_status, update_install, open_portal, update_choose_folder, update_reset_folder, import_portal_request, choose_project_folder, open_exports, connect_subscription, open_chatgpt, open_google, open_knowledge_source, drive_auth_status, drive_configure, drive_connect, drive_disconnect, drive_sync_now, drive_pause, drive_resume, open_drive_source])
+        .invoke_handler(tauri::generate_handler![runtime_request, api_key_status, api_key_set, api_key_clear, update_status, update_install, open_portal, update_choose_folder, update_reset_folder, import_portal_request, choose_project_folder, open_exports, connect_subscription, open_chatgpt, open_google, open_knowledge_source, drive_auth_status, drive_configure, drive_connect, drive_disconnect, drive_sync_now, drive_pause, drive_resume, open_drive_source])
         .setup(|app| {
             let handle = app.handle().clone();
             let state = app.state::<Arc<RuntimeHandle>>();
@@ -466,6 +490,11 @@ pub fn run() {
                 }
                 None => log::line("shell", "runtime sidecar not found next to the app"),
             }
+            let api_keys = keys::ApiKeys::new(dir.join("api-keys.dpapi"), Arc::clone(state.inner()));
+            // Off the setup thread: the hand-over waits for the runtime to answer.
+            let startup_keys = Arc::clone(&api_keys);
+            std::thread::spawn(move || startup_keys.sync());
+            app.manage(api_keys);
             let drive = drive::DriveCoordinator::new(dir.join("drive-credentials.dpapi"), Arc::clone(state.inner()));
             drive.start();
             app.manage(drive);

@@ -5,6 +5,7 @@ import { Icon } from './Icon';
 const brands: Record<string, string> = {
  codex: 'openai.svg', openai: 'openai.svg', chatgpt: 'openai.svg',
  claude: 'claude-color.svg', ollama: 'ollama.svg',
+ 'claude-api': 'claude-color.svg', 'openai-api': 'openai.svg', 'gemini-api': 'gemini-color.svg',
  gemini: 'gemini-color.svg', grok: 'grok.svg',
  'google-drive': 'drive.png', gmail: 'gmail.png', slack: 'slack.png',
  'google-calendar': 'calendar.png',
