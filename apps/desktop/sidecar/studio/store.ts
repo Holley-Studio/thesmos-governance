@@ -51,7 +51,18 @@ export class StudioStore {
       this.event('interrupted', 'Recovered an interrupted job; no automatic retry.', job.id);
     }
   }
-  close(): void { this.db.close(); }
+  /**
+   * Fold the write-ahead log back into studio.sqlite.
+   *
+   * The runtime exits without closing this database (an aborted worker may
+   * still settle), and SQLite only checkpoints on close. Without an explicit
+   * checkpoint the main file stayed at its empty size and every job lived only
+   * in studio.sqlite-wal, so copying the database file alone lost the work.
+   */
+  checkpoint(): void {
+    try { this.db.exec('PRAGMA wal_checkpoint(TRUNCATE);'); } catch { /* best effort: never block an exit */ }
+  }
+  close(): void { this.checkpoint(); this.db.close(); }
   chatThreads(projectId?: string): CouncilThread[] {
     const rows = projectId ? this.db.prepare('SELECT body FROM council_chats WHERE project_id = ? ORDER BY rowid DESC').all(projectId)
       : this.db.prepare('SELECT body FROM council_chats ORDER BY rowid DESC').all();
@@ -134,7 +145,7 @@ export class StudioStore {
     this.event('project-opened', `${project.name} workspace connected.`);
     return project;
   }
-  createJob(params: { projectId: string; playbookId: string; brief: string; dueAt?: string; requestId: string }): StudioJob {
+  createJob(params: { projectId: string; playbookId: string; brief: string; dueAt?: string; requestId: string; portalRequest?: { requestId: string; revision: number } }): StudioJob {
     this.project(params.projectId);
     const playbook = getPlaybook(params.playbookId);
     if (!/^[a-zA-Z0-9-]{12,80}$/.test(params.requestId)) throw new Error('A valid request ID is required');
@@ -150,6 +161,7 @@ export class StudioStore {
       id: params.requestId, projectId: params.projectId, playbookId: playbook.id, title: playbook.name,
       brief: params.brief.trim(), owner: playbook.owner, reviewer: playbook.reviewer,
       state: 'planned', stage: 'Ready to start', attempts: 0, createdAt: now(), updatedAt: now(), dueAt: params.dueAt,
+      ...(params.portalRequest ? { portalRequest: params.portalRequest } : {}),
     };
     this.db.prepare('INSERT INTO jobs VALUES (?, ?, ?, ?)').run(job.id, job.projectId, job.state, JSON.stringify(job));
     this.event('job-created', `${job.owner} assigned ${job.title}.`, job.id);

@@ -36,7 +36,10 @@ import type {
   RuntimeRequest,
 } from './protocol.js';
 
-const VERSION = '0.1.0-alpha.0';
+// Injected by scripts/build-sidecar.mjs from tauri.conf.json, so the runtime,
+// the shell and the release manifest all report the same version.
+declare const __PANTHEON_VERSION__: string | undefined;
+const VERSION = typeof __PANTHEON_VERSION__ === 'string' ? __PANTHEON_VERSION__ : '0.0.0-dev';
 const startedAt = Date.now();
 
 /**
@@ -258,6 +261,7 @@ const handlers: Record<NativeRuntimeMethod, (params: Record<string, unknown>) =>
   'studio.artifact': async (params) => studio.store.artifact(textParam(params, 'artifactId', 80)),
   'studio.connections': async () => connections(dataDir),
   'studio.createJob': async (params) => studio.create(params),
+  'studio.importRequest': async (params) => studio.importRequest(params),
   'studio.runJob': async (params) => { if (chat.busy) throw new Error('Finish or stop the council conversation before starting a workboard job'); return studio.run(params); },
   'studio.cancelJob': async (params) => studio.cancel(textParam(params, 'jobId', 80)),
   'studio.reviewJob': async (params) => {
@@ -322,6 +326,10 @@ rl.on('line', (line) => {
 
 // Parent went away: exit rather than linger as an orphan.
 rl.on('close', () => { chat.shutdown(); drive.shutdown(); rag.shutdown(); studio.shutdown(); process.exit(0); });
+
+// Runs on every exit path (shutdown request, parent pipe closed). Synchronous,
+// so it completes before the process goes.
+process.on('exit', () => { studio.store.checkpoint(); });
 
 process.on('uncaughtException', (err) => {
   send({ event: 'runtime.error', payload: { message: err.message } });

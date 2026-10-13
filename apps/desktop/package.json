@@ -1,7 +1,7 @@
 {
   "name": "@thesmos/desktop",
   "private": true,
-  "version": "0.1.0-alpha.0",
+  "version": "0.2.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
     "sidecar:build": "node scripts/build-sidecar.mjs",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
-    "desktop:build": "npm run sidecar:build && tauri build"
+    "desktop:build": "npm run sidecar:build && tauri build",
+    "release:publish": "node scripts/publish-release.mjs"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

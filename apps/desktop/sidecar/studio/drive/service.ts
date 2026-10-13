@@ -606,6 +606,7 @@ export class DriveService {
         return; this.stopped = true; this.cancel(); this.session = undefined; this.closing = true; this.closeIfReady(); }
     private closeIfReady() { if (this.closing && !this.controller && this.searches.size === 0) {
         this.closing = false;
+        try { this.db.exec('PRAGMA wal_checkpoint(TRUNCATE);'); } catch { /* best effort: close regardless */ }
         this.db.close();
     } }
 }

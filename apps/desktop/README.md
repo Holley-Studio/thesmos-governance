@@ -36,6 +36,37 @@ Run the repository's governance validation from the repository root. Do not comm
 
 The SEA build bundles core into a self-contained Node executable, removes the copied Node binary's signature before injection, and fails the build if sealing fails. Internal releases remain unsigned unless a business signing certificate is configured. Core's import.meta fallbacks produce known CommonJS bundling warnings; packaged catalog and runtime behavior must be tested explicitly.
 
+## Updates across studio PCs
+
+Pantheon updates itself from a release folder, normally in Google Drive for desktop so every studio PC sees the same files:
+
+`<Drive letter>:\My Drive\Holley Studio\04 HS - Tools and Development\Pantheon Releases`
+
+**Publish** (on the build machine): raise `version` in `src-tauri/tauri.conf.json` — it is the single source; the runtime, the shell and the release manifest all read it — then:
+
+```
+npm run desktop:build
+npm run release:publish -- --channel "<release folder>" --notes "What changed"
+```
+
+That writes `Pantheon-<version>.zip`, then `latest.json` naming it, plus the two first-install files. The publisher refuses a version that is not newer than the one already published.
+
+**First install on another PC**: sign in to Google Drive for desktop, open the release folder and double-click `Install Pantheon.cmd`. No admin rights. It installs to `%LOCALAPPDATA%\HolleyStudio\Pantheon\<version>`, points the `current` junction at it and creates desktop and Start menu shortcuts to `current\Pantheon.exe`.
+
+**Later updates**: the app checks the folder at launch and every 30 minutes, shows a banner when a newer version is published, and "Update and restart" does the rest. It copies the package to local disk, verifies its SHA-256 against the manifest, runs the installer bundled inside the *running* app (not the copy in the release folder), and starts the new version. Previous version folders are kept; an install can only move forward. Settings → Version and updates shows the running version, the folder in use and a manual check.
+
+If the folder is somewhere else, put `{"dir":"<absolute path>"}` in `%LOCALAPPDATA%\studio.holley.thesmos\update-channel.json`. The webview cannot set this.
+
+Limits to know:
+
+- **Integrity, not authenticity.** The checksum proves the package arrived intact, not who published it. Anyone who can write to the release folder can ship code to every PC that follows it. Keep the folder owner-writable only. Packages are unsigned.
+- **Windows only.** There is no macOS build or installer.
+- **One data folder for all versions.** `%LOCALAPPDATA%\studio.holley.thesmos` is shared and never touched by the installer. A database written by a newer schema is refused by an older build rather than opened.
+
+## Diagnostics
+
+The shell writes `%LOCALAPPDATA%\studio.holley.thesmos\logs\pantheon.log` (rotated once at 1 MB): startup, runtime stderr, uncaught runtime errors, runtime restarts and update installs. No request parameters, prompts, tokens or document text are logged. If the runtime process dies, the next request relaunches it — at most three times a minute; an interrupted job is marked failed and is never retried automatically. The installer logs to `%LOCALAPPDATA%\HolleyStudio\Pantheon\install.log`.
+
 ## Ownership and boundaries
 
 - `shared/studio.ts`: wire data only; no native or model imports in the frontend.

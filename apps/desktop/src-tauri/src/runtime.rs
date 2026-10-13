@@ -15,7 +15,8 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -102,7 +103,16 @@ pub struct RuntimeHandle {
     pending: Pending,
     next_id: Mutex<u64>,
     generation: AtomicU64,
+    /// How to relaunch the sidecar. Present only for a supervised runtime, and
+    /// cleared on shutdown so an exiting app never respawns its child.
+    launch: Mutex<Option<(PathBuf, Vec<String>)>>,
+    restarts: Mutex<Vec<Instant>>,
 }
+
+/// A runtime that keeps dying is broken, not unlucky: stop relaunching it and
+/// let the error reach the user.
+const MAX_RESTARTS: usize = 3;
+const RESTART_WINDOW: Duration = Duration::from_secs(60);
 
 impl RuntimeHandle {
     pub fn new() -> Self {
@@ -112,6 +122,42 @@ impl RuntimeHandle {
             pending: Arc::new(Mutex::new(HashMap::new())),
             next_id: Mutex::new(0),
             generation: AtomicU64::new(0),
+            launch: Mutex::new(None),
+            restarts: Mutex::new(Vec::new()),
+        }
+    }
+
+    /// Start the sidecar and remember how, so a crashed runtime is relaunched
+    /// by the next request instead of leaving the app dead until it is reopened.
+    pub fn start_supervised(&self, program: &Path, args: &[String]) -> Result<(), String> {
+        if let Ok(mut launch) = self.launch.lock() {
+            *launch = Some((program.to_path_buf(), args.to_vec()));
+        }
+        self.start(program, args)
+    }
+
+    /// Relaunch a supervised runtime that has exited. Interrupted work is not
+    /// replayed: the store marks it failed on open and the user retries it.
+    fn ensure_running(&self) {
+        let Some((program, args)) = self.launch.lock().ok().and_then(|l| l.clone()) else { return };
+        let exited = match self.child.lock() {
+            Ok(mut guard) => match guard.as_mut() {
+                Some(child) => !matches!(child.try_wait(), Ok(None)),
+                None => true,
+            },
+            Err(_) => return,
+        };
+        if !exited { return; }
+        {
+            let Ok(mut restarts) = self.restarts.lock() else { return };
+            let now = Instant::now();
+            restarts.retain(|at| now.duration_since(*at) < RESTART_WINDOW);
+            if restarts.len() >= MAX_RESTARTS { return; }
+            restarts.push(now);
+        }
+        match self.start(&program, &args) {
+            Ok(()) => crate::log::line("runtime", "runtime had stopped; relaunched"),
+            Err(err) => crate::log::line("runtime", &format!("relaunch failed: {err}")),
         }
     }
 
@@ -148,7 +194,7 @@ impl RuntimeHandle {
         if let Some(stderr) = child.stderr.take() {
             std::thread::spawn(move || {
                 for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-                    eprintln!("[pantheon-runtime] {line}");
+                    crate::log::line("runtime-stderr", &line);
                 }
             });
         }
@@ -162,6 +208,12 @@ impl RuntimeHandle {
                 };
                 // Event frames carry no id and belong to no waiter.
                 let Some(id) = value.get("id").and_then(Value::as_str) else {
+                    // Uncaught runtime errors arrive as events; record them
+                    // instead of dropping the only evidence of the failure.
+                    if value.get("event").and_then(Value::as_str) == Some("runtime.error") {
+                        let message = value.pointer("/payload/message").and_then(Value::as_str).unwrap_or("unknown error");
+                        crate::log::line("runtime-error", message);
+                    }
                     continue;
                 };
                 if let Ok(mut map) = pending.lock() {
@@ -170,6 +222,7 @@ impl RuntimeHandle {
                     }
                 }
             }
+            crate::log::line("runtime", "runtime output stream closed");
             // Stream closed: release every waiter rather than leaving the UI
             // blocked on a runtime that has gone.
             if let Ok(mut map) = pending.lock() {
@@ -199,6 +252,7 @@ impl RuntimeHandle {
         self.request_internal(method, params)
     }
     pub(crate) fn request_internal(&self, method: &str, params: Value) -> RuntimeReply {
+        if method != "runtime.shutdown" { self.ensure_running(); }
         let id = {
             let mut n = match self.next_id.lock() {
                 Ok(n) => n,
@@ -259,16 +313,22 @@ impl RuntimeHandle {
     /// memory store open, so the kill is unconditional if the request path is
     /// already gone.
     pub fn shutdown(&self) {
+        if let Ok(mut launch) = self.launch.lock() { *launch = None; }
         let _ = self.request("runtime.shutdown", json!({}));
-        std::thread::sleep(Duration::from_millis(120));
         if let Ok(mut guard) = self.child.lock() {
             if let Some(child) = guard.as_mut() {
-                match child.try_wait() {
-                    Ok(Some(_)) => {}
-                    _ => {
-                        let _ = child.kill();
-                        let _ = child.wait();
-                    }
+                // Give the runtime time to checkpoint and close its databases.
+                // Killing it after a fixed 120 ms left every write in the WAL.
+                let deadline = Instant::now() + Duration::from_secs(3);
+                let mut exited = false;
+                while Instant::now() < deadline {
+                    if let Ok(Some(_)) = child.try_wait() { exited = true; break; }
+                    std::thread::sleep(Duration::from_millis(25));
+                }
+                if !exited {
+                    crate::log::line("runtime", "runtime did not exit in time; terminating it");
+                    let _ = child.kill();
+                    let _ = child.wait();
                 }
             }
             *guard = None;
@@ -378,6 +438,43 @@ mod tests {
         let reply = handle.request("runtime.health", json!({"new":true}));
         assert!(reply.ok, "restart failed: {reply:?}");
         assert_eq!(reply.result.unwrap(), json!({"count":1,"params":{"new":true}}));
+        handle.shutdown();
+    }
+
+    const CRASH_ON_DEMAND: &str = r#"
+        require('readline').createInterface({input:process.stdin}).on('line', line => {
+            const frame = JSON.parse(line);
+            if (frame.params && frame.params.crash) process.exit(17);
+            process.stdout.write(JSON.stringify({id:frame.id,ok:true,result:{pid:process.pid}})+'\n');
+            if (frame.method === 'runtime.shutdown') process.exit(0);
+        });
+    "#;
+
+    #[test]
+    fn supervised_runtime_is_relaunched_after_a_crash() {
+        let handle = RuntimeHandle::new();
+        handle.start_supervised(&node(), &["-e".into(), CRASH_ON_DEMAND.into()]).unwrap();
+        let first = handle.request("runtime.health", json!({})).result.unwrap()["pid"].clone();
+        assert_eq!(error(handle.request("runtime.health", json!({"crash":true}))), "runtime_closed");
+        wait_for_exit(&handle);
+        let reply = handle.request("runtime.health", json!({}));
+        assert!(reply.ok, "runtime was not relaunched: {reply:?}");
+        assert_ne!(reply.result.unwrap()["pid"], first);
+        handle.shutdown();
+        // Shutdown ends supervision: nothing is relaunched afterwards.
+        assert_eq!(error(handle.request("runtime.health", json!({}))), "runtime_not_started");
+    }
+
+    #[test]
+    fn relaunch_is_bounded_when_the_runtime_keeps_dying() {
+        let handle = RuntimeHandle::new();
+        handle.start_supervised(&node(), &["-e".into(), "process.exit(19);".into()]).unwrap();
+        for _ in 0..(MAX_RESTARTS + 3) {
+            wait_for_exit(&handle);
+            std::thread::sleep(Duration::from_millis(60));
+            assert!(!handle.request("runtime.health", json!({})).ok);
+        }
+        assert_eq!(handle.restarts.lock().unwrap().len(), MAX_RESTARTS);
         handle.shutdown();
     }
 

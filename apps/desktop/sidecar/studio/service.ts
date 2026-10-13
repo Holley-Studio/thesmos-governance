@@ -8,6 +8,10 @@ import { captureEvidence } from './evidence.js';
 import { readKnowledge } from './knowledge.js';
 import { startWorker, type WorkerRun, type WorkerResult } from './workers.js';
 import { godName, pantheonText } from '../../shared/pantheon.js';
+import { parsePortalRequest, requestBrief, requestJobId, portalPackage } from './portal.js';
+
+declare const __PANTHEON_VERSION__: string | undefined;
+const PRODUCER_VERSION = typeof __PANTHEON_VERSION__ === 'string' ? __PANTHEON_VERSION__ : '0.0.0-dev';
 
 export const textParam = (params: Record<string, unknown>, key: string, max = 8000): string => {
   const value = params[key];
@@ -54,6 +58,19 @@ export class StudioService {
   create(params: Record<string, unknown>): StudioJob {
     if (params.dueAt !== undefined && typeof params.dueAt !== 'string') throw new Error('Use a valid due date');
     const job = this.store.createJob({ projectId: textParam(params, 'projectId', 80), playbookId: textParam(params, 'playbookId', 80), brief: textParam(params, 'brief'), requestId: textParam(params, 'requestId', 80), dueAt: typeof params.dueAt === 'string' ? params.dueAt : undefined });
+    return job;
+  }
+  /**
+   * Create a planned job from a portal request file the user chose. Nothing is
+   * started and nothing is sent back; the job waits on the workboard like any
+   * other. Importing the same request revision again returns the same job.
+   */
+  importRequest(params: Record<string, unknown>): StudioJob {
+    const projectId = textParam(params, 'projectId', 80);
+    const playbookId = textParam(params, 'playbookId', 80);
+    const request = parsePortalRequest(textParam(params, 'content', 70_000));
+    const job = this.store.createJob({ projectId, playbookId, brief: requestBrief(request), requestId: requestJobId(request, projectId, playbookId), portalRequest: { requestId: request.requestId, revision: request.revision } });
+    this.store.event('portal-imported', `Portal request ${request.requestId} revision ${request.revision} imported as a planned job.`, job.id);
     return job;
   }
   run(params: Record<string, unknown>): { accepted: true; job: StudioJob } {
@@ -133,7 +150,13 @@ export class StudioService {
       'deliverable.md': doc,
       'deliverable.html': `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escape(artifact.title)}</title><style>body{max-width:850px;margin:60px auto;padding:0 24px;color:#222;background:#faf9f6;font:16px/1.65 Segoe UI,system-ui}header{border-bottom:2px solid #93754f;padding-bottom:24px;margin-bottom:32px}h1{font:36px Georgia,serif}pre{white-space:pre-wrap;font:inherit}small{color:#555}@media print{body{margin:0;max-width:none;background:white}}</style><header><small>HOLLEY STUDIO / PANTHEON</small><h1>${escape(artifact.title)}</h1><p>${escape(status)}</p></header><pre>${escape(doc)}</pre></html>`,
       'evidence.json': JSON.stringify({ job, artifact }, null, 2),
-    };
+    } as Record<string, string>;
+    // The portal handoff describes the three files above by exact hash, so it
+    // is built after them and then listed in the manifest like any other file.
+    files['portal-package.json'] = JSON.stringify(portalPackage({
+      job, artifact, projectName: this.store.project(job.projectId).name, producerVersion: PRODUCER_VERSION, createdAt: new Date().toISOString(),
+      files: Object.entries(files).map(([name, value]) => ({ name, sha256: sha256(value), bytes: Buffer.byteLength(value, 'utf8') })),
+    }), null, 2);
     for (const [name, value] of Object.entries(files)) {
       const path = join(folder, name); const temporary = path + '.tmp';
       writeFileSync(temporary, value, { encoding: 'utf8', flag: 'w' }); renameSync(temporary, path);

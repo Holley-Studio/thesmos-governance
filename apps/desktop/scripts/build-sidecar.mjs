@@ -24,7 +24,7 @@
 import { build } from 'esbuild';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -42,6 +42,12 @@ mkdirSync(workDir, { recursive: true });
 copyFileSync(join(appDir, 'node_modules', '@fontsource', 'cinzel', 'LICENSE'), join(outDir, 'Cinzel-OFL.txt'));
 copyFileSync(join(appDir, 'public', 'brands', 'NOTICE.txt'), join(outDir, 'Brand-Notices.txt'));
 copyFileSync(join(appDir, 'docs', 'hermes-bridge-instructions.md'), join(outDir, 'hermes-bridge-instructions.md'));
+// The installer ships inside the app so an update runs the copy this build was
+// tested with, not whatever script happens to be in the release folder.
+copyFileSync(join(here, 'Install-Pantheon.ps1'), join(outDir, 'Install-Pantheon.ps1'));
+
+// tauri.conf.json is the single source of the version.
+const version = JSON.parse(readFileSync(join(appDir, 'src-tauri', 'tauri.conf.json'), 'utf8')).version;
 
 // ── 1. Bundle ────────────────────────────────────────────────────────────────
 await build({
@@ -53,6 +59,7 @@ await build({
   outfile: bundlePath,
   // Node builtins stay external; everything from Thesmos core is inlined.
   external: ['node:*'],
+  define: { __PANTHEON_VERSION__: JSON.stringify(version) },
   logLevel: 'info',
 });
 console.log('[sidecar] bundled →', bundlePath);

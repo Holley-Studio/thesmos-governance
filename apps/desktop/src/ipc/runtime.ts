@@ -223,6 +223,15 @@ export async function openGoogle(destination: { service: 'gmail' | 'calendar'; a
 export async function connectSubscription(provider: 'codex' | 'claude'): Promise<void> { return invoke('connect_subscription', { provider }); }
 
 export async function openKnowledgeSource(projectId: string, sourceId: string): Promise<void> { return invoke('open_knowledge_source', { projectId, sourceId }); }
+export interface UpdateRelease { version: string; notes: string; publishedAt: string; size: number }
+export interface UpdateStatus { current: string; channel: string | null; available: UpdateRelease | null; latest: string | null; problem: string | null }
+export const updateStatus = () => invoke<UpdateStatus>('update_status');
+/** Installs what the update folder offers and restarts. Takes no arguments by design. */
+export const updateInstall = () => invoke<void>('update_install');
+/** Opens the fixed portal address in the browser. */
+export const openPortal = () => invoke<void>('open_portal');
+/** Native file picker, then a planned job. Resolves null when the picker is cancelled. */
+export const importPortalRequest = (projectId: string, playbookId: string) => invoke<StudioJob | null>('import_portal_request', { projectId, playbookId });
 export const driveAuthStatus = () => invoke<DriveAuthStatus>('drive_auth_status');
 export const configureDrive = (clientConfig: string) => invoke<DriveAuthStatus>('drive_configure', {clientConfig});
 export const connectDrive = () => invoke<DriveAuthStatus>('drive_connect');

@@ -10,6 +10,8 @@
 
 mod runtime;
 mod drive;
+mod log;
+mod update;
 
 use runtime::{RuntimeHandle, RuntimeReply};
 use serde_json::Value;
@@ -134,6 +136,45 @@ async fn open_chatgpt() -> Result<(), String> {
     { Err("Open https://chatgpt.com in your browser and paste the prepared prompt".into()) }
 }
 
+/// The one portal destination. Fixed here so the webview cannot redirect it.
+const PORTAL_URL: &str = "https://portal.holley.studio/portal";
+
+#[tauri::command]
+async fn open_portal() -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let explorer = PathBuf::from(std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into())).join("explorer.exe");
+        std::process::Command::new(explorer).arg(PORTAL_URL).spawn().map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    { Err(format!("Open {PORTAL_URL} in your browser")) }
+}
+
+/// Import a portal request the user picks in a native file dialog.
+///
+/// The webview chooses only the project and playbook. The request content comes
+/// from the file the user selected and goes straight to the runtime, which
+/// validates it; a compromised webview cannot inject a request of its own.
+#[tauri::command]
+async fn import_portal_request(app: tauri::AppHandle, state: tauri::State<'_, Arc<RuntimeHandle>>, project_id: String, playbook_id: String) -> Result<Option<Value>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    if project_id.is_empty() || project_id.len() > 80 || playbook_id.is_empty() || playbook_id.len() > 80 { return Err("Choose a project and a playbook first".into()); }
+    let (tx, rx) = std::sync::mpsc::channel();
+    app.dialog().file().set_title("Choose a portal request").add_filter("Portal request", &["json"]).pick_file(move |path| { let _ = tx.send(path.map(|p| p.to_string())); });
+    let handle = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || -> Result<Option<Value>, String> {
+        let Some(raw) = rx.recv().map_err(|e| e.to_string())? else { return Ok(None) };
+        let path = PathBuf::from(raw);
+        let size = std::fs::metadata(&path).map_err(|_| "The portal request file could not be read")?.len();
+        if size > 64 * 1024 { return Err("The portal request file is too large".into()); }
+        let content = std::fs::read_to_string(&path).map_err(|_| "The portal request file is not readable text")?;
+        let reply = handle.request_internal("studio.importRequest", serde_json::json!({ "projectId": project_id, "playbookId": playbook_id, "content": content }));
+        if !reply.ok { return Err(reply.error.map(|e| e.message).unwrap_or_else(|| "The portal request could not be imported".into())); }
+        Ok(reply.result)
+    }).await.map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 async fn connect_subscription(provider: String) -> Result<(), String> {
     let binary = native_worker(&provider).ok_or("Install the official native worker first")?;
@@ -243,6 +284,44 @@ fn open_registered_source(raw: &str) -> Result<(), String> {
  if result as isize <= 32 { Err(format!("Windows could not open the registered Drive source (code {})", result as isize)) } else { Ok(()) }
 }
 
+/// Locate a file shipped in the app's `resources/` folder.
+fn bundled_resource(app: &tauri::AppHandle, name: &str) -> Option<PathBuf> {
+    let mut roots = Vec::new();
+    if let Ok(dir) = app.path().resource_dir() { roots.push(dir); }
+    if let Ok(exe) = std::env::current_exe() { if let Some(dir) = exe.parent() { roots.push(dir.to_path_buf()); } }
+    roots.into_iter().flat_map(|dir| [dir.join("resources").join(name), dir.join(name)]).find(|p| p.is_file())
+}
+
+/// What the update folder offers. Read-only; reports problems instead of failing.
+#[tauri::command]
+async fn update_status(app: tauri::AppHandle) -> Result<update::UpdateStatus, String> {
+    let dir = data_dir(&app)?;
+    let current = app.package_info().version.to_string();
+    tauri::async_runtime::spawn_blocking(move || update::status(&current, &dir)).await.map_err(|e| e.to_string())
+}
+
+/// Install the release the update folder offers, then restart into it.
+///
+/// Takes no arguments on purpose: the webview cannot choose a path, a version
+/// or a package. The package is copied locally and checksum-verified first.
+#[tauri::command]
+async fn update_install(app: tauri::AppHandle) -> Result<(), String> {
+    let dir = data_dir(&app)?;
+    let current = app.package_info().version.to_string();
+    let script = bundled_resource(&app, "Install-Pantheon.ps1").ok_or("This build does not include the installer")?;
+    let staged = tauri::async_runtime::spawn_blocking(move || update::stage(&current, &dir)).await.map_err(|e| e.to_string())??;
+    #[cfg(windows)]
+    {
+        log::line("update", &format!("installing {} from the update folder", staged.0.version));
+        update::launch_installer(&script, &staged.0, &staged.1)?;
+        // The installer waits for this process, so leave promptly and cleanly.
+        app.exit(0);
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    { let _ = (script, staged); Err("Automatic updates are available on Windows only".into()) }
+}
+
 /// Locate the bundled sidecar.
 ///
 /// Resolved from the app's resource directory, never from PATH: launching by
@@ -289,12 +368,14 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(Arc::new(RuntimeHandle::new()))
         .manage(ProjectGrants::default())
-        .invoke_handler(tauri::generate_handler![runtime_request, choose_project_folder, open_exports, connect_subscription, open_chatgpt, open_google, open_knowledge_source, drive_auth_status, drive_configure, drive_connect, drive_disconnect, drive_sync_now, drive_pause, drive_resume, open_drive_source])
+        .invoke_handler(tauri::generate_handler![runtime_request, update_status, update_install, open_portal, import_portal_request, choose_project_folder, open_exports, connect_subscription, open_chatgpt, open_google, open_knowledge_source, drive_auth_status, drive_configure, drive_connect, drive_disconnect, drive_sync_now, drive_pause, drive_resume, open_drive_source])
         .setup(|app| {
             let handle = app.handle().clone();
             let state = app.state::<Arc<RuntimeHandle>>();
             let dir = data_dir(&handle).map_err(std::io::Error::other)?;
             std::fs::create_dir_all(&dir)?;
+            log::init(&dir);
+            log::line("shell", &format!("Pantheon {} starting", handle.package_info().version));
             let mut args = vec!["--data-dir".to_string(), dir.to_string_lossy().to_string()];
             if let Ok(text) = std::fs::read_to_string(dir.join("project-grants.json")) {
                 if let Ok(saved) = serde_json::from_str::<Value>(&text) {
@@ -310,11 +391,11 @@ pub fn run() {
                 // crash: the shell should open and explain itself rather than
                 // vanish on a machine with a broken install.
                 Some(path) => {
-                    if let Err(err) = state.start(&path, &args) {
-                        eprintln!("[thesmos] runtime failed to start: {err}");
+                    if let Err(err) = state.start_supervised(&path, &args) {
+                        log::line("shell", &format!("runtime failed to start: {err}"));
                     }
                 }
-                None => eprintln!("[thesmos] runtime sidecar not found next to the app"),
+                None => log::line("shell", "runtime sidecar not found next to the app"),
             }
             let drive = drive::DriveCoordinator::new(dir.join("drive-credentials.dpapi"), Arc::clone(state.inner()));
             drive.start();

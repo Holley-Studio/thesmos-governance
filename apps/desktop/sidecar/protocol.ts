@@ -52,7 +52,9 @@ export type RuntimeMethod =
 /** Private inherited-pipe operations. Native allowlist excludes every member. */
 export type NativeRuntimeMethod = RuntimeMethod
   | 'drive.session' | 'drive.sync' | 'drive.disconnect'
-  | 'drive.pause' | 'drive.resume' | 'drive.authState';
+  | 'drive.pause' | 'drive.resume' | 'drive.authState'
+  // Reached only from the native file picker: the webview cannot supply request content.
+  | 'studio.importRequest';
 
 export interface RuntimeRequest {
   id: string;

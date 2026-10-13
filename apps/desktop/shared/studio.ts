@@ -24,6 +24,8 @@ export interface StudioJob {
   dueAt?: string; worker?: WorkerId; model?: string; attempts: number;
   stage: string; error?: string; artifactId?: string; reviewNote?: string;
   durationMs?: number; inputTokens?: number; outputTokens?: number;
+  /** Set when the job was imported from a Holley Studio portal request. */
+  portalRequest?: { requestId: string; revision: number };
 }
 export interface StudioArtifact {
   id: string; jobId: string; title: string; content: string; sha256: string;
